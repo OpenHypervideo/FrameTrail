@@ -107,6 +107,10 @@ FrameTrail.defineModule('RouteNavigation', function(){
 			'server': (document.location.protocol == 'file:') ? false : true,
 			'hostname': document.location.hostname
 		}
+
+                if (getQueryVariable('ajax') == 'disable') {
+                    environmentObj.server = false;
+                }
 		
 		return environmentObj;
 
