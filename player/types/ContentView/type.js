@@ -92,7 +92,6 @@ FrameTrail.defineType(
                                 self.contentViewData.collectionFilter.types
                             );
 
-                            // TODO: Check
                             if ( (this.previousContentSize == 'large' && this.contentViewData.contentSize != 'large') ||
                                  (this.previousContentSize != 'large' && this.contentViewData.contentSize == 'large') ) {
 
@@ -101,7 +100,8 @@ FrameTrail.defineType(
                                 });
 
                                 self.contentCollection.forEach(function (contentItem) {
-                                    self.appendContentCollectionElements(contentItem);
+                                    var indexOfItem = self.contentCollection.indexOf(contentItem);
+                                    self.appendContentCollectionElements(contentItem, indexOfItem);
                                 });
 
                                 this.previousContentSize = this.contentViewData.contentSize;
@@ -117,7 +117,8 @@ FrameTrail.defineType(
                                 self.contentCollection.filter(function(contentItem) {
                                     return 0 > old_contentCollection.indexOf(contentItem)
                                 }).forEach(function (contentItem) {
-                                    self.appendContentCollectionElements(contentItem);
+                                    var indexOfItem = self.contentCollection.indexOf(contentItem);
+                                    self.appendContentCollectionElements(contentItem, indexOfItem);
                                 });
 
                             }
@@ -219,11 +220,8 @@ FrameTrail.defineType(
                 },
 
 
-                appendContentCollectionElements: function(contentItem) {
-                    // TODO Joscha
-                    // single item (like an annotation)
-                    // console.log(contentItem);
-
+                appendContentCollectionElements: function(contentItem, appendAtIndex) {
+                    
                     var collectionElement = $('<div class="collectionElement"></div>'),
                         self = this;
 
@@ -245,8 +243,7 @@ FrameTrail.defineType(
                         collectionElement.append(contentItem.resourceItem.renderThumb());
                     }
 
-
-                    self.contentViewContainer.find('.contentViewContents').append(collectionElement);
+                    self.appendElementAtIndex(self.contentViewContainer.find('.contentViewContents'), collectionElement, appendAtIndex);
                     contentItem.contentViewElements.push(collectionElement);
 
                     // Append Detail Element if contentView size is not large
@@ -258,7 +255,7 @@ FrameTrail.defineType(
 
                         detailElement.append(contentItem.resourceItem.renderContent());
 
-                        self.contentViewDetailsContainer.find('.contentViewDetailsContents').append(detailElement);
+                        self.appendElementAtIndex(self.contentViewDetailsContainer.find('.contentViewDetailsContents'), detailElement, appendAtIndex);
                         contentItem.contentViewDetailElements.push(detailElement);
 
                         collectionElement.click(function() {
@@ -303,6 +300,13 @@ FrameTrail.defineType(
 
                 },
 
+                appendElementAtIndex: function(targetElement, element, index) {
+                    if(index === 0) {
+                        targetElement.prepend(element);        
+                    } else {
+                        $(targetElement).children().eq(index-1).after(element);
+                    }
+                },
 
                 removeContentCollectionElements: function(contentItem) {
                     // TODO
