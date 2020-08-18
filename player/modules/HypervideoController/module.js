@@ -152,7 +152,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 			});
 
-			_video.attr('preload', 'auto');
+			_video.attr('preload', 'metadata');
 			videoElement.load();
 
 			initVideo(
@@ -498,7 +498,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 				play();
 			}
 
-		})
+		});
 
 	};
 
