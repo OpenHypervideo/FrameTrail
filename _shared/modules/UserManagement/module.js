@@ -579,6 +579,16 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 				}
 
 
+			},
+			error: function(err) {
+				FrameTrail.changeState({
+					editMode: false,
+					loggedIn: false,
+					username: '',
+					userColor: ''
+				});
+				callback.call(window, false);
+				//console.log(err.statusText);
 			}
 		});
 
