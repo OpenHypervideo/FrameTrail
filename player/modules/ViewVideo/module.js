@@ -939,6 +939,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         changeSlidePosition(FrameTrail.getState('slidePosition'));
 
         Controls.find('.rightControlPanel').show();
+
+        FrameTrail.module('ViewLayout').updateContentInContentViews();
     }
 
     /**
