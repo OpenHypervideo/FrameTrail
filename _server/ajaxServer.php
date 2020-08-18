@@ -277,13 +277,14 @@ switch($_REQUEST["a"]) {
 				"captureUserTraces"=> false,
 				"userTracesStartAction"=> "",
 				"userTracesEndAction"=> "",
-				"userNeedsConfirmation"=> false,
+				"userNeedsConfirmation"=> true,
 				"alwaysForceLogin"=> false,
 				"allowCollaboration"=> false,
 				"allowUploads"=> true,
 				"theme"=> "",
 				"defaultHypervideoHidden"=> false,
-				"userColorCollection"=> $tmpColors
+				"userColorCollection"=> $tmpColors,
+				"videoFit"=> "contain"
 			);
 			if (!file_put_contents($conf["dir"]["data"]."/config.json", json_encode($tmpConf,$conf["settings"]["json_flags"]))) {
 				$errorCnt++;
