@@ -404,32 +404,8 @@
 
         var HypervideoModel     = FrameTrail.module('HypervideoModel');
 
-
-
         if ( editMode === false && oldEditMode !== false ) {
-
             //console.log('SHOW SEARCH BUTTON');
-
-        } else if ( editMode && oldEditMode === false ) {
-
-            // HypervideoModel.annotationSet = '#myAnnotationSet';
-
-            //console.log('HIDE SEARCH BUTTON');
-
-            /*
-            window.setTimeout(function() {
-                initAnnotations();
-            }, 300);
-            */
-
-        } else if ( editMode === false ) {
-
-            //console.log('SHOW SEARCH BUTTON');
-
-        } else {
-
-            //console.log('HIDE SEARCH BUTTON');
-
         }
 
 
@@ -459,7 +435,7 @@
 
         } else if (oldEditMode === 'annotations' && editMode !== 'annotations') {
 
-
+            //console.log(editMode, oldEditMode, annotations);
             for (var idx in annotations) {
 
                 annotations[idx].stopEditing();
@@ -940,8 +916,12 @@
                 for (var v=0; v<aspectValues.values.length; v++) {
                     var numericRatio = aspectValues.values[v].elementNumericValue / aspectValues.maxNumericValue,
                         relativeHeight = 100 * (numericRatio),
-                        timelineColor = Math.round(numericRatio * 10);
-                    valueLegendString += '<span class="timelineLegendLabel" data-numeric-value="'+ aspectValues.values[v].elementNumericValue +'" data-timeline-color="'+ timelineColor +'">'+ aspectValues.values[v].name +'</span>';
+                        timelineColor = (aspectValues.maxNumericValue) ? Math.round(numericRatio * 10) : v*1 + 1;
+                    if (aspectLabel.indexOf('Colour Range') != -1) {
+                        valueLegendString += '<span class="timelineLegendLabel" data-numeric-value="'+ aspectValues.values[v].elementNumericValue +'" style="color: '+ aspectValues.values[v].name +';">'+ aspectValues.values[v].name +'</span>';
+                    } else {
+                        valueLegendString += '<span class="timelineLegendLabel" data-numeric-value="'+ aspectValues.values[v].elementNumericValue +'" data-timeline-color="'+ timelineColor +'">'+ aspectValues.values[v].name +'</span>';
+                    }
                 }
             }
 
@@ -958,15 +938,19 @@
                                         +   '</div>'),
                 userTimeline = userTimelineWrapper.find('.userTimeline');
 
-            var firstAnnotation = (collectedAnnotationsPerAspectData[i].annotations[0]) ? collectedAnnotationsPerAspectData[i].annotations[0] : null;
+            var firstAnnotation = (collectedAnnotationsPerAspectData[i].annotations[0]) ? collectedAnnotationsPerAspectData[i].annotations[0] : null,
+                timelineMaxValue = 1;
             if (firstAnnotation && firstAnnotation.data.source.url.body && firstAnnotation.data.source.url.body.maxNumericValue) {
-                var gridLevels = firstAnnotation.data.source.url.body.maxNumericValue;
+                timelineMaxValue = firstAnnotation.data.source.url.body.maxNumericValue;
                 //console.log(gridLevels);
-                for (var gl=1; gl<gridLevels; gl++) {
-                    var bottomValue = 100 * (gl / gridLevels);
+                for (var gl=1; gl<timelineMaxValue; gl++) {
+                    var bottomValue = 100 * (gl / timelineMaxValue);
                     userTimeline.append('<div class="horizontalGridLine" style="bottom: '+ bottomValue +'%;"></div>');
                 }
             }
+
+            userTimelineWrapper.attr('data-timeline-max-value', timelineMaxValue);
+            userTimelineWrapper.attr('data-type-label', aspectLabel);
             
             for (var idx in collectedAnnotationsPerAspectData[i].annotations) {
                 var compareTimelineItem = collectedAnnotationsPerAspectData[i].annotations[idx].renderCompareTimelineItem();
