@@ -51,8 +51,8 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
         scrollLeftBlocked = false,
         scrollRightBlocked = false;
 
-        var namespace = 'FrameTrail'+ $(FrameTrail.getState('target')).attr('id');
-
+        var namespace = 'FrameTrail'+ $(FrameTrail.getState('target')).attr('id') + $(FrameTrail.getState('target')).attr('data-movie-id') + $(FrameTrail.getState('target')).attr('data-scene-index');
+        
     	$(document).off('keydown.'+ namespace).on('keydown.'+ namespace, function(evt){
 
     		// Save when ctrl+s or command+s
