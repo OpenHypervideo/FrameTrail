@@ -159,6 +159,10 @@
 
             // empty arrayOfUserIDsForAnnotations means no filtering by user ids
             if (arrayOfUserIDsForAnnotations.length > 0) {
+                if (arrayOfUserIDsForAnnotations.indexOf('_currentUser') != -1 
+                    && FrameTrail.module('UserManagement').userID.length > 0) {
+                    arrayOfUserIDsForAnnotations[arrayOfUserIDsForAnnotations.indexOf('_currentUser')] = FrameTrail.module('UserManagement').userID;
+                }
                 if (arrayOfUserIDsForAnnotations.map(String).indexOf(String(annotationData.creatorId)) < 0) {
                     //console.log(annotationData.creatorId);
                     match = false;
