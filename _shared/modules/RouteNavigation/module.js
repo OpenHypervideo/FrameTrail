@@ -105,7 +105,8 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
 
 		var environmentObj = {
 			'server': (document.location.protocol == 'file:') ? false : true,
-			'hostname': document.location.hostname
+			'hostname': document.location.hostname,
+			'iframe': (window.location != window.parent.location) ? true : false
 		}
 
 		return environmentObj;

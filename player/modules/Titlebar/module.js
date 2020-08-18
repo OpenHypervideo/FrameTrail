@@ -44,6 +44,11 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
 
     StartEditButton.click(function(){
+        
+        if (FrameTrail.module('RouteNavigation').environment.iframe) {
+            $(FrameTrail.getState('target'))[0].requestFullscreen();
+        }
+
         FrameTrail.module('UserManagement').ensureAuthenticated(
             function(){
 

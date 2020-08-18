@@ -1485,11 +1485,11 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         var element = $(FrameTrail.getState('target'))[0];
 
-        if (element.requestFullScreen) {
-            if (!document.fullScreen) {
+        if (element.requestFullscreen) {
+            if (!document.fullscreen) {
                 element.requestFullscreen();
             } else {
-                document.exitFullScreen();
+                document.exitFullscreen();
             }
         } else if (element.mozRequestFullScreen) {
             if (!document.mozFullScreen) {

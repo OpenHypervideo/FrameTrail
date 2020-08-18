@@ -1050,6 +1050,11 @@
 						// TODO: Show saving indicator in dialog
 
 						save(function(){
+							
+							if (FrameTrail.module('RouteNavigation').environment.iframe) {
+					            document.exitFullscreen();
+					        }
+
 							FrameTrail.changeState('editMode', false);
 
 							FrameTrail.triggerEvent('userAction', {
@@ -1079,6 +1084,10 @@
 						FrameTrail.changeState('unsavedChanges', false);
 						confirmDialog.dialog('close');
 
+						if (FrameTrail.module('RouteNavigation').environment.iframe) {
+				            document.exitFullscreen();
+				        }
+
 						FrameTrail.triggerEvent('userAction', {
 							action: 'EditEnd'
 						});
@@ -1101,6 +1110,10 @@
 
 		} else {
 
+			if (FrameTrail.module('RouteNavigation').environment.iframe) {
+	            document.exitFullscreen();
+	        }
+	        
 			FrameTrail.changeState('editMode', false);
 
 			FrameTrail.triggerEvent('userAction', {
