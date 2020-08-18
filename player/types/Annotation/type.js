@@ -678,6 +678,7 @@ FrameTrail.defineType(
 
                     var numericValue = false,
                         maxNumericValue = '5',
+                        annotationValueIndex = false,
                         dataType = false;
 
                     /*
@@ -692,25 +693,29 @@ FrameTrail.defineType(
                             if (this.data.source.url.body[1].type == 'TextualBody') {
                                 numericValue = this.data.source.url.body[0].annotationNumericValue;
                                 maxNumericValue = this.data.source.url.body[0].maxNumericValue;
+                                annotationValueIndex = this.data.source.url.body[0].annotationValueIndex;
                                 dataType = this.data.source.url.body[0].type
                             } else {
                                 numericValue = this.data.source.url.body[1].annotationNumericValue;
                                 maxNumericValue = this.data.source.url.body[1].maxNumericValue;
+                                annotationValueIndex = this.data.source.url.body[1].annotationValueIndex;
                                 dataType = this.data.source.url.body[1].type
                             }
                             
                         } else {
                             numericValue = this.data.source.url.body.annotationNumericValue;
                             maxNumericValue = this.data.source.url.body.maxNumericValue;
+                            annotationValueIndex = this.data.source.url.body.annotationValueIndex;
                             dataType = this.data.source.url.body.type
                         }
                     }
 
-                    //console.log('ORIGIN BODY:', this.data.source.url.body);
-                    //console.log('NumericValue:', numericValue);
+                   	//console.log('ORIGIN BODY:', this.data);
+                    //console.log('numericValue:', numericValue);
+                    //console.log('annotationValueIndex:', annotationValueIndex);
 
-                    if (numericValue) {
-                        if (Array.isArray(numericValue)) {
+                    if (numericValue || annotationValueIndex) {
+                        if (numericValue && Array.isArray(numericValue)) {
                             compareTimelineElement.attr({
                                 'data-origin-type': dataType,
                                 'data-numeric-value': numericValue,
@@ -730,9 +735,11 @@ FrameTrail.defineType(
                                 compareTimelineElement.css('height', relativeHeight + '%');
                             }
                         } else {
+                            
                             var numericRatio = numericValue / maxNumericValue,
                                 relativeHeight = 100 * (numericRatio),
-                                timelineColor = Math.round(numericRatio * 10);
+                                timelineColor = (numericValue) ? Math.round(numericRatio * 10) : annotationValueIndex;
+                            
                             compareTimelineElement.attr({
                                 'data-origin-type': dataType,
                                 'data-numeric-value': numericValue,
@@ -742,6 +749,29 @@ FrameTrail.defineType(
                             });
                             compareTimelineElement.css('height', relativeHeight + '%');
                             compareTimelineElement.css('opacity', numericRatio);
+                        }
+                    } else {
+        
+                        var multipleAnnotationValues = null,
+                            annotationType = null;
+                        if (this.data.source.url.body) {
+                            if (Array.isArray(this.data.source.url.body)) {
+                                if (this.data.source.url.body[0].annotationValue) {
+                                    multipleAnnotationValues  = this.data.source.url.body[0].annotationValue;
+                                    annotationType  = this.data.source.url.body[0].annotationType;
+                                } else if (this.data.source.url.body[1].annotationValue) {
+                                    multipleAnnotationValues  = this.data.source.url.body[1].annotationValue;
+                                    annotationType  = this.data.source.url.body[1].annotationType;
+                                }
+                            } else {
+                                multipleAnnotationValues  = this.data.source.url.body.annotationValue;
+                                annotationType  = this.data.source.url.body.annotationType;
+                            }
+                        }
+                        if (multipleAnnotationValues) {
+                            //console.log('HERE', multipleAnnotationValues);
+                            var multipleElems = renderMultipleValues(annotationType, multipleAnnotationValues);
+                            compareTimelineElement.append(multipleElems);
                         }
                     }
 
@@ -768,6 +798,14 @@ FrameTrail.defineType(
                     );
 
                     var self = this;
+
+                    if (self.data.graphData) {
+                    	if (self.data.graphDataType == 'soundwave') {
+                    		compareTimelineElement.append(self.renderSoundwave(self.data.graphData));
+                    	} else if (self.data.graphDataType == 'barchart') {
+                    		compareTimelineElement.append(self.renderBarchart(self.data.graphData));
+                    	}
+                    }
 
                     compareTimelineElement.draggable({
                         containment:    '.mainContainer',
@@ -804,6 +842,91 @@ FrameTrail.defineType(
 
                 },
 
+                renderSoundwave: function(soundwaveDataString) {
+                	
+    				var graphDataElem = $('<div class="graphDataContainer"></div>');
+
+					var width = 8000,
+						height = 60,
+						data = soundwaveDataString.split(" "),
+						node = d3.select(graphDataElem[0]).append("canvas")
+							.attr("width", width)
+							.attr("height", height);
+
+						var y = d3.scaleLinear().range([0, height]);
+						var max_val = 100;
+						y.domain([0, max_val]);
+						var x = d3.scaleLinear().domain([0, data.length]);
+						var bar_width = width / data.length;
+
+						var chart = node;
+						var context = chart.node().getContext("2d");
+
+						data.forEach(function(d, i) {
+							var thisY = height - Math.abs(y(d)/2) - height/2 + 2;
+							var thisX = i * bar_width;
+							var thisHeight = Math.abs(y(d));
+
+							context.beginPath();
+							context.rect(thisX, thisY, bar_width, thisHeight);
+							context.fillStyle="#333333";
+							context.fill();
+							context.closePath();
+						});
+
+                	return graphDataElem;
+                },
+
+                renderBarchart: function(barchartDataString) {
+                	
+    				var graphDataElem = $('<div class="graphDataContainer"></div>');
+
+                    var width = 30000,
+                        height = 60,
+                        data = barchartDataString.split(" ");
+
+                    var i,
+                        j,
+                        dataChunk,
+                        chunkSize = 2000,
+                        numberOfChunks = Math.ceil(data.length / chunkSize),
+                        canvasPercentWidth = 100 / numberOfChunks,
+                        finalChunkSize = Math.round(data.length / numberOfChunks);
+
+                    for (i=0,j=data.length; i<j; i+=finalChunkSize) {
+                        
+                        dataChunk = data.slice(i,i+finalChunkSize);
+                        
+                        var node = d3.select(graphDataElem[0]).append("canvas")
+                            .attr("width", width)
+                            .attr("height", height)
+                            .attr("style", "width: "+ canvasPercentWidth +"%;");
+
+                        var y = d3.scaleLinear().range([0, height]);
+                        var max_val = 100;
+                        y.domain([0, max_val]);
+                        var x = d3.scaleLinear().domain([0, dataChunk.length]);
+                        var bar_width = width / dataChunk.length;
+
+                        var chart = node;
+                        var context = chart.node().getContext("2d");
+
+                        dataChunk.forEach(function(d, i) {
+                            var thisY = height - Math.abs(y(d));
+                            var thisX = i * bar_width;
+                            var thisHeight = Math.abs(y(d));
+                            
+                            context.beginPath();
+                            context.rect(thisX, thisY, bar_width, thisHeight);
+                            context.fillStyle="#333333";
+                            context.fill();
+                            context.closePath();
+                        });
+                    }    
+
+                    return graphDataElem;
+                },
+
                 renderEvolvingValues: function(values, maxValue) {
                     var svg = $('<svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"></svg>'),
                         stepWidth = 100 / (values.length - 1),
@@ -824,6 +947,9 @@ FrameTrail.defineType(
                     path += " L 100 100 L 0 100 Z";
                     svg.append('<path d="' + path + '"></path>');
 
+                    var timelineColor = Math.round(numericRatio * 10);
+                    svg.attr('data-timeline-color', timelineColor);
+
                     return svg;
                 },
 
@@ -843,6 +969,31 @@ FrameTrail.defineType(
                     }
 
                     return $(barchartFractions);
+                },
+
+                renderMultipleValues: function(annotationType, values) {
+    
+                    var barchartFractions = '',
+                        heightPercentage = 100 / values.length;
+
+                    if (typeof getAnnotationValueIndex == 'function') {
+                        for (var v=0; v<values.length; v++) {
+                            var valueIndex = getAnnotationValueIndex(annotationType, values[v]),
+                                numericRatio = (v / values.length),
+                                timelineColor = valueIndex,
+                                fractionPercentage = 100 * (v / values.length);
+                            if (annotationType.indexOf('ColourRange') != -1) {
+                                barchartFractions += '<div class="barchartFraction" style="height: '+ heightPercentage +'%; top: '+ fractionPercentage +'%; background-color: '+ getLabelFromURI(values[v]) +';"></div>';
+                            } else {
+                                barchartFractions += '<div class="barchartFraction" style="height: '+ heightPercentage +'%; top: '+ fractionPercentage +'%" data-timeline-color="'+ timelineColor +'"></div>';
+                            }
+                        }
+                    } else {
+                        console.log('FrameTrail used outside AdA project context (getAnnotationValueIndex not defined)');
+                    }
+                    
+                    return $(barchartFractions);
+                    
                 },
 
                 // TODO
