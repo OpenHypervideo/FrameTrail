@@ -229,6 +229,19 @@
 	bottom: 0px;
 }
 
+.timelineList .userTimeline .compareTimelineElement .graphDataContainer {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	width: 100%;
+	height: 100%;
+}
+
+.timelineList .userTimeline .compareTimelineElement .graphDataContainer canvas {
+	width: 100%;
+	height: 100%;
+}
+
 /* Timeline Element Preview */
 
 .compareTimelineElement .previewWrapper, 
@@ -401,22 +414,23 @@ body > .timelineElement .previewWrapper .resourceThumb .resourceOverlay .resourc
 .compareTimelineElement .compareTimelineElementTime .compareTimeEnd {
 	position: absolute;
 	top: 0px;
-	left: calc(100% - 10px);
+	left: calc(100%);
 	font-size: 11px;
 	width: 42px;
-	text-align: center;
+	text-align: left;
 	overflow: hidden;
 	color: var(--primary-bg-color);
 }
 
-.contenViewContents .compareTimelineElement .compareTimelineElementTime .compareTimeStart,
-.contenViewContents .compareTimelineElement .compareTimelineElementTime .compareTimeEnd {
+.contentViewContents .compareTimelineElement .compareTimelineElementTime .compareTimeStart,
+.contentViewContents .compareTimelineElement .compareTimelineElementTime .compareTimeEnd {
 	color: var(--primary-fg-color);
 }
 
 .compareTimelineElement .compareTimelineElementTime .compareTimeStart {
 	left: auto;
-	right: calc(100% - 10px);
+	right: calc(100% + 2px);
+	text-align: right;
 }
 
 .compareTimelineElement:hover .compareTimelineElementTime, .compareTimelineElement.active .compareTimelineElementTime {
