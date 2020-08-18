@@ -715,6 +715,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 			if (userRole === 'admin'){
 				domElement.find('.userTabAdministrationMenu').show();
 				updateAdministration();
+				$(FrameTrail.getState('target')).addClass('frametrail-admin');
 			}
 
 
@@ -722,6 +723,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 			domElement.find('.userTabSettingsMenu').hide();
 			domElement.find('.userTabAdministrationMenu').hide();
+			$(FrameTrail.getState('target')).removeClass('frametrail-admin');
 
 		}
 
