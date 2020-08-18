@@ -692,7 +692,9 @@
                             "source": {
                                 frametrail: true,
                                 url: url
-                            }
+                            },
+                            "graphData": (data[i]['frametrail:graphdata']) ? data[i]['frametrail:graphdata'] : null,
+                            "graphDataType": (data[i]['frametrail:graphdatatype']) ? data[i]['frametrail:graphdatatype'] : null,
                         });
 
                         if (annotations[annotations.length-1].type === 'location') {
@@ -809,7 +811,9 @@
                             "source": {
                                 frametrail: false,
                                 url: initAnnotations[i]
-                            }
+                            },
+                            "graphData": (data[i]['frametrail:graphdata']) ? data[i]['frametrail:graphdata'] : null,
+                            "graphDataType": (data[i]['frametrail:graphdatatype']) ? data[i]['frametrail:graphdatatype'] : null
                         });
 
                         if (annotations[annotations.length-1].type === 'location') {
@@ -889,7 +893,9 @@
                         "source": {
                             frametrail: false,
                             url: originalAnnoObject
-                        }
+                        },
+                        "graphData": (initAnnotations[i]['frametrail:graphdata']) ? initAnnotations[i]['frametrail:graphdata'] : null,
+                        "graphDataType": (initAnnotations[i]['frametrail:graphdatatype']) ? initAnnotations[i]['frametrail:graphdatatype'] : null
                     });
 
                     if (annotations[annotations.length-1].type === 'location') {
