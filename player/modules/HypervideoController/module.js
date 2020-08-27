@@ -55,7 +55,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 		videoElement           = ViewVideo.Video;
 
 	window.player_youtube = {};
-
+	window.player_vimeo = {};
 
 	/**
 	 * I initialize the Controller.
@@ -209,10 +209,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 			lowPriorityUpdater  = lowPriorityUpdater_HTML5;
 
 			FrameTrail.changeState('videoWorking', true);
-
-			window.lastYoutubePlayerID = 'yt_' + Date.now();
+			var lastYoutubePlayerID = 'yt_' + Date.now();
+			FrameTrail.changeState('lastYoutubePlayerID', lastYoutubePlayerID);
 			var yt_options = 'autoplay=0&controls=0&rel=0&disablekb=1&enablejsapi=1&fs=0&modestbranding=1&playsinline=1&color=white&origin='+ window.location.origin;
-			var yt_iframe = $('<iframe id="'+ window.lastYoutubePlayerID +'" class="player_youtube" type="text/html" width="720" height="405" src="https:'+ HypervideoModel.sourcePath +'?'+ yt_options +'" frameborder="0" allowfullscreen>');
+			var yt_iframe = $('<iframe id="'+ lastYoutubePlayerID +'" class="player_youtube" type="text/html" width="720" height="405" src="https:'+ HypervideoModel.sourcePath +'?'+ yt_options +'" frameborder="0" allowfullscreen>');
 						
 			_video.after(yt_iframe);
 
@@ -226,8 +226,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 			}
 
 			window.onYouTubeIframeAPIReady = function() {
-				
-				window.player_youtube[window.lastYoutubePlayerID] = new window.YT.Player(window.lastYoutubePlayerID, {
+				var YouTubePlayerID = FrameTrail.getState('lastYoutubePlayerID');
+				console.log('YOUTUBE API READY', YouTubePlayerID);
+				window.player_youtube[YouTubePlayerID] = new window.YT.Player(YouTubePlayerID, {
 					events: {
 						'onReady': onPlayerReady,
 						'onStateChange': onPlayerStateChange,
@@ -237,7 +238,6 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 				
 				function onPlayerReady(event) {
 					
-					//console.log('Player READY', window.lastYoutubePlayerID, event.target.getDuration());
 					var HypervideoModel = FrameTrail.module('HypervideoModel');
 					HypervideoModel.offsetOut = (HypervideoModel.offsetOut) ? HypervideoModel.offsetOut : event.target.getDuration();
 					HypervideoModel.durationFull = event.target.getDuration();
@@ -277,6 +277,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 					}
 
 					FrameTrail.changeState('viewSize', FrameTrail.getState('viewSize'));
+
+					FrameTrail.changeState('videoWorking', false);
 
 					callback.call();
 				}
@@ -341,12 +343,176 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 		} else if (HypervideoModel.videoType == 'vimeo') {
 
-			highPriorityUpdater = highPriorityUpdater_NullVideo;
-			lowPriorityUpdater  = lowPriorityUpdater_NullVideo;
+			highPriorityUpdater = highPriorityUpdater_HTML5;
+			lowPriorityUpdater  = lowPriorityUpdater_HTML5;
 
 			FrameTrail.changeState('videoWorking', true);
 
-			console.log('VIMEO API');
+			var lastVimeoPlayerID = 'vm_' + Date.now();
+			FrameTrail.changeState('lastVimeoPlayerID', lastVimeoPlayerID);
+			var vm_options = 'color=ffffff&portrait=0&byline=0&title=0&badge=0&controls=0';
+			var vm_iframe = $('<iframe id="'+ lastVimeoPlayerID +'" class="player_vimeo" type="text/html" width="720" height="405" src="https:'+ HypervideoModel.sourcePath +'?'+ vm_options +'" frameborder="0" allowfullscreen>');
+			
+			_video.after(vm_iframe);
+
+			if (!window.Vimeo) {
+				var tag = document.createElement('script');
+				tag.src = "https://player.vimeo.com/api/player.js";
+				var firstScriptTag = document.getElementsByTagName('script')[0];
+				firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+				tag.onload = function() {
+					initVimeo();
+				}
+			} else {
+				initVimeo();
+			}
+
+			function initVimeo() {
+				
+				window.player_vimeo[lastVimeoPlayerID] = new Vimeo.Player(vm_iframe, {
+					controls: false,
+					responsive: false,
+					autopause: false
+				});
+
+				window.player_vimeo[lastVimeoPlayerID].on('play', function() {
+					if (HypervideoModel.durationFull == 0) {
+						var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
+						window.player_vimeo[lastVimeoPlayerID].getDuration().then(function(vimeo_duration) {
+							//console.log('Player READY', vimeo_duration);
+							if (vimeo_duration != 0) {
+								ViewVideo.OverlayContainer.show();
+								initVimeoDuration(vimeo_duration);
+							}
+						});
+					} else {
+						_play();
+					}
+				});
+				window.player_vimeo[lastVimeoPlayerID].on('pause', function() {
+					_pause();
+				});
+
+				window.player_vimeo[lastVimeoPlayerID].on('seeking', function() {
+					FrameTrail.changeState('videoWorking', true);
+				});
+
+				window.player_vimeo[lastVimeoPlayerID].on('bufferstart', function() {
+					FrameTrail.changeState('videoWorking', true);
+				});
+
+				window.player_vimeo[lastVimeoPlayerID].on('bufferend', function() {
+					FrameTrail.changeState('videoWorking', false);
+				});
+
+				window.player_vimeo[lastVimeoPlayerID].on('waiting', function() {
+					FrameTrail.changeState('videoWorking', true);
+				});
+
+				window.player_vimeo[lastVimeoPlayerID].on('seeked', function() {
+					FrameTrail.changeState('videoWorking', false);
+				});
+
+				window.player_vimeo[lastVimeoPlayerID].on('ended', function() {
+					
+					_pause();
+					FrameTrail.triggerEvent('ended', {});
+
+					if (HypervideoModel.events.onEnded) {
+						try {
+			            	var endedEvent = new Function(HypervideoModel.events.onEnded);
+			            	endedEvent();
+			            } catch (exception) {
+			                // could not parse and compile JS code!
+			                console.warn('Event handler contains errors: '+ exception.message);
+			            }
+			        }
+
+				});
+
+				window.player_vimeo[lastVimeoPlayerID].ready().then(function() {
+
+					var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
+
+					window.player_vimeo[lastVimeoPlayerID].pause().then(function() {
+						// The video is paused
+					}).catch(function(error) {
+						switch (error.name) {
+							case 'PasswordError':
+								// The video is password-protected
+								console.log('PASSWORD');
+								ViewVideo.VideoStartOverlay.addClass('inactive').hide();
+								ViewVideo.OverlayContainer.hide();
+								FrameTrail.changeState('videoWorking', false);
+							break;
+
+							case 'PrivacyError':
+								// The video is private
+								console.log('PRIVATE');
+								ViewVideo.VideoStartOverlay.addClass('inactive').hide();
+								ViewVideo.OverlayContainer.hide();
+								FrameTrail.changeState('videoWorking', false);
+							break;
+
+							default:
+								// Some other error occurred
+								console.log(error);
+							break;
+						}
+					});
+
+					window.player_vimeo[lastVimeoPlayerID].getDuration().then(function(vimeo_duration) {
+						//console.log('Player READY', vimeo_duration);
+						initVimeoDuration(vimeo_duration);
+					});
+				});
+			}
+
+			function initVimeoDuration(vimeo_duration) {
+				var HypervideoModel = FrameTrail.module('HypervideoModel');
+				HypervideoModel.offsetOut = (HypervideoModel.offsetOut) ? HypervideoModel.offsetOut : vimeo_duration;
+				HypervideoModel.durationFull = vimeo_duration;
+				HypervideoModel.duration = HypervideoModel.offsetOut - HypervideoModel.offsetIn;
+
+				if (update) {
+					AnnotationsController.updateController();
+				} else {
+					AnnotationsController.initController();
+				}
+
+				OverlaysController.initController();
+				CodeSnippetsController.initController();
+				SubtitlesController.initController();
+
+				initPlayButton();
+				initProgressBar();
+
+				InteractionController.initController();
+
+				FrameTrail.triggerEvent('ready', {});
+
+				if (HypervideoModel.events.onReady) {
+					try {
+	                	var readyEvent = new Function(HypervideoModel.events.onReady);
+	                	readyEvent();
+		            } catch (exception) {
+		                // could not parse and compile JS code!
+		                console.warn('Event handler contains errors: '+ exception.message);
+		            }
+				}
+
+				if (RouteNavigation.hashTime) {
+					setCurrentTime(RouteNavigation.hashTime);
+				} else {
+					setCurrentTime(HypervideoModel.offsetIn);
+				}
+
+				FrameTrail.changeState('viewSize', FrameTrail.getState('viewSize'));
+				FrameTrail.changeState('videoWorking', false);
+
+				callback.call();
+			}
+			
 
 		} else {
 
@@ -401,8 +567,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 				}
 
 				FrameTrail.changeState('viewSize', FrameTrail.getState('viewSize'));
-
-				FrameTrail.changeState('videoWorking', true);
+				FrameTrail.changeState('videoWorking', false);
 
 				callback.call();
 			}, 1100);
@@ -482,8 +647,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 		var ViewVideo = FrameTrail.module('ViewVideo');
 
-		ViewVideo.PlayButton.click(function(){
-
+		ViewVideo.PlayButton.off('click').on('click', function(){
 			if ( isPlaying ) {
 				pause();
 			} else {
@@ -492,7 +656,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 		});
 
-		ViewVideo.VideoStartOverlay.click(function(){
+		ViewVideo.VideoStartOverlay.off('click').on('click', function(){
 
 			if ( !isPlaying ) {
 				play();
@@ -628,19 +792,37 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 		var ViewVideo = FrameTrail.module('ViewVideo');
 
 		if (HypervideoModel.videoType == 'youtube') {
-			currentTime = window.player_youtube[window.lastYoutubePlayerID].getCurrentTime();
+			var lastYoutubePlayerID = FrameTrail.getState('lastYoutubePlayerID')
+			currentTime = window.player_youtube[lastYoutubePlayerID].getCurrentTime();
+			if (ViewVideo.PlayerProgress.data('ui-slider')) {
+				ViewVideo.PlayerProgress.slider('value', currentTime-HypervideoModel.offsetIn);
+			}
+
+			FrameTrail.triggerEvent('timeupdate', {});
+
+	        OverlaysController.checkMediaSynchronization();
+		} else if (HypervideoModel.videoType == 'vimeo') {
+			var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
+			window.player_vimeo[lastVimeoPlayerID].getCurrentTime().then(function(vimeo_currentTime) {
+				currentTime = vimeo_currentTime;
+				if (ViewVideo.PlayerProgress.data('ui-slider')) {
+					ViewVideo.PlayerProgress.slider('value', currentTime-HypervideoModel.offsetIn);
+				}
+
+				FrameTrail.triggerEvent('timeupdate', {});
+
+		        OverlaysController.checkMediaSynchronization();
+			});
 		} else {
 			currentTime = videoElement.currentTime;
+			if (ViewVideo.PlayerProgress.data('ui-slider')) {
+				ViewVideo.PlayerProgress.slider('value', currentTime-HypervideoModel.offsetIn);
+			}
+
+			FrameTrail.triggerEvent('timeupdate', {});
+
+	        OverlaysController.checkMediaSynchronization();
 		}
-
-		if (ViewVideo.PlayerProgress.data('ui-slider')) {
-			ViewVideo.PlayerProgress.slider('value', currentTime-HypervideoModel.offsetIn);
-		}
-
-		FrameTrail.triggerEvent('timeupdate', {});
-
-        OverlaysController.checkMediaSynchronization();
-
 
 	};
 
@@ -783,9 +965,32 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 		} else if (HypervideoModel.videoType == 'youtube') {
 
-			window.player_youtube[window.lastYoutubePlayerID].playVideo();
+			var lastYoutubePlayerID = FrameTrail.getState('lastYoutubePlayerID');
+
+			window.player_youtube[lastYoutubePlayerID].playVideo();
 			_play();
 			onPlaySuccess();
+
+		} else if (HypervideoModel.videoType == 'vimeo') {
+			
+			var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
+
+			window.player_vimeo[lastVimeoPlayerID].play().then(function() {
+				_play();
+				onPlaySuccess();
+			}).catch(function(error) {
+				switch (error.name) {
+					case 'PasswordError':
+						FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is password-protected.');
+					break;
+					case 'PrivacyError':
+						FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is private.');
+					break;
+					default:
+					// Some other error occurred
+					break;
+				}
+			});
 
 		} else {
 
@@ -844,8 +1049,19 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 		} else if (HypervideoModel.videoType == 'youtube') {
 
-			if (window.player_youtube[window.lastYoutubePlayerID]) {
-				window.player_youtube[window.lastYoutubePlayerID].pauseVideo();
+			var lastYoutubePlayerID = FrameTrail.getState('lastYoutubePlayerID');
+
+			if (window.player_youtube[lastYoutubePlayerID]) {
+				window.player_youtube[lastYoutubePlayerID].pauseVideo();
+			}
+			_pause();
+
+		} else if (HypervideoModel.videoType == 'vimeo') {
+			
+			var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
+			
+			if (window.player_vimeo[lastVimeoPlayerID]) {
+				window.player_vimeo[lastVimeoPlayerID].pause();
 			}
 			_pause();
 
@@ -1046,8 +1262,28 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 		} else if (HypervideoModel.videoType == 'youtube') {
 
+			var lastYoutubePlayerID = FrameTrail.getState('lastYoutubePlayerID');
+			
 			currentTime = aNumberAsFloat;
-			window.player_youtube[window.lastYoutubePlayerID].seekTo(currentTime, true);
+			window.player_youtube[lastYoutubePlayerID].seekTo(currentTime, true);
+
+		} else if (HypervideoModel.videoType == 'vimeo') {
+			
+			var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
+
+			currentTime = aNumberAsFloat;
+			window.player_vimeo[lastVimeoPlayerID].setCurrentTime(currentTime).then(function(vimeo_currentTime) {
+				// `vimeo_currentTime` indicates the actual time that the player seeks to
+			}).catch(function(error) {
+				switch (error.name) {
+					case 'RangeError':
+						// The time is less than 0 or greater than the video's duration
+					break;
+					default:
+						// Some other error occurred
+					break;
+				}
+			});
 
 		} else {
 
@@ -1084,17 +1320,27 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 		} else if (HypervideoModel.videoType == 'youtube') {
 
+			var lastYoutubePlayerID = FrameTrail.getState('lastYoutubePlayerID');
+
 			if (muted) {
-				window.player_youtube[window.lastYoutubePlayerID].mute();
+				window.player_youtube[lastYoutubePlayerID].mute();
 			} else {
-				window.player_youtube[window.lastYoutubePlayerID].unMute();
+				window.player_youtube[lastYoutubePlayerID].unMute();
+			}
+
+		} else if (HypervideoModel.videoType == 'vimeo') {
+
+			var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
+			
+			if (muted) {
+				window.player_vimeo[lastVimeoPlayerID].setVolume(0);
+			} else {
+				window.player_vimeo[lastVimeoPlayerID].setVolume(1);
 			}
 
 		}
 
 		OverlaysController.muteMedia(muted);
-
-
 
 	};
 

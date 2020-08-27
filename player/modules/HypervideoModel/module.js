@@ -112,7 +112,7 @@
                 }
             }
             
-            var vimeo_res = /^(http\:\/\/|https\:\/\/)?(www\.)?(vimeo\.com\/)([0-9]+)$/.exec(sourcePath);
+            var vimeo_res = /^(http\:\/\/|https\:\/\/|\/\/)?(www\.|player\.)?(vimeo\.com\/)(video\/)?([0-9]+)$/.exec(sourcePath);
             if (vimeo_res !== null) {
             	videoType = 'vimeo';
             }
@@ -1052,7 +1052,7 @@
 						save(function(){
 							
 							if (FrameTrail.module('RouteNavigation').environment.iframe) {
-					            document.exitFullscreen();
+					            FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
 					        }
 
 							FrameTrail.changeState('editMode', false);
@@ -1085,7 +1085,7 @@
 						confirmDialog.dialog('close');
 
 						if (FrameTrail.module('RouteNavigation').environment.iframe) {
-				            document.exitFullscreen();
+				            FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
 				        }
 
 						FrameTrail.triggerEvent('userAction', {
@@ -1111,7 +1111,7 @@
 		} else {
 
 			if (FrameTrail.module('RouteNavigation').environment.iframe) {
-	            document.exitFullscreen();
+	            FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
 	        }
 	        
 			FrameTrail.changeState('editMode', false);
