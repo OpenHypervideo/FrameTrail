@@ -909,21 +909,7 @@
                         
             var aspectLabel =  collectedAnnotationsPerAspectData[i].label,
                 aspectColor = collectedAnnotationsPerAspectData[i].color,
-                valueLegendString = '',
                 aspectValues = collectedAnnotationsPerAspectData[i].annotationTypeValues;
-
-            if (aspectValues) {
-                for (var v=0; v<aspectValues.values.length; v++) {
-                    var numericRatio = aspectValues.values[v].elementNumericValue / aspectValues.maxNumericValue,
-                        relativeHeight = 100 * (numericRatio),
-                        timelineColor = (aspectValues.maxNumericValue) ? Math.round(numericRatio * 10) : v*1 + 1;
-                    if (aspectLabel.indexOf('Colour Range') != -1) {
-                        valueLegendString += '<span class="timelineLegendLabel" data-numeric-value="'+ aspectValues.values[v].elementNumericValue +'" style="color: '+ aspectValues.values[v].name +';">'+ aspectValues.values[v].name +'</span>';
-                    } else {
-                        valueLegendString += '<span class="timelineLegendLabel" data-numeric-value="'+ aspectValues.values[v].elementNumericValue +'" data-timeline-color="'+ timelineColor +'">'+ aspectValues.values[v].name +'</span>';
-                    }
-                }
-            }
 
             //console.log(aspectLabel);
 
@@ -932,11 +918,39 @@
                                         +   '    <div class="userLabel" style="color: '+ aspectColor +'">'
                                         +   '        <span class="'+ iconClass +'"></span>'
                                         +   '        <span>'+ aspectLabel + '</span>'
-                                        +   '        <div class="timelineValues">'+ valueLegendString + '</div>'
+                                        +   '        <div class="timelineValues"></div>'
                                         +   '    </div>'
                                         +   '    <div class="userTimeline"></div>'
                                         +   '</div>'),
+                legendContainer = userTimelineWrapper.find('.timelineValues'),
                 userTimeline = userTimelineWrapper.find('.userTimeline');
+
+            if (aspectValues) {
+                for (var v=0; v<aspectValues.values.length; v++) {
+                    var numericRatio = aspectValues.values[v].elementNumericValue / aspectValues.maxNumericValue,
+                        relativeHeight = 100 * (numericRatio),
+                        timelineColor = (aspectValues.maxNumericValue) ? Math.round(numericRatio * 10) : v*1 + 1;
+                    if (aspectLabel.indexOf('Colour Range') != -1) {
+                        var valueLegendElement = $('<span class="timelineLegendLabel" data-numeric-value="'+ aspectValues.values[v].elementNumericValue +'" style="color: '+ aspectValues.values[v].name +';">'+ aspectValues.values[v].name +'</span>');
+                    } else {
+                        var valueLegendElement = $('<span class="timelineLegendLabel" data-numeric-value="'+ aspectValues.values[v].elementNumericValue +'" data-timeline-color="'+ timelineColor +'">'+ aspectValues.values[v].name +'</span>');
+                    }
+                    valueLegendElement.hover(function(evt) {
+                        var thisColor = $(this).attr('data-timeline-color');
+                        $(this).siblings().css('opacity', 0.2);
+                        $(this).css('opacity', 1);
+                        $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-timeline-color]), [data-timeline-color]').removeClass('opaque');
+                        $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-timeline-color])').addClass('transparentBackground');
+                        $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement[data-timeline-color]:not([data-timeline-color="'+ thisColor +'"]), [data-timeline-color]:not([data-timeline-color="'+ thisColor +'"])').addClass('opaque');
+                    }, function(evt) {
+                        $(this).siblings().css('opacity', '');
+                        $(this).css('opacity', '');
+                        $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-timeline-color]), [data-timeline-color]').removeClass('opaque');
+                        $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-timeline-color])').removeClass('transparentBackground');
+                    });
+                    legendContainer.append(valueLegendElement);
+                }
+            }
 
             var firstAnnotation = (collectedAnnotationsPerAspectData[i].annotations[0]) ? collectedAnnotationsPerAspectData[i].annotations[0] : null,
                 timelineMaxValue = 1;
