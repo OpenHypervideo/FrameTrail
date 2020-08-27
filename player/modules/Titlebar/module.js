@@ -46,7 +46,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
     StartEditButton.click(function(){
         
         if (FrameTrail.module('RouteNavigation').environment.iframe) {
-            $(FrameTrail.getState('target'))[0].requestFullscreen();
+            FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'open');
         }
 
         FrameTrail.module('UserManagement').ensureAuthenticated(
@@ -59,7 +59,12 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                 });
 
             },
-            function(){ /* Start edit mode canceled */ }
+            function(){
+            	/* Start edit mode canceled */
+            	if (FrameTrail.module('RouteNavigation').environment.iframe) {
+		            FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
+		        }
+            }
         );
     });
 
