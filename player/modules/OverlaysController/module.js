@@ -72,11 +72,11 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 }
 
                 if (overlay.syncedMedia) {
-
                     // endOffset
-                    if (overlay.mediaElement.currentTime > overlay.mediaElement.duration - overlay.data.endOffset) {
+                    var endTime = (overlay.data.endOffset != 0) ? overlay.data.endOffset : overlay.mediaElement.duration;
+                    if (overlay.mediaElement.currentTime > endTime) {
                         overlay.mediaElement.pause();
-                        overlay.mediaElement.currentTime = overlay.mediaElement.duration - overlay.data.endOffset;
+                        overlay.mediaElement.currentTime = endTime;
                     }
 
                 }
@@ -164,11 +164,11 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
             overlay.mediaElement.currentTime = currentTime - overlay.data.start + overlay.data.startOffset;
 
-
-            if (overlay.mediaElement.currentTime > overlay.mediaElement.duration - overlay.data.endOffset) {
+            var endTime = (overlay.data.endOffset != 0) ? overlay.data.endOffset : overlay.mediaElement.duration;
+            if (overlay.mediaElement.currentTime > endTime) {
 
                 overlay.mediaElement.pause();
-                overlay.mediaElement.currentTime = overlay.mediaElement.duration - overlay.data.endOffset;
+                overlay.mediaElement.currentTime = endTime;
 
             }
 
