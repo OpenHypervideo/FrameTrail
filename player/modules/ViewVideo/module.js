@@ -786,10 +786,10 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         if (aBoolean) {
             $(FrameTrail.getState('target')).find('.fullscreenButton').addClass('active');
-            $(FrameTrail.getState('target')).find('.mainContainer').addClass('inFullscreen');
+            $(FrameTrail.getState('target')).addClass('inFullscreen');
         } else {
             $(FrameTrail.getState('target')).find('.fullscreenButton').removeClass('active');
-            $(FrameTrail.getState('target')).find('.mainContainer').removeClass('inFullscreen');
+            $(FrameTrail.getState('target')).removeClass('inFullscreen');
         }
 
     };
@@ -1480,27 +1480,29 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
      *  Toggle (Enter / Exit) native Fullscreen State
      *
      * @method toggleNativeFullscreenState
+     * @param {Object} evt
+     * @param {String} forceState
      */
-    function toggleNativeFullscreenState() {
-
+    function toggleNativeFullscreenState(evt, forceState) {
+        
         var element = $(FrameTrail.getState('target'))[0];
-
+        
         if (element.requestFullscreen) {
-            if (!document.fullscreen) {
+            if ((!forceState && !document.fullscreen) || (forceState && forceState == 'open')) {
                 element.requestFullscreen();
-            } else {
+            } else if (!forceState || forceState == 'close') {
                 document.exitFullscreen();
             }
         } else if (element.mozRequestFullScreen) {
-            if (!document.mozFullScreen) {
+            if ((!forceState && !document.mozFullScreen) || (forceState && forceState == 'open')) {
                 element.mozRequestFullScreen();
-            } else {
+            } else if (!forceState || forceState == 'close') {
                 document.mozCancelFullScreen();
             }
         } else if (element.webkitRequestFullScreen) {
-            if (!document.webkitIsFullScreen) {
+            if ((!forceState && !document.webkitIsFullScreen) || (forceState && forceState == 'open')) {
                 element.webkitRequestFullScreen();
-            } else {
+            } else if (!forceState || forceState == 'close') {
                 document.webkitCancelFullScreen();
             }
         }
@@ -1589,11 +1591,12 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         },
 
 
-        create:                  create,
-        toggleSidebarOpen:       toggleSidebarOpen,
-        adjustLayout:            adjustLayout,
-        adjustHypervideo:        adjustHypervideo,
-        toggleFullscreenState:   toggleFullscreenState,
+        create:                         create,
+        toggleSidebarOpen:              toggleSidebarOpen,
+        adjustLayout:                   adjustLayout,
+        adjustHypervideo:               adjustHypervideo,
+        toggleFullscreenState:          toggleFullscreenState,
+        toggleNativeFullscreenState:    toggleNativeFullscreenState,
 
         slidePositionUp:         slidePositionUp,
         slidePositionDown:       slidePositionDown,
