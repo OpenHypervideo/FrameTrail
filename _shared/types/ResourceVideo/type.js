@@ -91,6 +91,10 @@ FrameTrail.defineType(
                         $(videoElement).append('<source src="'+ FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.src)  +'" type="video/mp4"></source>');
                     }
 
+                    $(videoElement).find('source').on('error', function(err) {
+                        console.log('PLAYBACK ERROR: ', err);
+                    });
+
                     return resourceDetailElement;
 
                 },

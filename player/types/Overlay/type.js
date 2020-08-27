@@ -192,6 +192,9 @@ FrameTrail.defineType(
                         HypervideoController = FrameTrail.module('HypervideoController'),
                         timeout = null;
 
+                    newOverlayMedia.on('error', function(err) {
+                        console.log('PLAYBACK ERROR: ', err);
+                    });
                     newOverlayMedia.on('waiting', checkForStall);
 
                     newOverlayMedia.attr('preload', 'auto');
