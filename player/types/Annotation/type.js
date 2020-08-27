@@ -865,7 +865,7 @@ FrameTrail.defineType(
 						data.forEach(function(d, i) {
 							var thisY = height - Math.abs(y(d)/2) - height/2 + 2;
 							var thisX = i * bar_width;
-							var thisHeight = Math.abs(y(d));
+							var thisHeight = Math.abs(y(d)) + 2;
 
 							context.beginPath();
 							context.rect(thisX, thisY, bar_width, thisHeight);
@@ -891,7 +891,7 @@ FrameTrail.defineType(
                         chunkSize = 2000,
                         numberOfChunks = Math.ceil(data.length / chunkSize),
                         canvasPercentWidth = 100 / numberOfChunks,
-                        finalChunkSize = Math.round(data.length / numberOfChunks);
+                        finalChunkSize = data.length / numberOfChunks;
 
                     for (i=0,j=data.length; i<j; i+=finalChunkSize) {
                         
@@ -911,9 +911,9 @@ FrameTrail.defineType(
                         var chart = node;
                         var context = chart.node().getContext("2d");
 
-                        dataChunk.forEach(function(d, i) {
+                        dataChunk.forEach(function(d, c) {
                             var thisY = height - Math.abs(y(d));
-                            var thisX = i * bar_width;
+                            var thisX = c * bar_width;
                             var thisHeight = Math.abs(y(d));
                             
                             context.beginPath();
