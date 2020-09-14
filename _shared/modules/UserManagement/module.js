@@ -264,7 +264,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 	domElement.find('.administrationFormRefresh').click(refreshAdministrationForm);
 
-	if (FrameTrail.module('RouteNavigation').environment.server) {
+	if (FrameTrail.module('RouteNavigation').environment.server && !FrameTrail.getState('users')) {
         refreshAdministrationForm();
     }
 
@@ -524,7 +524,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 	 */
 	function isLoggedIn(callback) {
 
-		if (!FrameTrail.module('RouteNavigation').environment.server) {
+		if (!FrameTrail.module('RouteNavigation').environment.server || FrameTrail.getState('users')) {
             window.setTimeout(function() {
             	FrameTrail.changeState({
 					editMode: false,
