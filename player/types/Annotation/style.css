@@ -180,6 +180,26 @@
 	clear: both;
 }
 
+.timelineList .userTimelineWrapper:hover {
+	/*box-shadow: 0px 0px 2px 0px var(--primary-fg-color);*/
+}
+
+.timelineList .userTimelineWrapper.ui-sortable-helper {
+	background: var(--primary-bg-color);
+	box-shadow: 0 0 4px 1px rgba(100,100,100,.3)
+}
+
+.timelineList .ui-sortable-handle {
+	cursor: move;
+}
+
+.timelineList .ui-sortable-placeholder {
+	background: rgba(200,200,200,.3);
+	border: 2px dotted #333;
+	height: 90px;
+	margin: 6px 0;
+}
+
 /* targets first userTimelineWrapper */
 .timelineList .timelineZoomScroller > div:nth-child(2) {
 	padding-top: 30px;
