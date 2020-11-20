@@ -1052,7 +1052,49 @@ body.userinactive .mainContainer:not(.editActive) .playerContainer .controls, bo
 
 /* Media Queries */
 
-@media (min-height: 920px) {
+@media (min-height: 1500px) {
+    .areaBottomDetails, .areaTopDetails, .areaTopContainer[data-size="large"], .areaBottomContainer[data-size="large"] {
+        flex-basis: 1100px;
+    }
+
+    .areaBottomDetails .collectionElement, .areaTopDetails .collectionElement, .areaTopContainer[data-size="large"] .collectionElement, .areaBottomContainer[data-size="large"] .collectionElement {
+        width: 700px;
+    }
+
+    .editingOptions {
+        flex-basis: 400px;
+    }
+}
+
+@media (min-height: 1300px) and (max-height: 1500px) {
+    .areaBottomDetails, .areaTopDetails, .areaTopContainer[data-size="large"], .areaBottomContainer[data-size="large"] {
+        flex-basis: 900px;
+    }
+
+    .areaBottomDetails .collectionElement, .areaTopDetails .collectionElement, .areaTopContainer[data-size="large"] .collectionElement, .areaBottomContainer[data-size="large"] .collectionElement {
+        width: 700px;
+    }
+
+    .editingOptions {
+        flex-basis: 400px;
+    }
+}
+
+@media (min-height: 1100px) and (max-height: 1300px) {
+    .areaBottomDetails, .areaTopDetails, .areaTopContainer[data-size="large"], .areaBottomContainer[data-size="large"] {
+        flex-basis: 700px;
+    }
+
+    .areaBottomDetails .collectionElement, .areaTopDetails .collectionElement, .areaTopContainer[data-size="large"] .collectionElement, .areaBottomContainer[data-size="large"] .collectionElement {
+        width: 700px;
+    }
+
+    .editingOptions {
+        flex-basis: 400px;
+    }
+}
+
+@media (min-height: 920px) and (max-height: 1100px) {
     .areaBottomDetails, .areaTopDetails, .areaTopContainer[data-size="large"], .areaBottomContainer[data-size="large"] {
         flex-basis: 500px;
     }
