@@ -54,9 +54,6 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 		videoElement           = ViewVideo.Video;
 
-	window.player_youtube = {};
-	window.player_vimeo = {};
-
 	/**
 	 * I initialize the Controller.
 	 *
@@ -77,6 +74,13 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 			_video		    = $(videoElement);
 
 		HypervideoModel     = FrameTrail.module('HypervideoModel');
+
+		if (!window.player_youtube) {
+			window.player_youtube = {};
+		}
+		if (!window.player_vimeo) {
+			window.player_vimeo = {};
+		}
 
 		updateDescriptions();
 
@@ -227,7 +231,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 			window.onYouTubeIframeAPIReady = function() {
 				var YouTubePlayerID = FrameTrail.getState('lastYoutubePlayerID');
-				console.log('YOUTUBE API READY', YouTubePlayerID);
+				//console.log('YOUTUBE API READY', YouTubePlayerID);
 				window.player_youtube[YouTubePlayerID] = new window.YT.Player(YouTubePlayerID, {
 					events: {
 						'onReady': onPlayerReady,
@@ -350,8 +354,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 			var lastVimeoPlayerID = 'vm_' + Date.now();
 			FrameTrail.changeState('lastVimeoPlayerID', lastVimeoPlayerID);
-			var vm_options = 'color=ffffff&portrait=0&byline=0&title=0&badge=0&controls=0';
-			var vm_iframe = $('<iframe id="'+ lastVimeoPlayerID +'" class="player_vimeo" type="text/html" width="720" height="405" src="https:'+ HypervideoModel.sourcePath +'?'+ vm_options +'" frameborder="0" allowfullscreen>');
+			var vm_options = 'color=ffffff&portrait=0&byline=0&title=0&badge=0&controls=0&autoplay=1&autopause=0&dnt=1';
+			var vm_iframe = $('<iframe id="'+ lastVimeoPlayerID +'" class="player_vimeo" type="text/html" width="720" height="405" src="https:'+ HypervideoModel.sourcePath +'?'+ vm_options +'" frameborder="0" allowfullscreen allow="autoplay">');
 			
 			_video.after(vm_iframe);
 
@@ -369,6 +373,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 			function initVimeo() {
 				
+				var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
+
 				window.player_vimeo[lastVimeoPlayerID] = new Vimeo.Player(vm_iframe, {
 					controls: false,
 					responsive: false,
@@ -380,6 +386,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 						var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
 						window.player_vimeo[lastVimeoPlayerID].getDuration().then(function(vimeo_duration) {
 							//console.log('Player READY', vimeo_duration);
+							window.player_vimeo[lastVimeoPlayerID].pause();
 							if (vimeo_duration != 0) {
 								ViewVideo.OverlayContainer.show();
 								initVimeoDuration(vimeo_duration);
@@ -413,6 +420,36 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 					FrameTrail.changeState('videoWorking', false);
 				});
 
+				window.player_vimeo[lastVimeoPlayerID].on('loaded', function() {
+					//console.log('LOADED');
+					window.player_vimeo[lastVimeoPlayerID].pause().then(function() {
+						// The video is paused
+					}).catch(function(error) {
+						switch (error.name) {
+							case 'PasswordError':
+								// The video is password-protected
+								FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is password-protected.');
+								ViewVideo.VideoStartOverlay.addClass('inactive').hide();
+								ViewVideo.OverlayContainer.hide();
+								FrameTrail.changeState('videoWorking', false);
+							break;
+
+							case 'PrivacyError':
+								// The video is private
+								FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is private.');
+								ViewVideo.VideoStartOverlay.addClass('inactive').hide();
+								ViewVideo.OverlayContainer.hide();
+								FrameTrail.changeState('videoWorking', false);
+							break;
+
+							default:
+								// Some other error occurred
+								console.log(error);
+							break;
+						}
+					});
+				});
+
 				window.player_vimeo[lastVimeoPlayerID].on('ended', function() {
 					
 					_pause();
@@ -433,33 +470,36 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 				window.player_vimeo[lastVimeoPlayerID].ready().then(function() {
 
 					var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
+					//console.log(window.player_vimeo, lastVimeoPlayerID);
 
-					window.player_vimeo[lastVimeoPlayerID].pause().then(function() {
-						// The video is paused
-					}).catch(function(error) {
-						switch (error.name) {
-							case 'PasswordError':
-								// The video is password-protected
-								console.log('PASSWORD');
-								ViewVideo.VideoStartOverlay.addClass('inactive').hide();
-								ViewVideo.OverlayContainer.hide();
-								FrameTrail.changeState('videoWorking', false);
-							break;
+					if (window.player_vimeo[lastVimeoPlayerID]) {
+						window.player_vimeo[lastVimeoPlayerID].pause().then(function() {
+							// The video is paused
+						}).catch(function(error) {
+							switch (error.name) {
+								case 'PasswordError':
+									// The video is password-protected
+									FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is password-protected.');
+									ViewVideo.VideoStartOverlay.addClass('inactive').hide();
+									ViewVideo.OverlayContainer.hide();
+									FrameTrail.changeState('videoWorking', false);
+								break;
 
-							case 'PrivacyError':
-								// The video is private
-								console.log('PRIVATE');
-								ViewVideo.VideoStartOverlay.addClass('inactive').hide();
-								ViewVideo.OverlayContainer.hide();
-								FrameTrail.changeState('videoWorking', false);
-							break;
+								case 'PrivacyError':
+									// The video is private
+									FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is private.');
+									ViewVideo.VideoStartOverlay.addClass('inactive').hide();
+									ViewVideo.OverlayContainer.hide();
+									FrameTrail.changeState('videoWorking', false);
+								break;
 
-							default:
-								// Some other error occurred
-								console.log(error);
-							break;
-						}
-					});
+								default:
+									// Some other error occurred
+									console.log(error);
+								break;
+							}
+						});
+					}
 
 					window.player_vimeo[lastVimeoPlayerID].getDuration().then(function(vimeo_duration) {
 						//console.log('Player READY', vimeo_duration);
@@ -803,16 +843,18 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 	        OverlaysController.checkMediaSynchronization();
 		} else if (HypervideoModel.videoType == 'vimeo') {
 			var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
-			window.player_vimeo[lastVimeoPlayerID].getCurrentTime().then(function(vimeo_currentTime) {
-				currentTime = vimeo_currentTime;
-				if (ViewVideo.PlayerProgress.data('ui-slider')) {
-					ViewVideo.PlayerProgress.slider('value', currentTime-HypervideoModel.offsetIn);
-				}
+			if (window.player_vimeo[lastVimeoPlayerID]) {
+				window.player_vimeo[lastVimeoPlayerID].getCurrentTime().then(function(vimeo_currentTime) {
+					currentTime = vimeo_currentTime;
+					if (ViewVideo.PlayerProgress.data('ui-slider')) {
+						ViewVideo.PlayerProgress.slider('value', currentTime-HypervideoModel.offsetIn);
+					}
 
-				FrameTrail.triggerEvent('timeupdate', {});
+					FrameTrail.triggerEvent('timeupdate', {});
 
-		        OverlaysController.checkMediaSynchronization();
-			});
+			        OverlaysController.checkMediaSynchronization();
+				});
+			}
 		} else {
 			currentTime = videoElement.currentTime;
 			if (ViewVideo.PlayerProgress.data('ui-slider')) {
@@ -974,8 +1016,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 		} else if (HypervideoModel.videoType == 'vimeo') {
 			
 			var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
+			setMuted(false);
 
 			window.player_vimeo[lastVimeoPlayerID].play().then(function() {
+				setMuted(false);
 				_play();
 				onPlaySuccess();
 			}).catch(function(error) {
@@ -987,7 +1031,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 						FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is private.');
 					break;
 					default:
-					// Some other error occurred
+						// Some other error occurred
+						FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: '+ error.name);
 					break;
 				}
 			});
