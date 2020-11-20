@@ -676,10 +676,18 @@ FrameTrail.defineType(
                         positionLeft    = 100 * (timeStart / videoDuration),
                         width           = 100 * ((this.data.end - this.data.start) / videoDuration);
 
+                    if (this.data.end > HypervideoModel.offsetOut) {
+                        compareTimelineElement.addClass('overlapRight');
+                    }
+                    if (HypervideoModel.offsetIn > this.data.start) {
+                        compareTimelineElement.addClass('overlapLeft');
+                    }
+
                     var numericValue = false,
                         maxNumericValue = '5',
                         annotationValueIndex = false,
-                        dataType = false;
+                        dataType = false,
+                        annotationType = '';
 
                     /*
                     console.log("ORIGIN-START: "+this.data.start);
@@ -694,19 +702,22 @@ FrameTrail.defineType(
                                 numericValue = this.data.source.url.body[0].annotationNumericValue;
                                 maxNumericValue = this.data.source.url.body[0].maxNumericValue;
                                 annotationValueIndex = this.data.source.url.body[0].annotationValueIndex;
-                                dataType = this.data.source.url.body[0].type
+                                dataType = this.data.source.url.body[0].type;
+                                annotationType = this.data.source.url.body[0].annotationType;
                             } else {
                                 numericValue = this.data.source.url.body[1].annotationNumericValue;
                                 maxNumericValue = this.data.source.url.body[1].maxNumericValue;
                                 annotationValueIndex = this.data.source.url.body[1].annotationValueIndex;
-                                dataType = this.data.source.url.body[1].type
+                                dataType = this.data.source.url.body[1].type;
+                                annotationType = this.data.source.url.body[1].annotationType;
                             }
                             
                         } else {
                             numericValue = this.data.source.url.body.annotationNumericValue;
                             maxNumericValue = this.data.source.url.body.maxNumericValue;
                             annotationValueIndex = this.data.source.url.body.annotationValueIndex;
-                            dataType = this.data.source.url.body.type
+                            dataType = this.data.source.url.body.type;
+                            annotationType = this.data.source.url.body.annotationType;
                         }
                     }
 
@@ -738,17 +749,23 @@ FrameTrail.defineType(
                             
                             var numericRatio = numericValue / maxNumericValue,
                                 relativeHeight = 100 * (numericRatio),
-                                timelineColor = (numericValue) ? Math.round(numericRatio * 10) : annotationValueIndex;
+                                timelineColor = (numericValue) ? Math.round(numericRatio * 12) : annotationValueIndex;
                             
                             compareTimelineElement.attr({
                                 'data-origin-type': dataType,
                                 'data-numeric-value': numericValue,
                                 'data-numeric-min': '0',
-                                'data-numeric-max': maxNumericValue,
-                                'data-timeline-color': timelineColor
+                                'data-numeric-max': maxNumericValue
                             });
+                            if (annotationType.indexOf('ColourAccent') != -1) {
+                                var tmpText = this.data.name;
+                                compareTimelineElement.attr('data-timeline-color', tmpText);
+                                compareTimelineElement.append('<div class="barchartFraction" style="height: 100%; top: 0%; background-color: '+ tmpText +';" data-timeline-color="'+ tmpText +'"></div>');
+                            } else {
+                                compareTimelineElement.attr('data-timeline-color', timelineColor);
+                            }
                             compareTimelineElement.css('height', relativeHeight + '%');
-                            compareTimelineElement.css('opacity', numericRatio);
+                            //compareTimelineElement.css('opacity', numericRatio);
                         }
                     } else {
         
@@ -770,6 +787,7 @@ FrameTrail.defineType(
                         }
                         if (multipleAnnotationValues) {
                             //console.log('HERE', multipleAnnotationValues);
+                            compareTimelineElement.attr('data-origin-type', dataType);
                             var multipleElems = renderMultipleValues(annotationType, multipleAnnotationValues);
                             compareTimelineElement.append(multipleElems);
                         }
@@ -947,7 +965,7 @@ FrameTrail.defineType(
                     path += " L 100 100 L 0 100 Z";
                     svg.append('<path d="' + path + '"></path>');
 
-                    var timelineColor = Math.round(numericRatio * 10);
+                    var timelineColor = Math.round(numericRatio * 12);
                     svg.attr('data-timeline-color', timelineColor);
 
                     return svg;
@@ -963,7 +981,7 @@ FrameTrail.defineType(
 
                     for (var v=0; v<values.length; v++) {
                         var numericRatio = (values[v] / maxValue),
-                            timelineColor = Math.round(numericRatio * 10),
+                            timelineColor = Math.round(numericRatio * 12),
                             fractionPercentage = 100 * (values[v] / highestValue);
                         barchartFractions += '<div class="barchartFraction" style="height: '+ fractionPercentage +'%" data-timeline-color="'+ timelineColor +'"></div>';
                     }
@@ -982,7 +1000,7 @@ FrameTrail.defineType(
                                 numericRatio = (v / values.length),
                                 timelineColor = valueIndex,
                                 fractionPercentage = 100 * (v / values.length);
-                            if (annotationType.indexOf('ColourRange') != -1) {
+                            if (annotationType.indexOf('Colour Range') != -1 || annotationType.indexOf('Colour Accent') != -1) {
                                 barchartFractions += '<div class="barchartFraction" style="height: '+ heightPercentage +'%; top: '+ fractionPercentage +'%; background-color: '+ getLabelFromURI(values[v]) +';"></div>';
                             } else {
                                 barchartFractions += '<div class="barchartFraction" style="height: '+ heightPercentage +'%; top: '+ fractionPercentage +'%" data-timeline-color="'+ timelineColor +'"></div>';
