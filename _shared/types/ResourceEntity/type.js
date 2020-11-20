@@ -43,7 +43,9 @@ FrameTrail.defineType(
 
                     var self = this;
 
-                    var resourceDetail = $('<div class="resourceDetail" data-type="'+ this.resourceData.type +'"></div>');
+                    var resourceDetail = $('<div class="resourceDetail" data-type="'+ this.resourceData.type +'"></div>'),
+                        iFrameSource = (this.resourceData.src.indexOf('//') != -1) ? this.resourceData.src/*.replace('http:', '')*/ : FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.src),
+                        downloadButton = '<a class="button" href="'+ iFrameSource +'" target="_blank">Open in new tab</a>';
 
                     if (this.resourceData.attributes.embed && this.resourceData.attributes.embed == 'forbidden') {
 
@@ -57,10 +59,9 @@ FrameTrail.defineType(
                         );
 
                         resourceDetail.append(embedFallback);
+                        resourceDetail.append('<div class="resourceOptions"><div class="resourceButtons">'+ downloadButton +'</div></div>');
 
                     } else {
-
-                        var iFrameSource = (this.resourceData.src.indexOf('//') != -1) ? this.resourceData.src/*.replace('http:', '')*/ : FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.src);
 
                         var iFrame = $(
                                 '<iframe frameborder="0" webkitAllowFullScreen mozallowfullscreen allowFullScreen src="'
@@ -72,6 +73,7 @@ FrameTrail.defineType(
                         });
 
                         resourceDetail.append(iFrame);
+                        resourceDetail.append('<div class="resourceOptions"><div class="resourceButtons">'+ downloadButton +'</div></div>');
 
                     }
                     
