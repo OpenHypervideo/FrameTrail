@@ -138,10 +138,12 @@ FrameTrail.defineType(
                         this.setSyncedMedia(true);
                     }
 
-                    if (   this.syncedMedia
-                        && newOverlayContent.get(0) instanceof HTMLMediaElement) {
+                    var newOverlayMediaElement = newOverlayContent.find('video, audio').eq(0);
 
-                        this.prepareSyncedHTML5Video(newOverlayContent);
+                    if (   this.syncedMedia
+                        && newOverlayMediaElement.get(0) instanceof HTMLMediaElement) {
+
+                        this.prepareSyncedHTML5Media(newOverlayMediaElement);
 
                     }
 
@@ -192,16 +194,27 @@ FrameTrail.defineType(
                         HypervideoController = FrameTrail.module('HypervideoController'),
                         timeout = null;
 
-                    newOverlayMedia.on('error', function(err) {
-                        console.log('PLAYBACK ERROR: ', err);
+                    newOverlayMedia.on('loadstart', function(evt) {
+                        // load start
+                        //console.log('loadstart');
                     });
-                    newOverlayMedia.on('waiting', checkForStall);
 
-                    newOverlayMedia.attr('preload', 'auto');
-        			newOverlayMedia.get(0).load();
+                    newOverlayMedia.on('loadedmetadata', function(evt) {
+                        FrameTrail.changeState('videoWorking', false);
+                        newOverlayMedia.on('waiting', checkForStall);
+                        newOverlayMedia.on('seeking', function(evt) {
+                            FrameTrail.changeState('videoWorking', true);
+                        });
+                        newOverlayMedia.on('seeked play pause', function(evt) {
+                            FrameTrail.changeState('videoWorking', false);
+                        });
+                    });
+
+                    newOverlayMedia.attr('preload', 'none');
+        			//newOverlayMedia.get(0).load();
 
                     function checkForStall() {
-
+                        
                         if (self.activeState) {
 
                 			if (newOverlayMedia.get(0).readyState > 0) {
