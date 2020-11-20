@@ -53,7 +53,7 @@ FrameTrail.defineType(
                     }
 
                     var resourceDetailElement = $('<div class="resourceDetail" data-type="'+ this.resourceData.type +'">'
-                           + '    <video controls>'
+                           + '    <video controls disablePictureInPicture>'
                            + '    </video>'
                            + '    <div class="resourceOptions">'
                            + '        <div class="licenseInformation">'+ licenseString +'</div>'

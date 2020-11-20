@@ -38,7 +38,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '                </div>'
                         + '                <div class="videoContainer">'
                         + '                    <div class="hypervideo">'
-                        + '                        <video class="video nocolor" '+ ((!!screenfull) ? 'playsinline webkit-playsinline' : '') +'></video>'
+                        + '                        <video class="video nocolor" '+ ((!!screenfull) ? 'playsinline webkit-playsinline' : '') +' disablePictureInPicture></video>'
                         + '                        <div class="overlayContainer"></div>'
                         + '                        <div class="captionContainer"></div>'
                         + '                    </div>'
