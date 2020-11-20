@@ -769,7 +769,7 @@
                         collectedAnnotationsPerAspect[currentAspectID] = {
                             'userID': annotationCollection[anno].data.source.url.creator,
                             'label': annotationCollection[anno].data.source.url["advene:type_title"],
-                            'color' : (annotationCollection[anno].data.source.url["advene:color"]) ? annotationCollection[anno].data.source.url["advene:color"] : '444444',
+                            'color' : (annotationCollection[anno].data.source.url["advene:type_color"]) ? annotationCollection[anno].data.source.url["advene:type_color"] : '444444',
                             'annotations': []
                         };
 
@@ -814,7 +814,7 @@
         }
 
         if (sortBy) {
-            function compare(a,b) {
+            collectedAnnotationsPerAspectData.sort(function(a, b) {
                 if (a[sortBy] < b[sortBy])
                     return -1;
                 if (a[sortBy] > b[sortBy])
@@ -826,8 +826,36 @@
                         return 1;
                     return 0;
                 }
+            });
+        }
+
+        var customTimelineOrder = null;
+        if (typeof prioritizedAnnotationTypes !== 'undefined' && prioritizedAnnotationTypes.length != 0) {
+            customTimelineOrder = [];
+            for (var i = 0; i < prioritizedAnnotationTypes.length; i++) {
+                customTimelineOrder.push(prioritizedAnnotationTypes[i].label);
             }
-            collectedAnnotationsPerAspectData.sort(compare);
+        }
+        if (customTimelineOrder) {
+            collectedAnnotationsPerAspectData.sort(function(a, b) {
+                if (customTimelineOrder.indexOf(b.label) != -1) {
+                    return 1;
+                } else {
+                    return -1;
+                }
+            });
+            collectedAnnotationsPerAspectData.sort(function(a, b) {
+                if (customTimelineOrder.indexOf(a.label) != -1 && customTimelineOrder.indexOf(b.label) != -1) {
+                    if (customTimelineOrder.indexOf(a.label) < customTimelineOrder.indexOf(b.label)) {
+                        return -1;
+                    }
+                    if (customTimelineOrder.indexOf(a.label) > customTimelineOrder.indexOf(b.label)) {
+                        return 1;
+                    }
+                } else {
+                    return 0;
+                }
+            });
         }
 
         var timelineZoomWrapper = $('<div class="timelineZoomWrapper"></div>'),
@@ -863,42 +891,6 @@
             timelineZoomScroller.append(timelineProgress);
 
             var leftStart;
-
-            /*
-            targetElement.draggable({
-                axis: 'x',
-                start: function(event, ui) {
-                    $(ui.helper).find('.userTimeline, .timelineProgressWrapper').css('transition-duration', '0ms');
-                    leftStart = parseInt($(ui.helper).find('.userTimeline').eq(0).css('left'));
-                    //console.log(leftStart);
-                },
-                drag: function(event, ui) {                    
-                    
-                    if ( $(ui.helper).attr('data-zoom-level') == '1' ) {
-                        ui.position.left = 0;
-                        return;
-                    }
-
-                    ui.position.left = ui.position.left + leftStart;
-
-                    if (ui.position.left > 0) {
-                        ui.position.left = 0;
-                    } else if (($(ui.helper).find('.userTimeline').eq(0).width() - $(ui.helper).width()) + ui.position.left < 0) {
-                        ui.position.left = ($(ui.helper).find('.userTimeline').eq(0).width() - $(ui.helper).width()) * -1;
-                    }
-
-                    //console.log(($(ui.helper).find('.userTimeline').eq(0).width() - $(ui.helper).width()) + ui.position.left)
-
-                    $(ui.helper).find('.userTimeline, .timelineProgressWrapper').each(function() {
-                        $(this).css('left', ui.position.left);
-                    });
-                    ui.position.left = 0;
-                },
-                stop: function(event, ui) {
-                    $(ui.helper).find('.userTimeline, .timelineProgressWrapper').css('transition-duration', '');
-                }
-            });
-            */
         }
 
         for (var i=0; i<collectedAnnotationsPerAspectData.length; i++) {
@@ -914,10 +906,17 @@
             //console.log(aspectLabel);
 
             var iconClass = (filterAspect == 'creatorId') ? 'icon-user' : 'icon-tag';
+            
+            var movieTitle = FrameTrail.module('HypervideoModel').hypervideoName.replace(/<\/?[^>]+(>|$)/g, "");
+            var exportFileName = movieTitle +'_' + aspectLabel;
+            exportFileName = exportFileName.replace(/[\s:]/g, '-').replace(/[|&;:$%@<>()+,]/g, '').replace(/__/g, '_').replace(/--/g, '-');
+            var exportData = getAnnotationDataAsCSV(collectedAnnotationsPerAspectData[i].annotations);
+            var exportButtonString = '<a class="exportTimelineDataButton" title="Export Annotation Data as CSV File" download="'+ exportFileName +'.csv" href="'+ exportData +'">Export Data</a>';
+
             var userTimelineWrapper = $(    '<div class="userTimelineWrapper">'
                                         +   '    <div class="userLabel" style="color: '+ aspectColor +'">'
                                         +   '        <span class="'+ iconClass +'"></span>'
-                                        +   '        <span>'+ aspectLabel + '</span>'
+                                        +   '        <span>'+ aspectLabel + '</span>'+exportButtonString
                                         +   '        <div class="timelineValues"></div>'
                                         +   '    </div>'
                                         +   '    <div class="userTimeline"></div>'
@@ -925,13 +924,45 @@
                 legendContainer = userTimelineWrapper.find('.timelineValues'),
                 userTimeline = userTimelineWrapper.find('.userTimeline');
 
-            if (aspectValues) {
+            if (aspectValues && aspectValues.values.length != 0) {
+                
+                var evolvingValuesLegendElement = $('<span class="timelineLegendLabel" data-origin-type="ao:EvolvingValuesAnnotationType" title="Evolving Values" style="color: #777;">TO</span>'),
+                    contrastingValuesLegendElement = $('<span class="timelineLegendLabel" data-origin-type="ao:ContrastingValuesAnnotationType" title="Contrasting Values" style="color: #777;">VS</span>');
+
+                evolvingValuesLegendElement.hover(function(evt) {
+                    var thisOriginType = $(this).attr('data-origin-type');
+                    $(this).siblings().css('opacity', 0.2);
+                    $(this).css('opacity', 1);
+                    $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-origin-type]), [data-timeline-color]').removeClass('opaque');
+                    $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-origin-type])').addClass('transparentBackground');
+                    $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement[data-origin-type]:not([data-origin-type="'+ thisOriginType +'"]), [data-origin-type]:not([data-origin-type="'+ thisOriginType +'"])').addClass('opaque');
+                }, function(evt) {
+                    $(this).siblings().css('opacity', '');
+                    $(this).css('opacity', '');
+                    $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-origin-type]), [data-origin-type]').removeClass('opaque');
+                    $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-origin-type])').removeClass('transparentBackground');
+                });
+                contrastingValuesLegendElement.hover(function(evt) {
+                    var thisOriginType = $(this).attr('data-origin-type');
+                    $(this).siblings().css('opacity', 0.2);
+                    $(this).css('opacity', 1);
+                    $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-origin-type]), [data-timeline-color]').removeClass('opaque');
+                    $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-origin-type])').addClass('transparentBackground');
+                    $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement[data-origin-type]:not([data-origin-type="'+ thisOriginType +'"]), [data-origin-type]:not([data-origin-type="'+ thisOriginType +'"])').addClass('opaque');
+                }, function(evt) {
+                    $(this).siblings().css('opacity', '');
+                    $(this).css('opacity', '');
+                    $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-origin-type]), [data-origin-type]').removeClass('opaque');
+                    $(this).parents('.userLabel').next('.userTimeline').find('.compareTimelineElement:not([data-origin-type])').removeClass('transparentBackground');
+                });
+                legendContainer.append(evolvingValuesLegendElement, contrastingValuesLegendElement);
+
                 for (var v=0; v<aspectValues.values.length; v++) {
                     var numericRatio = aspectValues.values[v].elementNumericValue / aspectValues.maxNumericValue,
                         relativeHeight = 100 * (numericRatio),
-                        timelineColor = (aspectValues.maxNumericValue) ? Math.round(numericRatio * 10) : v*1 + 1;
-                    if (aspectLabel.indexOf('Colour Range') != -1) {
-                        var valueLegendElement = $('<span class="timelineLegendLabel" data-numeric-value="'+ aspectValues.values[v].elementNumericValue +'" style="color: '+ aspectValues.values[v].name +';">'+ aspectValues.values[v].name +'</span>');
+                        timelineColor = (aspectValues.maxNumericValue) ? Math.round(numericRatio * 12) : v*1 + 1;
+                    if (aspectLabel.indexOf('Colour Range') != -1 || aspectLabel.indexOf('Colour Accent') != -1) {
+                        var valueLegendElement = $('<span class="timelineLegendLabel" data-numeric-value="'+ aspectValues.values[v].elementNumericValue +'" data-timeline-color="'+ aspectValues.values[v].name +'" style="color: '+ aspectValues.values[v].name +';">'+ aspectValues.values[v].name +'</span>');
                     } else {
                         var valueLegendElement = $('<span class="timelineLegendLabel" data-numeric-value="'+ aspectValues.values[v].elementNumericValue +'" data-timeline-color="'+ timelineColor +'">'+ aspectValues.values[v].name +'</span>');
                     }
@@ -954,7 +985,7 @@
 
             var firstAnnotation = (collectedAnnotationsPerAspectData[i].annotations[0]) ? collectedAnnotationsPerAspectData[i].annotations[0] : null,
                 timelineMaxValue = 1;
-            if (firstAnnotation && firstAnnotation.data.source.url.body && firstAnnotation.data.source.url.body.maxNumericValue) {
+            if (firstAnnotation && firstAnnotation.data.source.url.body && firstAnnotation.data.source.url.body.maxNumericValue && firstAnnotation.data.source.url['advene:type'] != 'ShotDuration') {
                 timelineMaxValue = firstAnnotation.data.source.url.body.maxNumericValue;
                 //console.log(gridLevels);
                 for (var gl=1; gl<timelineMaxValue; gl++) {
@@ -966,8 +997,14 @@
             userTimelineWrapper.attr('data-timeline-max-value', timelineMaxValue);
             userTimelineWrapper.attr('data-type-label', aspectLabel);
             
+            var overlapLeft = false,
+                overlapRight = false;
+
             for (var idx in collectedAnnotationsPerAspectData[i].annotations) {
                 var compareTimelineItem = collectedAnnotationsPerAspectData[i].annotations[idx].renderCompareTimelineItem();
+                if (compareTimelineItem.hasClass('overlapLeft')) overlapLeft = true;
+                if (compareTimelineItem.hasClass('overlapRight')) overlapRight = true;
+                //TODO: Fix conflict between aspectColor and value (in same element)
                 compareTimelineItem.css('background-color', aspectColor);
                 if (compareTimelineItem.attr('data-origin-type') == 'ao:EvolvingValuesAnnotationType') {
                     compareTimelineItem.find('path').attr('fill', aspectColor);
@@ -976,12 +1013,45 @@
                 userTimeline.append(compareTimelineItem);
             }
 
+            if (overlapLeft) {
+                userTimeline.append('<div class="overlapIndicatorLeft"><span class="icon-angle-double-left"></span></div>');
+            }
+            if (overlapRight) {
+                userTimeline.append('<div class="overlapIndicatorRight"><span class="icon-angle-double-right"></span></div>');
+            }
+
             timelineZoomScroller.append(userTimelineWrapper);
 
         }
 
         targetElement.append(timelineZoomWrapper);
 
+        makeTimelinesSortable(timelineZoomScroller);
+
+    }
+
+    /**
+     * I prepare the annotationData for the CSV File Export.
+     * @method getAnnotationDataAsCSV
+     * @param {Array} annotationData
+     */
+    function getAnnotationDataAsCSV(annotationData) {
+        var csvString = 'StartTime\tEndTime\tValue\n';
+
+        for (var i = 0; i < annotationData.length; i++) {
+            if (annotationData[i].data.source.url.target.selector["advene:end"]) {
+                var startTime = annotationData[i].data.source.url.target.selector["advene:begin"],
+                    endTime = annotationData[i].data.source.url.target.selector["advene:end"];
+                csvString += startTime +'\t' + endTime +'\t'+ annotationData[i].data.name +'\n';
+            } else {
+                csvString += annotationData[i].data.start +'\t' + annotationData[i].data.end +'\t'+ annotationData[i].data.name +'\n';
+            }
+        }
+
+        var csvBlob = new Blob([csvString], { type: "text/csv;charset=utf-8" });
+
+        // return ObjectURL
+        return URL.createObjectURL(csvBlob);
     }
 
     /**
@@ -1028,6 +1098,20 @@
 
         targetElement.parent().attr('data-zoom-level', zoomLevel);
 
+    }
+
+    /**
+     * I make all timelines inside the containerElement sortable.
+     * @method makeTimelinesSortable
+     * @param {HTMLElement} containerElement
+     * @param {Float} zoomLevel
+     */
+    function makeTimelinesSortable(containerElement) {
+        containerElement.sortable({
+            placeholder: 'ui-state-highlight',
+            items: '> .userTimelineWrapper',
+            axis: 'y'
+        });
     }
 
 
