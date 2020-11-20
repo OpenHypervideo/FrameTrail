@@ -160,30 +160,45 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
             overlay = syncedMedia[idx];
 
-            // Note: Currently, the only synced media type is 'video', so we shortcut it
-
             overlay.mediaElement.currentTime = currentTime - overlay.data.start + overlay.data.startOffset;
 
-            var endTime = (overlay.data.endOffset != 0) ? overlay.data.endOffset : overlay.mediaElement.duration;
-            if (overlay.mediaElement.currentTime > endTime) {
-
-                overlay.mediaElement.pause();
-                overlay.mediaElement.currentTime = endTime;
-
-            }
-
-            if (isPlaying) {
-
-                if (overlay.mediaElement.paused) {
-                    var promise = overlay.mediaElement.play();
-                    if (promise) {
-                        promise.catch(function(){});
-                    }
+            if (overlay.mediaElement.readyState === 0 && currentTime > overlay.data.start) {
+                // init on first interaction
+                var playPromise = overlay.mediaElement.play();
+                if (playPromise) {
+                    playPromise.then(function() {
+                        HypervideoController.pause();
+                    }).catch(function(){
+                        console.log('PLAY ERROR: ', this);
+                    });
                 }
             } else {
-                overlay.mediaElement.pause();
-            }
+                var endTime = (overlay.data.endOffset != 0) ? overlay.data.endOffset : overlay.mediaElement.duration;
+                if (overlay.mediaElement.currentTime > endTime) {
 
+                    overlay.mediaElement.pause();
+                    overlay.mediaElement.currentTime = endTime;
+
+                }
+
+                if (isPlaying) {
+                    if (overlay.mediaElement.paused) {
+                        var playPromise = overlay.mediaElement.play();
+                        if (playPromise) {
+                            playPromise.catch(function(){
+                                console.log('PLAY ERROR: ', this);
+                            });
+                        }
+                    }
+                } else {
+                    var pausePromise = overlay.mediaElement.pause();
+                    if (pausePromise) {
+                        pausePromise.catch(function(){
+                            //console.log('PAUSE ERROR: ', this);
+                        });
+                    }
+                }
+            }
 
         }
 
