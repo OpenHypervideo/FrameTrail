@@ -137,7 +137,7 @@ FrameTrail.defineType(
 
                             customhtmlContainer.click(function(evt) {
                                 if ( $(evt.target).hasClass('timebased') ) {
-                                    FrameTrail.module('HypervideoController').currentTime = $(evt.target).attr('data-start') - 0.5;
+                                    FrameTrail.module('HypervideoController').currentTime = parseFloat($(evt.target).attr('data-start')) + 0.05;
                                 }
                             });
 
@@ -162,7 +162,7 @@ FrameTrail.defineType(
                             }
 
         	                transcriptContainer.click(function(evt) {
-                                FrameTrail.module('HypervideoController').currentTime = $(evt.target).attr('data-start') - 0.5;
+                                FrameTrail.module('HypervideoController').currentTime = parseFloat($(evt.target).attr('data-start')) + 0.05;
                             });
 
                             transcriptContainer.perfectScrollbar({
