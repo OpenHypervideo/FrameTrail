@@ -14,15 +14,14 @@
 
 FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
-
-
+    var labels = FrameTrail.module('Localization').labels;
 
     var domElement  = $(      '<div class="sidebar">'
                             + '    <div class="sidebarContainer">'
                             + '        <div data-viewmode="overview">'
                             + '            <div class="viewmodeControls">'
                             + '                <div class="viewModeActionButtonContainer">'
-                            + '                    <button class="exportButton" data-tooltip-bottom-left="Export Site"><span class="icon-download"></span></button>'
+                            + '                    <button class="exportButton" data-tooltip-bottom-left="'+ labels['GenericExport'] +'"><span class="icon-download"></span></button>'
                             + '                    <div style="clear: both;"></div>'
                             + '                </div>'
                             + '            </div>'
@@ -33,22 +32,22 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                             + '        <div data-viewmode="video">'
                             + '            <div class="viewmodeControls">'
                             + '                <div class="viewModeActionButtonContainer">'
-                            + '                    <button class="saveButton" data-tooltip-bottom-left="Save changes"><span class="icon-floppy"></span></button>'
-                            + '                    <button class="forkButton" data-tooltip-bottom-left="Fork Hypervideo"><span class="icon-hypervideo-fork"></span></button>'
-                            + '                    <button class="exportButton" data-tooltip-bottom-left="Export Hypervideo"><span class="icon-download"></span></button>'
+                            + '                    <button class="saveButton" data-tooltip-bottom-left="'+ labels['GenericSaveChanges'] +'"><span class="icon-floppy"></span></button>'
+                            + '                    <button class="forkButton" data-tooltip-bottom-left="'+ labels['GenericForkHypervideo'] +'"><span class="icon-hypervideo-fork"></span></button>'
+                            + '                    <button class="exportButton" data-tooltip-bottom-left="'+ labels['GenericExportHypervideo'] +'"><span class="icon-download"></span></button>'
                             + '                    <div style="clear: both;"></div>'
                             + '                </div>'
-                            + '                <button class="editMode" data-editmode="preview"><span class="icon-eye"></span>Preview</button>'
-                            + '                <button class="editMode" data-editmode="settings"><span class="icon-cog"></span>Settings</button>'
-                            + '                <button class="editMode" data-editmode="layout"><span class="icon-news"></span>Layout</button>'
-                            + '                <button class="editMode" data-editmode="overlays"><span class="icon-overlays"></span>Overlays</button>'
-                            + '                <button class="editMode" data-editmode="codesnippets"><span class="icon-code"></span>Custom Code</button>'
-                            + '                <button class="editMode" data-editmode="annotations"><span class="icon-annotations"></span>My Annotations</button>'
+                            + '                <button class="editMode" data-editmode="preview"><span class="icon-eye"></span>'+ labels['SidebarPreview'] +'</button>'
+                            + '                <button class="editMode" data-editmode="settings"><span class="icon-cog"></span>'+ labels['SidebarSettings'] +'</button>'
+                            + '                <button class="editMode" data-editmode="layout"><span class="icon-news"></span>'+ labels['SidebarLayout'] +'</button>'
+                            + '                <button class="editMode" data-editmode="overlays"><span class="icon-overlays"></span>'+ labels['SidebarOverlays'] +'</button>'
+                            + '                <button class="editMode" data-editmode="codesnippets"><span class="icon-code"></span>'+ labels['SidebarCustomCode'] +'</button>'
+                            + '                <button class="editMode" data-editmode="annotations"><span class="icon-annotations"></span>'+ labels['SidebarMyAnnotations'] +'</button>'
                             + '            </div>'
                             + '            <div class="viewmodeInfo">'
                             + '                <span class="videoDescription"></span>'
                             + '            </div>'
-                            + '            <button class="hypervideoDeleteButton" data-tooltip-top-left="Delete Hypervideo"><span class="icon-trash"></span></button>'
+                            + '            <button class="hypervideoDeleteButton" data-tooltip-top-left="'+ labels['GenericDeleteHypervideo'] +'"><span class="icon-trash"></span></button>'
                             /*
                             + '            <div class="selectAnnotationContainer" class="ui-front">'
                             + '                <div class="descriptionLabel">Annotations</div>'
@@ -88,11 +87,11 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         var thisID = FrameTrail.module('RouteNavigation').hypervideoID,
             thisHypervideo = FrameTrail.module('Database').hypervideo;
 
-        var forkDialog = $('<div class="forkHypervideoDialog" title="Fork Hypervideo">'
-                         + '    <div class="message active">By forking a hypervideo, you create a copy for yourself that you are able to edit.</div>'
+        var forkDialog = $('<div class="forkHypervideoDialog" title="'+ labels['GenericForkHypervideo'] +'">'
+                         + '    <div class="message active">'+ labels['MessageForkHypervideo'] +'</div>'
                          + '    <form method="POST" class="forkHypervideoForm">'
-                         + '        <input type="text" name="name" placeholder="Name of new Hypervideo" value="'+ thisHypervideo.name +'"><br>'
-                         + '        <textarea name="description" placeholder="Description for new Hypervideo">'+ thisHypervideo.description +'</textarea><br>'
+                         + '        <input type="text" name="name" placeholder="" value="'+ thisHypervideo.name +'"><br>'
+                         + '        <textarea name="description" placeholder="">'+ thisHypervideo.description +'</textarea><br>'
                          + '        <div class="message error"></div>'
                          + '    </form>'
                          + '</div>');
@@ -132,7 +131,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                         break;
                     default:
                         //TODO: push nice error texts into error box.
-                        forkDialog.find('.message.error').addClass('active').html('Fatal error!');
+                        forkDialog.find('.message.error').addClass('active').html(labels['ErrorGeneric']);
                         break;
                 }
             }
@@ -146,14 +145,14 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 $(this).remove();
             },
             buttons: [
-                { text: 'Fork Hypervideo',
+                { text: labels['GenericForkHypervideo'],
                     click: function() {
 
                         $('.forkHypervideoForm').submit();
 
                     }
                 },
-                { text: 'Cancel',
+                { text: labels['GenericCancel'],
                     click: function() {
                         $( this ).dialog( 'close' );
                     }
@@ -175,12 +174,12 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         var thisID = FrameTrail.module('RouteNavigation').hypervideoID,
             hypervideos = FrameTrail.module('Database').hypervideos;
 
-        var deleteDialog = $('<div class="deleteHypervideoDialog" title="Delete Hypervideo">'
-                           + '<div>Do you really want to delete the this Hypervideo?</div>'
+        var deleteDialog = $('<div class="deleteHypervideoDialog" title="'+ labels['GenericDeleteHypervideo'] +'">'
+                           + '<div>'+ labels['MessageDeleteHypervideoQuestion'] +'</div>'
                            + '    <input class="thisHypervideoName" type="text" value="'+ hypervideos[thisID]['name'] +'" readonly>'
-                           + '    <div class="message active">Please paste / re-enter the name:</div>'
+                           + '    <div class="message active">'+ labels['MessageDeleteHypervideoReEnter'] +':</div>'
                            + '    <form method="POST" class="deleteHypervideoForm">'
-                           + '        <input type="text" name="hypervideoName" placeholder="Name of Hypervideo"><br>'
+                           + '        <input type="text" name="hypervideoName" placeholder="'+ labels['GenericName'] +'"><br>'
                            + '        <div class="message error"></div>'
                            + '    </form>'
                            + '</div>');
@@ -201,29 +200,29 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
                         // Redirect to Overview when current Hypervideo has been deleted
                         if ( thisID == FrameTrail.module('RouteNavigation').hypervideoID ) {
-                            alert('You deleted the current Hypervideo and will be redirected to the Overview.')
+                            alert(labels['MessageDeleteHypervideoRedirect']);
                             window.location.hash = "#";
                         }
 
                     break;
                     case 1:
-                        deleteDialog.find('.message.error').addClass('active').html('Not logged in');
+                        deleteDialog.find('.message.error').addClass('active').html(labels['ErrorNotLoggedIn']);
                     break;
                     case 2:
-                        deleteDialog.find('.message.error').addClass('active').html('User not active');
+                        deleteDialog.find('.message.error').addClass('active').html(labels['ErrorNotActivated']);
                     break;
                     case 3:
-                        deleteDialog.find('.message.error').addClass('active').html('Could not find the hypervideos/ID folder');
+                        deleteDialog.find('.message.error').addClass('active').html(labels['ErrorCouldNotFindHypervideoDirectory']);
                     break;
                     case 4:
-                        deleteDialog.find('.message.error').addClass('active').html('hypervideoID could not be found in database.');
+                        deleteDialog.find('.message.error').addClass('active').html(labels['ErrorHypervideoDoesNotExist']);
                     break;
                     case 5:
-                        deleteDialog.find('.message.error').addClass('active').html('hypervideoName is not correct.');
+                        deleteDialog.find('.message.error').addClass('active').html(labels['ErrorHypervideoNameIncorrect']);
                     break;
                     case 6:
                         //TODO push nice texts into error box.
-                        deleteDialog.find('.message.error').addClass('active').html('permission denied! The User is not an admin, nor is it his own hypervideo.');
+                        deleteDialog.find('.message.error').addClass('active').html(labels['ErrorHypervideoPermissionDenied']);
                     break;
                 }
             }
@@ -240,12 +239,12 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                     $(this).remove();
                 },
                 buttons: [
-                    { text: 'Delete Hypervideo',
+                    { text: labels['GenericDeleteHypervideo'],
                         click: function() {
                             $('.deleteHypervideoForm').submit();
                         }
                     },
-                    { text: 'Cancel',
+                    { text: labels['GenericCancel'],
                         click: function() {
                             $( this ).dialog( 'close' );
                         }

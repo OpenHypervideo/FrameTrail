@@ -19,6 +19,8 @@
 
 FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
+    var labels = FrameTrail.module('Localization').labels;
+
     var domElement  = $(  '<div class="viewVideo">'
                         + '    <div class="areaLeftDetails layoutAreaDetails" data-area="areaLeft"></div>'
                         + '    <div class="slideArea">'
@@ -103,7 +105,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '                    <div class="captionsButton playerControl">'
                         + '                        <span class="icon-captions-off"></span>'
                         + '                        <div class="captionSelectContainer">'
-                        + '                            <div class="captionSelect none" data-lang="" data-config="hv_config_captionsVisible">None</div>'
+                        + '                            <div class="captionSelect none" data-lang="" data-config="hv_config_captionsVisible">'+ labels['GenericNone'] +'</div>'
                         + '                            <div class="captionSelectList"></div>'
                         + '                        </div>'
                         + '                    </div>'
@@ -995,7 +997,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         toggleConfig_overlaysVisible(true);
 
         EditPropertiesContainer
-            .html('<span class="icon-overlays"></span><div class="message active">Add overlays by dragging resources into the video area.</div>')
+            .html('<span class="icon-overlays"></span><div class="message active">'+ labels['MessageHintDragOverlays'] +'</div>')
             .attr('data-editmode', 'overlays');
     }
 
@@ -1016,7 +1018,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         CodeSnippetTimeline.addClass('editable');
 
         EditPropertiesContainer
-            .html('<span class="icon-code"></span><div class="message active">Add custom code by dragging Code Snippets into the active timeline, add "Custom CSS" rules, or react to events by editing the "onReady", "onPlay", "onPause" and "onEnded" tabs.</div>')
+            .html('<span class="icon-code"></span><div class="message active">'+ labels['MessageHintDragCodeSnippets'] +'</div>')
             .attr('data-editmode', 'codesnippets');
     }
 
@@ -1029,7 +1031,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         AnnotationTimeline.show().addClass('editable');
 
         EditPropertiesContainer
-            .html('<span class="icon-annotations"></span><div class="message active">Add annotations by dragging resources into the active timeline.</div>')
+            .html('<span class="icon-annotations"></span><div class="message active">'+ labels['MessageHintDragAnnotations'] +'</div>')
             .attr('data-editmode', 'annotations');
     }
 

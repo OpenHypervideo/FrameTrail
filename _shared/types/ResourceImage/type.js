@@ -47,7 +47,7 @@ FrameTrail.defineType(
 
                     var downloadButton = '';
                     if (this.resourceData.licenseType != 'Copyright') {
-                        downloadButton = '<a download class="button" href="'+ FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.src) +'" data-tooltip-right="Download"><span class="icon-download"></span></a>';
+                        downloadButton = '<a download class="button" href="'+ FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.src) +'" data-tooltip-right="'+ this.labels['GenericDownload'] +'"><span class="icon-download"></span></a>';
                     }
 
                     var resourceElement = $(

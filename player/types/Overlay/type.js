@@ -25,6 +25,8 @@ FrameTrail.defineType(
         return {
             constructor: function(data){
 
+                this.labels = FrameTrail.module('Localization').labels;
+
                 // compatibility fix
                 if ( !data.events || Array.isArray(data.events) ) {
                     data.events = {};
@@ -158,7 +160,7 @@ FrameTrail.defineType(
                             readyEvent.call(this, FrameTrail);
                         } catch (exception) {
                             // could not parse and compile JS code!
-                            console.warn('Event handler contains errors: '+ exception.message);
+                            console.warn(this.labels['MessageEventHandlerContainsErrors']+ ': '+ exception.message);
                         }
                     }
 
@@ -171,7 +173,7 @@ FrameTrail.defineType(
                                 clickEvent.call(self, FrameTrail);
                             } catch (exception) {
                                 // could not parse and compile JS code!
-                                console.warn('Event handler contains errors: '+ exception.message);
+                                console.warn(this.labels['MessageEventHandlerContainsErrors']+ ': '+ exception.message);
                             }
                         }
 
@@ -404,7 +406,7 @@ FrameTrail.defineType(
                             thisEvent.call(this, FrameTrail);
                         } catch (exception) {
                             // could not parse and compile JS code!
-                            console.warn('Event handler contains errors: '+ exception.message);
+                            console.warn(this.labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
                         }
                     }
 
@@ -433,7 +435,7 @@ FrameTrail.defineType(
                             thisEvent.call(this, FrameTrail);
                         } catch (exception) {
                             // could not parse and compile JS code!
-                            console.warn('Event handler contains errors: '+ exception.message);
+                            console.warn(this.labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
                         }
                     }
 
@@ -897,15 +899,6 @@ FrameTrail.defineType(
                     });
 
                 },
-
-
-
-
-
-
-
-
-
 
                 // TODO
 

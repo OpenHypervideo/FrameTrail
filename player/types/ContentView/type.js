@@ -19,6 +19,8 @@ FrameTrail.defineType(
         return {
             constructor: function (contentViewData, whichArea) {
 
+                this.labels = FrameTrail.module('Localization').labels;
+
                 contentViewData.type                   =  contentViewData.type || "TimedContent";
                 contentViewData.name                   =  contentViewData.name || "";
                 contentViewData.description            = contentViewData.description || "";
@@ -232,7 +234,7 @@ FrameTrail.defineType(
                                 thisFunction.call(contentItem);
                             } catch (exception) {
                                 // could not parse and compile JS code!
-                                console.warn('Event handler contains errors: '+ exception.message);
+                                console.warn(self.labels['MessageEventHandlerContainsErrors']+ ': '+ exception.message);
                             }
                         });
                     }
@@ -691,7 +693,7 @@ FrameTrail.defineType(
 
                     self.contentViewPreviewElement.attr('data-type', self.contentViewData.type);
                     self.contentViewPreviewElement.attr('data-size', self.contentViewData.contentSize);
-                    self.contentViewPreviewElement.find('.contentViewPreviewDescription').html(''+ ((self.contentViewData.type == 'TimedContent') ? 'Annotation Collection' : self.contentViewData.type) +'<br>Size: '+ self.contentViewData.contentSize +'');
+                    self.contentViewPreviewElement.find('.contentViewPreviewDescription').html(''+ ((self.contentViewData.type == 'TimedContent') ? self.labels['GenericAnnotationCollection'] : self.contentViewData.type) +'<br>'+ self.labels['SettingsContentViewSize'] +': '+ self.contentViewData.contentSize +'');
 
                     self.resizeLayoutAreaPreview();
 
@@ -843,10 +845,10 @@ FrameTrail.defineType(
                     var self = this,
                         detailsContainerElement = $('<div class="contentViewDetailsContainer">'
                                                 +   '    <div class="contentViewDetailsContents"></div>'
-                                                +   '    <div class="slideButton slideLeft" title="Try using arrow keys">'
+                                                +   '    <div class="slideButton slideLeft" title="'+ self.labels['MessageHintTryUsingArrowKeys'] +'">'
                                                 +   '        <span class="icon-left-open-big"></span>'
                                                 +   '    </div>'
-                                                +   '    <div class="slideButton slideRight" title="Try using arrow keys">'
+                                                +   '    <div class="slideButton slideRight" title="'+ self.labels['MessageHintTryUsingArrowKeys'] +'">'
                                                 +   '        <span class="icon-right-open-big"></span>'
                                                 +   '    </div>'
                                                 +   '</div>');
@@ -886,7 +888,7 @@ FrameTrail.defineType(
                                     +   '        <button class="editContentView"><span class="icon-pencil"></span></button>'
                                     +   '        <button class="deleteContentView"><span class="icon-trash"></span></button>'
                                     +   '    </div>'
-                                    +   '    <div class="contentViewPreviewDescription">'+ ((self.contentViewData.type == 'TimedContent') ? 'Annotation Collection' : self.contentViewData.type) +'<br>Size: '+ self.contentViewData.contentSize +'</div>'
+                                    +   '    <div class="contentViewPreviewDescription">'+ ((self.contentViewData.type == 'TimedContent') ? self.labels['GenericAnnotationCollection'] : self.contentViewData.type) +'<br>'+ self.labels['SettingsContentViewSize'] +': '+ self.contentViewData.contentSize +'</div>'
                                     +   '</div>');
 
                     previewElement.find('.editContentView').click(function() {
@@ -1598,7 +1600,7 @@ FrameTrail.defineType(
                     }, 300, function() {
 
 
-                        var dialogTitle = (isNew) ? 'New Content View' : 'Edit Content View',
+                        var dialogTitle = (isNew) ? self.labels['SettingsContentViewNew'] : self.labels['SettingsContentViewEdit'],
                             editDialog = $('<div class="editContentViewDialog" title="'+ dialogTitle +'"></div>');
 
                         editDialog.append(self.renderContentViewPreviewEditingUI());
@@ -1633,7 +1635,7 @@ FrameTrail.defineType(
                                 }
                             },
                             buttons: [
-                                { text: 'Apply',
+                                { text: self.labels['GenericApply'],
                                     click: function() {
 
                                         var newContentViewData = self.getDataFromEditingUI($(this));
@@ -1652,7 +1654,7 @@ FrameTrail.defineType(
                                         self.updateTimedStateOfContentViews(currentTime);
                                     }
                                 },
-                                { text: 'Cancel',
+                                { text: self.labels['GenericCancel'],
                                     click: function() {
                                         $(this).dialog( 'close' );
                                     }
@@ -1677,88 +1679,88 @@ FrameTrail.defineType(
                         contentViewData = this.contentViewData,
                         editingUI = $('<div class="contentViewEditingUI">'
                                     +'    <div class="contentViewData formColumn column2" data-property="type" data-value="'+ contentViewData.type +'">'
-                                    +'        <label>Type:</label>'
-                                    +'        <div '+ (contentViewData.type == 'TimedContent' ? 'class="active"' : '') +' data-value="TimedContent">Content Collection</div>'
-                                    +'        <div '+ (contentViewData.type == 'CustomHTML' ? 'class="active"' : '') +' data-value="CustomHTML">Custom HTML</div>'
-                                    +'        <div '+ (contentViewData.type == 'Transcript' ? 'class="active"' : '') +' data-value="Transcript">Text Transcript</div>'
+                                    +'        <label>'+ self.labels['GenericType'] +':</label>'
+                                    +'        <div '+ (contentViewData.type == 'TimedContent' ? 'class="active"' : '') +' data-value="TimedContent">'+ self.labels['GenericAnnotationCollection'] +'</div>'
+                                    +'        <div '+ (contentViewData.type == 'CustomHTML' ? 'class="active"' : '') +' data-value="CustomHTML">'+ self.labels['GenericCustomHTML'] +'</div>'
+                                    +'        <div '+ (contentViewData.type == 'Transcript' ? 'class="active"' : '') +' data-value="Transcript">'+ self.labels['GenericTextTranscript'] +'</div>'
                                     +'    </div>'
                                     +'    <div class="generic formColumn column2">'
                                     +'        <div class="contentViewData" data-property="contentSize" data-value="'+ contentViewData.contentSize +'">'
-                                    +'            <label>Size:</label>'
-                                    +'            <div '+ (contentViewData.contentSize == 'small' ? 'class="active"' : '') +' data-value="small">Small</div>'
-                                    +'            <div '+ (contentViewData.contentSize == 'medium' ? 'class="active"' : '') +' data-value="medium">Medium</div>'
-                                    +'            <div '+ (contentViewData.contentSize == 'large' ? 'class="active"' : '') +' data-value="large">Large</div>'
+                                    +'            <label>'+ self.labels['SettingsContentViewSize'] +':</label>'
+                                    +'            <div '+ (contentViewData.contentSize == 'small' ? 'class="active"' : '') +' data-value="small">'+ self.labels['SettingsContentViewSmall'] +'</div>'
+                                    +'            <div '+ (contentViewData.contentSize == 'medium' ? 'class="active"' : '') +' data-value="medium">'+ self.labels['SettingsContentViewMedium'] +'</div>'
+                                    +'            <div '+ (contentViewData.contentSize == 'large' ? 'class="active"' : '') +' data-value="large">'+ self.labels['SettingsContentViewLarge'] +'</div>'
                                     +'        </div>'
                                     +'    </div>'
                                     +'    <div style="clear: both;"></div>'
                                     +'    <hr>'
                                     +'    <div class="generic formColumn column1">'
-                                    +'        <label>Name:</label>'
-                                    +'        <input type="text" class="contentViewData" data-property="name" data-value="'+ contentViewData.name +'" value="'+ contentViewData.name +'" placeholder="(required)"/>'
+                                    +'        <label>'+ self.labels['GenericName'] +':</label>'
+                                    +'        <input type="text" class="contentViewData" data-property="name" data-value="'+ contentViewData.name +'" value="'+ contentViewData.name +'" placeholder="('+ self.labels['GenericRequired'] +')"/>'
                                     +'    </div>'
                                     +'    <div class="generic formColumn column3">'
-                                    +'        <label>Description:</label>'
+                                    +'        <label>'+ self.labels['GenericDescription'] +':</label>'
                                     +'        <textarea class="contentViewData" data-property="description" data-value="'+ contentViewData.description +'" placeholder="(optional)">'+ contentViewData.description +'</textarea>'
                                     +'    </div>'
                                     +'    <div style="clear: both;"></div>'
                                     +'    <div class="generic" style="display: none;">'
                                     +'        <label>CSS Class:</label>'
-                                    +'        <input type="text" class="contentViewData" data-property="cssClass" data-value="'+ contentViewData.cssClass +'" value="'+ contentViewData.cssClass +'" placeholder="(optional)"/>'
+                                    +'        <input type="text" class="contentViewData" data-property="cssClass" data-value="'+ contentViewData.cssClass +'" value="'+ contentViewData.cssClass +'" placeholder="('+ self.labels['GenericOptional'] +')"/>'
                                     +'    </div>'
                                     +'    <hr>'
                                     +'    <div class="typeSpecific '+ (contentViewData.type == 'TimedContent' ? 'active' : '') +'" data-type="TimedContent">'
-                                    +'        <label>Select contents:</label>'
-                                    +'        <div class="message active">If no filter is selected, the collection contains all annotations by all users.</div>'
+                                    +'        <label>'+ self.labels['SettingsSelectContents'] +':</label>'
+                                    +'        <div class="message active">'+ self.labels['MessageHintContentViewFilters'] +'</div>'
                                     +'        <div class="formColumn column1">'
-                                    +'            <label>Filter by tags</label>'
+                                    +'            <label>'+ self.labels['SettingsFilterByTags'] +'</label>'
                                     +'            <div class="existingTags"></div>'
                                     +'            <div class="button small contextSelectButton newTagButton">'
-                                    +'                <span class="icon-plus">Add</span>'
+                                    +'                <span class="icon-plus">'+ self.labels['GenericAdd'] +'</span>'
                                     +'                <div class="contextSelectList"></div>'
                                     +'            </div>'
-                                    +'            <input type="hidden" class="contentViewData" data-property="collectionFilter-tags" data-value="'+ contentViewData.collectionFilter.tags +'" value="'+ contentViewData.collectionFilter.tags +'" placeholder="(optional)"/>'
+                                    +'            <input type="hidden" class="contentViewData" data-property="collectionFilter-tags" data-value="'+ contentViewData.collectionFilter.tags +'" value="'+ contentViewData.collectionFilter.tags +'" placeholder="('+ self.labels['GenericOptional'] +')"/>'
                                     +'        </div>'
                                     +'        <div class="formColumn column1">'
-                                    +'            <label>Filter by types (eg. "Image")</label>'
+                                    +'            <label>'+ self.labels['SettingsFilterByTypes'] +'</label>'
                                     +'            <div class="existingTypes"></div>'
                                     +'            <div class="button small contextSelectButton newTypeButton">'
-                                    +'                <span class="icon-plus">Add</span>'
+                                    +'                <span class="icon-plus">'+ self.labels['GenericAdd'] +'</span>'
                                     +'                <div class="contextSelectList"></div>'
                                     +'            </div>'
-                                    +'            <input type="hidden" class="contentViewData" data-property="collectionFilter-types" data-value="'+ contentViewData.collectionFilter.types +'" value="'+ contentViewData.collectionFilter.types +'" placeholder="(optional)"/>'
+                                    +'            <input type="hidden" class="contentViewData" data-property="collectionFilter-types" data-value="'+ contentViewData.collectionFilter.types +'" value="'+ contentViewData.collectionFilter.types +'" placeholder="('+ self.labels['GenericOptional'] +')"/>'
                                     +'        </div>'
                                     +'        <div class="formColumn column1">'
-                                    +'            <label>Filter by users</label>'
+                                    +'            <label>'+ self.labels['SettingsFilterByUsers'] +'</label>'
                                     +'            <div class="existingUsers"></div>'
                                     +'            <div class="button small contextSelectButton newUserButton">'
-                                    +'                <span class="icon-plus">Add</span>'
+                                    +'                <span class="icon-plus">'+ self.labels['GenericAdd'] +'</span>'
                                     +'                <div class="contextSelectList"></div>'
                                     +'            </div>'
-                                    +'            <input type="hidden" class="contentViewData" data-property="collectionFilter-users" data-value="'+ contentViewData.collectionFilter.users +'" value="'+ contentViewData.collectionFilter.users +'" placeholder="(optional)"/>'
+                                    +'            <input type="hidden" class="contentViewData" data-property="collectionFilter-users" data-value="'+ contentViewData.collectionFilter.users +'" value="'+ contentViewData.collectionFilter.users +'" placeholder="('+ self.labels['GenericOptional'] +')"/>'
                                     +'        </div>'
                                     +'        <div class="formColumn column1">'
-                                    +'            <label>Filter by name</label>'
-                                    +'            <input type="text" class="contentViewData" data-property="collectionFilter-text" data-value="'+ contentViewData.collectionFilter.text +'" value="'+ contentViewData.collectionFilter.text +'" placeholder="(optional)"/>'
+                                    +'            <label>'+ self.labels['SettingsFilterByName'] +'</label>'
+                                    +'            <input type="text" class="contentViewData" data-property="collectionFilter-text" data-value="'+ contentViewData.collectionFilter.text +'" value="'+ contentViewData.collectionFilter.text +'" placeholder="('+ self.labels['GenericOptional'] +')"/>'
                                     +'        </div>'
                                     +'        <div style="clear: both;"></div>'
-                                    +'        <div class="message active">Items in collection: <span class="collectionCounter"></span></div>'
+                                    +'        <div class="message active">'+ self.labels['SettingsItemsInCollection'] +': <span class="collectionCounter"></span></div>'
                                     +'        <hr>'
                                     +'    </div>'
                                     +'    <div class="typeSpecific advanced codeEditorSmall '+ (contentViewData.type == 'TimedContent' ? 'active' : '') +'" data-type="TimedContent">'
-                                    +'        <h3>Advanced Options</h3>'
+                                    +'        <h3>'+ self.labels['GenericAdvancedOptions'] +'</h3>'
                                     +'        <div>'
                                     +'            <label>onClickContentItem:</label>'
-                                    +'            <div class="message active">This code gets executed whenever an item in the collection is clicked. <br>"this" contains the current item / annotation object (data, ui elements & states). Example: console.log(this.data).</div>'
-                                    +'            <textarea class="contentViewData" data-property="onClickContentItem" data-value="'+ contentViewData.onClickContentItem +'" placeholder="(optional)">'+ contentViewData.onClickContentItem +'</textarea>'
+                                    +'            <div class="message active">'+ self.labels['MessageHintContentViewClickItem'] +'</div>'
+                                    +'            <textarea class="contentViewData" data-property="onClickContentItem" data-value="'+ contentViewData.onClickContentItem +'" placeholder="('+ self.labels['GenericOptional'] +')">'+ contentViewData.onClickContentItem +'</textarea>'
                                     +'        </div>'
                                     +'    </div>'
                                     +'    <div class="typeSpecific codeEditorLarge '+ (contentViewData.type == 'CustomHTML' ? 'active' : '') +'" data-type="CustomHTML">'
-                                    +'        <label>Custom HTML:</label>'
+                                    +'        <label>'+ self.labels['GenericCustomHTML'] +':</label>'
                                     +'        <textarea class="contentViewData" data-property="html" data-value="'+ contentViewData.html +'">'+ contentViewData.html +'</textarea>'
                                     +'    </div>'
                                     +'    <div class="typeSpecific '+ (contentViewData.type == 'Transcript' ? 'active' : '') +'" data-type="Transcript">'
-                                    +'        <label>Transcript Source:</label>'
-                                    +'        <div class="message active">New transcripts can be uploaded in the "Settings" tab.</div>'
+                                    +'        <label>'+ self.labels['SettingsTranscriptSource'] +':</label>'
+                                    +'        <div class="message active">'+ self.labels['MessageHintNewTranscriptsUpload'] +'</div>'
                                     +'        <div class="existingTranscripts"></div>'
                                     +'        <input type="hidden" class="contentViewData" data-property="transcriptSource" data-value="'+ contentViewData.transcriptSource +'" value="'+ contentViewData.transcriptSource +'" />'
                                     +'    </div>'

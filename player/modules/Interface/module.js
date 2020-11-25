@@ -22,6 +22,7 @@
 
 FrameTrail.defineModule('Interface', function(FrameTrail){
 
+	var labels = FrameTrail.module('Localization').labels;
 
 	FrameTrail.initModule('Titlebar');
   	FrameTrail.initModule('Sidebar');
@@ -49,7 +50,7 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
 	 */
 	function create(callback) {
 
-		FrameTrail.module('InterfaceModal').showStatusMessage('Loading Interface ...');
+		FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateLoadingInterface']);
 
 		// Check if window is in iFrame
 		var iFrame;

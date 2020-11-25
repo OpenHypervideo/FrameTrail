@@ -14,6 +14,7 @@
 
 FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
+    var labels = FrameTrail.module('Localization').labels;
 
     var ViewVideo               = FrameTrail.module('ViewVideo'),
         overlays                = FrameTrail.module('HypervideoModel').overlays,
@@ -411,7 +412,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                         if (ui.helper.attr('data-type') == 'text') {
 
                             newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
-                                "name":         "Custom Text/HTML",
+                                "name":         labels['ResourceCustomTextHTML'],
                                 "type":         ui.helper.attr('data-type'),
                                 "start":        startTime,
                                 "end":          endTime,
@@ -575,10 +576,10 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         var overlayEditingOptions = $('<div class="overlayEditingTabs">'
                                   +   '    <ul>'
                                   +   '        <li>'
-                                  +   '            <a href="#ResourceList">Add Resource</a>'
+                                  +   '            <a href="#ResourceList">'+ labels['ResourceChoose'] +'</a>'
                                   +   '        </li>'
                                   +   '        <li>'
-                                  +   '            <a href="#CustomOverlay">Add Custom Overlay</a>'
+                                  +   '            <a href="#CustomOverlay">'+ labels['ResourceAddCustomOverlay'] +'</a>'
                                   +   '        </li>'
                                   +   '    </ul>'
                                   +   '    <div id="ResourceList"></div>'
@@ -600,7 +601,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 + '                  <div class="resourceOverlay">'
                 + '                      <div class="resourceIcon"></div>'
                 + '                  </div>'
-                + '                  <div class="resourceTitle">Custom Text/HTML</div>'
+                + '                  <div class="resourceTitle">'+ labels['ResourceCustomTextHTML'] +'</div>'
                 + '              </div>');
 
         textElement.draggable({

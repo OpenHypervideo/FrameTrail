@@ -14,27 +14,29 @@
 
 FrameTrail.defineModule('ViewResources', function(FrameTrail){
 
-	var domElement = $(    '<div class="viewResources" title="Manage Resources">'
+	var labels = FrameTrail.module('Localization').labels;
+
+    var domElement = $(    '<div class="viewResources" title="'+ labels['ResourcesManage'] +'">'
                         +  '    <div class="resourcesControls">'
-                        +  '        <button class="resourceUpload"><span class="icon-doc-new"></span>Add New</button>'
-                        +  '        <button class="resourceDelete"><span class="icon-trash"></span>Delete</button>'
-                        +  '        <button class="resourceDeleteConfirm">Confirm Delete</button>'
+                        +  '        <button class="resourceUpload"><span class="icon-doc-new"></span>'+ labels['GenericAddNew'] +'</button>'
+                        +  '        <button class="resourceDelete"><span class="icon-trash"></span>'+ labels['GenericDelete'] +'</button>'
+                        +  '        <button class="resourceDeleteConfirm">'+ labels['GenericConfirm'] +' '+ labels['GenericDelete'] +'</button>'
                         +  '        <div class="message"></div>'
                         +  '        <div style="clear: both;"></div>'
                         +  '    </div>'
                         +  '    <div class="resourcesFilter">'
-                        +  '        <input id="cbAll" name="ResourceFilterType" type="radio" value="ALL" checked /><label for="cbAll">All Types</label>'
-                        +  '        <input id="cbVideo" name="ResourceFilterType" type="radio" value="video" /><label for="cbVideo">Video</label>'
-                        +  '        <input id="cbImage" name="ResourceFilterType" type="radio" value="image" /><label for="cbImage">Image</label>'
-                        +  '        <input id="cbPDF" name="ResourceFilterType" type="radio" value="pdf" /><label for="cbPDF">PDF</label>'
-                        +  '        <input id="cbAudio" name="ResourceFilterType" type="radio" value="audio" /><label for="cbAudio">Audio</label>'
-                        +  '        <input id="cbWebpage" name="ResourceFilterType" type="radio" value="webpage" /><label for="cbWebpage">Webpage</label>'
-                        +  '        <input id="cbLocation" name="ResourceFilterType" type="radio" value="location" /><label for="cbLocation">Location</label>'
-                        +  '        <input id="cbWikipedia" name="ResourceFilterType" type="radio" value="wikipedia" /><label for="cbWikipedia">Wikipedia</label>'
-                        +  '        <input id="cbYoutube" name="ResourceFilterType" type="radio" value="youtube" /><label for="cbYoutube">Youtube</label>'
-                        +  '        <input id="cbVimeo" name="ResourceFilterType" type="radio" value="vimeo" /><label for="cbVimeo">Vimeo</label>'
+                        +  '        <input id="cbAll" name="ResourceFilterType" type="radio" value="ALL" checked /><label for="cbAll">'+ labels['ResourceTypesAll'] +'</label>'
+                        +  '        <input id="cbVideo" name="ResourceFilterType" type="radio" value="video" /><label for="cbVideo">'+ labels['ResourceTypeVideo'] +'</label>'
+                        +  '        <input id="cbImage" name="ResourceFilterType" type="radio" value="image" /><label for="cbImage">'+ labels['ResourceTypeImage'] +'</label>'
+                        +  '        <input id="cbPDF" name="ResourceFilterType" type="radio" value="pdf" /><label for="cbPDF">'+ labels['ResourceTypePDF'] +'</label>'
+                        +  '        <input id="cbAudio" name="ResourceFilterType" type="radio" value="audio" /><label for="cbAudio">'+ labels['ResourceTypeAudio'] +'</label>'
+                        +  '        <input id="cbWebpage" name="ResourceFilterType" type="radio" value="webpage" /><label for="cbWebpage">'+ labels['ResourceTypeWebpage'] +'</label>'
+                        +  '        <input id="cbLocation" name="ResourceFilterType" type="radio" value="location" /><label for="cbLocation">'+ labels['ResourceTypeLocation'] +'</label>'
+                        +  '        <input id="cbWikipedia" name="ResourceFilterType" type="radio" value="wikipedia" /><label for="cbWikipedia">'+ labels['ResourceTypeWikipedia'] +'</label>'
+                        +  '        <input id="cbYoutube" name="ResourceFilterType" type="radio" value="youtube" /><label for="cbYoutube">'+ labels['ResourceTypeYoutube'] +'</label>'
+                        +  '        <input id="cbVimeo" name="ResourceFilterType" type="radio" value="vimeo" /><label for="cbVimeo">'+ labels['ResourceTypeVimeo'] +'</label>'
                         +  '        <div class="resourcesCheckboxes">'
-                        +  '            <input type="checkbox" id="onlyCC" name="onlyCC" /><label for="onlyCC">Show only Creative Commons</label>'
+                        +  '            <input type="checkbox" id="onlyCC" name="onlyCC" /><label for="onlyCC">'+ labels['ResourceTypesOnlyCC'] +'</label>'
                         +  '        </div>'
                         +  '    </div>'
                         +  '    <div class="resourcesList"></div>'
@@ -159,7 +161,7 @@ FrameTrail.defineModule('ViewResources', function(FrameTrail){
 
         if (deleteActive) {
 
-            ResourceDelete.html('<span class="icon-trash"></span>Delete').removeClass('active');
+            ResourceDelete.html('<span class="icon-trash"></span>'+ labels['GenericDelete']).removeClass('active');
             ResourceDeleteConfirm.hide();
             ResourcesList.children('.resourceThumb').removeClass('markedForDeletion').unbind('click');
             deleteActive = false;
@@ -168,14 +170,14 @@ FrameTrail.defineModule('ViewResources', function(FrameTrail){
 
         } else {
 
-            ResourceDelete.html('Cancel').addClass('active');
+            ResourceDelete.html(labels['GenericCancel']).addClass('active');
             ResourceDeleteConfirm.show();
             ResourcesList.children('.resourceThumb').click(function(evt){
                 $(evt.currentTarget).toggleClass('markedForDeletion');
             });
             deleteActive = true;
 
-            ResourcesControls.find('.message').text('Select resources to delete').removeClass('error').addClass('active');
+            ResourcesControls.find('.message').text(labels['MessageSelectResourcesToDelete']).removeClass('error').addClass('active');
 
         }
 

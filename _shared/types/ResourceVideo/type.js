@@ -49,7 +49,7 @@ FrameTrail.defineType(
 
                     var downloadButton = '';
                     if (this.resourceData.licenseType != 'Copyright') {
-                        downloadButton = '<a download class="button" href="'+ FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.src) +'" data-tooltip-bottom-right="Download"><span class="icon-download"></span></a>';
+                        downloadButton = '<a download class="button" href="'+ FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.src) +'" data-tooltip-bottom-right="'+ this.labels['GenericDownload'] +'"><span class="icon-download"></span></a>';
                     }
 
                     var resourceDetailElement = $('<div class="resourceDetail" data-type="'+ this.resourceData.type +'">'
@@ -159,15 +159,15 @@ FrameTrail.defineType(
 
                     /* Add Video Type  Controls */
 
-                    var syncedLabel = $('<div>Synchronization</div>'),
+                    var syncedLabel = $('<div>'+ this.labels['SettingsSynchronization'] +'</div>'),
 
                         syncedRadio = $('<div class="syncedRadio">'
                                       + '    <input type="radio" id="SyncedTrue" name="radio" value="on" '
                                       +      (overlay.data.attributes.autoPlay ? 'checked="checked"' : '')
-                                      + '    ><label for="SyncedTrue">Autoplay</label>'
+                                      + '    ><label for="SyncedTrue">'+ this.labels['SettingsSynchronizationOn'] +'</label>'
                                       + '    <input type="radio" id="SyncedFalse" name="radio" value="off" '
                                       +      (!overlay.data.attributes.autoPlay ? 'checked="checked"' : '')
-                                      + '    ><label for="SyncedFalse">No Synchronization</label>'
+                                      + '    ><label for="SyncedFalse">'+ this.labels['SettingsSynchronizationOff'] +'</label>'
                                       + '</div>').buttonset();
 
                         syncedRadio.find('input[name="radio"]').on('change', function () {

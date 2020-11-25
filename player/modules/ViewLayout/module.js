@@ -14,6 +14,8 @@
 
 FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
+	var labels = FrameTrail.module('Localization').labels;
+
 	var configLayoutArea,
 
 		/*
@@ -296,27 +298,27 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 						+  '        </div>'
 						+  '    </div>'
 						+  '    <div class="layoutManagerOptions">'
-						+  '        <div class="message active">Drag and Drop Content Views into Layout Areas</div>'
+						+  '        <div class="message active">'+ labels['MessageLayoutManagerDropContentViews'] +'</div>'
 						+  '        <div class="contentViewTemplate" data-type="TimedContent" data-size="small">'
-						+  '            <div class="contentViewTemplateType"><span class="icon-docs">Annotation Collection</span></div>'
+						+  '            <div class="contentViewTemplateType"><span class="icon-docs">'+ labels['GenericAnnotationCollection'] +'</span></div>'
 						+  '            <div class="contentViewTemplateSize"><span class="icon-coverflow"></span></div>'
 						+  '        </div>'
 						+  '        <div class="contentViewTemplate" data-type="TimedContent" data-size="medium">'
-						+  '            <div class="contentViewTemplateType"><span class="icon-docs">Annotation Collection</span></div>'
+						+  '            <div class="contentViewTemplateType"><span class="icon-docs">'+ labels['GenericAnnotationCollection'] +'</span></div>'
 						+  '            <div class="contentViewTemplateSize"><span class="icon-coverflow"></span></div>'
 						+  '        </div>'
 						+  '        <div class="contentViewTemplate" data-type="TimedContent" data-size="large">'
-						+  '            <div class="contentViewTemplateType"><span class="icon-docs">Annotation Collection</span></div>'
+						+  '            <div class="contentViewTemplateType"><span class="icon-docs">'+ labels['GenericAnnotationCollection'] +'</span></div>'
 						+  '            <div class="contentViewTemplateSize"><span class="icon-coverflow"></span></div>'
 						+  '        </div>'
 						+  '        <div class="contentViewTemplate" data-type="CustomHTML" data-size="medium">'
-						+  '            <div class="contentViewTemplateType"><span class="icon-file-code">Custom HTML</span></div>'
+						+  '            <div class="contentViewTemplateType"><span class="icon-file-code">'+ labels['GenericCustomHTML'] +'</span></div>'
 						+  '        </div>'
 						+  '        <div class="contentViewTemplate" data-type="Transcript" data-size="large">'
-						+  '            <div class="contentViewTemplateType"><span class="icon-doc-text">Text Transcript</span></div>'
+						+  '            <div class="contentViewTemplateType"><span class="icon-doc-text">'+ labels['GenericTextTranscript'] +'</span></div>'
 						+  '        </div>'
 						+  '        <div class="contentViewTemplate" data-type="Timelines" data-size="large">'
-						+  '            <div class="contentViewTemplateType"><span class="icon-doc-text">Timelines</span></div>'
+						+  '            <div class="contentViewTemplateType"><span class="icon-doc-text">'+ labels['GenericTimelines'] +'</span></div>'
 						+  '        </div>'
 						+  '    </div>'
 						+  '</div>'),

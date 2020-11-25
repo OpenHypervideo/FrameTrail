@@ -24,6 +24,8 @@ FrameTrail.defineType(
         return {
             constructor: function(data){
 
+                this.labels = FrameTrail.module('Localization').labels;
+
                 this.data = data;
 
                 this.timelineElement  = $('<div class="timelineElement"></div>');
@@ -116,7 +118,7 @@ FrameTrail.defineType(
                         this.codeSnippetFunction = new Function('FrameTrail', this.data.snippet);
                     } catch (exception) {
                         // could not parse and compile JS code!
-                        console.warn('Code Snippet contains errors: '+ exception.message);
+                        console.warn(this.labels['MessageCodeContainsErrors'] +': '+ exception.message);
                     }
 
                 },
@@ -168,7 +170,7 @@ FrameTrail.defineType(
                         this.codeSnippetFunction(FrameTrail);
                     } catch (exception) {
                         // do some user error feedback (ex.message)
-                        console.warn('Code Snippet contains errors: '+ exception.message);
+                        console.warn(this.labels['MessageCodeContainsErrors'] +': '+ exception.message);
                     }
 
                 },
@@ -357,8 +359,8 @@ FrameTrail.defineType(
                     var propertiesControls = $('<div>'
                                              + '    <div class="propertiesTypeIcon" data-type="codesnippet"><span class="icon-code"></span></div>'
                                              + '    <textarea class="codeSnippetCode">' + this.data.snippet + '</textarea>'
-                                             + '    <button class="deleteCodeSnippet">Delete</button>'
-                                             + '    <button class="executeCodeSnippet">Run Code</button>'
+                                             + '    <button class="deleteCodeSnippet">'+ this.labels['GenericDelete'] +'</button>'
+                                             + '    <button class="executeCodeSnippet">'+ this.labels['SettingsTestCode'] +'</button>'
                                              + '</div>');
 
                     propertiesControls.find('.deleteCodeSnippet').click(function() {

@@ -19,8 +19,8 @@
 
 FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
-
-
+	var labels = FrameTrail.module('Localization').labels;
+	
 	var HypervideoModel        = FrameTrail.module('HypervideoModel'),
 		ViewVideo 			   = FrameTrail.module('ViewVideo'),
 
@@ -150,7 +150,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 		            	endedEvent();
 		            } catch (exception) {
 		                // could not parse and compile JS code!
-		                console.warn('Event handler contains errors: '+ exception.message);
+		                console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
 		            }
 		        }
 
@@ -189,7 +189,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 		                	readyEvent();
 			            } catch (exception) {
 			                // could not parse and compile JS code!
-			                console.warn('Event handler contains errors: '+ exception.message);
+			                console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
 			            }
 					}
 
@@ -270,7 +270,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 		                	readyEvent();
 			            } catch (exception) {
 			                // could not parse and compile JS code!
-			                console.warn('Event handler contains errors: '+ exception.message);
+			                console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
 			            }
 					}
 
@@ -321,23 +321,23 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 					switch(event.data) {
 						case 2:
 							// invalid parameter value
-							FrameTrail.module('InterfaceModal').showErrorMessage('Youtube Error: invalid parameter value.');
+							FrameTrail.module('InterfaceModal').showErrorMessage('Youtube '+ labels['ErrorInvalidParameterValue']);
 							break;
 						case 5:
 							// error in HTML5 player
-							FrameTrail.module('InterfaceModal').showErrorMessage('Youtube Error: HTML5 playback error.');
+							FrameTrail.module('InterfaceModal').showErrorMessage('Youtube '+ labels['ErrorPlaybackError']);
 							break;
 						case 100:
 							// video has not been found (private?)
-							FrameTrail.module('InterfaceModal').showErrorMessage('Youtube Error: video not found or private.');
+							FrameTrail.module('InterfaceModal').showErrorMessage('Youtube '+ labels['ErrorVideoNotFoundOrPrivate']);
 							break;
 						case 101:
 							// owner does not allow embedding
-							FrameTrail.module('InterfaceModal').showErrorMessage('Youtube Error: owner does not allow embedding.');
+							FrameTrail.module('InterfaceModal').showErrorMessage('Youtube '+ labels['ErrorOwnerDoesNotAllowEmbed']);
 							break;
 						case 101:
 							// owner does not allow embedding
-							FrameTrail.module('InterfaceModal').showErrorMessage('Youtube Error: owner does not allow embedding.');
+							FrameTrail.module('InterfaceModal').showErrorMessage('Youtube '+ labels['ErrorOwnerDoesNotAllowEmbed']);
 							break;
 						default:
 						// default
@@ -428,7 +428,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 						switch (error.name) {
 							case 'PasswordError':
 								// The video is password-protected
-								FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is password-protected.');
+								FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo '+ labels['ErrorVideoIsPasswordProtected']);
 								ViewVideo.VideoStartOverlay.addClass('inactive').hide();
 								ViewVideo.OverlayContainer.hide();
 								FrameTrail.changeState('videoWorking', false);
@@ -436,7 +436,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 							case 'PrivacyError':
 								// The video is private
-								FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is private.');
+								FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo '+ labels['ErrorVideoNotFoundOrPrivate']);
 								ViewVideo.VideoStartOverlay.addClass('inactive').hide();
 								ViewVideo.OverlayContainer.hide();
 								FrameTrail.changeState('videoWorking', false);
@@ -461,7 +461,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 			            	endedEvent();
 			            } catch (exception) {
 			                // could not parse and compile JS code!
-			                console.warn('Event handler contains errors: '+ exception.message);
+			                console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
 			            }
 			        }
 
@@ -479,7 +479,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 							switch (error.name) {
 								case 'PasswordError':
 									// The video is password-protected
-									FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is password-protected.');
+									FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo '+ labels['ErrorVideoIsPasswordProtected']);
 									ViewVideo.VideoStartOverlay.addClass('inactive').hide();
 									ViewVideo.OverlayContainer.hide();
 									FrameTrail.changeState('videoWorking', false);
@@ -487,7 +487,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 								case 'PrivacyError':
 									// The video is private
-									FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is private.');
+									FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo '+ labels['ErrorVideoNotFoundOrPrivate']);
 									ViewVideo.VideoStartOverlay.addClass('inactive').hide();
 									ViewVideo.OverlayContainer.hide();
 									FrameTrail.changeState('videoWorking', false);
@@ -537,7 +537,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 	                	readyEvent();
 		            } catch (exception) {
 		                // could not parse and compile JS code!
-		                console.warn('Event handler contains errors: '+ exception.message);
+		                console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
 		            }
 				}
 
@@ -596,7 +596,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 	                	readyEvent();
 		            } catch (exception) {
 		                // could not parse and compile JS code!
-		                console.warn('Event handler contains errors: '+ exception.message);
+		                console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
 		            }
 				}
 
@@ -661,9 +661,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 				} else {
 
 					failCallback(
-							'VideoPlayer: Received no data within the time limit of '
+							labels['ErrorVideoPlayerReceivedNoData']
 						+ 	Math.round(waitingInterval * 50 / 1000)
-						+	' seconds.'
+						+	' '+ labels['GenericSeconds'] +'.'
 					);
 
 				}
@@ -794,12 +794,12 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 				}).replace(/\./g, '.');
 
 		FrameTrail.module('Sidebar').VideoDescription   = (	'<div>' + HypervideoModel.description + '</div>'
-													  +	'<div class="descriptionLabel">Author</div>'
+													  +	'<div class="descriptionLabel">'+ labels['GenericAuthor'] +'</div>'
 													  +	'<div>' + HypervideoModel.creator + '</div>'
 													  + '<div class="descriptionDates">'
-													  +	'    <div class="descriptionLabel">Created</div>'
+													  +	'    <div class="descriptionLabel">'+ labels['GenericCreated'] +'</div>'
 													  +	'    <div>' + created + '</div>'
-													  +	'    <div class="descriptionLabel">Last changed</div>'
+													  +	'    <div class="descriptionLabel">'+ labels['GenericLastChanged'] +'</div>'
 													  +	'    <div>' + changed + '</div>'
 													  + '</div>'
 
@@ -1025,14 +1025,14 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 			}).catch(function(error) {
 				switch (error.name) {
 					case 'PasswordError':
-						FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is password-protected.');
+						FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo '+ labels['ErrorVideoIsPasswordProtected']);
 					break;
 					case 'PrivacyError':
-						FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: video is private.');
+						FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo '+ labels['ErrorVideoNotFoundOrPrivate']);
 					break;
 					default:
 						// Some other error occurred
-						FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo Error: '+ error.name);
+						FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo '+ labels['GenericError'] +': '+ error.name);
 					break;
 				}
 			});
@@ -1067,7 +1067,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 	            	playEvent();
 	            } catch (exception) {
 	                // could not parse and compile JS code!
-	                console.warn('Event handler contains errors: '+ exception.message);
+	                console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
 	            }
 			}
 		}
@@ -1126,7 +1126,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 	            	pauseEvent();
 	            } catch (exception) {
 	                // could not parse and compile JS code!
-	                console.warn('Event handler contains errors: '+ exception.message);
+	                console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
 	            }
 			}
 
@@ -1141,7 +1141,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 	            	endedEvent();
 	            } catch (exception) {
 	                // could not parse and compile JS code!
-	                console.warn('Event handler contains errors: '+ exception.message);
+	                console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
 	            }
 			}
 

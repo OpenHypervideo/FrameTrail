@@ -15,6 +15,7 @@
 
 FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
 
+    var labels = FrameTrail.module('Localization').labels;
 
     var codeSnippets       = FrameTrail.module('HypervideoModel').codeSnippets, // can be shadowed be function local vars
         ViewVideo          = FrameTrail.module('ViewVideo'),
@@ -170,8 +171,8 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
 
             codeSnippetEditingOptions = $('<div class="codeSnippetEditingTabs">'
                                     +   '    <ul>'
-                                    +   '        <li><a href="#CodeSnippetList">Add Code Snippets</a></li>'
-                                    +   '        <li><a href="#CustomCSS">Custom CSS</a></li>'
+                                    +   '        <li><a href="#CodeSnippetList">'+ labels['SettingsCodeSnippetAdd'] +'</a></li>'
+                                    +   '        <li><a href="#CustomCSS">'+ labels['GenericCustomCSS'] +'</a></li>'
                                     +   '        <li class="ui-tabs-right"><a href="#EventOnEnded">onEnded</a></li>'
                                     +   '        <li class="ui-tabs-right"><a href="#EventOnPause">onPause</a></li>'
                                     +   '        <li class="ui-tabs-right"><a href="#EventOnPlay">onPlay</a></li>'
@@ -179,7 +180,7 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
                                     +   '        <li class="ui-tabs-right tab-label">Events: </li>'
                                     +   '    </ul>'
                                     +   '    <div id="CustomCSS">'
-                                    +   '        <div class="message active">These CSS rules are only applied to this Hypervideo. To edit the global CSS for FrameTrail, go to Settings > Global CSS</div>'
+                                    +   '        <div class="message active">'+ labels['MessageCustomCSSHypervideo'] +'</div>'
                                     +   '        <div style="position: relative; height: calc(100% - 23px);">'
                                     +   '            <textarea class="customCSS cssTextarea">' + (customCSS ? customCSS : '') + '</textarea>'
                                     +   '        </div>'
@@ -188,19 +189,19 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
                                     +   '    </div>'
                                     +   '    <div id="EventOnReady">'
                                     +   '        <textarea class="onReadyCode codeTextarea" data-eventname="onReady">' + (events.onReady ? events.onReady : '') + '</textarea>'
-                                    +   '        <button class="executeEventCode">Run Code</button>'
+                                    +   '        <button class="executeEventCode">'+ labels['SettingsTestCode'] +'</button>'
                                     +   '    </div>'
                                     +   '    <div id="EventOnPlay">'
                                     +   '        <textarea class="onPlayCode codeTextarea" data-eventname="onPlay">' + (events.onPlay ? events.onPlay : '') + '</textarea>'
-                                    +   '        <button class="executeEventCode">Run Code</button>'
+                                    +   '        <button class="executeEventCode">'+ labels['SettingsTestCode'] +'</button>'
                                     +   '    </div>'
                                     +   '    <div id="EventOnPause">'
                                     +   '        <textarea class="onPauseCode codeTextarea" data-eventname="onPause">' + (events.onPause ? events.onPause : '') + '</textarea>'
-                                    +   '        <button class="executeEventCode">Run Code</button>'
+                                    +   '        <button class="executeEventCode">'+ labels['SettingsTestCode'] +'</button>'
                                     +   '    </div>'
                                     +   '    <div id="EventOnEnded">'
                                     +   '        <textarea class="onEndedCode codeTextarea" data-eventname="onEnded">' + (events.onEnded ? events.onEnded : '') + '</textarea>'
-                                    +   '        <button class="executeEventCode">Run Code</button>'
+                                    +   '        <button class="executeEventCode">'+ labels['SettingsTestCode'] +'</button>'
                                     +   '    </div>'
                                     +   '</div>')
                                     .tabs({
@@ -220,7 +221,7 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
                 var testRun = new Function('FrameTrail', textarea.val());
                 testRun(FrameTrail);
             } catch (exception) {
-                alert('Code contains errors: '+ exception.message);
+                alert(labels['MessageCodeContainsErrors'] +': '+ exception.message);
             }
         });
 
@@ -230,7 +231,7 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
         /* Append custom code snippet element to 'Custom Code Snippet' tab */
         // TODO: Move to separate function
         var codeSnippetElement = $('<div class="codeSnippetElement" data-type="codesnippet">'
-                   + '                  <div class="codeSnippetTitle">Custom Code Snippet</div>'
+                   + '                  <div class="codeSnippetTitle">'+ labels['SettingsCodeSnippetCustom'] +'</div>'
                    + '              </div>');
 
         codeSnippetElement.draggable({

@@ -31,6 +31,10 @@
  FrameTrail.defineModule('ResourceManagerLauncher', function(FrameTrail){
 
 
+    // Set up Localization
+    FrameTrail.initModule('Localization');
+    var labels = FrameTrail.module('Localization').labels;
+    
     // Set up the various data models
     FrameTrail.initModule('RouteNavigation');
     FrameTrail.initModule('Database');
@@ -74,10 +78,10 @@
     function appendTitlebar() {
 
         var titlebar = $(  '<div class="titlebar">'
-                         + '    <div class="titlebarTitle">Resource Manager</div>'
+                         + '    <div class="titlebarTitle">'+ labels['ResourceManager'] +'</div>'
                          + '    <div class="titlebarActionButtonContainer">'
-                         + '        <button type="button" class="startEditButton" data-tooltip-bottom-left="Edit"><span class="icon-edit"></span></button>'
-                         + '        <button type="button" class="logoutButton" data-tooltip-bottom-right="Logout"><span class="icon-logout"></span></button>'
+                         + '        <button type="button" class="startEditButton" data-tooltip-bottom-left="'+ labels['GenericEditStart'] +'"><span class="icon-edit"></span></button>'
+                         + '        <button type="button" class="logoutButton" data-tooltip-bottom-right="'+ labels['UserLogout'] +'"><span class="icon-logout"></span></button>'
                          + '    </div>'
                          + '</div>');
 

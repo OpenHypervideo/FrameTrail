@@ -14,7 +14,8 @@
 
  FrameTrail.defineModule('AnnotationsController', function(FrameTrail){
 
-
+    var labels = FrameTrail.module('Localization').labels;
+    
     var HypervideoModel   = FrameTrail.module('HypervideoModel'),
         ViewVideo         = FrameTrail.module('ViewVideo'),
         annotationInFocus = null,
@@ -472,14 +473,14 @@
 
         var annotationsEditingOptions = $('<div class="overlayEditingTabs">'
                                   +   '    <ul>'
-                                  +   '        <li><a href="#ResourceList">Add Resource</a></li>'
-                                  +   '        <li><a href="#CustomAnnotation">Add Custom Annotation</a></li>'
-                                  +   '        <li><a href="#OtherUsers">Choose Annotations of other Users</a></li>'
+                                  +   '        <li><a href="#ResourceList">'+ labels['ResourceChoose'] +'</a></li>'
+                                  +   '        <li><a href="#CustomAnnotation">'+ labels['ResourceAddCustomAnnotation'] +'</a></li>'
+                                  +   '        <li><a href="#OtherUsers">'+ labels['ResourceChooseAnnotationsOfOtherUsers'] +'</a></li>'
                                   +   '    </ul>'
                                   +   '    <div id="ResourceList"></div>'
                                   +   '    <div id="CustomAnnotation"></div>'
                                   +   '    <div id="OtherUsers">'
-                                  +   '        <div class="message active">Drag Annotations from the User Timelines to your Annotation Timeline</div>'
+                                  +   '        <div class="message active">'+ labels['MessageDragAnnotationsIntoTimeline'] +'</div>'
                                   +   '        <div class="timelineList" data-zoom-level="1"></div>'
                                   +   '    </div>'
                                   +   '</div>')
@@ -503,7 +504,7 @@
                 + '                  <div class="resourceOverlay">'
                 + '                      <div class="resourceIcon"></div>'
                 + '                  </div>'
-                + '                  <div class="resourceTitle">Custom Text/HTML</div>'
+                + '                  <div class="resourceTitle">'+ labels['ResourceCustomTextHTML'] +'</div>'
                 + '              </div>');
 
         textElement.draggable({
@@ -605,7 +606,7 @@
                         if (ui.helper.attr('data-type') == 'text') {
 
                             newAnnotation = FrameTrail.module('HypervideoModel').newAnnotation({
-                                "name":         "Custom Text/HTML",
+                                "name":         labels['ResourceCustomTextHTML'],
                                 "type":         ui.helper.attr('data-type'),
                                 "start":        startTime,
                                 "end":          endTime,
@@ -911,7 +912,7 @@
             var exportFileName = movieTitle +'_' + aspectLabel;
             exportFileName = exportFileName.replace(/[\s:]/g, '-').replace(/[|&;:$%@<>()+,]/g, '').replace(/__/g, '_').replace(/--/g, '-');
             var exportData = getAnnotationDataAsCSV(collectedAnnotationsPerAspectData[i].annotations);
-            var exportButtonString = '<a class="exportTimelineDataButton" title="Export Annotation Data as CSV File" download="'+ exportFileName +'.csv" href="'+ exportData +'">Export Data</a>';
+            var exportButtonString = '<a class="exportTimelineDataButton" title="'+ labels['MessageAnnotationExportAsCSV'] +'" download="'+ exportFileName +'.csv" href="'+ exportData +'">'+ labels['GenericExportData'] +'</a>';
 
             var userTimelineWrapper = $(    '<div class="userTimelineWrapper">'
                                         +   '    <div class="userLabel" style="color: '+ aspectColor +'">'
@@ -1039,7 +1040,7 @@
         var csvString = 'StartTime\tEndTime\tValue\n';
 
         for (var i = 0; i < annotationData.length; i++) {
-            if (annotationData[i].data.source.url.target.selector["advene:end"]) {
+            if (annotationData[i].data.source.url.target && annotationData[i].data.source.url.target.selector["advene:end"]) {
                 var startTime = annotationData[i].data.source.url.target.selector["advene:begin"],
                     endTime = annotationData[i].data.source.url.target.selector["advene:end"];
                 csvString += startTime +'\t' + endTime +'\t'+ annotationData[i].data.name +'\n';

@@ -12,6 +12,7 @@
 
  FrameTrail.defineModule('HypervideoModel', function(FrameTrail){
 
+ 	var labels = FrameTrail.module('Localization').labels;
 
 	var videoType           	= 'native',
 		duration                = 0,
@@ -145,7 +146,7 @@
 		$(window).on('beforeunload', function(e) {
 			if ( FrameTrail.getState('unsavedChanges') ) {
 				// This message is not actually shown to the user in most cases, but the browser needs a return value
-				var message = "You have not saved your changes. Are you sure you want to leave the page?";
+				var message = labels['MessageUnsavedChanges'];
 				return message;
 			}
 		});
@@ -928,7 +929,7 @@
 
 			function(){
 
-				FrameTrail.module('InterfaceModal').showStatusMessage('Saving...');
+				FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateSaving']);
 
 				if ( unsavedSettings ) {
 
@@ -985,13 +986,13 @@
 
 				var result = callbackReturns[i];
 				if (result.failed) {
-					FrameTrail.module('InterfaceModal').showErrorMessage('Error: Could not save data ('+ result.error +')');
+					FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] +' ('+ result.error +')');
 					return;
 				}
 
 			}
 
-			FrameTrail.module('InterfaceModal').showSuccessMessage('Changes have been saved.');
+			FrameTrail.module('InterfaceModal').showSuccessMessage(labels['MessageSaveSuccess']);
 			FrameTrail.module('InterfaceModal').hideMessage(2000);
 
 			unsavedSettings     = false;
@@ -1033,9 +1034,9 @@
 
 		if (FrameTrail.getState('unsavedChanges')){
 
-				var confirmDialog = $('<div class="confirmSaveChanges" title="Save changes?">'
-									+ '    <div class="message active">Your changes in the current video will be lost if you don\'t save them.</div>'
-									+ '    <p>Do you want to save your changes?</p>'
+				var confirmDialog = $('<div class="confirmSaveChanges" title="'+ labels['MessageSaveChangesQuestionShort'] +'">'
+									+ '    <div class="message active">'+ labels['MessageSaveChanges'] +'</div>'
+									+ '    <p>'+ labels['MessageSaveChangesQuestion'] +'</p>'
 									+ '</div>');
 
 				confirmDialog.dialog({
@@ -1140,7 +1141,7 @@
 	 */
 	function updateHypervideo(newHypervideoID, restartEditMode, update) {
 
-		FrameTrail.module('InterfaceModal').showStatusMessage('Loading ...');
+		FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateLoading']);
 
 		if ( FrameTrail.module('HypervideoController') ) {
 			FrameTrail.module('HypervideoController').pause();
@@ -1250,28 +1251,28 @@
 		var settingsEditingOptions = $('<div class="settingsEditingTabs">'
 									+  '    <ul>'
 									+  '        <li>'
-									+  '            <a href="#ChangeSettings">Hypervideo Settings</a>'
+									+  '            <a href="#ChangeSettings">'+ labels['SettingsHypervideoSettings'] +'</a>'
 									+  '        </li>'
 									+  '        <li class="ui-tabs-right">'
-									+  '            <a href="#Configuration">Configuration Options</a>'
+									+  '            <a href="#Configuration">'+ labels['SettingsConfigurationOptions'] +'</a>'
 									+  '        </li>'
 									+  '        <li class="ui-tabs-right">'
-									+  '            <a href="#TagDefinitions">Manage Tags</a>'
+									+  '            <a href="#TagDefinitions">'+ labels['SettingsManageTags'] +'</a>'
 									+  '        </li>'
 									+  '        <li class="ui-tabs-right">'
-									+  '            <a href="#ChangeGlobalCSS">Global CSS</a>'
+									+  '            <a href="#ChangeGlobalCSS">'+ labels['SettingsGlobalCSS'] +'</a>'
 									+  '        </li>'
 									+  '        <li class="ui-tabs-right">'
-									+  '            <a href="#ChangeTheme">Color Theme</a>'
+									+  '            <a href="#ChangeTheme">'+ labels['SettingsColorTheme'] +'</a>'
 									+  '        </li>'
-									+  '        <li class="ui-tabs-right tab-label">Administration: </li>'
+									+  '        <li class="ui-tabs-right tab-label">'+ labels['GenericAdministration'] +': </li>'
 									+  '    </ul>'
 									+  '    <div id="ChangeSettings"></div>'
 									+  '    <div id="Configuration"></div>'
 									+  '    <div id="ChangeTheme"></div>'
 									+  '    <div id="ChangeGlobalCSS"></div>'
 									+  '    <div id="TagDefinitions">'
-									+  '        <div class="message active">Coming soon. Right now you can manage tags by manually editing /_data/tagdefinitions.json</div></div>'
+									+  '        <div class="message active">'+ labels['MessageManageTags'] +'</div></div>'
 									+  '    </div>'
 									+  '</div>')
 									.tabs({
@@ -1293,16 +1294,16 @@
 
 
 		var EditHypervideoForm = $('<form method="POST" class="editHypervideoForm">'
-								  +'    <div class="message saveReminder">Please save your settings right now to update the subtitle settings.</div>'
+								  +'    <div class="message saveReminder">'+ labels['MessageSubtitlesSaveReminder'] +'</div>'
 								  +'    <div class="formColumn column1">'
-								  +'        <label for="name">Hypervideo Name</label>'
-								  +'        <input type="text" name="name" placeholder="Name of Hypervideo" value="'+ hypervideoName +'"><br>'
+								  +'        <label for="name">'+ labels['SettingsHypervideoName'] +'</label>'
+								  +'        <input type="text" name="name" placeholder="'+ labels['SettingsHypervideoName'] +'" value="'+ hypervideoName +'"><br>'
 								  +'        <input type="checkbox" name="hidden" id="hypervideo_hidden" value="hidden" '+((hidden.toString() == "true") ? "checked" : "")+'>'
-								  +'        <label for="hypervideo_hidden">Hidden from other users?</label>'
+								  +'        <label for="hypervideo_hidden">'+ labels['SettingsHiddenFromOtherUsers'] +'</label>'
 								  +'    </div>'
 								  +'    <div class="formColumn column1">'
-								  +'        <label for="description">Description</label>'
-								  +'        <textarea name="description" placeholder="Description for Hypervideo">'+ description +'</textarea><br>'
+								  +'        <label for="description">'+ labels['GenericDescription'] +'</label>'
+								  +'        <textarea name="description" placeholder="'+ labels['GenericDescription'] +'">'+ description +'</textarea><br>'
 								  +'    </div>'
 								  +'    <div class="formColumn column2">'
 								  /*
@@ -1317,10 +1318,10 @@
 								  +'        </div>'
 								  */
 								  +'        <div class="subtitlesSettingsWrapper">'
-								  +'            <div>Subtitles (also used for interactive transcripts)</div>'
-								  +'            <button class="subtitlesPlus" type="button">Add +</button>'
+								  +'            <div>'+ labels['GenericSubtitles'] +' ('+ labels['MessageSubtitlesAlsoUsedForInteractiveTranscripts'] +')</div>'
+								  +'            <button class="subtitlesPlus" type="button">'+ labels['GenericAdd'] +' +</button>'
 								  +'            <input type="checkbox" name="config[captionsVisible]" id="captionsVisible" value="true" '+((hypervideo.config.captionsVisible && hypervideo.config.captionsVisible.toString() == 'true') ? "checked" : "")+'>'
-								  +'            <label for="captionsVisible">Show by default (if present)</label>'
+								  +'            <label for="captionsVisible">'+ labels['SettingsSubtitlesShowByDefault'] +'</label>'
 								  +'            <div class="existingSubtitlesContainer"></div>'
 								  +'            <div class="newSubtitlesContainer"></div>'
 								  +'        </div>'
@@ -1338,7 +1339,7 @@
 			for (var i=0; i < hypervideo.subtitles.length; i++) {
 				var currentSubtitles = hypervideo.subtitles[i],
 					existingSubtitlesItem = $('<div class="existingSubtitlesItem"><span>'+ langMapping[hypervideo.subtitles[i].srclang] +'</span></div>'),
-					existingSubtitlesDelete = $('<button class="subtitlesDelete" type="button" data-lang="'+ hypervideo.subtitles[i].srclang +'">Delete</button>');
+					existingSubtitlesDelete = $('<button class="subtitlesDelete" type="button" data-lang="'+ hypervideo.subtitles[i].srclang +'">'+ labels['GenericDelete'] +'</button>');
 
 				existingSubtitlesDelete.click(function(evt) {
 					$(this).parent().remove();
@@ -1420,7 +1421,7 @@
 			}
 
 			languageSelect =  '<select class="subtitlesTmpKeySetter">'
-							+ '    <option value="" disabled selected style="display:none;">Language</option>'
+							+ '    <option value="" disabled selected style="display:none;">'+ labels['GenericLanguage'] +'</option>'
 							+ langOptions
 							+ '</select>';
 
@@ -1514,17 +1515,17 @@
 					if (($(this).find('input[type="file"]:first').attr('name') == 'subtitles[]') || ($(this).find('.subtitlesTmpKeySetter').first().val() == '')
 							|| ($(this).find('input[type="file"]:first').val().length == 0)) {
 						$(this).css({'outline': '1px solid #cd0a0a'});
-						EditHypervideoForm.find('.message.error').addClass('active').html('Subtitles Error: Please fill in all fields.');
+						EditHypervideoForm.find('.message.error').addClass('active').html(labels['ErrorSubtitlesEmptyFields']);
 						err++;
 					} else if ( !(new RegExp('(' + ['.vtt'].join('|').replace(/\./g, '\\.') + ')$')).test($(this).find('input[type="file"]:first').val()) ) {
 						$(this).css({'outline': '1px solid #cd0a0a'});
-						EditHypervideoForm.find('.message.error').addClass('active').html('Subtitles Error: Wrong format. Please add only .vtt files.');
+						EditHypervideoForm.find('.message.error').addClass('active').html(labels['ErrorSubtitlesWrongFormat']);
 						err++;
 					}
 
 					if (EditHypervideoForm.find('.subtitlesItem input[type="file"][name="subtitles['+ $(this).find('.subtitlesTmpKeySetter:first').val() +']"]').length > 1
 							|| (EditHypervideoForm.find('.existingSubtitlesItem .subtitlesDelete[data-lang="'+ $(this).find('.subtitlesTmpKeySetter:first').val() +'"]').length > 0 ) ) {
-						EditHypervideoForm.find('.message.error').addClass('active').html('Subtitles Error: Please make sure you assign languages only once.');
+						EditHypervideoForm.find('.message.error').addClass('active').html(labels['ErrorSubtitlesLanguageDuplicate']);
 						return false;
 					}
 				});
@@ -1614,7 +1615,7 @@
 
 							},
 							function(){
-								EditHypervideoForm.find('.message.error').addClass('active').html('Error while updating hypervideo data');
+								EditHypervideoForm.find('.message.error').addClass('active').html(labels['ErrorUpdatingHypervideoData']);
 							}
 						);
 
@@ -1630,9 +1631,9 @@
 		/* Change Theme UI */
 
 		var ChangeThemeUI = $('<div class="themeContainer">'
-							+ '    <div class="message active">Select Color Theme</div>'
+							+ '    <div class="message active">'+ labels['SettingsSelectColorTheme'] +'</div>'
 							+ '    <div class="themeItem" data-theme="default">'
-							+ '        <div class="themeName">Default</div>'
+							+ '        <div class="themeName">'+ labels['GenericDefault'] +'</div>'
 							+ '        <div class="themeColorContainer">'
 							+ '            <div class="primary-fg-color"></div>'
 							+ '            <div class="secondary-bg-color"></div>'
@@ -1767,7 +1768,7 @@
 					$('head').append('<style class="FrameTrailGlobalCustomCSS" type="text/css">'+ cssString +'</style>');
 					$('head link[href$="custom.css"]').remove();
 				}).fail(function() {
-					console.log('Could not retrieve custom CSS contents (custom.css needs to be on same domain).')
+					console.log(labels['ErrorCouldNotRetrieveCustomCSS']);
 				});
 		}
 
@@ -1778,33 +1779,33 @@
 			configurationUI = $('<div class="configEditingForm">'
 							+   '    <div class="formColumn column1">'
 							+   '        <input type="checkbox" name="userNeedsConfirmation" id="userNeedsConfirmation" value="userNeedsConfirmation" '+((configData.userNeedsConfirmation.toString() == "true") ? "checked" : "")+'>'
-							+   '        <label for="userNeedsConfirmation" data-tooltip-bottom-left="Require newly registered users to be confirmed by an admin">Only confirmed users</label><br>'
-							+   '        <div style="margin-top: 5px; margin-bottom: 8px;" data-tooltip-left="User rule for newly registered users">Default user role: <br>'
+							+   '        <label for="userNeedsConfirmation" data-tooltip-bottom-left="'+ labels['MessageUserRequireConfirmation'] +'">'+ labels['SettingsOnlyConfirmedUsers'] +'</label><br>'
+							+   '        <div style="margin-top: 5px; margin-bottom: 8px;" data-tooltip-left="'+ labels['MessageUserRequireRole'] +'">'+ labels['SettingsDefaultUserRole'] +': <br>'
 							+   '            <input type="radio" name="defaultUserRole" id="user_role_admin" value="admin" '+((configData.defaultUserRole == "admin") ? "checked" : "")+'>'
-							+   '            <label for="user_role_admin">Admin</label>'
+							+   '            <label for="user_role_admin">'+ labels['UserRoleAdmin'] +'</label>'
 							+   '            <input type="radio" name="defaultUserRole" id="user_role_user" value="user" '+((configData.defaultUserRole == "user") ? "checked" : "")+'>'
-							+   '            <label for="user_role_user">User</label><br>'
+							+   '            <label for="user_role_user">'+ labels['UserRoleUser'] +'</label><br>'
 							+   '        </div>'
 							+   '        <input type="checkbox" name="allowCollaboration" id="allowCollaboration" value="allowCollaboration" '+((configData.allowCollaboration.toString() == "true") ? "checked" : "")+'>'
-							+   '        <label for="allowCollaboration" data-tooltip-left="Allow multiple users / clients to edit at the same time">Allow collaboration</label><br>'
+							+   '        <label for="allowCollaboration" data-tooltip-left="'+ labels['MessageUserCollaboration'] +'">'+ labels['SettingsAllowCollaboration'] +'</label><br>'
 							+   '    </div>'
 							+   '    <div class="formColumn column1">'
 							+   '        <input type="checkbox" name="defaultHypervideoHidden" id="defaultHypervideoHidden" value="defaultHypervideoHidden" '+((configData.defaultHypervideoHidden.toString() == "true") ? "checked" : "")+'>'
-							+   '        <label for="defaultHypervideoHidden" data-tooltip-bottom-left="Hide newly added Hypervideos in the overview">Hypervideos hidden by default</label><br>'
-							+   '        <div class="message active" style="width: calc(100% - 50px)">Hidden Hypervideos are still accessible via direct link.</div>'
+							+   '        <label for="defaultHypervideoHidden" data-tooltip-bottom-left="'+ labels['MessageNewHypervideoHidden'] +'">'+ labels['SettingsNewHypervideoHidden'] +'</label><br>'
+							+   '        <div class="message active" style="width: calc(100% - 50px)">'+ labels['MessageHiddenHypervideoStillAccessible'] +'.</div>'
 							+   '        <input type="checkbox" name="allowUploads" id="allowUploads" value="allowUploads" '+((configData.allowUploads.toString() == "true") ? "checked" : "")+'>'
-							+   '        <label for="allowUploads" data-tooltip-left="Allow file uploads (Videos, Resources)">Allow uploads</label><br>'
+							+   '        <label for="allowUploads" data-tooltip-left="'+ labels['MessageAllowFileUploads'] +'">'+ labels['SettingsAllowUploads'] +'</label><br>'
 							+   '    </div>'
 							+   '    <div class="formColumn column1">'
 							+   '        <input type="checkbox" name="captureUserTraces" id="captureUserTraces" value="captureUserTraces" '+((configData.captureUserTraces.toString() == "true") ? "checked" : "")+'>'
-							+   '        <label for="captureUserTraces" data-tooltip-bottom-left="Capture user actions chronologically">Capture User Actions</label><br>'
-							+   '        <div class="message active" style="width: calc(100% - 50px)">User actions are only saved locally in the browser, see <i>localStorage.getItem( "frametrail-traces" )</i></div>'
+							+   '        <label for="captureUserTraces">'+ labels['SettingsCaptureUserActions'] +'</label><br>'
+							+   '        <div class="message active" style="width: calc(100% - 50px)">'+ labels['MessageUserTraces'] +' <i>localStorage.getItem( "frametrail-traces" )</i></div>'
 							+   '    </div>'
 							+   '    <div class="formColumn column1">'
-							+   '        <label for="userTracesStartAction" data-tooltip-bottom-right="Which action should start a captured session?">Start Action</label><br>'
-							+   '        <input type="text" style="margin-top: 0px; margin-bottom: 2px;" name="userTracesStartAction" id="userTracesStartAction" placeholder="Start Action Name" value="'+ configData.userTracesStartAction +'"><br>'
-							+   '        <label for="userTracesEndAction" data-tooltip-right="Which action should end a captured session?">End Action</label><br>'
-							+   '        <input type="text" style="margin-top: 0px; margin-bottom: 2px;" name="userTracesEndAction" id="userTracesEndAction" placeholder="End Action Name" value="'+ configData.userTracesEndAction +'">'
+							+   '        <label for="userTracesStartAction" data-tooltip-bottom-right="'+ labels['MessageUserTracesStartAction'] +'">'+ labels['SettingsUserTracesStartAction'] +'</label><br>'
+							+   '        <input type="text" style="margin-top: 0px; margin-bottom: 2px;" name="userTracesStartAction" id="userTracesStartAction" placeholder="'+ labels['SettingsUserTracesStartAction'] +'" value="'+ configData.userTracesStartAction +'"><br>'
+							+   '        <label for="userTracesEndAction" data-tooltip-right="'+ labels['MessageUserTracesStartAction'] +'">'+ labels['SettingsUserTracesEndAction'] +'</label><br>'
+							+   '        <input type="text" style="margin-top: 0px; margin-bottom: 2px;" name="userTracesEndAction" id="userTracesEndAction" placeholder="'+ labels['SettingsUserTracesEndAction'] +'" value="'+ configData.userTracesEndAction +'">'
 							+   '    </div>'
 							+   '</div>');
 
@@ -1851,7 +1852,7 @@
 	 */
 	function exportIt() {
 
-		alert('The Export-Feature is currently being implemented. When finished, it will give you a handy ZIP file which includes a standalone version of your Hypervideo.');
+		alert('The Export-Feature is currently being implemented');
 
 	}
 

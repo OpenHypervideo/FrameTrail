@@ -1,8 +1,8 @@
 .sidebar {
 	position: absolute;
-	left: -164px;
+	left: -170px;
 	top: 0px;
-	width: 164px;
+	width: 170px;
 	height: 100%;
 	background-color: var(--primary-bg-color);
 	color: #cececb;
@@ -31,7 +31,7 @@
 	display: block;
 	position: relative;
 	width: 100%;
-	padding: 10px 6px 10px 6px;
+	padding: 10px 6px 10px 4px;
 	background-color: transparent;
 	border-top: 1px solid transparent;
 	border-left: none;

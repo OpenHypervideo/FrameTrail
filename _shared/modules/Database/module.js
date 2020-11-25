@@ -17,6 +17,7 @@
 
  FrameTrail.defineModule('Database', function(FrameTrail){
 
+    var labels = FrameTrail.module('Localization').labels;
 
     var hypervideoID = '',
         hypervideos  = {},
@@ -92,7 +93,7 @@
 
         }).fail(function(){
 
-            fail('No config file.');
+            fail(labels['ErrorNoConfigFile']);
 
         });
 
@@ -133,7 +134,7 @@
                         //console.log('resources', resources);
                         ready();
                     }).fail(function(){
-                        fail('No resources index file.');
+                        fail(labels['ErrorNoResourcesIndexFile']);
                     });
 
                 } else if (typeof initOptionsResources[i].data === 'object' && initOptionsResources[i].data !== null) {
@@ -151,7 +152,7 @@
                 ready();
 
             } else {
-                fail('Unknown resource data endpoint');
+                fail(labels['ErrorUnknownResourceDataEndpoint']);
             }
 
             function ready() {
@@ -198,7 +199,7 @@
 
             }).fail(function(){
 
-                fail('No user index file.');
+                fail(labels['ErrorNoUserIndexFile']);
                 success.call(this);
 
             });
@@ -218,7 +219,7 @@
             }).done(function(data){
 
                 if (!data.response) {
-                    console.error('No user index file.');
+                    console.error(labels['ErrorNoUserIndexFile']);
                     success.call(this);
                     return;
                 }
@@ -229,7 +230,7 @@
 
             }).fail(function(){
 
-                console.error('No user index file.');
+                console.error(labels['ErrorNoUserIndexFile']);
                 success.call(this);
 
             });
@@ -311,7 +312,7 @@
                     }
 
                 } else {
-                    fail('Unknown hypervideo data init options.');
+                    fail(labels['ErrorUnknownHypervideoDataInitOptions']);
                 }
 
             }
@@ -319,7 +320,7 @@
 
         } else {
 
-            fail('Unknown hypervideo data init options.');
+            fail(labels['ErrorUnknownHypervideoDataInitOptions']);
 
         }
 
@@ -401,11 +402,11 @@
                                 }
 
                             }).fail(function () {
-                                fail('No annotations index.');
+                                fail(labels['ErrorNoAnnotationsIndexFile']);
                             });
 
                     }).fail(function () {
-                        fail('No hypervideo.json file.');
+                        fail(labels['ErrorNoHypervideoJSONFile']);
                     });
 
                 })(key);
@@ -422,7 +423,7 @@
 
         }).fail(function(){
 
-            fail('No hypervideo index file.');
+            fail(labels['ErrorNoHypervideoIndexFile']);
 
         });
 
@@ -470,7 +471,7 @@
             success();
 
         }).fail(function(){
-            fail('No hypervideo file.');
+            fail(labels['ErrorNoHypervideoJSONFile']);
         });
 
     }
@@ -583,7 +584,7 @@
 
         } catch (e) {
             console.log(e);
-            return fail('Could not load content data');
+            return fail(labels['ErrorCouldNotLoadContentData']);
         }
         //console.log('overlays', overlays);
         //console.log('codeSnippets', codeSnippets);
@@ -618,7 +619,7 @@
             loadAnnotationData_Default(success, fail);
 
         } else {
-            fail('Unknown init option/');
+            fail(labels['ErrorUnknownInitOption']);
         }
 
     };
@@ -728,7 +729,7 @@
 
                 }).fail(function() {
 
-                    fail('Missing annotation file.');
+                    fail(labels['ErrorMissingAnnotationFile']);
 
                 });
 
@@ -840,7 +841,7 @@
 
                 }).fail(function() {
 
-                    fail('Missing annotation file.');
+                    fail(labels['ErrorMissingAnnotationFile']);
 
                 });
 
@@ -1011,8 +1012,8 @@
 
                     }).fail(function() {
 
-                        //fail('Missing subtitle file.');
-                        console.warn('Missing subtitle file. ');
+                        //fail(labels['ErrorMissingSubtitleFile']);
+                        console.warn(labels['ErrorMissingSubtitleFile']);
                         success.call(this);
 
                     });
@@ -1095,7 +1096,7 @@
 
     					if(!hypervideo){
 
-    						return fail('This hypervideo does not exist.');
+    						return fail(labels['ErrorHypervideoDoesNotExist']);
 
     					}
 
@@ -1149,7 +1150,7 @@
 
             if(!hypervideo){
 
-                return fail('This hypervideo does not exist.');
+                return fail(labels['ErrorHypervideoDoesNotExist']);
 
             }
 

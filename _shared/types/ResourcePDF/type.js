@@ -52,7 +52,7 @@ FrameTrail.defineType(
 
                     var downloadButton = '';
                     if (this.resourceData.licenseType != 'Copyright') {
-                        downloadButton = '<a download class="button" href="'+ documentSource +'" data-tooltip-right="Download"><span class="icon-download"></span></a>';
+                        downloadButton = '<a download class="button" href="'+ documentSource +'" data-tooltip-right="'+ this.labels['GenericDownload'] +'"><span class="icon-download"></span></a>';
                     }
 
                     var pdfDocument = $(
@@ -69,7 +69,7 @@ FrameTrail.defineType(
                     +   ' frameborder="0"'
                     +   ' style="border: none;">'
                     +   ' <p>Your browser does not support PDFs.'
-                    +   ' <a href="'+ documentSource +'">Download the PDF</a>.</p>'
+                    +   ' <a href="'+ documentSource +'">'+ this.labels['GenericDownload'] +'</a>.</p>'
                     +   ' </iframe>'
                     +   '</object>');
 

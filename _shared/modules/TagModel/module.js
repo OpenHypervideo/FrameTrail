@@ -14,12 +14,10 @@
 
  FrameTrail.defineModule('TagModel', function(FrameTrail){
 
-
+    var labels = FrameTrail.module('Localization').labels;
+    
     var tags        = {},
         config      = {};
-
-
-
 
     function initTagModel (success, fail) {
 
@@ -52,7 +50,7 @@
             tags = data;
             success();
         }).fail(function(){
-            fail('No tagdefinitions.json');
+            fail(labels['ErrorNoTagdefinitionsFile']);
         });
 
     }

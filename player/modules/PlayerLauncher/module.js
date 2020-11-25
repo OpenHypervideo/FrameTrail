@@ -2,7 +2,6 @@
  * @module Player
  */
 
-
 /**
  * I am the PlayerLauncher.
  * I am the entry point to the application and i am called from __index.html__ with
@@ -28,9 +27,13 @@
 
  FrameTrail.defineModule('PlayerLauncher', function(FrameTrail){
 
+    // Set up Localization
+    FrameTrail.initModule('Localization');
+    var labels = FrameTrail.module('Localization').labels;
+
     // Set up Overlay interface
     FrameTrail.initModule('InterfaceModal');
-    FrameTrail.module('InterfaceModal').showStatusMessage('Loading Data ...');
+    FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateLoadingData']);
     FrameTrail.module('InterfaceModal').showLoadingScreen();
 
     // Set up the various data models
@@ -115,7 +118,7 @@
                         },
 
                         function () {
-                            FrameTrail.module('InterfaceModal').showErrorMessage('Could not init TagModel.');
+                            FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorCouldNotInitTagModel']);
                         }
 
                     );

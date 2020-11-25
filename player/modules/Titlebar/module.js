@@ -15,23 +15,24 @@
 
 FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
+    var labels = FrameTrail.module('Localization').labels;
 
     var domElement = $(   '<div class="titlebar">'
                             + '  <div class="sidebarToggleWidget" class=""><button class="sidebarToggleButton"><span class="icon-menu"></span></button></div>'
                             + '  <div class="titlebarViewMode">'
-                            + '      <button data-viewmode="overview" data-tooltip-bottom-left="Overview"><span class="icon-overview"></span></button>'
+                            + '      <button data-viewmode="overview" data-tooltip-bottom-left="'+ labels['GenericOverview'] +'"><span class="icon-overview"></span></button>'
                             + '      <button data-viewmode="video"><span class="icon-hypervideo"></span></button>'
                             + '  </div>'
                             + '  <div class="titlebarTitle"></div>'
                             + '  <div class="titlebarActionButtonContainer">'
-                            + '      <button class="newHypervideoButton" data-tooltip-bottom-right="New Hypervideo"><span class="icon-hypervideo-add"></span></button>'
-                            + '      <button class="manageResourcesButton resourceManagerIcon" data-tooltip-bottom-right="Manage Resources"><span class="icon-folder-open"></span></button>'
-                            + '      <button class="startEditButton" data-tooltip-bottom-right="Edit"><span class="icon-edit"></span></button>'
-                            + '      <button class="leaveEditModeButton" data-tooltip-bottom-right="Stop Editing"><span class="icon-edit-circled"></span></button>'
-                            + '      <button class="userSettingsButton" data-tooltip-bottom-right="User Management"><span class="icon-user"></span></button>'
-                            + '      <button class="logoutButton" data-tooltip-bottom-right="Logout"><span class="icon-logout"></span></button>'
+                            + '      <button class="newHypervideoButton" data-tooltip-bottom-right="'+ labels['HypervideoNew'] +'"><span class="icon-hypervideo-add"></span></button>'
+                            + '      <button class="manageResourcesButton resourceManagerIcon" data-tooltip-bottom-right="'+ labels['ResourcesManage'] +'"><span class="icon-folder-open"></span></button>'
+                            + '      <button class="startEditButton" data-tooltip-bottom-right="'+ labels['GenericEditStart'] +'"><span class="icon-edit"></span></button>'
+                            + '      <button class="leaveEditModeButton" data-tooltip-bottom-right="'+ labels['GenericEditStart'] +'"><span class="icon-edit-circled"></span></button>'
+                            + '      <button class="userSettingsButton" data-tooltip-bottom-right="'+ labels['UserManagement'] +'"><span class="icon-user"></span></button>'
+                            + '      <button class="logoutButton" data-tooltip-bottom-right="'+ labels['UserLogout'] +'"><span class="icon-logout"></span></button>'
                             + '  </div>'
-                            + '  <div class="sharingWidget"><button class="sharingWidgetButton" data-tooltip-bottom-right="Share"><span class="icon-share"></span></button></div>'
+                            + '  <div class="sharingWidget"><button class="sharingWidgetButton" data-tooltip-bottom-right="'+ labels['GenericShareEmbed'] +'"><span class="icon-share"></span></button></div>'
                             + '</div>'
                           ),
     TitlebarViewMode        = domElement.find('.titlebarViewMode'),
@@ -98,16 +99,14 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             baseUrl = window.location.href.split('?')[0].split('#'),
             url = baseUrl[0] + '#',
             secUrl = '//'+ window.location.host + window.location.pathname,
-            iframeUrl = secUrl + '#',
-            label = 'Site';
+            iframeUrl = secUrl + '#';
 
         if ( FrameTrail.getState('viewMode') == 'video' && RouteNavigation.hypervideoID ) {
             url += 'hypervideo='+ RouteNavigation.hypervideoID;
             iframeUrl += 'hypervideo='+ RouteNavigation.hypervideoID;
-            label = 'Hypervideo'
         }
 
-        var shareDialog = $('<div class="shareDialog" title="Share / Embed '+ label +'">'
+        var shareDialog = $('<div class="shareDialog" title="'+ labels['GenericShareEmbed']+ '">'
                         + '    <div>Link</div>'
                         + '    <input type="text" value="'+ url +'"/>'
                         + '    <div>Embed Code</div>'
@@ -148,33 +147,33 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
     NewHypervideoButton.click(function(evt) {
 
-        var newDialog = $('<div class="newHypervideoDialog" title="New Hypervideo">'
+        var newDialog = $('<div class="newHypervideoDialog" title="'+ labels['HypervideoNew'] +'">'
                         + '    <form class="newHypervideoForm" method="post">'
                         + '        <div class="formColumn column2">'
-                        + '            <label for="name">Hypervideo Name</label>'
-                        + '            <input type="text" name="name" placeholder="Name" value=""><br>'
+                        + '            <label for="name">'+ labels['SettingsHypervideoName'] +'</label>'
+                        + '            <input type="text" name="name" placeholder="'+ labels['SettingsHypervideoName'] +'" value=""><br>'
                         + '            <input type="checkbox" name="hidden" id="hypervideo_hidden" value="hidden" '+((FrameTrail.module('Database').config.defaultHypervideoHidden.toString() == "true") ? "checked" : "")+'>'
-                        + '            <label for="hypervideo_hidden">Hidden from other users?</label>'
+                        + '            <label for="hypervideo_hidden">'+ labels['SettingsHiddenFromOtherUsers'] +'</label>'
                         + '        </div>'
                         + '        <div class="formColumn column2">'
-                        + '            <label for="description">Description</label>'
-                        + '            <textarea name="description" placeholder="Description"></textarea><br>'
+                        + '            <label for="description">'+ labels['SettingsHypervideoDescription'] +'</label>'
+                        + '            <textarea name="description" placeholder="'+ labels['SettingsHypervideoDescription'] +'"></textarea><br>'
                         + '        </div>'
                         + '        <div style="clear: both;"></div>'
                         + '        <hr>'
                         + '        <div class="newHypervideoTabs">'
                         + '            <ul>'
-                        + '                <li><a href="#ChooseVideo">Choose Video</a></li>'
-                        + '                <li><a href="#EmptyVideo">Empty Video</a></li>'
+                        + '                <li><a href="#ChooseVideo">'+ labels['SettingsChooseVideo'] +'</a></li>'
+                        + '                <li><a href="#EmptyVideo">'+ labels['GenericEmptyVideo'] +'</a></li>'
                         + '            </ul>'
                         + '            <div id="ChooseVideo">'
-                        + '                <button type="button" class="uploadNewVideoResource">Upload new video</button>'
+                        + '                <button type="button" class="uploadNewVideoResource">'+ labels['ResourceUploadVideo'] +'</button>'
                         + '                <div class="newHypervideoDialogResources"></div>'
                         + '                <input type="hidden" name="resourcesID">'
                         + '            </div>'
                         + '            <div id="EmptyVideo">'
-                        + '                <div class="message active">Please set a duration in seconds</div>'
-                        + '                <input type="text" name="duration" placeholder="duration">'
+                        + '                <div class="message active">'+ labels['MessageEmptyVideoSetDuration'] +'</div>'
+                        + '                <input type="text" name="duration" placeholder="'+ labels['GenericDuration'] +'">'
                         + '            </div>'
                         + '        </div>'
                         + '        <div class="message error"></div>'
@@ -190,7 +189,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             }
 
             languageSelect =  '<select class="subtitlesTmpKeySetter">'
-                            + '    <option value="" disabled selected style="display:none;">Language</option>'
+                            + '    <option value="" disabled selected style="display:none;">'+ labels['GenericLanguage'] +'</option>'
                             + langOptions
                             + '</select>';
 
@@ -329,16 +328,16 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
                     if (($(this).find('input[type="file"]:first').attr('name') == 'subtitles[]') || ($(this).find('.subtitlesTmpKeySetter').first().val() == '') || ($(this).find('input[type="file"]:first').val().length == 0)) {
                         $(this).css({'outline': '1px solid #cd0a0a'});
-                        newDialog.dialog('widget').find('.message.error').addClass('active').html('Subtitles Error: Please fill in all fields.');
+                        newDialog.dialog('widget').find('.message.error').addClass('active').html(labels['ErrorSubtitlesEmptyFields']);
                         err++;
                     } else if ( !(new RegExp('(' + ['.vtt'].join('|').replace(/\./g, '\\.') + ')$')).test($(this).find('input[type="file"]:first').val()) ) {
                         $(this).css({'outline': '1px solid #cd0a0a'});
-                        newDialog.dialog('widget').find('.message.error').addClass('active').html('Subtitles Error: Wrong format. Please add only .vtt files.');
+                        newDialog.dialog('widget').find('.message.error').addClass('active').html(labels['ErrorSubtitlesWrongFormat']);
                         err++;
                     }
 
                     if (newDialog.find('.subtitlesItem input[type="file"][name="subtitles['+ $(this).find('.subtitlesTmpKeySetter:first').val() +']"]').length > 1 ) {
-                        newDialog.dialog('widget').find('.message.error').addClass('active').html('Subtitles Error: Please make sure you assign languages only once.');
+                        newDialog.dialog('widget').find('.message.error').addClass('active').html(labels['ErrorSubtitlesLanguageDuplicate']);
                         return false;
                     }
 
@@ -401,12 +400,12 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                 $(this).remove();
             },
             buttons: [
-                { text: 'Add Hypervideo',
+                { text: labels['HypervideoAdd'],
                     click: function() {
                         $('.newHypervideoForm').submit();
                     }
                 },
-                { text: 'Cancel',
+                { text: labels['GenericCancel'],
                     click: function() {
                         $( this ).dialog( 'close' );
                     }

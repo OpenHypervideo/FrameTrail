@@ -87,7 +87,7 @@ FrameTrail.defineType(
                         + '                  <div class="resourceOverlay">'
                         + '                      <div class="resourceIcon"><span class="icon-doc-text"></span></div>'
                         + '                  </div>'
-                        + '                  <div class="resourceTitle">Custom Text/HTML</div>'
+                        + '                  <div class="resourceTitle">'+ this.labels['ResourceCustomTextHTML'] +'</div>'
                         + '              </div>');
 
                     var previewButton = $('<div class="resourcePreviewButton"><span class="icon-eye"></span></div>').click(function(evt) {
@@ -162,13 +162,13 @@ FrameTrail.defineType(
                     /* Define HTML Type  Controls */
 
                     var editGroups = {
-                        editGroupFontFamily: '<a class="btn dropdown-toggle" title="Font"><i class="icon-font"></i><b class="caret"></b></a><ul class="dropdown-menu"></ul>',
-                        editGroupFontSize:   '<a class="btn dropdown-toggle" title="Font Size"><i class="icon-text-height"></i>&nbsp;<b class="caret"></b></a><ul class="dropdown-menu small"></ul>',
-                        editGroupFontStyle:  '<a class="btn" data-wysihtml5-command="bold" title="Bold"><i class="icon-bold"></i></a><a class="btn" data-wysihtml5-command="italic" title="Italic"><i class="icon-italic"></i></a><a class="btn" data-wysihtml5-command="underline" title="Underline"><i class="icon-underline"></i></a>',
-                        editGroupFontColor:  '<a class="btn dropdown-toggle right" title="Font Color"><i class="icon-dot-circled">&nbsp;<b class="caret"></b></a><div class="colorpicker-container-text"><div class="colorpicker-container"></div></div>',
-                        editGroupLists:      '<a class="btn" data-wysihtml5-command="insertUnorderedList" title="Bullet list"><i class="icon-list-bullet"></i></a><a class="btn" data-wysihtml5-command="insertOrderedList" title="Number list"><i class="icon-list-numbered"></i></a>',
-                        editGroupIndention:  '<a class="btn" data-wysihtml5-command="outdent" title="Reduce indent"><i class="icon-indent-right"></i></a><a class="btn" data-wysihtml5-command="indent" title="Indent"><i class="icon-indent-left"></i></a>',
-                        editGroupAlignment:  '<a class="btn" data-wysihtml5-command="alignLeftStyle" title="Align Left"><i class="icon-align-left"></i></a><a class="btn" data-wysihtml5-command="alignCenterStyle" title="Center"><i class="icon-align-center"></i></a><a class="btn" data-wysihtml5-command="alignRightStyle" title="Align Right"><i class="icon-align-right"></i></a><a class="btn" data-wysihtml5-command="alignJustifyStyle" title="Justify"><i class="icon-align-justify"></i></a>'
+                        editGroupFontFamily: '<a class="btn dropdown-toggle fontFamily" title="'+ this.labels['SettingsFontFamily'] +'"><i class="icon-font"></i><b class="caret"></b></a><ul class="dropdown-menu"></ul>',
+                        editGroupFontSize:   '<a class="btn dropdown-toggle fontSize" title="'+ this.labels['SettingsFontSize'] +'"><i class="icon-text-height"></i>&nbsp;<b class="caret"></b></a><ul class="dropdown-menu small"></ul>',
+                        editGroupFontStyle:  '<a class="btn" data-wysihtml5-command="bold" title="'+ this.labels['SettingsFontBold'] +'"><i class="icon-bold"></i></a><a class="btn" data-wysihtml5-command="italic" title="'+ this.labels['SettingsFontItalic'] +'"><i class="icon-italic"></i></a><a class="btn" data-wysihtml5-command="underline" title="'+ this.labels['SettingsFontUnderline'] +'"><i class="icon-underline"></i></a>',
+                        editGroupFontColor:  '<a class="btn dropdown-toggle right" title="'+ this.labels['SettingsFontColor'] +'"><i class="icon-dot-circled">&nbsp;<b class="caret"></b></a><div class="colorpicker-container-text"><div class="colorpicker-container"></div></div>',
+                        editGroupLists:      '<a class="btn" data-wysihtml5-command="insertUnorderedList" title="'+ this.labels['SettingsFontUL'] +'"><i class="icon-list-bullet"></i></a><a class="btn" data-wysihtml5-command="insertOrderedList" title="'+ this.labels['SettingsFontOL'] +'"><i class="icon-list-numbered"></i></a>',
+                        editGroupIndention:  '<a class="btn" data-wysihtml5-command="outdent" title="'+ this.labels['SettingsFontIndentMinus'] +'"><i class="icon-indent-right"></i></a><a class="btn" data-wysihtml5-command="indent" title="'+ this.labels['SettingsFontIndentPlus'] +'"><i class="icon-indent-left"></i></a>',
+                        editGroupAlignment:  '<a class="btn" data-wysihtml5-command="alignLeftStyle" title="'+ this.labels['SettingsFontAlignLeft'] +'"><i class="icon-align-left"></i></a><a class="btn" data-wysihtml5-command="alignCenterStyle" title="'+ this.labels['SettingsFontAlignCenter'] +'"><i class="icon-align-center"></i></a><a class="btn" data-wysihtml5-command="alignRightStyle" title="'+ this.labels['SettingsFontAlignRight'] +'"><i class="icon-align-right"></i></a><a class="btn" data-wysihtml5-command="alignJustifyStyle" title="'+ this.labels['SettingsFontAlignJustify'] +'"><i class="icon-align-justify"></i></a>'
                         //editGroupHyperlink:  '<a class="btn hyperlink" title="Hyperlink" data-wysihtml5-command="createLink"><i class="icon-link"></i></a><div class="hyperlink-dropdown input-append" data-wysihtml5-dialog="createLink" style="display: none;"><input data-wysihtml5-dialog-field="href" value="http://" class="text"><a data-wysihtml5-dialog-action="save"></a><a data-wysihtml5-command="removeLink"></a><a data-wysihtml5-dialog-action="cancel"></a></div>'
                     }
                     
@@ -178,8 +178,8 @@ FrameTrail.defineType(
                     /* Add Panels and Text Areas */
                     
                     var textContentEditorContainer = $('<div class="textContentEditorContainer"></div>'),
-                        visualEditorTab = $('<div class="textEditorTab">Visual Editor (beta)</div>'),
-                        htmlEditorTab = $('<div class="textEditorTab">HTML Editor</div>'),
+                        visualEditorTab = $('<div class="textEditorTab">'+ this.labels['SettingsVisualEditor'] +' (beta)</div>'),
+                        htmlEditorTab = $('<div class="textEditorTab">'+ this.labels['SettingsHTMLEditor'] +'</div>'),
                         visualEditorContent = $('<div class="textEditorContent visualEditorContent"></div>'),
                         htmlEditorContent = $('<div class="textEditorContent htmlEditorContent"></div>');
 
@@ -485,7 +485,7 @@ FrameTrail.defineType(
                     
                     function initToolbarBindings() {
 
-                        var fontTarget = textEditorToolbar.find('[title="Font"]').parent().find('.dropdown-menu');
+                        var fontTarget = textEditorToolbar.find('.fontFamily').eq(0).parent().find('.dropdown-menu');
                         
                         for (var i=0; i<activeFonts.length; i++) {
                             var fontName = activeFonts[i];
@@ -493,7 +493,7 @@ FrameTrail.defineType(
                             fontTarget.append(fontBtn);
                         }
 
-                        var fontSizeTarget = textEditorToolbar.find('[title="Font Size"]').parent().find('.dropdown-menu');
+                        var fontSizeTarget = textEditorToolbar.find('.fontSize').eq(0).parent().find('.dropdown-menu');
 
                         for (var s=0; s<activeFontSizes.length; s++) {
                             var fontSize = activeFontSizes[s];

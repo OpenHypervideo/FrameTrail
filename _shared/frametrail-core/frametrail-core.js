@@ -17,6 +17,7 @@
         get instances() { return instances; }
     };
 
+    window.FrameTrail_L10n = {};
 
     function _defineModule(name, definition) {
 
@@ -84,6 +85,7 @@
                 tagdefinitions:     options.tagdefinitions,
                 config:             options.config,
                 users:              options.users,
+                language:           options.language || null,
 
                 loggedIn:           false,
                 username:           '',

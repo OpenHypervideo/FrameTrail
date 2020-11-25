@@ -13,6 +13,8 @@
 
 FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
+    var labels = FrameTrail.module('Localization').labels;
+
     var domElement = $(    '<div class="viewOverview">'
                         +  '    <div class="overviewList"></div>'
                         +  '</div>'),
@@ -116,9 +118,9 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
                         if ( FrameTrail.getState('editMode') && FrameTrail.getState('unsavedChanges') ) {
 
-                            var confirmDialog = $('<div class="confirmSaveChanges" title="Save changes?">'
-                                                + '    <div class="message active">Your changes in the current video will be lost if you don\'t save them.</div>'
-                                                + '    <p>Do you want to save your changes?</p>'
+                            var confirmDialog = $('<div class="confirmSaveChanges" title="'+ labels['MessageSaveChangesQuestionShort'] +'">'
+                                                + '    <div class="message active">'+ labels['MessageSaveChanges'] +'</div>'
+                                                + '    <p>'+ labels['MessageSaveChangesQuestion'] +'</p>'
                                                 + '</div>');
 
                             confirmDialog.dialog({
@@ -362,7 +364,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
             listWidthState = false;
             changeViewSize();
             domElement.addClass('active');
-            FrameTrail.module('Titlebar').title = 'Overview';
+            FrameTrail.module('Titlebar').title = labels['GenericOverview'];
         } else if (viewMode != 'resources') {
             domElement.removeClass('active');
         }

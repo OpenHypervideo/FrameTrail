@@ -177,21 +177,6 @@ FrameTrail.defineModule('SubtitlesController', function(FrameTrail){
     };
 
 
-    /**
-     * I am the central function for deleting an overlay.
-     * I call all other methods necessary to delete it.
-     *
-     * @method deleteOverlay
-     * @param {Overlay} overlay
-     */
-    function deleteOverlay(overlay) {
-
-        overlay.removeFromDOM();
-        FrameTrail.module('HypervideoModel').removeOverlay(overlay);
-
-    };
-
-
     return {
 
         onChange: {
@@ -202,7 +187,6 @@ FrameTrail.defineModule('SubtitlesController', function(FrameTrail){
 
         initController:           initController,
         updateStatesOfSubtitles:  updateStatesOfSubtitles,
-        deleteOverlay:            deleteOverlay
 
     };
 

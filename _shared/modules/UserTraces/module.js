@@ -16,6 +16,7 @@
 
 FrameTrail.defineModule('UserTraces', function(FrameTrail){
 
+	var labels = FrameTrail.module('Localization').labels;
 
 	var sessions = {},
 		currentSessionID = null;
@@ -224,7 +225,7 @@ FrameTrail.defineModule('UserTraces', function(FrameTrail){
 	function startTrace() {
 
 		if (!FrameTrail.module('Database').config.captureUserTraces) {
-			console.warn('Could not start user trace. Capturing user traces not allowed.');
+			console.warn(labels['ErrorCouldNotStartUserTrace']);
 			return;
 		}
 
@@ -254,7 +255,7 @@ FrameTrail.defineModule('UserTraces', function(FrameTrail){
 	function endTrace() {
 
 		if (!currentSessionID) {
-			console.warn('Could not end user trace. Please start a session first.');
+			console.warn(labels['ErrorCouldNotEndUserTrace']);
 			return;
 		}
 
@@ -283,7 +284,7 @@ FrameTrail.defineModule('UserTraces', function(FrameTrail){
 	function addTraceEvent(traceType, attributes) {
 
 		if (!currentSessionID) {
-			//console.warn('Could not add trace event. Please start session first.');
+			//console.warn(labels['ErrorCouldNotAddTraceEvent']);
 			return;
 		}
 

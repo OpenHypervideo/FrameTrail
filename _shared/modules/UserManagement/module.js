@@ -16,6 +16,7 @@
 
 FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
+	var labels = FrameTrail.module('Localization').labels;
 
 	var userID                  = '',
 		userRole				= '',
@@ -28,68 +29,68 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 		userBoxCallback 		= null,
 		userBoxCallbackCancel 	= null,
 
-		domElement 	= $(	'<div class="UserBox" title="User Management">'
+		domElement 	= $(	'<div class="UserBox" title="'+ labels['UserManagement'] +'">'
 						+   '    <div class="userStatusMessage message">'
 						+	'    </div>'
 						+   '    <div class="userTabs">'
 						+	'        <ul class="userTabMenu">'
 						+	'            <li class="userTabSettingsMenu">'
-						+   '                <a href="#UserTabSettings">My Settings</a>'
+						+   '                <a href="#UserTabSettings">'+ labels['UserMySettings'] +'</a>'
 						+   '            </li>'
 						+	'            <li class="userTabRegistrationMenu">'
-						+   '                <a href="#UserTabRegistration">Register Users</a>'
+						+   '                <a href="#UserTabRegistration">'+ labels['UserRegister'] +'</a>'
 						+   '            </li>'
 						+	'            <li class="userTabAdministrationMenu">'
-						+   '                <a href="#UserTabAdministration">User Administration</a>'
+						+   '                <a href="#UserTabAdministration">'+ labels['UserAdministration'] +'</a>'
 						+   '            </li>'
 						+	'        </ul>'
 						+	'        <div id="UserTabSettings">'
 						+   '             <form class="settingsForm" method="post">'
 						+	'             	<p class="settingsFormStatus message"></p>'
-						+   '             	<input type="text" name="name" id="SettingsForm_name" placeholder="Your Name">'
-						+   '             	<input type="text" name="mail" id="SettingsForm_mail" placeholder="Mail"><br>'
+						+   '             	<input type="text" name="name" id="SettingsForm_name" placeholder="'+ labels['UserName'] +'">'
+						+   '             	<input type="text" name="mail" id="SettingsForm_mail" placeholder="'+ labels['UserMail'] +'"><br>'
 						+	'				<div class="userColor"></div>'
-						+   '             	<input type="password" name="passwd" id="SettingsForm_passwd" placeholder="New password"><br>'
+						+   '             	<input type="password" name="passwd" id="SettingsForm_passwd" placeholder="'+ labels['UserNewPassword'] +'"><br>'
 						+   '             	<br>'
 						+   '             	<input type="hidden" name="a" value="userChange">'
 						+	'             	<input type="hidden" name="userID" id="SettingsForm_userID" value="">'
-						+   '             	<input type="submit" value="Change my settings!">'
+						+   '             	<input type="submit" value="'+ labels['UserChangeMySettings'] +'">'
 						+   '             </form>'
 						+	'        </div>'
 						+	'        <div id="UserTabRegistration">'
 						+	'             <form class="registrationForm" method="post">'
 						+	'             	<p class="registrationFormStatus message"></p>'
-						+	'             	<input type="text" name="name" placeholder="Your Name">'
-						+	'             	<input type="text" name="mail" placeholder="Mail"><br>'
-						+	'             	<input type="password" name="passwd" placeholder="Password"><br>'
+						+	'             	<input type="text" name="name" placeholder="'+ labels['UserName'] +'">'
+						+	'             	<input type="text" name="mail" placeholder="'+ labels['UserMail'] +'"><br>'
+						+	'             	<input type="password" name="passwd" placeholder="'+ labels['UserPassword'] +'"><br>'
 						+	'             	<input type="hidden" name="a" value="userRegister">'
-						+	'             	<input type="submit" value="Register new user!">'
+						+	'             	<input type="submit" value="'+ labels['UserRegister'] +'">'
 						+	'             </form>'
 						+	'        </div>'
 						+	'        <div id="UserTabAdministration">'
 						+	'             <p class="administrationFormStatus message"></p>'
-						+   '             <button class="administrationFormRefresh">Refresh</button>'
+						+   '             <button class="administrationFormRefresh">'+ labels['GenericRefresh'] +'</button>'
 						+   '             <form class="administrationForm" method="post">'
                         +   '               <div class="selectUserContainer" class="ui-front">'
 						+   '                   <select name="userID" id="user_change_user">'
-						+  	'                       <option value="" selected disabled>Select a User</option>'
+						+  	'                       <option value="" selected disabled>'+ labels['UserSelect'] +'</option>'
 			            +   '                   </select>'
                         +   '               </div>'
                         +   '               <div class="userDataContainer">'
-						+   '             	    <input type="text" name="name" id="user_change_name" placeholder="Name">'
-						+   '             	    <input type="text" name="mail" id="user_change_mail" placeholder="Mail"><br>'
+						+   '             	    <input type="text" name="name" id="user_change_name" placeholder="'+ labels['UserName'] +'">'
+						+   '             	    <input type="text" name="mail" id="user_change_mail" placeholder="'+ labels['UserMail'] +'"><br>'
 						+	'					<div id="user_change_colorContainer"></div>'
-						+   '             	    <input type="password" name="passwd" id="user_change_passwd" placeholder="Password"><br><br>'
+						+   '             	    <input type="password" name="passwd" id="user_change_passwd" placeholder="'+ labels['UserPassword'] +'"><br><br>'
 						+   '             	    <input type="radio" name="role" id="user_change_role_admin" value="admin">'
-                        +   '                   <label for="user_change_role_admin">Admin</label>'
+                        +   '                   <label for="user_change_role_admin">'+ labels['UserRoleAdmin'] +'</label>'
 						+   '             	    <input type="radio" name="role" id="user_change_role_user" value="user">'
-                        +   '                   <label for="user_change_role_user">User</label><br><br>'
+                        +   '                   <label for="user_change_role_user">'+ labels['UserRoleUser'] +'</label><br><br>'
 						+   '             	    <input type="radio" name="active" id="user_change_active_1" value="1">'
-                        +   '                   <label for="user_change_active_1">Active</label>'
+                        +   '                   <label for="user_change_active_1">'+ labels['UserActive'] +'</label>'
 						+   '             	    <input type="radio" name="active" id="user_change_active_0" value="0">'
-                        +   '                   <label for="user_change_active_0">Inactive</label><br><br>'
+                        +   '                   <label for="user_change_active_0">'+ labels['UserInactive'] +'</label><br><br>'
 						+   '             	    <input type="hidden" name="a" value="userChange">'
-						+   '             	    <input type="submit" value="Change this user\'s settings.">'
+						+   '             	    <input type="submit" value="'+ labels['UserChangeSettings'] +'">'
                         +   '               </div>'
 						+   '             </form>'
 						+	'        </div>'
@@ -99,15 +100,15 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 	loginBox = $(	'<div class="userLoginOverlay ui-blocking-overlay">'
 				+   '    <div class="loginBox ui-overlay-box">'
 				+   '        <div class="boxTitle">'
-				+   '            <span class="loginTabButton loginBoxTabButton">Login</span>'
-				+   '            <span style="color: #888; font-size: 17px;">or</span>'
-				+   '            <span class="createAccountTabButton loginBoxTabButton inactive">Create an Account</span>'
+				+   '            <span class="loginTabButton loginBoxTabButton">'+ labels['UserLogin'] +'</span>'
+				+   '            <span style="color: #888; font-size: 17px;">'+ labels['UserDividerOr'] +'</span>'
+				+   '            <span class="createAccountTabButton loginBoxTabButton inactive">'+ labels['UserCreateAccount'] +'</span>'
 				+   '        </div>'
 				+	'        <div class="userTabLogin">'
 				+	'             <form class="loginForm" method="post">'
 				+	'             	<p class="loginFormStatus message"></p>'
-				+	'             	<input type="text" name="mail" placeholder="Mail"><br>'
-				+	'             	<input type="password" name="passwd" placeholder="Password"><br>'
+				+	'             	<input type="text" name="mail" placeholder="'+ labels['UserMail'] +'"><br>'
+				+	'             	<input type="password" name="passwd" placeholder="'+ labels['UserPassword'] +'"><br>'
 				+	'             	<input type="hidden" name="a" value="userLogin">'
 				+	'             	<input type="submit" value="Login">'
 				+	'             	<button type="button" class="loginBoxCancelButton">Cancel</button>'
@@ -116,12 +117,12 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 				+	'        <div class="userTabRegister">'
 				+	'             <form class="userRegistrationForm" method="post">'
 				+	'             	<p class="userRegistrationFormStatus" class="message"></p>'
-				+	'             	<input type="text" name="name" placeholder="Your Name">'
-				+	'             	<input type="text" name="mail" placeholder="Mail"><br>'
-				+	'             	<input type="password" name="passwd" placeholder="Password"><br>'
+				+	'             	<input type="text" name="name" placeholder="'+ labels['UserName'] +'">'
+				+	'             	<input type="text" name="mail" placeholder="'+ labels['UserMail'] +'"><br>'
+				+	'             	<input type="password" name="passwd" placeholder="'+ labels['UserPassword'] +'"><br>'
 				+	'             	<input type="hidden" name="a" value="userRegister"><br>'
-				+	'             	<input type="submit" value="Create Account">'
-				+	'             	<button type="button" class="loginBoxCancelButton">Cancel</button>'
+				+	'             	<input type="submit" value="'+ labels['UserPassword'] +'">'
+				+	'             	<button type="button" class="loginBoxCancelButton">'+ labels['GenericCancel'] +'</button>'
 				+	'             </form>'
 				+	'        </div>'
                 +   '    </div>'
@@ -143,16 +144,16 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 			switch(response.code){
 				case 0:
-					domElement.find('.registrationFormStatus').removeClass('error').addClass('active success').text('Your are registered, please login now.');
+					domElement.find('.registrationFormStatus').removeClass('error').addClass('active success').text(labels['MessageSuccessfullyRegistered']);
 					break;
 				case 1:
-					domElement.find('.registrationFormStatus').removeClass('success').addClass('active error').text('Please fill out all fields! Is the mail adress valid?');
+					domElement.find('.registrationFormStatus').removeClass('success').addClass('active error').text(labels['ErrorEmptyFieldsMail']);
 					break;
 				case 2:
-					domElement.find('.registrationFormStatus').removeClass('success').addClass('active error').text('Email already exists.');
+					domElement.find('.registrationFormStatus').removeClass('success').addClass('active error').text(labels['ErrorMailExists']);
 					break;
 				case 3:
-					domElement.find('.registrationFormStatus').removeClass('success error').addClass('active').text('You are registered, but you need to get activated by an admin!');
+					domElement.find('.registrationFormStatus').removeClass('success error').addClass('active').text(labels['MessageRegisteredActivationPending']);
 					break;
 
 			}
@@ -171,25 +172,25 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 					FrameTrail.changeState('username', response.response.name);
 					FrameTrail.changeState('userColor', response.response.color);
 
-					domElement.find('.settingsFormStatus').removeClass('error').addClass('active success').text('Your settings were successfully changed.');
+					domElement.find('.settingsFormStatus').removeClass('error').addClass('active success').text(labels['MessageSettingsChanged']);
 					break;
 				case 1:
-					domElement.find('.settingsFormStatus').removeClass('success').addClass('active error').text('Fatal error: User database could not be found.');
+					domElement.find('.settingsFormStatus').removeClass('success').addClass('active error').text(labels['ErrorUserDBNotFound']);
 					break;
 				case 2:
-					domElement.find('.settingsFormStatus').removeClass('success').addClass('active error').text('Fatal Error: You are not you anymore!');
+					domElement.find('.settingsFormStatus').removeClass('success').addClass('active error').text(labels['ErrorUserChanged']);
 					break;
 				case 3:
-					domElement.find('.settingsFormStatus').removeClass('success error').addClass('active').text('Your settings were saved, except your mail adress, because it was not valid!');
+					domElement.find('.settingsFormStatus').removeClass('success error').addClass('active').text(labels['MessageSettingsSavedExceptMail']);
 					break;
 				case 4:
-					domElement.find('.settingsFormStatus').removeClass('success').addClass('active error').text('Fatal error: You are not logged in anymore!');
+					domElement.find('.settingsFormStatus').removeClass('success').addClass('active error').text(labels['ErrorNotLoggedInAnymore']);
 					break;
 				case 5:
-					domElement.find('.settingsFormStatus').removeClass('success').addClass('active error').text('Your account was deactivated. Contact an admin!');
+					domElement.find('.settingsFormStatus').removeClass('success').addClass('active error').text(labels['ErrorAccountDeactivated']);
 					break;
 				case 6:
-					domElement.find('.settingsFormStatus').removeClass('success').addClass('active error').text('Fatal error: your user was not found in the database.');
+					domElement.find('.settingsFormStatus').removeClass('success').addClass('active error').text(labels['ErrorUserNotFound']);
 					break;
 
 			}
@@ -212,13 +213,13 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 			success: function(data) {
 
 				if (!data.response) {
-					console.error('User file is missing.');
+					console.error(labels['ErrorNoUserFile']);
 					return;
 				}
 
 				var allUsers = data.response.user;
 
-				domElement.find("#user_change_user").html('<option value="" selected disabled>Select a User</option>');
+				domElement.find("#user_change_user").html('<option value="" selected disabled>'+ labels['UserSelect'] +'</option>');
 
 				for (var id in allUsers) {
 					domElement.find("#user_change_user").append('<option value="' + id + '">' + allUsers[id].name + '</option>');
@@ -279,25 +280,25 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 			switch(response.code){
 				case 0:
-					domElement.find('.administrationFormStatus').removeClass('error').addClass('active success').text('The settings were successfully changed.');
+					domElement.find('.administrationFormStatus').removeClass('error').addClass('active success').text(labels['MessageSettingsChanged']);
 					break;
 				case 1:
-					domElement.find('.administrationFormStatus').removeClass('success').addClass('active error').text('Fatal error: User database could not be found.');
+					domElement.find('.administrationFormStatus').removeClass('success').addClass('active error').text(labels['ErrorUserDBNotFound']);
 					break;
 				case 2:
-					domElement.find('.administrationFormStatus').removeClass('success').addClass('active error').text('Fatal Error: You are not an admin (or even not you) anymore!');
+					domElement.find('.administrationFormStatus').removeClass('success').addClass('active error').text(labels['ErrorUserNotAdmin']);
 					break;
 				case 3:
-					domElement.find('.administrationFormStatus').removeClass('error success').addClass('active').text('The settings were saved, except the mail adress, because it was not valid!');
+					domElement.find('.administrationFormStatus').removeClass('error success').addClass('active').text(labels['MessageSettingsSavedExceptMail']);
 					break;
 				case 4:
-					domElement.find('.administrationFormStatus').removeClass('success').addClass('active error').text('Fatal error: You are not logged in anymore!');
+					domElement.find('.administrationFormStatus').removeClass('success').addClass('active error').text(labels['ErrorNotLoggedInAnymore']);
 					break;
 				case 5:
-					domElement.find('.administrationFormStatus').removeClass('success').addClass('active error').text('Your account was deactivated. Contact an admin!');
+					domElement.find('.administrationFormStatus').removeClass('success').addClass('active error').text(labels['ErrorAccountDeactivated']);
 					break;
 				case 6:
-					domElement.find('.administrationFormStatus').removeClass('success').addClass('active error').text('Fatal error: your user was not found in the database.');
+					domElement.find('.administrationFormStatus').removeClass('success').addClass('active error').text(labels['ErrorUserNotFound']);
 					break;
 
 			}
@@ -310,7 +311,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 
 	function renderUserColorCollectionForm(selectedColor, targetElement) {
-		var elem = $("<div class='userColorCollectionContainer'><input type='hidden' name='color' value='"+ selectedColor +"'>User Color:<div class='userColorCollection'></div></div>");
+		var elem = $("<div class='userColorCollectionContainer'><input type='hidden' name='color' value='"+ selectedColor +"'>"+ labels['UserColor'] +":<div class='userColorCollection'></div></div>");
 		for (var c in userColorCollection) {
 			elem.find(".userColorCollection").append("<div class='userColorCollectionItem"+((userColorCollection[c] == selectedColor) ? " selected" : "")+"' style='background-color:#"+userColorCollection[c]+"' data-color='"+userColorCollection[c]+"'></div>");
 		}
@@ -415,19 +416,19 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 					break;
 
 				case 1:
-					loginBox.find('.loginFormStatus').removeClass('success').addClass('active error').text('Please fill out all fields');
+					loginBox.find('.loginFormStatus').removeClass('success').addClass('active error').text(labels['ErrorEmptyFields']);
 					break;
 				case 2:
-					loginBox.find('.loginFormStatus').removeClass('success').addClass('active error').text('User not known');
+					loginBox.find('.loginFormStatus').removeClass('success').addClass('active error').text(labels['ErrorUserNotFound']);
 					break;
 				case 3:
-					loginBox.find('.loginFormStatus').removeClass('success').addClass('active error').text('Incorrect Password');
+					loginBox.find('.loginFormStatus').removeClass('success').addClass('active error').text(labels['ErrorWrongPassword']);
 					break;
 				case 4:
-					loginBox.find('.loginFormStatus').removeClass('success').addClass('active error').text('Fatal error: Could not find user database.');
+					loginBox.find('.loginFormStatus').removeClass('success').addClass('active error').text(labels['ErrorUserDBNotFound']);
 					break;
 				case 5:
-					loginBox.find('.loginFormStatus').removeClass('success').addClass('active error').text('User is not active. Please contact an admin!');
+					loginBox.find('.loginFormStatus').removeClass('success').addClass('active error').text(labels['ErrorNotActivated']);
 					break;
 			}
 
@@ -444,24 +445,24 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 			switch(response.code){
 				case 0:
-					loginBox.find('.loginFormStatus').removeClass('error').addClass('active success').text('Your are registered, please login now.');
+					loginBox.find('.loginFormStatus').removeClass('error').addClass('active success').text(labels['MessageSuccessfullyRegistered']);
 					loginBox.find('.loginTabButton').click();
-					FrameTrail.module('InterfaceModal').showStatusMessage('Updating Client Data ...');
+					FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageUpdatingClientData']);
 					FrameTrail.module('Database').loadData(function() {
-						FrameTrail.module('InterfaceModal').showStatusMessage('Client Data updated');
+						FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageClientDataUpdated']);
 						FrameTrail.module('InterfaceModal').hideMessage(800);
 					}, function() {
-						FrameTrail.module('InterfaceModal').showErrorMessage('Error updating client data. Please reload the page.');
+						FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorUpdatingClientData']);
 					});
 					break;
 				case 1:
-					loginBox.find('.userRegistrationFormStatus').removeClass('success').addClass('active error').text('Please fill out all fields! Is the mail adress valid?');
+					loginBox.find('.userRegistrationFormStatus').removeClass('success').addClass('active error').text(labels['ErrorEmptyFieldsMail']);
 					break;
 				case 2:
-					loginBox.find('.userRegistrationFormStatus').removeClass('success').addClass('active error').text('Email already exists.');
+					loginBox.find('.userRegistrationFormStatus').removeClass('success').addClass('active error').text(labels['ErrorMailExists']);
 					break;
 				case 3:
-					loginBox.find('.userRegistrationFormStatus').removeClass('success error').addClass('active').text('You are registered, but you need to get activated by an admin before you can login!');
+					loginBox.find('.userRegistrationFormStatus').removeClass('success error').addClass('active').text(labels['MessageRegisteredActivationPending']);
 					break;
 
 			}
@@ -558,7 +559,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 						break;
 
 					case 2:
-						console.error('User file is missing.');
+						console.error(labels['ErrorNoUserFile']);
 						FrameTrail.changeState({
 							editMode: false,
 							loggedIn: false,
@@ -569,11 +570,11 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 						break;
 
 					case 3:
-						console.error('Logged in but user not active');
+						console.error(labels['ErrorNotActivated']);
 						break;
 
 					case 4:
-						console.error('Logged in but not with required role.');
+						console.error(labels['ErrorWrongRole']);
 						break;
 
 				}
@@ -635,8 +636,8 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 			success: function(data) {
 
 				if (userID != '') {
-					var loggedOutDialog = $('<div class="loggedOutDialog" title="Logged Out">'
-                                      + '    <div class="message success active">You have been logged out.</div>'
+					var loggedOutDialog = $('<div class="loggedOutDialog" title="'+ labels['UserLogout'] +'">'
+                                      + '    <div class="message success active">'+ labels['MessageUserLoggedOut'] +'</div>'
                                       + '</div>');
 
 	                loggedOutDialog.dialog({
