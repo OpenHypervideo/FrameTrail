@@ -304,10 +304,6 @@
                             "hypervideoData": hypervideoData
                         };
 
-
-
-
-
                         ready();
                     }
 
@@ -680,7 +676,7 @@
                                     })(),
                             "src": (function () {
                                         if (data[i].body["frametrail:type"] === 'location') { return null; }
-                                        return (['codesnippet', 'text', 'webpage', 'wikipedia'].indexOf( data[i].body["frametrail:type"] ) >= 0)
+                                        return (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia'].indexOf( data[i].body["frametrail:type"] ) >= 0)
                                                 ? data[i].body.value
                                                 : data[i].body.source
                                     })(),
@@ -799,7 +795,7 @@
                                     })(),
                             "src": (function () {
                                         if (data[i].body["frametrail:type"] === 'location') { return null; }
-                                        return (['codesnippet', 'text', 'webpage', 'wikipedia',].indexOf( data[i].body["frametrail:type"] ) >= 0)
+                                        return (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia',].indexOf( data[i].body["frametrail:type"] ) >= 0)
                                                 ? data[i].body.value
                                                 : data[i].body.source
                                     })(),
@@ -881,7 +877,7 @@
                                     })(),
                         "src": (function () {
                                     if (initAnnotations[i].body["frametrail:type"] === 'location') { return null; }
-                                    return (['codesnippet', 'text', 'webpage', 'wikipedia',].indexOf( initAnnotations[i].body["frametrail:type"] ) >= 0)
+                                    return (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia',].indexOf( initAnnotations[i].body["frametrail:type"] ) >= 0)
                                             ? initAnnotations[i].body.value
                                             : initAnnotations[i].body.source
                                 })(),
@@ -1251,6 +1247,8 @@
                                         'location':  'Dataset',
                                         'wikipedia': 'Text',
                                         'text':      'TextualBody',
+                                        'entity':    'Text',
+                                        'quiz':      'TextualBody',
                                         'vimeo':     'Video',
                                         'webpage':   'Text',
                                         'youtube':   'Video'
@@ -1268,18 +1266,20 @@
                                 'location': 'application/x-frametrail-location',
                                 'wikipedia': 'text/html',
                                 'text': 'text/html',
+                                'entity': 'text/html',
+                                'quiz': 'text/html',
                                 'vimeo': 'text/html',
                                 'webpage': 'text/html',
                                 'youtube': 'text/html'
                             })[overlays[i].type],
             				"source": (function () {
-            				    if (['codesnippet', 'text', 'webpage', 'wikipedia',].indexOf( overlays[i].type ) < 0) {
+            				    if (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia',].indexOf( overlays[i].type ) < 0) {
                                     return overlays[i].src
                                 }
                                 return undefined;
             				})(),
                             "value": (function () {
-            				    if (['codesnippet', 'text', 'webpage', 'wikipedia',].indexOf( overlays[i].type ) >= 0) {
+            				    if (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia',].indexOf( overlays[i].type ) >= 0) {
                                     return overlays[i].src
                                 }
                                 return undefined;
@@ -1598,6 +1598,8 @@
                         'location': 'Dataset',
                         'wikipedia': 'Text',
                         'text': 'TextualBody',
+                        'entity': 'Text',
+                        'quiz': 'TextualBody',
                         'vimeo': 'Video',
                         'webpage': 'Text',
                         'youtube': 'Video'
@@ -1615,18 +1617,20 @@
                         'location': 'application/x-frametrail-location',
                         'wikipedia': 'text/html',
                         'text': 'text/html',
+                        'entity': 'text/html',
+                        'quiz': 'text/html',
                         'vimeo': 'text/html',
                         'webpage': 'text/html',
                         'youtube': 'text/html'
                     })[annotationItem.type],
                     "source": (function () {
-                        if (['codesnippet', 'text', 'webpage', 'wikipedia',].indexOf( annotationItem.type ) < 0) {
+                        if (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia',].indexOf( annotationItem.type ) < 0) {
                             return annotationItem.src
                         }
                         return undefined;
                     })(),
                     "value": (function () {
-                        if (['codesnippet', 'text', 'webpage', 'wikipedia',].indexOf( annotationItem.type ) >= 0) {
+                        if (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia',].indexOf( annotationItem.type ) >= 0) {
                             return annotationItem.src
                         }
                         return undefined;

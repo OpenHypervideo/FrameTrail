@@ -308,7 +308,7 @@ FrameTrail.defineType(
                 */
                 scaleOverlayElement: function() {
 
-                    if (this.data.type == 'wikipedia' || this.data.type == 'webpage' || this.data.type == 'text') {
+                    if (this.data.type == 'wikipedia' || this.data.type == 'webpage' || this.data.type == 'text' || this.data.type == 'quiz') {
 
                         var elementToScale = this.overlayElement.children('.resourceDetail'),
                             wrapperElement = this.overlayElement,

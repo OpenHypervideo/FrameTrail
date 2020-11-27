@@ -161,6 +161,10 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
             overlay = syncedMedia[idx];
 
+            if (!overlay.mediaElement) {
+                continue;
+            }
+
             overlay.mediaElement.currentTime = currentTime - overlay.data.start + overlay.data.startOffset;
 
             if (overlay.mediaElement.readyState === 0 && currentTime > overlay.data.start) {
@@ -417,7 +421,42 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                                 "start":        startTime,
                                 "end":          endTime,
                                 "attributes":   {
-                                    "text":         ""
+                                    "text": ""
+                                },
+                                "position": {
+                                    "top":      overlayPositionTop,
+                                    "left":     overlayPositionLeft,
+                                    "width":    30,
+                                    "height":   30
+                                }
+                            });
+
+                        } else if (ui.helper.attr('data-type') == 'quiz') {
+
+                            newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
+                                "name":         labels['ResourceTypeQuiz'],
+                                "type":         ui.helper.attr('data-type'),
+                                "start":        startTime,
+                                "end":          endTime,
+                                "attributes":   {
+                                    "question": "A Question?",
+                                    "answers": [
+                                        {
+                                            'text': 'An incorrect answer',
+                                            'correct': false
+                                        },
+                                        {
+                                            'text': 'A correct answer',
+                                            'correct': true
+                                        },
+                                        {
+                                            'text': 'Another incorrect answer',
+                                            'correct': false
+                                        }
+                                    ],
+                                    "onCorrectAnswer": {
+                                        "resumePlayback": true
+                                    }
                                 },
                                 "position": {
                                     "top":      overlayPositionTop,
@@ -599,37 +638,46 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         // TODO: Move to separate function
         var textElement = $('<div class="resourceThumb" data-type="text">'
                 + '                  <div class="resourceOverlay">'
-                + '                      <div class="resourceIcon"></div>'
+                + '                      <div class="resourceIcon"><span class="icon-doc-text"></div>'
                 + '                  </div>'
                 + '                  <div class="resourceTitle">'+ labels['ResourceCustomTextHTML'] +'</div>'
                 + '              </div>');
 
-        textElement.draggable({
-            containment:    '.mainContainer',
-            helper:         'clone',
-            revert:         'invalid',
-            revertDuration: 100,
-            appendTo:       'body',
-            distance:       10,
-            zIndex:         1000,
+        var quizElement = $('<div class="resourceThumb" data-type="quiz">'
+                + '                  <div class="resourceOverlay">'
+                + '                      <div class="resourceIcon"><span class="icon-question-circle-o"></div>'
+                + '                  </div>'
+                + '                  <div class="resourceTitle">Quiz</div>'
+                + '              </div>');
 
-            start: function( event, ui ) {
-                ui.helper.css({
-                    top: $(event.currentTarget).offset().top + "px",
-                    left: $(event.currentTarget).offset().left + "px",
-                    width: $(event.currentTarget).width() + "px",
-                    height: $(event.currentTarget).height() + "px"
-                });
-                $(event.currentTarget).addClass('dragPlaceholder');
-            },
+        textElement.add(quizElement).each(function() {
+            $(this).draggable({
+                containment:    '.mainContainer',
+                helper:         'clone',
+                revert:         'invalid',
+                revertDuration: 100,
+                appendTo:       'body',
+                distance:       10,
+                zIndex:         1000,
 
-            stop: function( event, ui ) {
-                $(event.target).removeClass('dragPlaceholder');
-            }
+                start: function( event, ui ) {
+                    ui.helper.css({
+                        top: $(event.currentTarget).offset().top + "px",
+                        left: $(event.currentTarget).offset().left + "px",
+                        width: $(event.currentTarget).width() + "px",
+                        height: $(event.currentTarget).height() + "px"
+                    });
+                    $(event.currentTarget).addClass('dragPlaceholder');
+                },
 
+                stop: function( event, ui ) {
+                    $(event.target).removeClass('dragPlaceholder');
+                }
+
+            });
         });
 
-        overlayEditingOptions.find('#CustomOverlay').append(textElement);
+        overlayEditingOptions.find('#CustomOverlay').append(textElement, quizElement);
 
     };
 

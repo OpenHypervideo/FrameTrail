@@ -1,0 +1,101 @@
+.resourceDetail[data-type="quiz"] {
+	background-color: transparent;
+	padding: 10px;
+	box-sizing: border-box;
+	color: var(--primary-fg-color);
+	display: flex;
+	flex-direction: column;
+}
+
+.resourcePreviewDialog .resourceDetail[data-type="quiz"] {
+	color: var(--primary-bg-color);
+}
+
+.overlayElement .resourceDetail[data-type="quiz"] {
+	padding: 3px 8px 8px 8px;
+	color: #000;
+	background: rgba(255,255,255,.7);
+	font-size: 24px;
+}
+
+.resourceDetail[data-type="quiz"] .resourceDetailQuizQuestion {
+	text-align: center;
+}
+
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer {
+	display: flex;
+	flex-wrap: wrap;
+	flex-direction: row;
+	align-content: normal;
+	height: 100%;
+}
+
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button {
+	font-size: 24px;
+	width: 100%;
+	margin-top: 10px;
+}
+
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.wrong,
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.wrong {
+	background-color: #ddb0b0;
+	color: var(--primary-bg-color);
+}
+
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.correct,
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.correct:hover {
+	background-color: #A7DB66;
+	font-weight: bold;
+	color: var(--primary-bg-color);
+}
+
+.editingOptions .resourceThumb[data-type="quiz"] {
+	float: left;
+    height: 80px;
+    margin: 6px;
+    position: relative;
+    width: 120px;
+}
+
+.resourceThumb[data-type="quiz"] .resourceOverlay {
+	background: transparent;
+}
+
+.resourceThumb[data-type="quiz"] .resourceTitle {
+	display: none;
+}
+
+.editingOptions .resourceThumb[data-type="quiz"] .resourceTitle, body > .resourceThumb[data-type="quiz"]:not(.resourceAnimationDiv) .resourceTitle {
+	display: block;
+}
+
+.contentViewContainer[data-size="small"] .resourceThumb[data-type="text"] .resourceTextPreview {
+	display: none;
+}
+
+/* Edit Text Overlay Properties */
+
+.editPropertiesContainer .propertiesTypeIcon[data-type="quiz"] [class^="icon-"]::before, .editPropertiesContainer .propertiesTypeIcon[data-type="quiz"] [class*=" icon-"]::before {
+	content: "\f29c";
+}
+
+.editPropertiesContainer .quizEditorContainer .formColumn {
+	margin-top: 10px;
+}
+
+.editPropertiesContainer .quizEditorAnswersContainer .answerWrapper {
+	margin-bottom: 4px;
+}
+
+.editPropertiesContainer .quizEditorAnswersContainer input[type="text"] {
+	width: calc(100% - 100px);
+	margin-right: 7px;
+}
+
+.editPropertiesContainer .quizEditorAnswersContainer .slider {
+	background-color: #ddb0b0;
+}
+
+.editPropertiesContainer .quizEditorAnswersContainer input:checked + .slider {
+	background-color: #739600;
+}
