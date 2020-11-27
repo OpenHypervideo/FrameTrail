@@ -123,7 +123,14 @@
             },
 
             destroy: function () {
-
+                var thisInstanceIndex = instances.indexOf(publicInstanceAPI),
+                    thisDOMElement = document.querySelector(state.target);
+                
+                if (thisDOMElement) {
+                    thisDOMElement.parentNode.removeChild(thisDOMElement);
+                }
+                
+                instances.splice(thisInstanceIndex, 1);
             },
 
             play: function() { (FrameTrail.module('HypervideoController')) ? FrameTrail.module('HypervideoController').play() : null },
