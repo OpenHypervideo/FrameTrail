@@ -1,13 +1,13 @@
 .sidebar {
 	position: absolute;
-	left: -170px;
+	left: -54px;
 	top: 0px;
-	width: 170px;
+	width: 54px;
 	height: 100%;
 	background-color: var(--primary-bg-color);
 	color: #cececb;
 	font-weight: 100;
-	z-index: 2;
+	z-index: 4;
 	/*box-shadow: 0 0 2px 1px #000;*/
 	-webkit-transition: all 200ms linear; /* Firefox */
 	-moz-transition: all 200ms linear; /* WebKit */
@@ -30,8 +30,9 @@
 .viewmodeControls button.editMode {
 	display: block;
 	position: relative;
-	width: 100%;
-	padding: 10px 6px 10px 4px;
+	width: auto;
+	max-width: 55px;
+	padding: 0px 6px 0px 4px;
 	background-color: transparent;
 	border-top: 1px solid transparent;
 	border-left: none;
@@ -39,6 +40,27 @@
 	border-bottom: 1px solid transparent;
 	color: var(--primary-bg-color);
 	opacity: .7;
+	white-space: nowrap;
+	overflow: hidden;
+}
+
+.viewmodeControls button.editMode .editModeLabel {
+	display: none;
+	padding: 4px 10px 4px 0;
+	border-radius: 0 20px 20px 0;
+	background: var(--secondary-fg-color);
+	border-top: 1px solid var(--secondary-bg-color);
+	border-bottom: 1px solid var(--secondary-bg-color);
+	border-right: 1px solid var(--secondary-bg-color);
+}
+
+.viewmodeControls button.editMode:hover {
+	max-width: 250px;
+	opacity: 1;
+}
+
+.viewmodeControls button.editMode:hover .editModeLabel {
+	display: inline-block;
 }
 
 .sidebarContainer .viewmodeControls button.editMode  {
@@ -57,15 +79,11 @@
 .sidebarContainer .viewmodeControls button.editMode.unsavedChanges:before {
 	content: "*";
 	position: absolute;
-	top: 6px;
-	right: 10px;
+	top: 0px;
+	left: 42px;
 	color: #FF9900;
 	font-weight: bold;
 	font-size: 20px;
-}
-
-.viewmodeControls button.editMode:hover {
-	opacity: 1;
 }
 
 .viewmodeControls button.editMode.active {
@@ -88,8 +106,9 @@
 
 .viewmodeControls button.editMode [class^="icon-"]::before, .viewmodeControls button.editMode [class*=" icon-"]::before {
 	font-size: 19px;
-	margin-right: 7px;
+	margin: 0 14px 0 10px;
 	width: 26px;
+	padding: 10px 0;
 }
 
 .sidebarContainer {
@@ -105,50 +124,22 @@
 	display: block;
 }
 
-.sidebarContainer .viewmodeInfo {
-	padding: 10px;
-	overflow: auto;
-}
-
-.sidebarContainer .viewmodeInfo a {
-	color: var(--primary-fg-color);
-}
-
-.sidebar.editActive .sidebarContainer .viewmodeInfo a {
-	color: var(--primary-bg-color);
-}
-
-.sidebarContainer .descriptionLabel {
-	margin-top: 10px;
-	color: var(--secondary-fg-color);
-}
-
-.sidebar.editActive .sidebarContainer .descriptionLabel {
-	color: var(--secondary-bg-color);
-}
-
-.sidebarContainer .descriptionDates {
-	display: none;
-}
-
-.sidebar.editActive .sidebarContainer .descriptionDates {
-	/*display: block;*/
-}
-
 .sidebarContainer .viewmodeControls {
 	position: relative;
 	width: 100%;
 }
 
 .sidebarContainer .viewmodeControls .viewModeActionButtonContainer {
-	padding: 10px;
-	/*border-bottom: 1px solid #a8a8a8;*/
+	padding: 0 0px 8px 0px;
+	border-bottom: 1px solid #bbbbbb;
+	border-top: 1px solid #bbbbbb;
+	margin: 0 7px 8px 7px;
 }
 
 .sidebarContainer .viewmodeControls .viewModeActionButtonContainer button, .hypervideoDeleteButton {
 	float: left;
 	height: 40px;
-    margin-right: 8px;
+    margin-top: 7px;
     width: 40px;
 	border: 2px solid #F8F8F8;
 	border-radius: 50%;
@@ -181,8 +172,8 @@
 
 .sidebarContainer .hypervideoDeleteButton {
 	position: absolute;
-	bottom: 10px;
-	left: 10px;
+	bottom: 8px;
+	left: 7px;
 }
 
 .sidebarContainer .hypervideoDeleteButton .icon-trash::before {

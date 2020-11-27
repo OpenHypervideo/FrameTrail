@@ -449,6 +449,12 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             }
         });
 
+        var editMode = FrameTrail.getState('editMode');
+        if ((editMode == 'overlays' || editMode == 'annotations' || editMode == 'codesnippets') 
+            && EditPropertiesContainer.find('.ui-tabs').length != 0) {
+            EditPropertiesContainer.find('.ui-tabs').tabs('refresh');
+        }
+
     };
 
 

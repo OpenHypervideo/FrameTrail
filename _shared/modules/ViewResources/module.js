@@ -20,7 +20,7 @@ FrameTrail.defineModule('ViewResources', function(FrameTrail){
                         +  '    <div class="resourcesControls">'
                         +  '        <button class="resourceUpload"><span class="icon-doc-new"></span>'+ labels['GenericAddNew'] +'</button>'
                         +  '        <button class="resourceDelete"><span class="icon-trash"></span>'+ labels['GenericDelete'] +'</button>'
-                        +  '        <button class="resourceDeleteConfirm">'+ labels['GenericConfirm'] +' '+ labels['GenericDelete'] +'</button>'
+                        +  '        <button class="resourceDeleteConfirm">'+ labels['GenericConfirmDelete'] +'</button>'
                         +  '        <div class="message"></div>'
                         +  '        <div style="clear: both;"></div>'
                         +  '    </div>'

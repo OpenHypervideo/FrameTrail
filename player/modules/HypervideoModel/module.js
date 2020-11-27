@@ -380,7 +380,7 @@
 			newData;
 
 			// TODO: clean code
-			if ( protoData.type == 'text' ) {
+			if ( protoData.type == 'text' || protoData.type == 'quiz' ) {
 				newData = {
 					"name":         protoData.name,
 					"creator":      FrameTrail.getState('username'),
@@ -396,6 +396,9 @@
 						"left":     protoData.position.left,
 						"width":    30,
 						"height":   30
+					},
+					"events": {
+						"onStart": "FrameTrail.module('HypervideoController').pause();"
 					}
 				}
 			} else {
@@ -1319,7 +1322,7 @@
 								  */
 								  +'        <div class="subtitlesSettingsWrapper">'
 								  +'            <div>'+ labels['GenericSubtitles'] +' ('+ labels['MessageSubtitlesAlsoUsedForInteractiveTranscripts'] +')</div>'
-								  +'            <button class="subtitlesPlus" type="button">'+ labels['GenericAdd'] +' +</button>'
+								  +'            <button class="subtitlesPlus" type="button">'+ labels['GenericAdd'] +' <span class="icon-plus"></span></button>'
 								  +'            <input type="checkbox" name="config[captionsVisible]" id="captionsVisible" value="true" '+((hypervideo.config.captionsVisible && hypervideo.config.captionsVisible.toString() == 'true') ? "checked" : "")+'>'
 								  +'            <label for="captionsVisible">'+ labels['SettingsSubtitlesShowByDefault'] +'</label>'
 								  +'            <div class="existingSubtitlesContainer"></div>'
@@ -1339,7 +1342,7 @@
 			for (var i=0; i < hypervideo.subtitles.length; i++) {
 				var currentSubtitles = hypervideo.subtitles[i],
 					existingSubtitlesItem = $('<div class="existingSubtitlesItem"><span>'+ langMapping[hypervideo.subtitles[i].srclang] +'</span></div>'),
-					existingSubtitlesDelete = $('<button class="subtitlesDelete" type="button" data-lang="'+ hypervideo.subtitles[i].srclang +'">'+ labels['GenericDelete'] +'</button>');
+					existingSubtitlesDelete = $('<button class="subtitlesDelete" type="button" data-lang="'+ hypervideo.subtitles[i].srclang +'"><span class="icon-cancel"></span></button>');
 
 				existingSubtitlesDelete.click(function(evt) {
 					$(this).parent().remove();

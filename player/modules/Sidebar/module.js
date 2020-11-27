@@ -25,9 +25,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                             + '                    <div style="clear: both;"></div>'
                             + '                </div>'
                             + '            </div>'
-                            + '            <div class="viewmodeInfo">'
-                            + '                <span class="siteDescription"><!--TODO--></span>'
-                            + '            </div>'
                             + '        </div>'
                             + '        <div data-viewmode="video">'
                             + '            <div class="viewmodeControls">'
@@ -37,24 +34,14 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                             + '                    <button class="exportButton" data-tooltip-bottom-left="'+ labels['GenericExportHypervideo'] +'"><span class="icon-download"></span></button>'
                             + '                    <div style="clear: both;"></div>'
                             + '                </div>'
-                            + '                <button class="editMode" data-editmode="preview"><span class="icon-eye"></span>'+ labels['SidebarPreview'] +'</button>'
-                            + '                <button class="editMode" data-editmode="settings"><span class="icon-cog"></span>'+ labels['SidebarSettings'] +'</button>'
-                            + '                <button class="editMode" data-editmode="layout"><span class="icon-news"></span>'+ labels['SidebarLayout'] +'</button>'
-                            + '                <button class="editMode" data-editmode="overlays"><span class="icon-overlays"></span>'+ labels['SidebarOverlays'] +'</button>'
-                            + '                <button class="editMode" data-editmode="codesnippets"><span class="icon-code"></span>'+ labels['SidebarCustomCode'] +'</button>'
-                            + '                <button class="editMode" data-editmode="annotations"><span class="icon-annotations"></span>'+ labels['SidebarMyAnnotations'] +'</button>'
-                            + '            </div>'
-                            + '            <div class="viewmodeInfo">'
-                            + '                <span class="videoDescription"></span>'
+                            + '                <button class="editMode" data-editmode="preview"><span class="icon-eye"></span><span class="editModeLabel">'+ labels['SidebarPreview'] +'</span></button>'
+                            + '                <button class="editMode" data-editmode="settings"><span class="icon-cog"></span><span class="editModeLabel">'+ labels['SidebarSettings'] +'</span></button>'
+                            + '                <button class="editMode" data-editmode="layout"><span class="icon-news"></span><span class="editModeLabel">'+ labels['SidebarLayout'] +'</span></button>'
+                            + '                <button class="editMode" data-editmode="overlays"><span class="icon-overlays"></span><span class="editModeLabel">'+ labels['SidebarOverlays'] +'</span></button>'
+                            + '                <button class="editMode" data-editmode="codesnippets"><span class="icon-code"></span><span class="editModeLabel">'+ labels['SidebarCustomCode'] +'</span></button>'
+                            + '                <button class="editMode" data-editmode="annotations"><span class="icon-annotations"></span><span class="editModeLabel">'+ labels['SidebarMyAnnotations'] +'</span></button>'
                             + '            </div>'
                             + '            <button class="hypervideoDeleteButton" data-tooltip-top-left="'+ labels['GenericDeleteHypervideo'] +'"><span class="icon-trash"></span></button>'
-                            /*
-                            + '            <div class="selectAnnotationContainer" class="ui-front">'
-                            + '                <div class="descriptionLabel">Annotations</div>'
-                            + '                <select class="selectAnnotation" name=""></select>'
-                            + '                <div class="selectAnnotationSingle"></div>'
-                            + '            </div>'
-                            */
                             + '        </div>'
                             + '    </div>'
                             + '    </div>'
@@ -64,15 +51,13 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         sidebarContainer       = domElement.find('.sidebarContainer'),
         overviewContainer      = sidebarContainer.children('[data-viewmode="overview"]'),
         videoContainer         = sidebarContainer.children('[data-viewmode="video"]'),
-        videoContainerInfo     = videoContainer.children('.viewmodeInfo'),
         videoContainerControls = videoContainer.children('.viewmodeControls'),
         resourcesContainer     = sidebarContainer.children('[data-viewmode="resources"]'),
 
         SaveButton             = domElement.find('.saveButton'),
         ForkButton             = domElement.find('.forkButton'),
         ExportButton           = domElement.find('.exportButton'),
-        DeleteButton           = domElement.find('.hypervideoDeleteButton'),
-        VideoDescription       = sidebarContainer.find('.videoDescription');
+        DeleteButton           = domElement.find('.hypervideoDeleteButton');
 
 
     SaveButton.click(function(){
@@ -307,10 +292,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
      */
     function changeViewSize(arrayWidthAndHeight) {
 
-        var controlsHeight          = domElement.find('.sidebarContainer > div.active > .viewmodeControls').height(),
-            viewModeInfoHeight      = domElement.height() - FrameTrail.module('Titlebar').height - controlsHeight;
-
-        domElement.find('.sidebarContainer > div.active > .viewmodeInfo').css('max-height', viewModeInfoHeight - 80);
+        
 
     };
 
@@ -489,16 +471,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
          * @type Number
          * @readOnly
          */
-        get width() { return domElement.width() },
-
-
-        /**
-         * I am the text which should be displayed in the "Video" tab of the sidebar.
-         * @attribute VideoDescription
-         * @type String
-         * @writeOnly
-         */
-        set VideoDescription(aString)     { return VideoDescription.html(aString) }
+        get width() { return domElement.width() }
 
     };
 

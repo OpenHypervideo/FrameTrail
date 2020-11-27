@@ -648,7 +648,7 @@ body.userinactive .mainContainer:not(.editActive) .playerContainer .controls, bo
 }
 
 .editActive[data-edit-mode="overlays"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="codesnippets"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="annotations"] .hypervideoContainer .infoAreaRight {
-    flex: 0 0 500px;
+    flex: 0 0 600px;
 }
 
 .hypervideoContainer .infoAreaRight .editPropertiesContainer {
@@ -680,7 +680,7 @@ body.userinactive .mainContainer:not(.editActive) .playerContainer .controls, bo
     bottom: 14px;
     left: 20px;
     position: absolute;
-    width: 450px;
+    width: 550px;
 }
 
 .editPropertiesContainer > [class^="icon-"]::before, .editPropertiesContainer > [class*=" icon-"]::before {

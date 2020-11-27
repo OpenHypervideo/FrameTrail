@@ -159,34 +159,32 @@ FrameTrail.defineType(
 
                     /* Add Video Type  Controls */
 
-                    var syncedLabel = $('<div>'+ this.labels['SettingsSynchronization'] +'</div>'),
+                    var checkboxRow = $('<div class="checkboxRow"></div>');
 
-                        syncedRadio = $('<div class="syncedRadio">'
-                                      + '    <input type="radio" id="SyncedTrue" name="radio" value="on" '
-                                      +      (overlay.data.attributes.autoPlay ? 'checked="checked"' : '')
-                                      + '    ><label for="SyncedTrue">'+ this.labels['SettingsSynchronizationOn'] +'</label>'
-                                      + '    <input type="radio" id="SyncedFalse" name="radio" value="off" '
-                                      +      (!overlay.data.attributes.autoPlay ? 'checked="checked"' : '')
-                                      + '    ><label for="SyncedFalse">'+ this.labels['SettingsSynchronizationOff'] +'</label>'
-                                      + '</div>').buttonset();
+                    var syncedLabel = $('<label for="syncedCheckbox">'+ this.labels['SettingsSynchronization'] +'</label>'),
+                        checkedString = (overlay.data.attributes.autoPlay) ? 'checked="checked"' : '',
+                        syncedCheckbox = $('<label class="switch">'
+                                        +  '    <input id="syncedCheckbox" class="syncedCheckbox" type="checkbox" autocomplete="off" '+ checkedString +'>'
+                                        +  '    <span class="slider round"></span>'
+                                        +  '</label>');
 
-                        syncedRadio.find('input[name="radio"]').on('change', function () {
+                    syncedCheckbox.find('input[type="checkbox"]').on('change', function () {
+                        if (this.checked) {
+                            overlay.data.attributes.autoPlay = true;
+                            overlay.syncedMedia = true;
+                            overlay.setSyncedMedia(true);
+                        } else {
+                            overlay.data.attributes.autoPlay = false;
+                            overlay.syncedMedia = false;
+                            overlay.setSyncedMedia(false);
+                        }
 
-                                        if (this.value == 'on') {
-                                            overlay.data.attributes.autoPlay = true;
-                                            overlay.syncedMedia = true;
-                                            overlay.setSyncedMedia(true);
-                                        } else {
-                                            overlay.data.attributes.autoPlay = false;
-                                            overlay.syncedMedia = false;
-                                            overlay.setSyncedMedia(false);
-                                        }
+                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                    });
 
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                    checkboxRow.append(syncedCheckbox, syncedLabel);
 
-                                    });
-
-                    basicControls.controlsContainer.find('#OverlayOptions').append(syncedLabel, syncedRadio);
+                    basicControls.controlsContainer.find('#OverlayOptions').append(checkboxRow);
 
                     return basicControls;
 

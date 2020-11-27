@@ -17,8 +17,8 @@
 
 
 .mainContainer.sidebarOpen {
-	width: calc(100% - 170px);
-	margin-left: 170px;
+	width: calc(100% - 54px);
+	margin-left: 54px;
 }
 
 .frametrail-body.inFullscreen .mainContainer:not(.editActive) {
