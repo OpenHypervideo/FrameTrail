@@ -316,7 +316,7 @@ FrameTrail.defineType(
                     var rightColumn = $('<div class="formColumn column2"></div>');
 
                     rightColumn.append('<label>'+ this.labels['SettingsActionsIfRight'] +'</label>');
-
+                    
                     var settingsPlayCheckedString = (overlayOrAnnotation.data.attributes.onCorrectAnswer.resumePlayback) ? 'checked="checked"' : '',
                         settingsPlayCheckbox = $('<div class="checkboxRow">'
                                                 +'    <label class="switch">'
@@ -325,9 +325,13 @@ FrameTrail.defineType(
                                                 +'    </label>'
                                                 +'    <label for="settingsPlayCheckbox">'+ this.labels['GenericContinuePlayback'] +'</label>'
                                                 +'</div>');
-                    settingsPlayCheckbox.on('change', function() {
+                    settingsPlayCheckbox.find('input.settingsPlayCheckbox').on('change', function() {
                         overlayOrAnnotation.data.attributes.onCorrectAnswer.resumePlayback = this.checked;
-
+                        if (overlayOrAnnotation.overlayElement) { 
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        } else {
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                        }
                     });
                     /*
                     var settingsHideCheckedString = (overlayOrAnnotation.data.attributes.onCorrectAnswer.hideQuiz) ? 'checked="checked"' : '',
