@@ -439,18 +439,18 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                                 "start":        startTime,
                                 "end":          endTime,
                                 "attributes":   {
-                                    "question": "A Question?",
+                                    "question": labels['SettingsQuizDefaultQuestion'],
                                     "answers": [
                                         {
-                                            'text': 'An incorrect answer',
+                                            'text': labels['SettingsQuizDefaultAnswer1'],
                                             'correct': false
                                         },
                                         {
-                                            'text': 'A correct answer',
+                                            'text': labels['SettingsQuizDefaultAnswer2'],
                                             'correct': true
                                         },
                                         {
-                                            'text': 'Another incorrect answer',
+                                            'text': labels['SettingsQuizDefaultAnswer3'],
                                             'correct': false
                                         }
                                     ],
@@ -615,14 +615,14 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         var overlayEditingOptions = $('<div class="overlayEditingTabs">'
                                   +   '    <ul>'
                                   +   '        <li>'
-                                  +   '            <a href="#ResourceList">'+ labels['ResourceChoose'] +'</a>'
-                                  +   '        </li>'
-                                  +   '        <li>'
                                   +   '            <a href="#CustomOverlay">'+ labels['ResourceAddCustomOverlay'] +'</a>'
                                   +   '        </li>'
+                                  +   '        <li>'
+                                  +   '            <a href="#ResourceList">'+ labels['ResourceChoose'] +'</a>'
+                                  +   '        </li>'
                                   +   '    </ul>'
-                                  +   '    <div id="ResourceList"></div>'
                                   +   '    <div id="CustomOverlay"></div>'
+                                  +   '    <div id="ResourceList"></div>'
                                   +   '</div>')
                                   .tabs({
                                       heightStyle: "fill"
