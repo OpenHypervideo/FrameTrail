@@ -57,23 +57,92 @@ FrameTrail.defineType(
 
                     for (var i = 0; i < this.resourceData.attributes.answers.length; i++) {
                         var answerElement = $('<button type="button">'+ this.resourceData.attributes.answers[i].text +'</button>');
-                        answerElement.data('correct', this.resourceData.attributes.answers[i].correct).click(function() {
-                            if ($(this).data('correct')) {
-                                $(this).removeClass('wrong').addClass('correct');
-                                $(this).parents('.resourceDetail').removeClass('wrong').addClass('correct');
-                                if (self.resourceData.attributes.onCorrectAnswer.resumePlayback) {
-                                    setTimeout(function() {
-                                        FrameTrail.module('HypervideoController').play();
-                                    }, 2000);
-                                }
-                            } else {
-                                $(this).removeClass('correct').addClass('wrong');
-                                $(this).parents('.resourceDetail').removeClass('correct').addClass('wrong');
-                            }
-                        });
+                        answerElement.data('correct', this.resourceData.attributes.answers[i].correct);
+
                         resourceDetail.find('.resourceQuizAnswersContainer').append(answerElement);
                     }
 
+                    resourceDetail.find('.resourceQuizAnswersContainer').on('click', 'button', function() {
+                        if ($(this).data('correct')) {
+                            $(this).removeClass('wrong').addClass('correct');
+                            $(this).parents('.resourceDetail').removeClass('wrong').addClass('correct');
+                            if (self.resourceData.attributes.onCorrectAnswer.showText) {
+                                var textDialog = $('<div class="textDialog" title="">'
+                                                + '    <p>'+ self.resourceData.attributes.onCorrectAnswer.showText +'</p>'
+                                                + '</div>');
+                                textDialog.dialog({
+                                    modal: true,
+                                    classes: { 'ui-dialog': 'quizDialog' },
+                                    resizable: false,
+                                    closeOnEscape: false,
+                                    position: { my: 'center', at: 'center', of: $(this).parents('.overlayContainer') },
+                                    close: function() {
+                                        if (self.resourceData.attributes.onCorrectAnswer.jumpForward) {
+                                            FrameTrail.module('HypervideoController').currentTime = self.resourceData.attributes.onCorrectAnswer.jumpForward;
+                                        }
+                                        if (self.resourceData.attributes.onCorrectAnswer.resumePlayback) {
+                                            FrameTrail.module('HypervideoController').play();
+                                        }
+                                        $(this).dialog('close');
+                                        $(this).remove();
+                                    },
+                                    buttons: [
+                                        { text: 'OK',
+                                            click: function() {
+                                                $( this ).dialog( 'close' );
+                                            }
+                                        }
+                                    ]
+                                });
+                            } else {
+                                if (self.resourceData.attributes.onCorrectAnswer.jumpForward) {
+                                    FrameTrail.module('HypervideoController').currentTime = FrameTrail.module('HypervideoController').currentTime - self.resourceData.attributes.onCorrectAnswer.jumpForward;
+                                }
+                                if (self.resourceData.attributes.onCorrectAnswer.resumePlayback) {
+                                    FrameTrail.module('HypervideoController').play();
+                                }
+                            }
+                        } else {
+                            $(this).removeClass('correct').addClass('wrong');
+                            $(this).parents('.resourceDetail').removeClass('correct').addClass('wrong');
+                            if (self.resourceData.attributes.onWrongAnswer.showText) {
+                                var textDialog = $('<div class="shareDialog" title="">'
+                                                + '    <p>'+ self.resourceData.attributes.onWrongAnswer.showText +'</p>'
+                                                + '</div>');
+                                textDialog.dialog({
+                                    modal: true,
+                                    classes: { 'ui-dialog': 'quizDialog' },
+                                    resizable: false,
+                                    closeOnEscape: false,
+                                    position: { my: "center", at: "center", of: $(this).parents('.overlayContainer') },
+                                    close: function() {
+                                        if (self.resourceData.attributes.onWrongAnswer.jumpBackward) {
+                                            FrameTrail.module('HypervideoController').currentTime = FrameTrail.module('HypervideoController').currentTime - self.resourceData.attributes.onWrongAnswer.jumpBackward;
+                                        }
+                                        if (self.resourceData.attributes.onWrongAnswer.resumePlayback) {
+                                            FrameTrail.module('HypervideoController').play();
+                                        }
+                                        $(this).dialog('close');
+                                        $(this).remove();
+                                    },
+                                    buttons: [
+                                        { text: 'OK',
+                                            click: function() {
+                                                $( this ).dialog( 'close' );
+                                            }
+                                        }
+                                    ]
+                                });
+                            } else {
+                                if (self.resourceData.attributes.onWrongAnswer.jumpForward) {
+                                    FrameTrail.module('HypervideoController').currentTime = self.resourceData.attributes.onWrongAnswer.jumpBackward;
+                                }
+                                if (self.resourceData.attributes.onWrongAnswer.resumePlayback) {
+                                    FrameTrail.module('HypervideoController').play();
+                                }
+                            }
+                        }
+                    });
                     resourceDetail.append('<div class="resourceOptions"><div class="licenseInformation">'+ licenseString +'</div><div class="resourceButtons"></div>');
 
                 	return resourceDetail;
@@ -290,15 +359,7 @@ FrameTrail.defineType(
 
                         answersContainer.append(getAnswerElement());
                         var answerElement = $('<button type="button"></button>');
-                        answerElement.data('correct', false).click(function() {
-                            if ($(this).data('correct')) {
-                                if (overlayOrAnnotation.data.attributes.onCorrectAnswer.resumePlayback) {
-                                    FrameTrail.module('HypervideoController').play();
-                                }
-                            } else {
-                                alert('Nope!');
-                            }
-                        });
+                        answerElement.data('correct', false);
                         overlayOrAnnotation.overlayElement.children('.resourceDetail').find('.resourceQuizAnswersContainer').append(answerElement);
                     });
 
@@ -306,26 +367,141 @@ FrameTrail.defineType(
 
                     quizEditorContainer.append(leftColumn);
 
-                    function getActionsList() {
-                        var actionListContainer = $('<div class="quizActionListContainer">'
-                                                +   '</div>');
+                    var settingsCorrectShowTextCheckedString = (overlayOrAnnotation.data.attributes.onCorrectAnswer.showText) ? 'checked="checked"' : '',
+                        settingsCorrectShowTextClass = (overlayOrAnnotation.data.attributes.onCorrectAnswer.showText) ? 'active' : '',
+                        settingsCorrectShowTextValue = (overlayOrAnnotation.data.attributes.onCorrectAnswer.showText) ? overlayOrAnnotation.data.attributes.onCorrectAnswer.showText : '',
+                        settingsWrongShowTextCheckedString = (overlayOrAnnotation.data.attributes.onWrongAnswer.showText) ? 'checked="checked"' : '',
+                        settingsWrongShowTextClass = (overlayOrAnnotation.data.attributes.onWrongAnswer.showText) ? 'active' : '',
+                        settingsWrongShowTextValue = (overlayOrAnnotation.data.attributes.onWrongAnswer.showText) ? overlayOrAnnotation.data.attributes.onWrongAnswer.showText : '',
+                        settingsCorrectPlayCheckedString = (overlayOrAnnotation.data.attributes.onCorrectAnswer.resumePlayback) ? 'checked="checked"' : '',
+                        settingsWrongPlayCheckedString = (overlayOrAnnotation.data.attributes.onWrongAnswer.resumePlayback) ? 'checked="checked"' : '',
+                        settingsJumpForwardValue = (overlayOrAnnotation.data.attributes.onCorrectAnswer.jumpForward) ? overlayOrAnnotation.data.attributes.onCorrectAnswer.jumpForward : 20,
+                        settingsJumpForwardCheckedString = (overlayOrAnnotation.data.attributes.onCorrectAnswer.jumpForward) ? 'checked="checked"' : '',
+                        settingsJumpForwardDisabledString = (overlayOrAnnotation.data.attributes.onCorrectAnswer.jumpForward) ? '' : 'disabled="disabled"',
+                        settingsJumpBackwardValue = (overlayOrAnnotation.data.attributes.onWrongAnswer.jumpBackward) ? overlayOrAnnotation.data.attributes.onWrongAnswer.jumpBackward : 20,
+                        settingsJumpBackwardCheckedString = (overlayOrAnnotation.data.attributes.onWrongAnswer.jumpBackward) ? 'checked="checked"' : '',
+                        settingsJumpBackwardDisabledString = (overlayOrAnnotation.data.attributes.onWrongAnswer.jumpBackward) ? '' : 'disabled="disabled"';
 
-                        return actionListContainer;
-                    }
+                    var rightColumn = $('<div class="formColumn column2">'
+                                    +   '    <div class="settingsActionsTabs">'
+                                    +   '        <ul>'
+                                    +   '            <li>'
+                                    +   '                <a href="#SettingsCorrect">'+ this.labels['SettingsActionsIfRight'] +'</a>'
+                                    +   '            </li>'
+                                    +   '            <li>'
+                                    +   '                <a href="#SettingsWrong">'+ this.labels['SettingsActionsIfWrong'] +'</a>'
+                                    +   '            </li>'
+                                    +   '        </ul>'
+                                    +   '        <div id="SettingsCorrect">'
+                                    +   '            <div class="checkboxRow">'
+                                    +   '                <label class="switch">'
+                                    +   '                    <input id="settingsCorrectShowTextCheckbox" class="settingsCorrectShowTextCheckbox" type="checkbox" autocomplete="off" '+ settingsCorrectShowTextCheckedString +'>'
+                                    +   '                    <span class="slider round"></span>'
+                                    +   '                </label>'
+                                    +   '                <label for="settingsCorrectShowTextCheckbox">'+ this.labels['GenericShowText'] +'</label>'
+                                    +   '                <input type="text" class="settingsCorrectShowTextInput '+ settingsCorrectShowTextClass +'" value="'+ settingsCorrectShowTextValue +'"/>'
+                                    +   '            </div>'
+                                    +   '            <div class="checkboxRow">'
+                                    +   '                <label class="switch">'
+                                    +   '                    <input id="settingsJumpForwardCheckbox" class="settingsJumpForwardCheckbox" type="checkbox" autocomplete="off" '+ settingsJumpForwardCheckedString +'>'
+                                    +   '                    <span class="slider round"></span>'
+                                    +   '                </label>'
+                                    +   '                <label for="settingsJumpForwardCheckbox">'+ this.labels['GenericJumpForward'] +'</label>'
+                                    +   '                <input type="text" class="settingsJumpForwardInput" '+ settingsJumpForwardDisabledString +' value="'+ settingsJumpForwardValue +'"/>'
+                                    +   '                <span>'+ this.labels['GenericSeconds'] +'</span>'
+                                    +   '            </div>'
+                                    +   '            <div class="checkboxRow">'
+                                    +   '                <label class="switch">'
+                                    +   '                    <input id="settingsCorrectPlayCheckbox" class="settingsCorrectPlayCheckbox" type="checkbox" autocomplete="off" '+ settingsCorrectPlayCheckedString +'>'
+                                    +   '                    <span class="slider round"></span>'
+                                    +   '                </label>'
+                                    +   '                <label for="settingsCorrectPlayCheckbox">'+ this.labels['GenericContinuePlayback'] +'</label>'
+                                    +   '            </div>'
+                                    +   '            <div class="message active">'+ this.labels['MessageQuizActions'] +': '+ this.labels['GenericShowText'] +', '+ this.labels['GenericJumpForward'] +', '+ this.labels['GenericContinuePlayback'] +'.</div>'
+                                    +   '        </div>'
+                                    +   '        <div id="SettingsWrong">'
+                                    +   '            <div class="checkboxRow">'
+                                    +   '                <label class="switch">'
+                                    +   '                    <input id="settingsWrongShowTextCheckbox" class="settingsWrongShowTextCheckbox" type="checkbox" autocomplete="off" '+ settingsWrongShowTextCheckedString +'>'
+                                    +   '                    <span class="slider round"></span>'
+                                    +   '                </label>'
+                                    +   '                <label for="settingsWrongShowTextCheckbox">'+ this.labels['GenericShowText'] +'</label>'
+                                    +   '                <input type="text" class="settingsWrongShowTextInput '+ settingsWrongShowTextClass +'" value="'+ settingsWrongShowTextValue +'"/>'
+                                    +   '            </div>'
+                                    +   '            <div class="checkboxRow">'
+                                    +   '                <label class="switch">'
+                                    +   '                    <input id="settingsJumpBackwardCheckbox" class="settingsJumpBackwardCheckbox" type="checkbox" autocomplete="off" '+ settingsJumpBackwardCheckedString +'>'
+                                    +   '                    <span class="slider round"></span>'
+                                    +   '                </label>'
+                                    +   '                <label for="settingsJumpBackwardCheckbox">'+ this.labels['GenericJumpBackward'] +': </label>'
+                                    +   '                <input type="text" class="settingsJumpBackwardInput" '+ settingsJumpBackwardDisabledString +' value="'+ settingsJumpBackwardValue +'"/>'
+                                    +   '                <span>'+ this.labels['GenericSeconds'] +'</span>'
+                                    +   '            </div>'
+                                    +   '            <div class="checkboxRow">'
+                                    +   '                <label class="switch">'
+                                    +   '                    <input id="settingsWrongPlayCheckbox" class="settingsWrongPlayCheckbox" type="checkbox" autocomplete="off" '+ settingsWrongPlayCheckedString +'>'
+                                    +   '                    <span class="slider round"></span>'
+                                    +   '                </label>'
+                                    +   '                <label for="settingsWrongCheckbox">'+ this.labels['GenericContinuePlayback'] +'</label>'
+                                    +   '            </div>'
+                                    +   '            <div class="message active">'+ this.labels['MessageQuizActions'] +': '+ this.labels['GenericShowText'] +', '+ this.labels['GenericJumpBackward'] +', '+ this.labels['GenericContinuePlayback'] +'.</div>'
+                                    +   '        </div>'
+                                    +   '    </div>'
+                                    +   '</div>');
 
-                    var rightColumn = $('<div class="formColumn column2"></div>');
+                    rightColumn.find('.settingsActionsTabs').tabs();
 
-                    rightColumn.append('<label>'+ this.labels['SettingsActionsIfRight'] +'</label>');
-                    
-                    var settingsPlayCheckedString = (overlayOrAnnotation.data.attributes.onCorrectAnswer.resumePlayback) ? 'checked="checked"' : '',
-                        settingsPlayCheckbox = $('<div class="checkboxRow">'
-                                                +'    <label class="switch">'
-                                                +'        <input id="settingsPlayCheckbox" class="settingsPlayCheckbox" type="checkbox" autocomplete="off" '+ settingsPlayCheckedString +'>'
-                                                +'        <span class="slider round"></span>'
-                                                +'    </label>'
-                                                +'    <label for="settingsPlayCheckbox">'+ this.labels['GenericContinuePlayback'] +'</label>'
-                                                +'</div>');
-                    settingsPlayCheckbox.find('input.settingsPlayCheckbox').on('change', function() {
+                    var settingsCorrectShowTextInput = rightColumn.find('input.settingsCorrectShowTextInput');
+                    settingsCorrectShowTextInput.on('keyup', function() {
+                        var thisValue = $(this).val();
+                        
+                        overlayOrAnnotation.data.attributes.onCorrectAnswer.showText = thisValue;
+                        if (overlayOrAnnotation.overlayElement) { 
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        } else {
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                        }
+                    });
+                    rightColumn.find('input.settingsCorrectShowTextCheckbox').on('change', function() {
+                        if (!this.checked) {
+                            settingsCorrectShowTextInput.val('').removeClass('active');
+                        } else {
+                            settingsCorrectShowTextInput.addClass('active');
+                        }
+                        overlayOrAnnotation.data.attributes.onCorrectAnswer.showText = (this.checked) ? settingsCorrectShowTextInput.val() : false;
+                        if (overlayOrAnnotation.overlayElement) { 
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        } else {
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                        }
+                    });
+
+                    var settingsWrongShowTextInput = rightColumn.find('input.settingsWrongShowTextInput');
+                    settingsWrongShowTextInput.on('keyup', function() {
+                        var thisValue = $(this).val();
+                        
+                        overlayOrAnnotation.data.attributes.onWrongAnswer.showText = thisValue;
+                        if (overlayOrAnnotation.overlayElement) { 
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        } else {
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                        }
+                    });
+                    rightColumn.find('input.settingsWrongShowTextCheckbox').on('change', function() {
+                        if (!this.checked) {
+                            settingsWrongShowTextInput.val('').removeClass('active');
+                        } else {
+                            settingsWrongShowTextInput.addClass('active');
+                        }
+                        overlayOrAnnotation.data.attributes.onWrongAnswer.showText = (this.checked) ? settingsWrongShowTextInput.val() : false;
+                        if (overlayOrAnnotation.overlayElement) { 
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        } else {
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                        }
+                    });
+
+                    rightColumn.find('input.settingsCorrectPlayCheckbox').on('change', function() {
                         overlayOrAnnotation.data.attributes.onCorrectAnswer.resumePlayback = this.checked;
                         if (overlayOrAnnotation.overlayElement) { 
                             FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
@@ -333,29 +509,65 @@ FrameTrail.defineType(
                             FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
                         }
                     });
-                    /*
-                    var settingsHideCheckedString = (overlayOrAnnotation.data.attributes.onCorrectAnswer.hideQuiz) ? 'checked="checked"' : '',
-                        settingsHideCheckbox = $('<div class="checkboxRow">'
-                                                +'    <label class="switch">'
-                                                +'        <input id="settingsHideCheckbox" class="settingsHideCheckbox" type="checkbox" autocomplete="off" '+ settingsHideCheckedString +'>'
-                                                +'        <span class="slider round"></span>'
-                                                +'    </label>'
-                                                +'    <label for="settingsHideCheckbox">'+ this.labels['SettingsHideQuiz'] +'</label>'
-                                                +'</div>');
-                    settingsHideCheckbox.on('change', function() {
-                        overlayOrAnnotation.data.attributes.onCorrectAnswer.hideQuiz = this.checked;
 
+                    rightColumn.find('input.settingsWrongPlayCheckbox').on('change', function() {
+                        overlayOrAnnotation.data.attributes.onWrongAnswer.resumePlayback = this.checked;
                         if (overlayOrAnnotation.overlayElement) { 
                             FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
                         } else {
                             FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
                         }
                     });
-                    */
 
-                    rightColumn.append(settingsPlayCheckbox);
+                    var settingsJumpForwardInput = rightColumn.find('input.settingsJumpForwardInput');
+                    settingsJumpForwardInput.on('keyup', function() {
+                        var thisValue = parseFloat($(this).val());
+                        
+                        overlayOrAnnotation.data.attributes.onCorrectAnswer.jumpForward = thisValue;
+                        if (overlayOrAnnotation.overlayElement) { 
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        } else {
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                        }
+                    });
+                    rightColumn.find('input.settingsJumpForwardCheckbox').on('change', function() {
+                        if (!this.checked) {
+                            settingsJumpForwardInput.attr('disabled', 'disabled');
+                        } else {
+                            settingsJumpForwardInput.removeAttr('disabled');
+                        }
+                        overlayOrAnnotation.data.attributes.onCorrectAnswer.jumpForward = (this.checked) ? parseFloat(settingsJumpForwardInput.val()) : false;
+                        if (overlayOrAnnotation.overlayElement) { 
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        } else {
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                        }
+                    });
 
-                    //rightColumn.append('<label>'+ this.labels['SettingsActionsIfWrong'] +'</label>');
+                    var settingsJumpBackwardInput = rightColumn.find('input.settingsJumpBackwardInput');
+                    settingsJumpBackwardInput.on('keyup', function() {
+                        var thisValue = parseFloat($(this).val());
+                        
+                        overlayOrAnnotation.data.attributes.onWrongAnswer.jumpBackward = thisValue;
+                        if (overlayOrAnnotation.overlayElement) { 
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        } else {
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                        }
+                    });
+                    rightColumn.find('input.settingsJumpBackwardCheckbox').on('change', function() {
+                        if (!this.checked) {
+                            settingsJumpBackwardInput.attr('disabled', 'disabled');
+                        } else {
+                            settingsJumpBackwardInput.removeAttr('disabled');
+                        }
+                        overlayOrAnnotation.data.attributes.onWrongAnswer.jumpBackward = (this.checked) ? parseFloat(settingsJumpBackwardInput.val()) : false;
+                        if (overlayOrAnnotation.overlayElement) { 
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        } else {
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                        }
+                    });
 
                     quizEditorContainer.append(leftColumn, rightColumn);
 

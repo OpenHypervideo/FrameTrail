@@ -873,6 +873,10 @@ input:checked + .slider:before {
 	float: left;
 }
 
+.ui-dialog .ui-dialog-buttonpane button {
+    margin: 3px 6px 0px 0;
+}
+
 /* Tabs */
 
 .ui-tabs {
@@ -900,10 +904,11 @@ input:checked + .slider:before {
 	pointer-events: none;
 }
 
-.ui-tabs .ui-tabs-nav li a, .ui-tabs .ui-tabs-nav .ui-tabs-anchor {
+.ui-tabs .ui-tabs-nav li a, 
+.ui-tabs .ui-tabs-nav .ui-tabs-anchor {
 	color: var(--primary-bg-color);
     opacity: .8;
-	border-bottom: 3px solid transparent;
+	border-bottom: 3px solid var(--secondary-fg-color);
     padding: 2px 6px;
 }
 

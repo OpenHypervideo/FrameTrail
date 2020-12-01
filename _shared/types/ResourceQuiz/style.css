@@ -69,8 +69,16 @@
 	display: block;
 }
 
-.contentViewContainer[data-size="small"] .resourceThumb[data-type="text"] .resourceTextPreview {
+.contentViewContainer[data-size="small"] .resourceThumb[data-type="quiz"] .resourceTextPreview {
 	display: none;
+}
+
+.quizDialog .ui-dialog-titlebar {
+	display: none;
+}
+
+.quizDialog .ui-dialog-buttonpane {
+	margin-top: 0px;
 }
 
 /* Edit Text Overlay Properties */
@@ -98,4 +106,28 @@
 
 .editPropertiesContainer .quizEditorAnswersContainer input:checked + .slider {
 	background-color: #739600;
+}
+
+.editPropertiesContainer .quizEditorContainer input.settingsJumpForwardInput,
+.editPropertiesContainer .quizEditorContainer input.settingsJumpBackwardInput {
+	width: 34px !important;
+	padding: 0px 2px;
+	border-width: 1px;
+	margin-left: 3px;
+	height: 18px;
+	margin-bottom: 0px;
+	vertical-align: baseline;
+}
+
+.editPropertiesContainer .quizEditorContainer input.settingsCorrectShowTextInput, 
+.editPropertiesContainer .quizEditorContainer input.settingsWrongShowTextInput {
+	margin-left: 40px;
+	width: calc(100% - 40px);
+	margin-bottom: 8px;
+	display: none;
+}
+
+.editPropertiesContainer .quizEditorContainer input.settingsCorrectShowTextInput.active, 
+.editPropertiesContainer .quizEditorContainer input.settingsWrongShowTextInput.active {
+	display: block;
 }

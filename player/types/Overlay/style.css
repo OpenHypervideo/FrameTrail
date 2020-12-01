@@ -165,7 +165,7 @@
 
 /* Edit Overlay Properties */
 
-.editPropertiesContainer .overlayOptionsTabs .message {
+.editPropertiesContainer .overlayOptionsTabs .ui-tabs-panel[id^="ActionOn"] .message {
 	float: right;
 	width: 330px;
 	font-size: 12px;

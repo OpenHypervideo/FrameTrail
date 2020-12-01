@@ -455,7 +455,14 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                                         }
                                     ],
                                     "onCorrectAnswer": {
-                                        "resumePlayback": true
+                                        "jumpForward": false,
+                                        "resumePlayback": true,
+                                        "showText": false
+                                    },
+                                    "onWrongAnswer": {
+                                        "jumpBackward": false,
+                                        "resumePlayback": false,
+                                        "showText": false
                                     }
                                 },
                                 "position": {
