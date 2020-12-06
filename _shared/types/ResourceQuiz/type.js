@@ -233,24 +233,25 @@ FrameTrail.defineType(
                     quizEditorContainer.append('<label>'+ this.labels['SettingsQuizQuestionLabel'] +'</label>');
                     var questionText = $('<input type="text" value="' +currentAttributes.question+ '"/>');
                     
-                    questionText.on('keyup', function() {
-                        
-                        var newValue = $(this).val();
-                        overlayOrAnnotation.data.attributes.question = newValue;
+                    questionText.on('keydown', function(evt) {
+                        if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
+                            var newValue = $(this).val();
+                            overlayOrAnnotation.data.attributes.question = newValue;
 
-                        if (overlayOrAnnotation.overlayElement) {
-                            
-                            overlayOrAnnotation.overlayElement.children('.resourceDetail').find('.resourceQuizQuestion').html(newValue);
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                            if (overlayOrAnnotation.overlayElement) {
+                                
+                                overlayOrAnnotation.overlayElement.children('.resourceDetail').find('.resourceQuizQuestion').html(newValue);
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 
-                        } else {
-                            
-                            // Update annotation elements in dom
-                            $(overlayOrAnnotation.contentViewDetailElements).each(function() {
-                                $(this).find('.resourceDetail').find('.resourceQuizQuestion').html(newValue);
-                            });
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                            } else {
+                                
+                                // Update annotation elements in dom
+                                $(overlayOrAnnotation.contentViewDetailElements).each(function() {
+                                    $(this).find('.resourceDetail').find('.resourceQuizQuestion').html(newValue);
+                                });
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
 
+                            }
                         }
                     });
 
@@ -290,24 +291,25 @@ FrameTrail.defineType(
                         return answerWrapper;
                     }
 
-                    answersContainer.on('keyup', 'input[type="text"]', function() {
-                        
-                        var newValue = $(this).val(),
-                            thisIndex = $(this).parents('.answerWrapper').index();
-                        
-                        overlayOrAnnotation.data.attributes.answers[thisIndex].text = newValue;
+                    answersContainer.on('keydown', 'input[type="text"]', function(evt) {
+                        if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
+                            var newValue = $(this).val(),
+                                thisIndex = $(this).parents('.answerWrapper').index();
+                            
+                            overlayOrAnnotation.data.attributes.answers[thisIndex].text = newValue;
 
-                        if (overlayOrAnnotation.overlayElement) { 
-                            overlayOrAnnotation.overlayElement.children('.resourceDetail').find('.resourceQuizAnswersContainer button').removeClass('correct wrong');
-                            overlayOrAnnotation.overlayElement.children('.resourceDetail').find('.resourceQuizAnswersContainer button').eq(thisIndex).html(newValue);
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                        } else {
-                            // Update annotation elements in dom
-                            $(overlayOrAnnotation.contentViewDetailElements).each(function() {
-                                $(this).find('.resourceDetail').find('.resourceQuizAnswersContainer button').removeClass('correct wrong');
-                                $(this).find('.resourceDetail').find('.resourceQuizAnswersContainer button').eq(thisIndex).html(newValue);
-                            });
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                            if (overlayOrAnnotation.overlayElement) { 
+                                overlayOrAnnotation.overlayElement.children('.resourceDetail').find('.resourceQuizAnswersContainer button').removeClass('correct wrong');
+                                overlayOrAnnotation.overlayElement.children('.resourceDetail').find('.resourceQuizAnswersContainer button').eq(thisIndex).html(newValue);
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                            } else {
+                                // Update annotation elements in dom
+                                $(overlayOrAnnotation.contentViewDetailElements).each(function() {
+                                    $(this).find('.resourceDetail').find('.resourceQuizAnswersContainer button').removeClass('correct wrong');
+                                    $(this).find('.resourceDetail').find('.resourceQuizAnswersContainer button').eq(thisIndex).html(newValue);
+                                });
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                            }
                         }
                     });
 
@@ -452,14 +454,16 @@ FrameTrail.defineType(
                     rightColumn.find('.settingsActionsTabs').tabs();
 
                     var settingsCorrectShowTextInput = rightColumn.find('input.settingsCorrectShowTextInput');
-                    settingsCorrectShowTextInput.on('keyup', function() {
-                        var thisValue = $(this).val();
-                        
-                        overlayOrAnnotation.data.attributes.onCorrectAnswer.showText = thisValue;
-                        if (overlayOrAnnotation.overlayElement) { 
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                        } else {
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                    settingsCorrectShowTextInput.on('keydown', function(evt) {
+                        if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
+                            var thisValue = $(this).val();
+                            
+                            overlayOrAnnotation.data.attributes.onCorrectAnswer.showText = thisValue;
+                            if (overlayOrAnnotation.overlayElement) { 
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                            } else {
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                            }
                         }
                     });
                     rightColumn.find('input.settingsCorrectShowTextCheckbox').on('change', function() {
@@ -477,14 +481,16 @@ FrameTrail.defineType(
                     });
 
                     var settingsWrongShowTextInput = rightColumn.find('input.settingsWrongShowTextInput');
-                    settingsWrongShowTextInput.on('keyup', function() {
-                        var thisValue = $(this).val();
-                        
-                        overlayOrAnnotation.data.attributes.onWrongAnswer.showText = thisValue;
-                        if (overlayOrAnnotation.overlayElement) { 
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                        } else {
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                    settingsWrongShowTextInput.on('keydown', function(evt) {
+                        if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
+                            var thisValue = $(this).val();
+                            
+                            overlayOrAnnotation.data.attributes.onWrongAnswer.showText = thisValue;
+                            if (overlayOrAnnotation.overlayElement) { 
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                            } else {
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                            }
                         }
                     });
                     rightColumn.find('input.settingsWrongShowTextCheckbox').on('change', function() {
@@ -520,14 +526,16 @@ FrameTrail.defineType(
                     });
 
                     var settingsJumpForwardInput = rightColumn.find('input.settingsJumpForwardInput');
-                    settingsJumpForwardInput.on('keyup', function() {
-                        var thisValue = parseFloat($(this).val());
-                        
-                        overlayOrAnnotation.data.attributes.onCorrectAnswer.jumpForward = thisValue;
-                        if (overlayOrAnnotation.overlayElement) { 
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                        } else {
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                    settingsJumpForwardInput.on('keydown', function(evt) {
+                        if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
+                            var thisValue = parseFloat($(this).val());
+                            
+                            overlayOrAnnotation.data.attributes.onCorrectAnswer.jumpForward = thisValue;
+                            if (overlayOrAnnotation.overlayElement) { 
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                            } else {
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                            }
                         }
                     });
                     rightColumn.find('input.settingsJumpForwardCheckbox').on('change', function() {
@@ -545,14 +553,16 @@ FrameTrail.defineType(
                     });
 
                     var settingsJumpBackwardInput = rightColumn.find('input.settingsJumpBackwardInput');
-                    settingsJumpBackwardInput.on('keyup', function() {
-                        var thisValue = parseFloat($(this).val());
-                        
-                        overlayOrAnnotation.data.attributes.onWrongAnswer.jumpBackward = thisValue;
-                        if (overlayOrAnnotation.overlayElement) { 
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                        } else {
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                    settingsJumpBackwardInput.on('keydown', function(evt) {
+                        if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
+                            var thisValue = parseFloat($(this).val());
+                            
+                            overlayOrAnnotation.data.attributes.onWrongAnswer.jumpBackward = thisValue;
+                            if (overlayOrAnnotation.overlayElement) { 
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                            } else {
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                            }
                         }
                     });
                     rightColumn.find('input.settingsJumpBackwardCheckbox').on('change', function() {
