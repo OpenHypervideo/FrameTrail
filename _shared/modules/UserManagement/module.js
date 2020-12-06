@@ -97,36 +97,36 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                         +   '    </div>'
 						+	'</div>'),
 
-	loginBox = $(	'<div class="userLoginOverlay ui-blocking-overlay">'
-				+   '    <div class="loginBox ui-overlay-box">'
-				+   '        <div class="boxTitle">'
-				+   '            <span class="loginTabButton loginBoxTabButton">'+ labels['UserLogin'] +'</span>'
-				+   '            <span style="color: #888; font-size: 17px;">'+ labels['UserDividerOr'] +'</span>'
-				+   '            <span class="createAccountTabButton loginBoxTabButton inactive">'+ labels['UserCreateAccount'] +'</span>'
-				+   '        </div>'
-				+	'        <div class="userTabLogin">'
-				+	'             <form class="loginForm" method="post">'
-				+	'             	<p class="loginFormStatus message"></p>'
-				+	'             	<input type="text" name="mail" placeholder="'+ labels['UserMail'] +'"><br>'
-				+	'             	<input type="password" name="passwd" placeholder="'+ labels['UserPassword'] +'"><br>'
-				+	'             	<input type="hidden" name="a" value="userLogin">'
-				+	'             	<input type="submit" value="Login">'
-				+	'             	<button type="button" class="loginBoxCancelButton">Cancel</button>'
-				+	'             </form>'
-				+	'        </div>'
-				+	'        <div class="userTabRegister">'
-				+	'             <form class="userRegistrationForm" method="post">'
-				+	'             	<p class="userRegistrationFormStatus" class="message"></p>'
-				+	'             	<input type="text" name="name" placeholder="'+ labels['UserName'] +'">'
-				+	'             	<input type="text" name="mail" placeholder="'+ labels['UserMail'] +'"><br>'
-				+	'             	<input type="password" name="passwd" placeholder="'+ labels['UserPassword'] +'"><br>'
-				+	'             	<input type="hidden" name="a" value="userRegister"><br>'
-				+	'             	<input type="submit" value="'+ labels['UserPassword'] +'">'
-				+	'             	<button type="button" class="loginBoxCancelButton">'+ labels['GenericCancel'] +'</button>'
-				+	'             </form>'
-				+	'        </div>'
-                +   '    </div>'
-				+	'</div>');
+		loginBox = $(	'<div class="userLoginOverlay ui-blocking-overlay">'
+					+   '    <div class="loginBox ui-overlay-box">'
+					+   '        <div class="boxTitle">'
+					+   '            <span class="loginTabButton loginBoxTabButton">'+ labels['UserLogin'] +'</span>'
+					+   '            <span style="color: #888; font-size: 17px;">'+ labels['UserDividerOr'] +'</span>'
+					+   '            <span class="createAccountTabButton loginBoxTabButton inactive">'+ labels['UserCreateAccount'] +'</span>'
+					+   '        </div>'
+					+	'        <div class="userTabLogin">'
+					+	'             <form class="loginForm" method="post">'
+					+	'             	<p class="loginFormStatus message"></p>'
+					+	'             	<input type="text" name="mail" placeholder="'+ labels['UserMail'] +'"><br>'
+					+	'             	<input type="password" name="passwd" placeholder="'+ labels['UserPassword'] +'"><br>'
+					+	'             	<input type="hidden" name="a" value="userLogin">'
+					+	'             	<input type="submit" value="Login">'
+					+	'             	<button type="button" class="loginBoxCancelButton">Cancel</button>'
+					+	'             </form>'
+					+	'        </div>'
+					+	'        <div class="userTabRegister">'
+					+	'             <form class="userRegistrationForm" method="post">'
+					+	'             	<p class="userRegistrationFormStatus" class="message"></p>'
+					+	'             	<input type="text" name="name" placeholder="'+ labels['UserName'] +'">'
+					+	'             	<input type="text" name="mail" placeholder="'+ labels['UserMail'] +'"><br>'
+					+	'             	<input type="password" name="passwd" placeholder="'+ labels['UserPassword'] +'"><br>'
+					+	'             	<input type="hidden" name="a" value="userRegister"><br>'
+					+	'             	<input type="submit" value="'+ labels['UserPassword'] +'">'
+					+	'             	<button type="button" class="loginBoxCancelButton">'+ labels['GenericCancel'] +'</button>'
+					+	'             </form>'
+					+	'        </div>'
+	                +   '    </div>'
+					+	'</div>');
 
 
 	/* Administration Box */
@@ -225,8 +225,11 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 					domElement.find("#user_change_user").append('<option value="' + id + '">' + allUsers[id].name + '</option>');
 				}
 
-                domElement.find("#user_change_user").selectmenu('refresh');
-
+                domElement.find('#user_change_user').selectmenu({
+			        width: 150,
+			        icons: { button: "icon-angle-down" }
+			    });
+                
                 domElement.find("#user_change_user").unbind('selectmenuchange').bind('selectmenuchange', function(evt){
 
 					evt.preventDefault();
@@ -306,10 +309,6 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 		}
 	});
 
-
-	$(FrameTrail.getState('target')).append(domElement);
-
-
 	function renderUserColorCollectionForm(selectedColor, targetElement) {
 		var elem = $("<div class='userColorCollectionContainer'><input type='hidden' name='color' value='"+ selectedColor +"'>"+ labels['UserColor'] +":<div class='userColorCollection'></div></div>");
 		for (var c in userColorCollection) {
@@ -334,29 +333,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 	}
 
-	var userDialog = domElement.dialog({
-		autoOpen: false,
-		modal: true,
-		width: 600,
-		height: 460,
-        open: function() {
-            domElement.find('.userTabs').tabs('refresh');
-			getUserColorCollection(function() {
-				renderUserColorCollectionForm(userColor,".userColor")
-			});
-        },
-        close: function() {
-			closeAdministrationBox();
-		}
-	});
-
-    domElement.find('#user_change_user').selectmenu({
-        width: 150,
-        icons: { button: "icon-angle-down" }
-    });
-
-
-    /* Login Box */
+	/* Login Box */
 
     loginBox.find('.loginBoxCancelButton').click(function() {
     	if(typeof userBoxCallbackCancel === 'function'){
@@ -725,7 +702,6 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 			if (userRole === 'admin'){
 				domElement.find('.userTabAdministrationMenu').show();
-				updateAdministration();
 				$(FrameTrail.getState('target')).addClass('frametrail-admin');
 			}
 
@@ -754,21 +730,6 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 		//domElement.find('#SettingsForm_color')[0].value  = userColor;
 		domElement.find('#SettingsForm_passwd')[0].value = '';
 		domElement.find('#SettingsForm_userID')[0].value = userID;
-
-	}
-
-
-	/**
-	 * I update the UI elements of the tab Administration
-	 *
-	 * (WAS MOVED AT A WRONG PLACE)
-	 *
-	 * @method updateAdministration
-	 * @private
-	 */
-	function updateAdministration() {
-
-
 
 	}
 
@@ -822,8 +783,21 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 		ensureAuthenticated(function() {
 
-			updateView(true);
-			domElement.dialog('open');
+			var userDialog = domElement.dialog({
+				modal: true,
+				width: 600,
+				height: 460,
+		        open: function() {
+		            updateView(true);
+		            domElement.find('.userTabs').tabs('refresh');
+					getUserColorCollection(function() {
+						renderUserColorCollectionForm(userColor,".userColor")
+					});
+		        },
+		        close: function() {
+					$(this).dialog('destroy');
+				}
+			});
 
 		});
 
