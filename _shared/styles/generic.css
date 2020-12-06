@@ -414,6 +414,7 @@ input:checked + .slider:before {
     height: 195px;
     overflow-x: hidden;
     overflow-y: auto;
+    z-index: 1004;
 }
 
 .ui-selectmenu-open .ui-state-active {

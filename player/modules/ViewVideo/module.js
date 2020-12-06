@@ -854,9 +854,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             case 'settings':
                 enterSettingsMode();
                 break;
-            case 'layout':
-                enterLayoutMode();
-                break;
             case 'overlays':
                 enterOverlayMode();
                 break;
@@ -965,32 +962,12 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
      */
     function enterSettingsMode() {
 
-        EditingOptions.addClass('active');
-
-        toggleConfig_areaTopVisible(FrameTrail.getState('hv_config_areaTopVisible'));
-        toggleConfig_areaBottomVisible(FrameTrail.getState('hv_config_areaBottomVisible'));
-        toggleConfig_areaLeftVisible(FrameTrail.getState('hv_config_areaLeftVisible'));
-        toggleConfig_areaRightVisible(FrameTrail.getState('hv_config_areaRightVisible'));
-
-        AreaTopDetails.hide();
-        AreaBottomDetails.hide();
-
-        FrameTrail.module('HypervideoModel').initHypervideoSettings();
-
-        changeViewSize(FrameTrail.getState('viewSize'));
-
-    }
-
-    /**
-     * I am called when the app enters the editMode "layout"
-     * @method enterLayoutMode
-     */
-    function enterLayoutMode() {
         AreaTopDetails.hide();
         AreaBottomDetails.hide();
         
         FrameTrail.module('ViewLayout').initLayoutManager();
         HypervideoLayoutContainer.addClass('active');
+
     }
 
     /**
@@ -1003,7 +980,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         toggleConfig_overlaysVisible(true);
 
         EditPropertiesContainer
-            .html('<span class="icon-overlays"></span><div class="message active">'+ labels['MessageHintDragOverlays'] +'</div>')
+            .html('<span class="icon-object-ungroup"></span><div class="message active">'+ labels['MessageHintDragOverlays'] +'</div>')
             .attr('data-editmode', 'overlays');
     }
 

@@ -1110,7 +1110,7 @@ FrameTrail.defineType(
                         containerElement    = self.contentViewContainer.find('.contentViewContents'),
                         groupCnt            = 0,
                         gap                 = 4 + 4,
-                        thisElement,
+                        thisElement         = null,
                         previousElement,
                         previousElementRightPos,
                         startTime,
@@ -1162,10 +1162,15 @@ FrameTrail.defineType(
                     for (var i = 0; i < annotations.length; i++) {
 
                         thisElement = self.getContentViewElementFromContentItem(annotations[i]);
-
+                        if (!thisElement) {
+                            continue;
+                        }
                         //console.log(thisElement);
                         if (i > 0) {
                             previousElement         = self.getContentViewElementFromContentItem(annotations[i-1]);
+                            if (!previousElement) {
+                                continue;
+                            }
                             previousElementRightPos = previousElement.position().left + previousElement.width();
                         }
 
@@ -1322,6 +1327,9 @@ FrameTrail.defineType(
                         for (var i = 0; i < annotations.length; i++) {
 
                             thisElement = self.getContentViewElementFromContentItem(annotations[i]);
+                            if (!thisElement) {
+                                continue;
+                            }
 
                             var g = undefined;
 

@@ -39,30 +39,6 @@
 	color: var(--primary-bg-color);
 }
 
-.titlebar .sidebarToggleWidget {
-	float: left;
-	background-color: transparent;
-	display: none;
-}
-
-.titlebar .sidebarToggleWidget.sidebarActive {
-	background-color: var(--primary-bg-color);
-}
-
-.titlebar.editActive .sidebarToggleWidget.sidebarActive {
-	background-color: #e0e3e6;
-}
-
-.titlebar .sidebarToggleWidget.unsavedChanges:after {
-	content: "*";
-	top: 4px;
-	right: 10px;
-	color: #FF9900;
-	font-weight: bold;
-	font-size: 20px;
-	padding-right: 6px;
-}
-
 .titlebarViewMode {
 	float: left;
 }
@@ -151,7 +127,7 @@
 	float: right;
 }
 
-.titlebar .titlebarActionButtonContainer .newHypervideoButton, .titlebar .titlebarActionButtonContainer .manageResourcesButton, .titlebar .titlebarActionButtonContainer .startEditButton, .titlebar .titlebarActionButtonContainer .leaveEditModeButton, .titlebar .titlebarActionButtonContainer .userSettingsButton {
+.titlebar .titlebarActionButtonContainer .manageResourcesButton, .titlebar .titlebarActionButtonContainer .startEditButton, .titlebar .titlebarActionButtonContainer .leaveEditModeButton, .titlebar .titlebarActionButtonContainer .userSettingsButton {
 	float: left;
 }
 

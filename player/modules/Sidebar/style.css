@@ -54,6 +54,12 @@
 	border-right: 1px solid var(--secondary-bg-color);
 }
 
+.viewmodeControls button.editMode .editModeLabel [class^="icon-"]::before, .viewmodeControls button.editMode .editModeLabel [class*=" icon-"]::before {
+	padding: 0px;
+	margin: 0px;
+}
+
+
 .viewmodeControls button.editMode:hover {
 	max-width: 250px;
 	opacity: 1;
@@ -109,6 +115,10 @@
 	margin: 0 14px 0 10px;
 	width: 26px;
 	padding: 10px 0;
+}
+
+.viewmodeControls button.editMode[data-editmode="annotations"] .icon-annotations::before {
+	transform: scale(1.34);
 }
 
 .sidebarContainer {
