@@ -220,7 +220,7 @@ window.FrameTrail_L10n['de'] = {
 	"SettingsCodeSnippetAdd": "Code-Baustein auswählen",
 	"SettingsCodeSnippetCustom": "Eigener Code-Baustein",
 	"SettingsColorTheme": "Farbschema",
-	"SettingsConfigurationOptions": "Konfigurations-Optionen",
+	"SettingsConfigurationOptions": "Erweiterte Einstellungen",
 	"SettingsContentViewEdit": "Inhaltsbereich bearbeiten",
 	"SettingsContentViewLarge": "Groß",
 	"SettingsContentViewMedium": "Mittel",
