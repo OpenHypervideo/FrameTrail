@@ -1,5 +1,5 @@
 /* CSS Variables / Custom Properties */
-.frametrail-body, .titlebar, .editingOptions, body > .ui-dialog, body > .ui-draggable, body > .contentViewAnimationDiv, body > .resourceAnimationDiv, .message, .viewResources:not(.resourceManager), .themeItem {
+.frametrail-body, .titlebar, .editingOptions, body > .ui-dialog, body > .ui-draggable, body > .contentViewAnimationDiv, body > .resourceAnimationDiv, .message, .viewResources:not(.resourceManager), .themeItem, .layoutManager {
 	--primary-bg-color: rgba(47, 50, 58, 1); /* Backgrounds */
 	--secondary-bg-color: rgba(73, 76, 81, .6); /* Secondary Backgrounds, Timelines, Tile-BG, Panels etc. NEEDS TO BE SEMI-TRANSPARENT */
 	--semi-transparent-bg-color: rgba(47, 50, 58, .8); 
@@ -14,7 +14,7 @@
 	--video-background-color: #000;
 }
 
-.frametrail-body[data-frametrail-theme="dark"] .mainContainer:not([data-edit-mode="layout"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="dark"] .loadingScreen, .frametrail-body[data-frametrail-theme="dark"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="dark"] .titlebar:not(.editActive), .themeItem[data-theme="dark"] {
+.frametrail-body[data-frametrail-theme="dark"] .mainContainer:not([data-edit-mode="settings"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="dark"] .loadingScreen, .frametrail-body[data-frametrail-theme="dark"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="dark"] .titlebar:not(.editActive), .themeItem[data-theme="dark"], .frametrail-body[data-frametrail-theme="dark"] .layoutManager {
 	--primary-bg-color: rgba(0, 0, 0, 1);
 	--secondary-bg-color: rgba(50, 50, 50, .6);
 	--semi-transparent-bg-color: rgba(50, 50, 50, .8);
@@ -29,7 +29,7 @@
 	--video-background-color: #000;
 }
 
-.frametrail-body[data-frametrail-theme="bright"] .mainContainer:not([data-edit-mode="layout"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="bright"] .loadingScreen, .frametrail-body[data-frametrail-theme="bright"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="bright"] .titlebar:not(.editActive), .themeItem[data-theme="bright"] {
+.frametrail-body[data-frametrail-theme="bright"] .mainContainer:not([data-edit-mode="settings"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="bright"] .loadingScreen, .frametrail-body[data-frametrail-theme="bright"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="bright"] .titlebar:not(.editActive), .themeItem[data-theme="bright"], .frametrail-body[data-frametrail-theme="bright"] .layoutManager {
 	--primary-bg-color: rgba(255, 255, 255, 1);
 	--secondary-bg-color: rgba(235, 235, 235, .6);
 	--semi-transparent-bg-color: rgba(255, 255, 255, .8);
@@ -44,7 +44,7 @@
 	--video-background-color: var(--secondary-bg-color);
 }
 
-.frametrail-body[data-frametrail-theme="blue"] .mainContainer:not([data-edit-mode="layout"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="blue"] .loadingScreen, .frametrail-body[data-frametrail-theme="blue"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="blue"] .titlebar:not(.editActive), .themeItem[data-theme="blue"] {
+.frametrail-body[data-frametrail-theme="blue"] .mainContainer:not([data-edit-mode="settings"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="blue"] .loadingScreen, .frametrail-body[data-frametrail-theme="blue"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="blue"] .titlebar:not(.editActive), .themeItem[data-theme="blue"], .frametrail-body[data-frametrail-theme="blue"] .layoutManager {
 	--primary-bg-color: rgba(80, 93, 110, 1);
 	--secondary-bg-color: rgba(107, 125, 148, .6);
 	--semi-transparent-bg-color: rgba(44, 62, 80, .8);
@@ -59,7 +59,7 @@
 	--video-background-color: #000;
 }
 
-.frametrail-body[data-frametrail-theme="green"] .mainContainer:not([data-edit-mode="layout"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="green"] .loadingScreen, .frametrail-body[data-frametrail-theme="green"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="green"] .titlebar:not(.editActive), .themeItem[data-theme="green"] {
+.frametrail-body[data-frametrail-theme="green"] .mainContainer:not([data-edit-mode="settings"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="green"] .loadingScreen, .frametrail-body[data-frametrail-theme="green"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="green"] .titlebar:not(.editActive), .themeItem[data-theme="green"], .frametrail-body[data-frametrail-theme="green"] .layoutManager {
 	--primary-bg-color: rgba(22, 160, 133, 1);
 	--secondary-bg-color: rgba(30, 139, 115, .6);
 	--semi-transparent-bg-color: rgba(22, 160, 133, .8);
@@ -74,7 +74,7 @@
 	--video-background-color: #000;
 }
 
-.frametrail-body[data-frametrail-theme="orange"] .mainContainer:not([data-edit-mode="layout"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="orange"] .loadingScreen, .frametrail-body[data-frametrail-theme="orange"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="orange"] .titlebar:not(.editActive), .themeItem[data-theme="orange"] {
+.frametrail-body[data-frametrail-theme="orange"] .mainContainer:not([data-edit-mode="settings"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="orange"] .loadingScreen, .frametrail-body[data-frametrail-theme="orange"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="orange"] .titlebar:not(.editActive), .themeItem[data-theme="orange"], .frametrail-body[data-frametrail-theme="orange"] .layoutManager {
 	--primary-bg-color: rgba(255, 255, 255, 1);
 	--secondary-bg-color: rgba(234, 225, 211, .6);
 	--semi-transparent-bg-color: rgba(250, 250, 250, .8);
@@ -89,7 +89,7 @@
 	--video-background-color: #000;
 }
 
-.frametrail-body[data-frametrail-theme="grey"] .mainContainer:not([data-edit-mode="layout"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="blue"] .loadingScreen, .frametrail-body[data-frametrail-theme="grey"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="grey"] .titlebar:not(.editActive), .themeItem[data-theme="grey"] {
+.frametrail-body[data-frametrail-theme="grey"] .mainContainer:not([data-edit-mode="settings"]):not([data-edit-mode="overlays"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="annotations"]), .frametrail-body[data-frametrail-theme="blue"] .loadingScreen, .frametrail-body[data-frametrail-theme="grey"] .userLoginOverlay, .frametrail-body[data-frametrail-theme="grey"] .titlebar:not(.editActive), .themeItem[data-theme="grey"], .frametrail-body[data-frametrail-theme="grey"] .layoutManager {
 	--primary-bg-color: rgba(210, 210, 210, 1);
 	--secondary-bg-color: rgba(240, 240, 240, .6);
 	--semi-transparent-bg-color: rgba(210, 210, 210, .8);
