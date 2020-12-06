@@ -535,7 +535,7 @@
                             "endOffset": (contentItem.body.selector && contentItem.body.selector.value)
                                             ? parseFloat(/t=(\d+\.?\d*),(\d+\.?\d*)/g.exec(contentItem.body.selector.value)[2])
                                             : 0,
-                            "attributes": contentItem["frametrail:attributes"],
+                            "attributes": (contentItem.body["frametrail:attributes"]) ? contentItem.body["frametrail:attributes"] : contentItem["frametrail:attributes"],
                             "position": (function () {
                                 if (!contentItem.target.selector) { return {}; }
                                 try {
@@ -554,9 +554,9 @@
                         });
                         if (overlays[overlays.length-1].type === 'location') {
                             var locationAttributes = overlays[overlays.length-1].attributes;
-                            locationAttributes.lat = parseFloat(contentItem.body['frametrail:lat']);
-                            locationAttributes.lon = parseFloat(contentItem.body['frametrail:long']);
-                            locationAttributes.boundingBox = contentItem.body['frametrail:boundingBox'].split(',').map(parseFloat);
+                            locationAttributes.lat = parseFloat(contentItem.body['frametrail:attributes'].lat);
+                            locationAttributes.lon = parseFloat(contentItem.body['frametrail:attributes'].lon);
+                            locationAttributes.boundingBox = contentItem.body['frametrail:attributes'].boundingBox;
                         }
                         break;
                     case 'CodeSnippet':
@@ -567,7 +567,7 @@
                             "created": (new Date(contentItem.created)).getTime(),
                             "snippet": contentItem.body.value,
                             "start": parseFloat(/t=(\d+\.?\d*)/g.exec(contentItem.target.selector.value)[1]),
-                            "attributes": contentItem['frametrail:attributes'],
+                            "attributes": (contentItem.body['frametrail:attributes']) ? contentItem.body['frametrail:attributes'] : contentItem['frametrail:attributes'],
                             "tags": contentItem['frametrail:tags']
                         });
                         break;
@@ -696,9 +696,9 @@
 
                         if (annotations[annotations.length-1].type === 'location') {
                             var locationAttributes = annotations[annotations.length-1].attributes;
-                            locationAttributes.lat = parseFloat(data[i].body['frametrail:lat']);
-                            locationAttributes.lon = parseFloat(data[i].body['frametrail:long']);
-                            locationAttributes.boundingBox = data[i].body['frametrail:boundingBox'].split(',').map(parseFloat);
+                            locationAttributes.lat = parseFloat(data[i].body['frametrail:attributes'].lat);
+                            locationAttributes.lon = parseFloat(data[i].body['frametrail:attributes'].lon);
+                            locationAttributes.boundingBox = data[i].body['frametrail:attributes'].boundingBox;
                         }
 
                         if (annotations[annotations.length-1].type === 'video') {
@@ -815,9 +815,9 @@
 
                         if (annotations[annotations.length-1].type === 'location') {
                             var locationAttributes = annotations[annotations.length-1].attributes;
-                            locationAttributes.lat = parseFloat(data[i].body['frametrail:lat']);
-                            locationAttributes.lon = parseFloat(data[i].body['frametrail:long']);
-                            locationAttributes.boundingBox = data[i].body['frametrail:boundingBox'].split(',').map(parseFloat);
+                            locationAttributes.lat = parseFloat(data[i].body['frametrail:attributes'].lat);
+                            locationAttributes.lon = parseFloat(data[i].body['frametrail:attributes'].lon);
+                            locationAttributes.boundingBox = data[i].body['frametrail:attributes'].boundingBox;
                         }
 
                         if (annotations[annotations.length-1].type === 'video') {
@@ -897,9 +897,9 @@
 
                     if (annotations[annotations.length-1].type === 'location') {
                         var locationAttributes = annotations[annotations.length-1].attributes;
-                        locationAttributes.lat = parseFloat(initAnnotations[i].body['frametrail:lat']);
-                        locationAttributes.lon = parseFloat(initAnnotations[i].body['frametrail:long']);
-                        locationAttributes.boundingBox = initAnnotations[i].body['frametrail:boundingBox'].split(',').map(parseFloat);
+                        locationAttributes.lat = parseFloat(initAnnotations[i].body['frametrail:attributes'].lat);
+                        locationAttributes.lon = parseFloat(initAnnotations[i].body['frametrail:attributes'].lon);
+                        locationAttributes.boundingBox = initAnnotations[i].body['frametrail:attributes'].boundingBox;
                     }
 
                     if (annotations[annotations.length-1].type === 'video') {
@@ -1300,20 +1300,17 @@
                                     return undefined;
                                 }
             				})(),
-            				"frametrail:resourceId": overlays[i].resourceId
+            				"frametrail:resourceId": overlays[i].resourceId,
+                            "frametrail:attributes": overlays[i].attributes
             			},
-            			"frametrail:events": overlays[i].events,
-            			"frametrail:attributes": overlays[i].attributes
+            			"frametrail:events": overlays[i].events
                     });
                     //console.log(contents);
                     if (contents[contents.length-1].body['frametrail:type'] === 'location') {
                         var contentItem = contents[contents.length-1];
-                        contentItem.body['frametrail:lat'] = overlays[i].attributes.lat;
-                        contentItem.body['frametrail:long'] = overlays[i].attributes.lon;
-                        contentItem.body['frametrail:boundingBox'] = (overlays[i].attributes.boundingBox) ?  overlays[i].attributes.boundingBox.join(',') : '';
-                        delete contentItem["frametrail:attributes"].lat;
-                        delete contentItem["frametrail:attributes"].lon;
-                        delete contentItem["frametrail:attributes"].boundingBox;
+                        contentItem.body['frametrail:attributes'].lat = parseFloat(overlays[i].attributes.lat);
+                        contentItem.body['frametrail:attributes'].lon = parseFloat(overlays[i].attributes.lon);
+                        contentItem.body['frametrail:attributes'].boundingBox = (overlays[i].attributes.boundingBox) ?  overlays[i].attributes.boundingBox : [];
                     }
                 }
                 for (var i in codeSnippets.timebasedEvents) {
@@ -1350,9 +1347,9 @@
                         	"value" : codeSnippetItem.snippet,
                         	"frametrail:name": codeSnippetItem.name,
                         	"frametrail:thumb": null,
-                        	"frametrail:resourceId": null
-                        },
-            			"frametrail:attributes": codeSnippetItem.attributes
+                        	"frametrail:resourceId": null,
+                            "frametrail:attributes": codeSnippetItem.attributes
+                        }
                     });
                 }
         	    return contents;
@@ -1657,9 +1654,7 @@
             });
             if (annotationsToSave[annotationsToSave.length-1].body['frametrail:type'] === 'location') {
                 var annotationBody = annotationsToSave[annotationsToSave.length-1].body;
-                annotationBody['frametrail:lat'] = annotationItem.attributes.lat;
-                annotationBody['frametrail:long'] = annotationItem.attributes.lon;
-                annotationBody['frametrail:boundingBox'] = annotationItem.attributes.boundingBox.join(',');
+                // do nothing
             }
 
         }
