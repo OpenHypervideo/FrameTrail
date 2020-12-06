@@ -233,7 +233,7 @@ FrameTrail.defineType(
                     quizEditorContainer.append('<label>'+ this.labels['SettingsQuizQuestionLabel'] +'</label>');
                     var questionText = $('<input type="text" value="' +currentAttributes.question+ '"/>');
                     
-                    questionText.on('keydown', function(evt) {
+                    questionText.on('keyup', function(evt) {
                         if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
                             var newValue = $(this).val();
                             overlayOrAnnotation.data.attributes.question = newValue;
@@ -291,7 +291,7 @@ FrameTrail.defineType(
                         return answerWrapper;
                     }
 
-                    answersContainer.on('keydown', 'input[type="text"]', function(evt) {
+                    answersContainer.on('keyup', 'input[type="text"]', function(evt) {
                         if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
                             var newValue = $(this).val(),
                                 thisIndex = $(this).parents('.answerWrapper').index();
@@ -454,7 +454,7 @@ FrameTrail.defineType(
                     rightColumn.find('.settingsActionsTabs').tabs();
 
                     var settingsCorrectShowTextInput = rightColumn.find('input.settingsCorrectShowTextInput');
-                    settingsCorrectShowTextInput.on('keydown', function(evt) {
+                    settingsCorrectShowTextInput.on('keyup', function(evt) {
                         if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
                             var thisValue = $(this).val();
                             
@@ -481,7 +481,7 @@ FrameTrail.defineType(
                     });
 
                     var settingsWrongShowTextInput = rightColumn.find('input.settingsWrongShowTextInput');
-                    settingsWrongShowTextInput.on('keydown', function(evt) {
+                    settingsWrongShowTextInput.on('keyup', function(evt) {
                         if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
                             var thisValue = $(this).val();
                             
@@ -526,7 +526,7 @@ FrameTrail.defineType(
                     });
 
                     var settingsJumpForwardInput = rightColumn.find('input.settingsJumpForwardInput');
-                    settingsJumpForwardInput.on('keydown', function(evt) {
+                    settingsJumpForwardInput.on('keyup', function(evt) {
                         if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
                             var thisValue = parseFloat($(this).val());
                             
@@ -553,7 +553,7 @@ FrameTrail.defineType(
                     });
 
                     var settingsJumpBackwardInput = rightColumn.find('input.settingsJumpBackwardInput');
-                    settingsJumpBackwardInput.on('keydown', function(evt) {
+                    settingsJumpBackwardInput.on('keyup', function(evt) {
                         if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
                             var thisValue = parseFloat($(this).val());
                             
