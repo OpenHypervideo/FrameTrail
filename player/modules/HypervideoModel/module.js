@@ -989,7 +989,7 @@
 
 				var result = callbackReturns[i];
 				if (result.failed) {
-					FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] +' ('+ result.error +')');
+					FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] +' ('+ result.error +': '+ result.code +')');
 					return;
 				}
 
