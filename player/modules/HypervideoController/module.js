@@ -98,11 +98,15 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 					var hls = new Hls();
 					hls.loadSource(FrameTrail.module('RouteNavigation').getResourceURL(HypervideoModel.sourcePath));
 					hls.attachMedia(videoElement);
-					/*
-					hls.on(Hls.Events.MANIFEST_PARSED,function() {
-						//videoElement.play();
+
+					hls.on(Hls.Events.LEVEL_LOADED,function(evt, data) {
+						if (data.details.live && !FrameTrail.module('HypervideoModel').livestream) {
+							FrameTrail.module('HypervideoModel').livestream = true;
+							FrameTrail.changeState('livestream', true);
+						}
 					});
-					*/
+					
+
 				}
 				// hls.js is not supported on platforms that do not have Media Source Extensions (MSE) enabled.
 				// When the browser has built-in HLS support (check using `canPlayType`), we can provide an HLS manifest (i.e. .m3u8 URL) directly to the video element throught the `src` property.
