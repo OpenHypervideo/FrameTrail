@@ -272,9 +272,7 @@ var wysihtml5ParserRules = {
 		"dfn": {
 			"unwrap": 1
 		},
-		"iframe": {
-			"remove": 1
-		},
+		"iframe": {},
 		"figcaption": {
 			"unwrap": 1
 		},
