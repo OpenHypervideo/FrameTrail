@@ -693,15 +693,22 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 			} else {
 				play();
 			}
+		});
 
+		ViewVideo.OverlayContainer.off('click').on('click', function(evt){
+			if ($(evt.target).hasClass('overlayContainer')) {
+				if ( isPlaying ) {
+					pause();
+				} else {
+					play();
+				}
+			}
 		});
 
 		ViewVideo.VideoStartOverlay.off('click').on('click', function(){
-
 			if ( !isPlaying ) {
 				play();
 			}
-
 		});
 
 	};
