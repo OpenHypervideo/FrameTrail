@@ -246,7 +246,7 @@ class sharedFile{
 		}
 		$this->locked = false;
 
-		if($this->file !== false){
+		if(($this->file !== false) && (get_resource_type($this->file) === "stream")){
 			fclose($this->file);
 		}
 	}
