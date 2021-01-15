@@ -83,25 +83,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '                        <div class="annotationSearchContainer contextButtonContainer">'
                         + '                        </div>'
                         + '                    </div>'
-                        + '                    <div class="settingsButton playerControl contextButton">'
-                        + '                        <span class="icon-cog"></span>'
-                        + '                        <div class="settingsContainer contextButtonContainer">'
-                        + '                            <div class="layoutSettingsWrapper">'
-                        + '                                <div data-config="hv_config_areaTopVisible">LayoutArea Top</div>'
-                        + '                                <div class="playerWrapper">'
-                        + '                                    <div data-config="hv_config_overlaysVisible">Overlays</div>'
-                        + '                                    <div data-config="hv_config_areaRightVisible">LayoutArea Right</div>'
-                        + '                                </div>'
-                        + '                                <div data-config="hv_config_areaBottomVisible">Layout Area Bottom</div>'
-                        + '                            </div>'
-                        + '                            <div class="genericSettingsWrapper">Layout Mode'
-                        + '                                <div data-config="hv_config_slidingMode">'
-                        + '                                    <div class="slidingMode" data-value="adjust">Adjust</div>'
-                        + '                                    <div class="slidingMode" data-value="overlay">Overlay</div>'
-                        + '                                </div>'
-                        + '                            </div>'
-                        + '                        </div>'
-                        + '                    </div>'
                         + '                    <div class="captionsButton playerControl">'
                         + '                        <span class="icon-captions-off"></span>'
                         + '                        <div class="captionSelectContainer">'
@@ -210,14 +191,14 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
     Controls.find('.contextButton').click(function(evt) {
 
-        var settingsButton = $(this);
+        var contextButton = $(this);
 
-        if ( !settingsButton.hasClass('active') ) {
+        if ( !contextButton.hasClass('active') ) {
 
             $('body').on('mouseup', function(evt) {
 
                 if ( !$(evt.target).attr('data-config') && !$(evt.target).hasClass('contextButton') ) {
-                    settingsButton.removeClass('active');
+                    contextButton.removeClass('active');
                     VideoContainer.css('opacity', 1);
                     domElement.find('.areaLeftContainer, .areaRightContainer').css('opacity', 1);
                     $('body').off('mouseup');
@@ -227,51 +208,20 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
             });
 
-            Controls.find('.rightControlPanel .active').not('[data-config], .captionsButton, .annotationSetButton').removeClass('active');
+            Controls.find('.rightControlPanel .active').not('[data-config], .captionsButton').removeClass('active');
 
-            settingsButton.addClass('active');
+            contextButton.addClass('active');
             VideoContainer.css('opacity', 0.3);
             domElement.find('.areaLeftContainer, .areaRightContainer').css('opacity', 0.3);
 
         } else {
 
-            settingsButton.removeClass('active');
+            contextButton.removeClass('active');
             VideoContainer.css('opacity', 1);
             domElement.find('.areaLeftContainer, .areaRightContainer').css('opacity', 1);
 
         }
 
-
-
-    });
-
-    Controls.find('.settingsContainer').click(function(evt) {
-
-        if ( $(evt.target).attr('data-config') ) {
-
-            var config      = $(evt.target).attr('data-config');
-            var configState = $(evt.target).hasClass('active');
-
-            if ( config != 'hv_config_slidingMode' ) {
-
-                FrameTrail.changeState(config, !configState);
-
-            } else if ( config == 'hv_config_slidingMode' ) {
-
-                if ( FrameTrail.getState('hv_config_slidingMode') == 'adjust' ) {
-                    FrameTrail.changeState('hv_config_slidingMode', 'overlay');
-                } else {
-                    FrameTrail.changeState('hv_config_slidingMode', 'adjust');
-                }
-
-            }
-
-            FrameTrail.changeState('viewSize', FrameTrail.getState('viewSize'));
-
-        }
-
-        evt.preventDefault();
-        evt.stopPropagation();
     });
 
     VolumeButton.click(function() {
@@ -303,7 +253,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
     domElement.find('.layoutAreaToggleCloseButton').click(function() {
         $(this).parent('.layoutArea').toggleClass('closed');
-        changeSlidePosition('middle');
+        showDetails(false);
         window.setTimeout(function() {
             adjustHypervideo();
         }, 250);
@@ -1030,10 +980,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
     function toggleConfig_areaTopVisible(newState, oldState) {
         if (newState == true) {
             domElement.find('.areaTopContainer, .areaTopDetails').show();
-            Controls.find('[data-config="hv_config_areaTopVisible"]').addClass('active');
         } else {
             domElement.find('.areaTopContainer, .areaTopDetails').hide();
-            Controls.find('[data-config="hv_config_areaTopVisible"]').removeClass('active');
         }
         if ( FrameTrail.getState('slidePosition') != 'middle' ) {
             FrameTrail.changeState('slidePosition', 'middle');
@@ -1052,10 +1000,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
     function toggleConfig_areaBottomVisible(newState, oldState) {
         if (newState == true) {
             domElement.find('.areaBottomContainer, .areaBottomDetails').show();
-            Controls.find('[data-config="hv_config_areaBottomVisible"]').addClass('active');
         } else {
             domElement.find('.areaBottomContainer, .areaBottomDetails').hide();
-            Controls.find('[data-config="hv_config_areaBottomVisible"]').removeClass('active');
         }
         if ( FrameTrail.getState('slidePosition') != 'middle' ) {
             FrameTrail.changeState('slidePosition', 'middle');
@@ -1074,11 +1020,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
     function toggleConfig_areaLeftVisible(newState, oldState) {
         if (newState == true) {
             AreaLeftContainer.show();
-            Controls.find('[data-config="hv_config_areaLeftVisible"]').addClass('active');
-
         } else {
             AreaLeftContainer.hide();
-            Controls.find('[data-config="hv_config_areaLeftVisible"]').removeClass('active');
         }
     };
 
@@ -1094,11 +1037,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
     function toggleConfig_areaRightVisible(newState, oldState) {
         if (newState == true) {
             AreaRightContainer.show();
-            Controls.find('[data-config="hv_config_areaRightVisible"]').addClass('active');
-
         } else {
             AreaRightContainer.hide();
-            Controls.find('[data-config="hv_config_areaRightVisible"]').removeClass('active');
         }
     };
 
@@ -1114,10 +1054,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
     function toggleConfig_overlaysVisible(newState, oldState) {
         if (newState == true) {
             OverlayContainer.show();
-            Controls.find('[data-config="hv_config_overlaysVisible"]').addClass('active');
         } else {
             OverlayContainer.hide();
-            Controls.find('[data-config="hv_config_overlaysVisible"]').removeClass('active');
         }
     };
 
@@ -1152,16 +1090,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         adjustLayout();
         adjustHypervideo();
-
-        if (newState == 'overlay') {
-
-            Controls.find('[data-config="hv_config_slidingMode"]').addClass('active');
-
-        } else {
-
-            Controls.find('[data-config="hv_config_slidingMode"]').removeClass('active');
-
-        }
 
     };
 
@@ -1549,6 +1477,20 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
     }
 
+    /**
+     * Toggles the livestream controls.
+     *
+     * @method toggleLivestream
+     * @param {Boolean} activeState
+     */
+    function toggleLivestream(activeState) {
+        if (activeState) {
+            PlayerContainer.addClass('livestream');
+        } else {
+            PlayerContainer.removeClass('livestream');
+        }
+    }
+
 
     return {
 
@@ -1563,6 +1505,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             xKey:            toggleGrid,
             videoWorking:    toggleVideoWorking,
             userActive:      toggleUserActive,
+            livestream:      toggleLivestream,
 
             hv_config_areaTopVisible:               toggleConfig_areaTopVisible,
             hv_config_areaBottomVisible:            toggleConfig_areaBottomVisible,
