@@ -910,6 +910,9 @@
             
             var movieTitle = FrameTrail.module('HypervideoModel').hypervideoName.replace(/<\/?[^>]+(>|$)/g, "");
             var exportFileName = movieTitle +'_' + aspectLabel;
+            if (filterAspect == 'creatorId') {
+                exportFileName += '_' + collectedAnnotationsPerAspectData[i].userID;
+            }
             exportFileName = exportFileName.replace(/[\s:]/g, '-').replace(/[|&;:$%@<>()+,]/g, '').replace(/__/g, '_').replace(/--/g, '-');
             var exportData = getAnnotationDataAsCSV(collectedAnnotationsPerAspectData[i].annotations);
             var exportButtonString = '<a class="exportTimelineDataButton" title="'+ labels['MessageAnnotationExportAsCSV'] +'" download="'+ exportFileName +'.csv" href="'+ exportData +'">'+ labels['GenericExportData'] +'</a>';
