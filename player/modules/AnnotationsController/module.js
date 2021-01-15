@@ -1040,12 +1040,16 @@
         var csvString = 'StartTime\tEndTime\tValue\n';
 
         for (var i = 0; i < annotationData.length; i++) {
+            var annotationContent = annotationData[i].data.name;
+            if (annotationData[i].data.type == 'text') {
+                annotationContent = $.parseHTML(annotationData[i].data.attributes.text)[0].data;
+            }
             if (annotationData[i].data.source.url.target && annotationData[i].data.source.url.target.selector["advene:end"]) {
                 var startTime = annotationData[i].data.source.url.target.selector["advene:begin"],
                     endTime = annotationData[i].data.source.url.target.selector["advene:end"];
-                csvString += startTime +'\t' + endTime +'\t'+ annotationData[i].data.name +'\n';
+                csvString += startTime +'\t' + endTime +'\t'+ annotationContent +'\n';
             } else {
-                csvString += annotationData[i].data.start +'\t' + annotationData[i].data.end +'\t'+ annotationData[i].data.name +'\n';
+                csvString += annotationData[i].data.start +'\t' + annotationData[i].data.end +'\t'+ annotationContent +'\n';
             }
         }
 
