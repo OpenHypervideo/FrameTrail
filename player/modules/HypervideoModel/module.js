@@ -15,6 +15,7 @@
  	var labels = FrameTrail.module('Localization').labels;
 
 	var videoType           	= 'native',
+		livestream 				= false,
 		duration                = 0,
 		durationFull			= 0,
 		sourcePath              = '',
@@ -93,6 +94,13 @@
 
 			FrameTrail.changeState('hv_config_' + key, hypervideo.config[key]);
 		}
+
+		/**
+		* This state (as well as the "livestream" boolean) should 
+		* only be changed to true by the HypervideoController 
+		* (in case a HLS stream is loaded), and not here!
+		**/
+		FrameTrail.changeState('livestream', false);
 
 		offsetIn  = (videoData.in) ? parseFloat(videoData.in) : 0;
 		offsetOut = (videoData.out) ? parseFloat(videoData.out) : null;
@@ -1467,6 +1475,15 @@
 		 */
 		get offsetOut()         { return offsetOut           },
 		set offsetOut(aNumber)  { return offsetOut = aNumber },
+
+		/**
+		 * Is the video a livestream?
+		 *
+		 * @attribute livestream
+		 * @param {} aBoolean
+		 */
+		set livestream(aBoolean)   { return livestream = aBoolean },
+		get livestream()          { return livestream             },
 
 
 
