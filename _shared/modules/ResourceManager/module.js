@@ -309,7 +309,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
 
                                     // Upload Successful
 
-                                    if (respText['response']['resource']['type'] == 'video') {
+                                    if (respText['response']['resource']['type'] == 'video' && FrameTrail.module('RouteNavigation').getResourceURL(respText.response.resource.src).indexOf('.m3u8') == -1) {
 
                                         uploadDialog.find('.uploadStatus').html(labels['MessageGeneratingThumbnail']);
 
