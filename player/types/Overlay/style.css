@@ -4,7 +4,7 @@
 	position: absolute;
 	height: 100%;
 	background: rgba(160, 163, 163, .6);
-	pointer-events: all;
+	pointer-events: none;
 	-moz-transition-duration: 0.2s;
     -moz-transition-property: bottom;
 	-webkit-transition-duration: 0.2s;
@@ -25,6 +25,7 @@
 }
 
 .overlayTimeline.editable .timelineElement {
+	pointer-events: all;
 	background-color: rgba(160, 170, 175, 0.8);
 }
 

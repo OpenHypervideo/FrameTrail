@@ -321,9 +321,9 @@ body.userinactive .mainContainer:not(.editActive) .playerContainer .controls, bo
 .playerContainer .overlayTimeline {
     position: relative;
     width: 100%;
-    height: 0px;
-    min-height: 0px;
-    flex-basis: 0px;
+    height: 3px;
+    min-height: 3px;
+    flex-basis: 3px;
     background: var(--secondary-bg-color);
     z-index: 2;
     pointer-events: none;
@@ -590,7 +590,7 @@ body.userinactive .mainContainer:not(.editActive) .playerContainer .controls, bo
     flex: 1 1 auto;
     align-self: stretch;
     background: var(--video-background-color);
-    border-bottom: 2px solid var(--primary-bg-color);
+    border-bottom: 0px solid var(--primary-bg-color);
     overflow: hidden;
     -moz-transition-property: width;
     -moz-transition-duration: 200ms;
