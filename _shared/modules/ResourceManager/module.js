@@ -668,7 +668,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                 },
                 function (src, name) {
                     // Video
-                    if (/\.(mp4)$/i.exec(src)) {
+                    if (/\.(mp4|m3u8)$/i.exec(src)) {
                         return createResource(src, "video", name);
                     } else {
                         // We should do a HEAD request and check the
