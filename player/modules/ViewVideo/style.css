@@ -107,6 +107,10 @@ body.userinactive .mainContainer:not(.editActive) .playerContainer .controls, bo
     z-index: 1;
 }
 
+.playerContainer.livestream .playerProgress {
+    display: none !important;
+}
+
 .playerContainer .playerProgress .ui-slider-handle {
     position: absolute;
     top: 0;
@@ -620,6 +624,13 @@ body.userinactive .mainContainer:not(.editActive) .playerContainer .controls, bo
     display: none;
     border-left: 1px solid #acacb3;
     padding-left: 8px;
+}
+
+.playerContainer.livestream .controls .playerControl.timeDisplay, 
+.playerContainer.livestream .controls .playerControl.timeDisplayFull,
+.playerContainer.livestream .controls .playerControl.timeDisplay .totalDuration, 
+.playerContainer.livestream .controls .playerControl.timeDisplayFull .totalDurationFull {
+    display: none !important;
 }
 
 /* Hypervideo Container */
