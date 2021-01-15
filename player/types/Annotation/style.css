@@ -152,17 +152,18 @@
 
 .timelineList .userTimelineWrapper .exportTimelineDataButton {
     margin-left: 10px;
-    text-decoration: none;
-    padding: 0px 4px;
-    border: 1px solid;
-    border-radius: 4px;
-    color: var(--primary-fg-color);
-    font-size: 13px;
-    display: none;
+	text-decoration: none;
+	padding: 1px 4px;
+	border: 1px solid;
+	border-radius: 4px;
+	color: inherit;
+	font-size: 12px;
+	line-height: 16px;
+	display: none;
 }
 
 .timelineList .userTimelineWrapper:hover .exportTimelineDataButton {
-    display: inline;
+    display: inline-block;
 }
 
 .timelineList .userTimelineWrapper .exportTimelineDataButton:hover {
