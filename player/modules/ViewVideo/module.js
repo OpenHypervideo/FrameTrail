@@ -31,7 +31,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '            <div class="layoutAreaToggleCloseButton"></div>'
                         + '        </div>'
                         + '        <div class="playerContainer">'
-                        + '            <div class="playerProgress"></div>'
                         + '            <div class="hypervideoContainer">'
                         + '                <div class="areaLeftContainer layoutArea" data-area="areaLeft">'
                         + '                    <div class="layoutAreaTabs"></div>'
@@ -65,6 +64,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '            </div>'
                         + '            <div class="codeSnippetTimeline timeline"></div>'
                         + '            <div class="overlayTimeline timeline"></div>'
+                        + '            <div class="playerProgress"></div>'
                         + '            <div class="controls">'
                         + '                <div class="leftControlPanel">'
                         + '                    <div class="playButton playerControl"><span class="icon-play-1"></span></div>'
@@ -594,11 +594,10 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             });
         }
 
-        domElement.find('.playerProgress .ui-slider-handle-circle').css({
-            bottom:
+        PlayerProgress.css({
+            height:
                 Controls.height()
-            +   CodeSnippetTimeline.height()
-            +   ((editMode == 'codesnippets') ? 6 : OverlayTimeline.height())
+            +   ((editMode == 'codesnippets') ? CodeSnippetTimeline.height() : OverlayTimeline.height())
             +   ((editMode == 'annotations') ? AnnotationTimeline.height() : 0)
         });
 
