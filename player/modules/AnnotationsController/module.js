@@ -1045,7 +1045,7 @@
         for (var i = 0; i < annotationData.length; i++) {
             var annotationContent = annotationData[i].data.name;
             if (annotationData[i].data.type == 'text') {
-                annotationContent = $.parseHTML(annotationData[i].data.attributes.text)[0].data;
+                annotationContent = (annotationData[i].data.attributes.text.length != 0) ? $.parseHTML(annotationData[i].data.attributes.text)[0].data : '';
             }
             if (annotationData[i].data.source.url.target && annotationData[i].data.source.url.target.selector["advene:end"]) {
                 var startTime = annotationData[i].data.source.url.target.selector["advene:begin"],
