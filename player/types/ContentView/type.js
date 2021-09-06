@@ -478,7 +478,13 @@ FrameTrail.defineType(
                                     if ( startTime-0.5 <= currentTime && endTime-0.5 >= currentTime ) {
                                         if ( !$(this).hasClass('active') ) {
                                             $(this).addClass('active');
-                                            scrollTimebasedElements();
+                                            var timebasedTabParent = $(this).parents('.tab-pane.timebasedTab');
+                                            if (timebasedTabParent.length != 0) {
+                                                scrollTimebasedElements(timebasedTabParent);
+                                            } else {
+                                                scrollTimebasedElements();
+                                            }
+                                            
                                         }
                                     } else if ( $(this).hasClass('active') ) {
                                         $(this).removeClass('active');
@@ -486,12 +492,12 @@ FrameTrail.defineType(
                                 });
                             }
 
-                            function scrollTimebasedElements() {
+                            function scrollTimebasedElements(elementToScroll) {
                                 
                                 if (self.isMouseOver) {
                                     return;
                                 }
-                                var customhtmlContainer = self.contentViewContainer.find('.customhtmlContainer'),
+                                var customhtmlContainer = (elementToScroll) ? elementToScroll : self.contentViewContainer.find('.customhtmlContainer'),
                                     firstActiveElement = customhtmlContainer.find('.timebased.active').eq(0);
 
 
