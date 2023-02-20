@@ -83,7 +83,7 @@ function userRegister($name, $mail, $passwd) {
 	$user["user"][$user["user-increment"]]["registrationDate"] =  time();
 	$user["user"][$user["user-increment"]]["passwd"] = hash("sha256",$passwd.$user["user"][$user["user-increment"]]["registrationDate"]);
 	$user["user"][$user["user-increment"]]["role"] = (($tmpFirstUser) ? "admin" : $configDB["defaultUserRole"]);
-	$user["user"][$user["user-increment"]]["active"] = ($configDB["userNeedsConfirmation"]) ? 0 : 1;
+    $user["user"][$user["user-increment"]]["active"] = (($tmpFirstUser) ? 1 : (($configDB["userNeedsConfirmation"]) ? 0 : 1));
 	$user["user"][$user["user-increment"]]["lastLogin"] = "";
 	$user["user"][$user["user-increment"]]["color"] = getUserColors()["freeColors"][0];
 
@@ -364,6 +364,7 @@ function getUserColors() {
 	$return["user"] = $used;
 
 	//because array_diff returns keys too.
+    $used = (is_array($used) ? $used : array());
 	foreach ($return["colorCollection"] as $c) {
 		if (!in_array($c, $used)) {
 			$return["freeColors"][] = $c;
