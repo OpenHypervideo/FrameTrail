@@ -83,11 +83,19 @@ FrameTrail.defineType(
                         child,
                         unescapedString;
 
-                    var thumbElement = $('<div class="resourceThumb" data-license-type="'+ this.resourceData.licenseType +'" data-type="'+ this.resourceData.type +'">'
+                    var thumbBackground = (this.resourceData.thumb ?
+                            "background-image: url('"+ FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.thumb) +"');" : "" );
+                    
+                    var thumbLabel = this.labels['ResourceCustomTextHTML'];
+                    if (this.resourceData.name && this.resourceData.name.length > 0) {
+                        thumbLabel = this.resourceData.name;
+                    }
+
+                    var thumbElement = $('<div class="resourceThumb" data-license-type="'+ this.resourceData.licenseType +'" data-type="'+ this.resourceData.type +'" style="'+ thumbBackground +'">'
                         + '                  <div class="resourceOverlay">'
                         + '                      <div class="resourceIcon"><span class="icon-doc-text"></span></div>'
                         + '                  </div>'
-                        + '                  <div class="resourceTitle">'+ this.labels['ResourceCustomTextHTML'] +'</div>'
+                        + '                  <div class="resourceTitle">'+ thumbLabel +'</div>'
                         + '              </div>');
 
                     var previewButton = $('<div class="resourcePreviewButton"><span class="icon-eye"></span></div>').click(function(evt) {
