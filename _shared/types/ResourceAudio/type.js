@@ -48,15 +48,26 @@ FrameTrail.defineType(
                         downloadButton = '<a download class="button" href="'+ FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.src) +'" data-tooltip-bottom-right="'+ this.labels['GenericDownload'] +'"><span class="icon-download"></span></a>';
                     }
 
-                    return $('<div class="resourceDetail" data-type="'+ this.resourceData.type +'">'
-                           + '    <audio controls autobuffer>'
-                           +        '<source src="'+ FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.src) +'" type="audio/mp3">'
-                           + '    </audio>'
-                           + '    <div class="resourceOptions">'
-                           + '        <div class="licenseInformation">'+ licenseString +'</div>'
-                           + '        <div class="resourceButtons">'+ downloadButton +'</div>'
-                           + '    </div>'
-                           + '</div>');
+                    var resourceDetail = $('<div class="resourceDetail" data-type="'+ this.resourceData.type +'">'
+                                       +   '   <audio controls autobuffer>'
+                                       +   '      <source src="'+ FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.src) +'" type="audio/mp3">'
+                                       +   '   </audio>'
+                                       +   '   <div class="resourceOptions">'
+                                       +   '       <div class="licenseInformation">'+ licenseString +'</div>'
+                                       +   '       <div class="resourceButtons">'+ downloadButton +'</div>'
+                                       +   '   </div>'
+                                       +   '</div>');
+
+                    if (this.resourceData.start) {
+                        var jumpToTimeButton = $('<button class="button btn btn-sm" data-start="'+ this.resourceData.start +'" data-end="'+ this.resourceData.end +'"><span class="icon-play-1"></span></button>');
+                        jumpToTimeButton.click(function(){
+                            var time = $(this).attr('data-start');
+                            FrameTrail.module('HypervideoController').currentTime = time;
+                        });
+                        resourceDetail.find('.resourceButtons').append(jumpToTimeButton);
+                    }
+
+                    return resourceDetail;
 
                 },
 

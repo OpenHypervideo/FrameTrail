@@ -80,6 +80,15 @@ FrameTrail.defineType(
                                        +  '    <div class="resourceButtons">'+ downloadButton +'</div>'
                                        +  '</div>');
 
+                    if (this.resourceData.start) {
+                        var jumpToTimeButton = $('<button class="button btn btn-sm" data-start="'+ this.resourceData.start +'" data-end="'+ this.resourceData.end +'"><span class="icon-play-1"></span></button>');
+                        jumpToTimeButton.click(function(){
+                            var time = $(this).attr('data-start');
+                            FrameTrail.module('HypervideoController').currentTime = time;
+                        });
+                        resourceDetail.find('.resourceButtons').append(jumpToTimeButton);
+                    }
+
                     return resourceDetail;
 
                 },

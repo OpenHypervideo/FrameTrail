@@ -61,6 +61,15 @@ FrameTrail.defineType(
                         resourceDetail.append(embedFallback);
                         resourceDetail.append('<div class="resourceOptions"><div class="resourceButtons">'+ downloadButton +'</div></div>');
 
+                        if (this.resourceData.start) {
+                            var jumpToTimeButton = $('<button class="button btn btn-sm" data-start="'+ this.resourceData.start +'" data-end="'+ this.resourceData.end +'"><span class="icon-play-1"></span></button>');
+                            jumpToTimeButton.click(function(){
+                                var time = $(this).attr('data-start');
+                                FrameTrail.module('HypervideoController').currentTime = time;
+                            });
+                            resourceDetail.find('.resourceButtons').append(jumpToTimeButton);
+                        }
+
                     } else {
 
                         var iFrameSource = (this.resourceData.src.indexOf('//') != -1) ? this.resourceData.src/*.replace('http:', '')*/ : FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.src);
@@ -76,6 +85,15 @@ FrameTrail.defineType(
 
                         resourceDetail.append(iFrame);
                         resourceDetail.append('<div class="resourceOptions"><div class="resourceButtons">'+ downloadButton +'</div></div>');
+
+                        if (this.resourceData.start) {
+                            var jumpToTimeButton = $('<button class="button btn btn-sm" data-start="'+ this.resourceData.start +'" data-end="'+ this.resourceData.end +'"><span class="icon-play-1"></span></button>');
+                            jumpToTimeButton.click(function(){
+                                var time = $(this).attr('data-start');
+                                FrameTrail.module('HypervideoController').currentTime = time;
+                            });
+                            resourceDetail.find('.resourceButtons').append(jumpToTimeButton);
+                        }
 
                     }
                     
