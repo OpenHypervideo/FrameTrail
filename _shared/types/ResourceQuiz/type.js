@@ -161,7 +161,9 @@ FrameTrail.defineType(
 
                     var self = this;
 
-                    var thumbElement = $('<div class="resourceThumb" data-license-type="'+ this.resourceData.licenseType +'" data-type="'+ this.resourceData.type +'">'
+                    var tagList = (this.resourceData.tags ? this.resourceData.tags.join(' ') : '');
+                    
+                    var thumbElement = $('<div class="resourceThumb '+ tagList +'" data-license-type="'+ this.resourceData.licenseType +'" data-type="'+ this.resourceData.type +'">'
                         + '                  <div class="resourceOverlay">'
                         + '                      <div class="resourceIcon"><span class="icon-question-circle-o"></span></div>'
                         + '                  </div>'
