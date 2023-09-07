@@ -121,7 +121,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 					+	'             	<input type="text" name="mail" placeholder="'+ labels['UserMail'] +'"><br>'
 					+	'             	<input type="password" name="passwd" placeholder="'+ labels['UserPassword'] +'"><br>'
 					+	'             	<input type="hidden" name="a" value="userRegister"><br>'
-					+	'             	<input type="submit" value="'+ labels['UserPassword'] +'">'
+					+	'             	<input type="submit" value="'+ labels['UserCreateAccount'] +'">'
 					+	'             	<button type="button" class="loginBoxCancelButton">'+ labels['GenericCancel'] +'</button>'
 					+	'             </form>'
 					+	'        </div>'
@@ -439,7 +439,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 					loginBox.find('.userRegistrationFormStatus').removeClass('success').addClass('active error').text(labels['ErrorMailExists']);
 					break;
 				case 3:
-					loginBox.find('.userRegistrationFormStatus').removeClass('success error').addClass('active').text(labels['MessageRegisteredActivationPending']);
+					loginBox.find('.userRegistrationFormStatus').removeClass('error').addClass('active success').text(labels['MessageRegisteredActivationPending']);
 					break;
 
 			}
@@ -593,6 +593,8 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 		FrameTrail.changeState('userColor', userData.color);
 		FrameTrail.changeState('loggedIn', true);
 
+		$(FrameTrail.getState('target')).addClass('loggedIn');
+
 		updateView(true);
 
 	}
@@ -668,6 +670,8 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 					username: '',
 					userColor: ''
 				});
+
+				$(FrameTrail.getState('target')).removeClass('loggedIn');
 
 				updateView(false);
 
