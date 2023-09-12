@@ -1051,73 +1051,81 @@
 									+ '</div>');
 
 				confirmDialog.dialog({
-				  resizable: false,
-				  modal: true,
-				  close: function() {
+					resizable: false,
+					modal: true,
+					close: function() {
 					confirmDialog.remove();
-				  },
-				  buttons: {
-					'Yes': function() {
-
-						// TODO: Show saving indicator in dialog
-
-						save(function(){
-							
-							if (FrameTrail.module('RouteNavigation').environment.iframe) {
-					            FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
-					        }
-
-							FrameTrail.changeState('editMode', false);
-
-							FrameTrail.triggerEvent('userAction', {
-								action: 'EditEnd'
-							});
-
-							confirmDialog.dialog('close');
-
-							if (logoutAfterLeaving) {
-								FrameTrail.module('UserManagement').logout();
-							}
-
-							/*
-							window.setTimeout(function() {
-								window.location.reload();
-							}, 100);
-
-							if (logoutAfterLeaving) {
-								FrameTrail.module('UserManagement').logout();
-							}
-							*/
-						});
-
 					},
-					'No, discard': function() {
+					buttons: [
+					  	{
+							text: labels['GenericYes'],
+							click: function() {
 
-						FrameTrail.changeState('unsavedChanges', false);
-						confirmDialog.dialog('close');
+								// TODO: Show saving indicator in dialog
 
-						if (FrameTrail.module('RouteNavigation').environment.iframe) {
-				            FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
-				        }
+								save(function(){
+									
+									if (FrameTrail.module('RouteNavigation').environment.iframe) {
+							            FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
+							        }
 
-						FrameTrail.triggerEvent('userAction', {
-							action: 'EditEnd'
-						});
+									FrameTrail.changeState('editMode', false);
 
-						if (logoutAfterLeaving) {
-							FrameTrail.module('UserManagement').logout();
+									FrameTrail.triggerEvent('userAction', {
+										action: 'EditEnd'
+									});
+
+									confirmDialog.dialog('close');
+
+									if (logoutAfterLeaving) {
+										FrameTrail.module('UserManagement').logout();
+									}
+
+									/*
+									window.setTimeout(function() {
+										window.location.reload();
+									}, 100);
+
+									if (logoutAfterLeaving) {
+										FrameTrail.module('UserManagement').logout();
+									}
+									*/
+								});
+
+							}
+						},
+						{
+							text: labels['GenericNoDiscard'],
+							click: function() {
+
+								FrameTrail.changeState('unsavedChanges', false);
+								confirmDialog.dialog('close');
+
+								if (FrameTrail.module('RouteNavigation').environment.iframe) {
+						            FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
+						        }
+
+								FrameTrail.triggerEvent('userAction', {
+									action: 'EditEnd'
+								});
+
+								if (logoutAfterLeaving) {
+									FrameTrail.module('UserManagement').logout();
+								}
+
+								window.setTimeout(function() {
+									//window.location.reload();
+									updateHypervideo(FrameTrail.module('RouteNavigation').hypervideoID, false, true);
+								}, 100);
+							}
+						},
+						{
+							text: labels['GenericCancel'],
+							click: function() {
+						  		confirmDialog.dialog('close');
+							}
 						}
-
-						window.setTimeout(function() {
-							//window.location.reload();
-							updateHypervideo(FrameTrail.module('RouteNavigation').hypervideoID, false, true);
-						}, 100);
-
-					},
-					Cancel: function() {
-					  confirmDialog.dialog('close');
-					}
-				  }
+					]
 				});
 
 		} else {
