@@ -127,6 +127,10 @@
 	float: right;
 }
 
+.frametrail-body.inFullscreen .titlebar .logoutButton {
+	display: none !important;
+}
+
 .titlebar .titlebarActionButtonContainer .manageResourcesButton, .titlebar .titlebarActionButtonContainer .startEditButton, .titlebar .titlebarActionButtonContainer .leaveEditModeButton, .titlebar .titlebarActionButtonContainer .userSettingsButton {
 	float: left;
 }
