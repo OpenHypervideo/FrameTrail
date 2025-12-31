@@ -30,9 +30,8 @@
   font-style: normal;
   font-weight: normal;
   speak: none;
- 
   display: inline-block;
-  text-decoration: inherit;
+  text-decoration: none;
   width: 1em;
   margin-right: .2em;
   text-align: center;
@@ -245,7 +244,7 @@
 .icon-edit-1:before { content: '\e8b1'; } /* '' */
 .icon-edit-circled:before { content: '\e8b2'; } /* '' */
 .icon-edit-alt:before { content: '\e8b3'; } /* '' */
-.icon-tag-1:before { content: '\e8b4'; } /* '' */
+.icon-tag-1:before, .icon-type-term:before { content: '\e8b4'; } /* '' */
 .icon-tags-1:before { content: '\e8b5'; } /* '' */
 .icon-comment-2:before { content: '\e8b6'; } /* '' */
 .icon-comment-alt:before { content: '\e8b7'; } /* '' */
@@ -254,7 +253,7 @@
 .icon-user-2:before { content: '\e8ba'; } /* '' */
 .icon-group:before { content: '\e8bb'; } /* '' */
 .icon-group-circled:before { content: '\e8bc'; } /* '' */
-.icon-torso:before { content: '\e8bd'; } /* '' */
+.icon-torso:before, .icon-type-person:before { content: '\e8bd'; } /* '' */
 .icon-video-2:before { content: '\e8be'; } /* '' */
 .icon-video-circled:before { content: '\e8bf'; } /* '' */
 .icon-video-chat:before { content: '\e8c0'; } /* '' */
@@ -427,7 +426,7 @@
 .icon-paste:before { content: '\f0ea'; } /* '' */
 .icon-lightbulb:before { content: '\f0eb'; } /* '' */
 .icon-exchange:before { content: '\f0ec'; } /* '' */
-.icon-doc-text:before { content: '\f0f6'; } /* '' */
+.icon-doc-text:before, .icon-type-document:before { content: '\f0f6'; } /* '' */
 .icon-building:before { content: '\f0f7'; } /* '' */
 .icon-plus-squared:before { content: '\f0fe'; } /* '' */
 .icon-angle-double-left:before { content: '\f100'; } /* '' */
@@ -512,7 +511,7 @@
 .icon-vimeo-squared:before { content: '\f194'; } /* '' */
 .icon-plus-squared-alt:before { content: '\f196'; } /* '' */
 .icon-mail-squared:before { content: '\f199'; } /* '' */
-.icon-bank:before { content: '\f19c'; } /* '' */
+.icon-bank:before, .icon-type-organisation:before { content: '\f19c'; } /* '' */
 .icon-graduation-cap:before { content: '\f19d'; } /* '' */
 .icon-building-filled:before { content: '\f1ad'; } /* '' */
 .icon-cube:before { content: '\f1b2'; } /* '' */
