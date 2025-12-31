@@ -101,7 +101,7 @@ FrameTrail.defineType(
                             var time = $(this).attr('data-start');
                             FrameTrail.module('HypervideoController').currentTime = time;
                         });
-                        resourceDetail.find('.resourceButtons').append(jumpToTimeButton);
+                        resourceDetailElement.find('.resourceButtons').append(jumpToTimeButton);
                     }
 
                     return resourceDetailElement;

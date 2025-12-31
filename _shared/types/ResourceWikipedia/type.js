@@ -57,7 +57,7 @@ FrameTrail.defineType(
                             return true;
                         });
 
-                    return resourceDetail
+                    return resourceDetail;
 
                 },
 
