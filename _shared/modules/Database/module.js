@@ -1249,6 +1249,7 @@
                                         'text':      'TextualBody',
                                         'entity':    'Text',
                                         'quiz':      'TextualBody',
+                                        'hotspot':   'TextualBody',
                                         'vimeo':     'Video',
                                         'webpage':   'Text',
                                         'youtube':   'Video'
@@ -1268,12 +1269,13 @@
                                 'text': 'text/html',
                                 'entity': 'text/html',
                                 'quiz': 'text/html',
+                                'hotspot': 'text/html',
                                 'vimeo': 'text/html',
                                 'webpage': 'text/html',
                                 'youtube': 'text/html'
                             })[overlays[i].type],
             				"source": (function () {
-            				    if (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia',].indexOf( overlays[i].type ) < 0) {
+            				    if (['codesnippet', 'text', 'quiz', 'hotspot', 'entity', 'webpage', 'wikipedia',].indexOf( overlays[i].type ) < 0) {
                                     return overlays[i].src
                                 }
                                 return undefined;

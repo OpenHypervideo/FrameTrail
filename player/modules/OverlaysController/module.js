@@ -473,6 +473,25 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                                 }
                             });
 
+                        } else if (ui.helper.attr('data-type') == 'hotspot') {
+
+                            newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
+                                "name":         "Hotspot / Link",
+                                "type":         ui.helper.attr('data-type'),
+                                "start":        startTime,
+                                "end":          endTime,
+                                "attributes":   {
+                                    "color": "#ff0000",
+                                    "linkUrl": ""
+                                },
+                                "position": {
+                                    "top":      overlayPositionTop,
+                                    "left":     overlayPositionLeft,
+                                    "width":    30,
+                                    "height":   30
+                                }
+                            });
+
                         } else {
 
                             newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
@@ -657,7 +676,14 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 + '                  <div class="resourceTitle">Quiz</div>'
                 + '              </div>');
 
-        textElement.add(quizElement).each(function() {
+        var hotspotElement = $('<div class="resourceThumb" data-type="hotspot">'
+                + '                  <div class="resourceOverlay">'
+                + '                      <div class="resourceIcon"><span class="icon-link"></div>'
+                + '                  </div>'
+                + '                  <div class="resourceTitle">Hotspot / Link</div>'
+                + '              </div>');
+
+        textElement.add(quizElement).add(hotspotElement).each(function() {
             $(this).draggable({
                 containment:    '.mainContainer',
                 helper:         'clone',
@@ -684,7 +710,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             });
         });
 
-        overlayEditingOptions.find('#CustomOverlay').append(textElement, quizElement);
+        overlayEditingOptions.find('#CustomOverlay').append(textElement, quizElement, hotspotElement);
 
     };
 

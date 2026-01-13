@@ -388,7 +388,7 @@
 			newData;
 
 			// TODO: clean code
-			if ( protoData.type == 'text' || protoData.type == 'quiz' ) {
+			if ( protoData.type == 'text' || protoData.type == 'quiz' || protoData.type == 'hotspot' ) {
 				newData = {
 					"name":         protoData.name,
 					"creator":      FrameTrail.getState('username'),
