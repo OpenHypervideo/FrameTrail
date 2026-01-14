@@ -104,7 +104,7 @@
 }
 
 .editPropertiesContainer .propertiesTypeIcon[data-type="hotspot"] [class^="icon-"]::before, .editPropertiesContainer .propertiesTypeIcon[data-type="hotspot"] [class*=" icon-"]::before {
-	content: "\f0c1"; /* icon-link */
+	content: "\e819"; /* icon-link */
 }
 
 .hotspotEditorContainer input[type="number"] {
