@@ -324,10 +324,47 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 	}
 
 	function getUserColorCollection(callback) {
-		$.getJSON("_data/config.json", function(data) {
-			userColorCollection = data["userColorCollection"];
-			if (typeof(callback) == "function") {
-				callback.call();
+		// Default color collection as fallback (matches ajaxServer.php setupInit)
+		var defaultColors = ["597081", "339966", "16a09c", "cd4436", "0073a6", "8b5180", "999933", "CC3399", "7f8c8d", "ae764d", "cf910d", "b85e02"];
+		
+		// First, try to get config from Database module if it's already loaded
+		try {
+			var dbConfig = FrameTrail.module('Database').config;
+			if (dbConfig && dbConfig.userColorCollection && Array.isArray(dbConfig.userColorCollection)) {
+				userColorCollection = dbConfig.userColorCollection;
+				if (typeof(callback) == "function") {
+					callback.call();
+				}
+				return;
+			}
+		} catch(e) {
+			// Database module not available or config not loaded yet
+		}
+		
+		// Fallback: load config.json using text dataType to prevent XML parsing errors
+		// Then manually parse JSON to avoid browser XML parser being triggered
+		$.ajax({
+			url: "_data/config.json",
+			type: "GET",
+			dataType: "text",
+			success: function(textData) {
+				try {
+					var data = JSON.parse(textData);
+					userColorCollection = data["userColorCollection"] || defaultColors;
+				} catch(e) {
+					// If JSON parsing fails, use default colors
+					userColorCollection = defaultColors;
+				}
+				if (typeof(callback) == "function") {
+					callback.call();
+				}
+			},
+			error: function(jqXHR, textStatus, errorThrown) {
+				// If config.json doesn't exist or fails to load, use default colors
+				userColorCollection = defaultColors;
+				if (typeof(callback) == "function") {
+					callback.call();
+				}
 			}
 		});
 
@@ -795,7 +832,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 		            updateView(true);
 		            domElement.find('.userTabs').tabs('refresh');
 					getUserColorCollection(function() {
-						renderUserColorCollectionForm(userColor,".userColor")
+						renderUserColorCollectionForm(FrameTrail.getState('userColor'),".userColor")
 					});
 		        },
 		        close: function() {
