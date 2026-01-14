@@ -126,12 +126,12 @@ input[readonly], textarea[readonly] {
 	background-color: #cfcfcf;
 }
 
-/* CSS Grid system with 4 columns and Bootstrap-like breakpoints */
+/* CSS Grid system with 12 columns and Bootstrap-like breakpoints */
 /* Gap of 15px (7.5px on each side) */
 
 .layoutRow {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(12, 1fr);
     gap: 15px;
     box-sizing: border-box;
 }
@@ -142,13 +142,19 @@ input[readonly], textarea[readonly] {
     min-width: 0; /* Prevents grid overflow */
 }
 
-/* Default (xs): All columns span full width */
-.layoutRow > .column-1,
-.layoutRow > .column-2,
-.layoutRow > .column-3,
-.layoutRow > .column-4 {
-    grid-column: span 4;
-}
+/* Default (xs): Base column classes apply their spans at all sizes */
+.layoutRow > .column-1 { grid-column: span 1; }
+.layoutRow > .column-2 { grid-column: span 2; }
+.layoutRow > .column-3 { grid-column: span 3; }
+.layoutRow > .column-4 { grid-column: span 4; }
+.layoutRow > .column-5 { grid-column: span 5; }
+.layoutRow > .column-6 { grid-column: span 6; }
+.layoutRow > .column-7 { grid-column: span 7; }
+.layoutRow > .column-8 { grid-column: span 8; }
+.layoutRow > .column-9 { grid-column: span 9; }
+.layoutRow > .column-10 { grid-column: span 10; }
+.layoutRow > .column-11 { grid-column: span 11; }
+.layoutRow > .column-12 { grid-column: span 12; }
 
 /* Small devices (≥576px) */
 @media (min-width: 576px) {
@@ -156,6 +162,14 @@ input[readonly], textarea[readonly] {
     .layoutRow > .column-sm-2 { grid-column: span 2; }
     .layoutRow > .column-sm-3 { grid-column: span 3; }
     .layoutRow > .column-sm-4 { grid-column: span 4; }
+    .layoutRow > .column-sm-5 { grid-column: span 5; }
+    .layoutRow > .column-sm-6 { grid-column: span 6; }
+    .layoutRow > .column-sm-7 { grid-column: span 7; }
+    .layoutRow > .column-sm-8 { grid-column: span 8; }
+    .layoutRow > .column-sm-9 { grid-column: span 9; }
+    .layoutRow > .column-sm-10 { grid-column: span 10; }
+    .layoutRow > .column-sm-11 { grid-column: span 11; }
+    .layoutRow > .column-sm-12 { grid-column: span 12; }
 }
 
 /* Medium devices (≥768px) */
@@ -164,6 +178,14 @@ input[readonly], textarea[readonly] {
     .layoutRow > .column-md-2 { grid-column: span 2; }
     .layoutRow > .column-md-3 { grid-column: span 3; }
     .layoutRow > .column-md-4 { grid-column: span 4; }
+    .layoutRow > .column-md-5 { grid-column: span 5; }
+    .layoutRow > .column-md-6 { grid-column: span 6; }
+    .layoutRow > .column-md-7 { grid-column: span 7; }
+    .layoutRow > .column-md-8 { grid-column: span 8; }
+    .layoutRow > .column-md-9 { grid-column: span 9; }
+    .layoutRow > .column-md-10 { grid-column: span 10; }
+    .layoutRow > .column-md-11 { grid-column: span 11; }
+    .layoutRow > .column-md-12 { grid-column: span 12; }
 }
 
 /* Large devices (≥992px) */
@@ -172,6 +194,14 @@ input[readonly], textarea[readonly] {
     .layoutRow > .column-lg-2 { grid-column: span 2; }
     .layoutRow > .column-lg-3 { grid-column: span 3; }
     .layoutRow > .column-lg-4 { grid-column: span 4; }
+    .layoutRow > .column-lg-5 { grid-column: span 5; }
+    .layoutRow > .column-lg-6 { grid-column: span 6; }
+    .layoutRow > .column-lg-7 { grid-column: span 7; }
+    .layoutRow > .column-lg-8 { grid-column: span 8; }
+    .layoutRow > .column-lg-9 { grid-column: span 9; }
+    .layoutRow > .column-lg-10 { grid-column: span 10; }
+    .layoutRow > .column-lg-11 { grid-column: span 11; }
+    .layoutRow > .column-lg-12 { grid-column: span 12; }
 }
 
 /* Extra large devices (≥1200px) */
@@ -180,6 +210,14 @@ input[readonly], textarea[readonly] {
     .layoutRow > .column-xl-2 { grid-column: span 2; }
     .layoutRow > .column-xl-3 { grid-column: span 3; }
     .layoutRow > .column-xl-4 { grid-column: span 4; }
+    .layoutRow > .column-xl-5 { grid-column: span 5; }
+    .layoutRow > .column-xl-6 { grid-column: span 6; }
+    .layoutRow > .column-xl-7 { grid-column: span 7; }
+    .layoutRow > .column-xl-8 { grid-column: span 8; }
+    .layoutRow > .column-xl-9 { grid-column: span 9; }
+    .layoutRow > .column-xl-10 { grid-column: span 10; }
+    .layoutRow > .column-xl-11 { grid-column: span 11; }
+    .layoutRow > .column-xl-12 { grid-column: span 12; }
 }
 
 /* Inputs in layoutRow children should be full width */
@@ -193,7 +231,7 @@ input[readonly], textarea[readonly] {
 /* HypervideoPicker Grid Layout */
 .hypervideoPickerDialog .hypervideoPickerList {
 	display: grid;
-	grid-template-columns: repeat(4, 1fr);
+	grid-template-columns: repeat(12, 1fr);
 	gap: 15px;
 	box-sizing: border-box;
 	overflow-y: auto;

@@ -262,7 +262,7 @@ FrameTrail.defineType(
                     /* Add Answer Text Fields */
 
                     var layoutRow = $('<div class="layoutRow"></div>');
-                    var leftColumn = $('<div class="column-4 column-md-2"></div>');
+                    var leftColumn = $('<div class="column-6"></div>');
 
                     leftColumn.append('<label>'+ this.labels['SettingsQuizAnswersLabel'] +'</label>');
 
@@ -385,7 +385,7 @@ FrameTrail.defineType(
                         settingsJumpBackwardCheckedString = (overlayOrAnnotation.data.attributes.onWrongAnswer.jumpBackward) ? 'checked="checked"' : '',
                         settingsJumpBackwardDisabledString = (overlayOrAnnotation.data.attributes.onWrongAnswer.jumpBackward) ? '' : 'disabled="disabled"';
 
-                    var rightColumn = $('<div class="column-4 column-md-2">'
+                    var rightColumn = $('<div class="column-6">'
                                     +   '    <div class="settingsActionsTabs">'
                                     +   '        <ul>'
                                     +   '            <li>'

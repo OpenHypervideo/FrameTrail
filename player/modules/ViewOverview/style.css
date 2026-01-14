@@ -23,10 +23,12 @@
 	width: 100%;
 	height: 100%;
 	display: grid;
-	grid-template-columns: repeat(4, 1fr);
+	grid-template-columns: repeat(12, 1fr);
 	gap: 30px;
 	padding: 30px;
 	box-sizing: border-box;
+	align-content: start;
+	grid-auto-rows: auto;
 }
 
 .viewOverview .overviewList .hypervideoThumb {
@@ -38,37 +40,27 @@
 	height: auto;
 	margin: 0;
 	aspect-ratio: 16 / 9;
+	grid-column: span 6;
 }
 
 /* Responsive grid columns for hypervideo thumbs */
-.viewOverview .overviewList .hypervideoThumb {
-	grid-column: span 4;
-}
-
-/* Small devices (≥576px) - 2 columns */
-@media (min-width: 576px) {
-	.viewOverview .overviewList .hypervideoThumb {
-		grid-column: span 2;
-	}
-}
-
 /* Medium devices (≥768px) - 2 columns */
 @media (min-width: 768px) {
 	.viewOverview .overviewList .hypervideoThumb {
-		grid-column: span 2;
+		grid-column: span 4;
 	}
 }
 
-/* Large devices (≥992px) - 1 column (4 per row) */
+/* Large devices (≥992px) - 1 column (12 per row) */
 @media (min-width: 992px) {
 	.viewOverview .overviewList .hypervideoThumb {
-		grid-column: span 1;
+		grid-column: span 3;
 	}
 }
 
-/* Extra large devices (≥1200px) - 1 column (4 per row) */
+/* Extra large devices (≥1200px) - 1 column (12 per row) */
 @media (min-width: 1200px) {
 	.viewOverview .overviewList .hypervideoThumb {
-		grid-column: span 1;
+		grid-column: span 2;
 	}
 }

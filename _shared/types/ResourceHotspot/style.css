@@ -107,10 +107,6 @@
 	content: "\f0c1"; /* icon-link */
 }
 
-.hotspotEditorContainer {
-	margin-top: 10px;
-}
-
 .hotspotEditorContainer input[type="number"] {
 	width: calc(100% - 30px);
 	padding: 8px;
