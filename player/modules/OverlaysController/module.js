@@ -481,8 +481,11 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                                 "start":        startTime,
                                 "end":          endTime,
                                 "attributes":   {
-                                    "color": "#ff0000",
-                                    "linkUrl": ""
+                                    "color": "#0096ff",
+                                    "linkUrl": "",
+                                    "borderWidth": 5,
+                                    "shape": "circle",
+                                    "borderRadius": 10
                                 },
                                 "position": {
                                     "top":      overlayPositionTop,

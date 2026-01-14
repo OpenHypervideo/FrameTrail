@@ -50,31 +50,84 @@ FrameTrail.defineType(
                     var licenseType = (this.resourceData.licenseType && this.resourceData.licenseType == 'CC-BY-SA-3.0') ? '<a href="https://creativecommons.org/licenses/by-sa/3.0/" title="License: '+ this.resourceData.licenseType +'" target="_blank"><span class="cc-by-sa-bg-image"></span></a>' : this.resourceData.licenseType;
                     var licenseString = (licenseType) ? licenseType +' - '+ this.resourceData.licenseAttribution : '';
 
-                    var color = (this.resourceData.attributes && this.resourceData.attributes.color) ? this.resourceData.attributes.color : '#ff0000';
+                    var color = (this.resourceData.attributes && this.resourceData.attributes.color) ? this.resourceData.attributes.color : '#0096ff';
                     var linkUrl = (this.resourceData.attributes && this.resourceData.attributes.linkUrl) ? this.resourceData.attributes.linkUrl : '';
-                    var innerSize = (this.resourceData.attributes && this.resourceData.attributes.innerSize !== undefined) ? this.resourceData.attributes.innerSize : 0;
+                    var borderWidth = (this.resourceData.attributes && this.resourceData.attributes.borderWidth !== undefined) ? this.resourceData.attributes.borderWidth : 5;
+                    var shape = (this.resourceData.attributes && this.resourceData.attributes.shape) ? this.resourceData.attributes.shape : 'circle';
+                    var borderRadius = (this.resourceData.attributes && this.resourceData.attributes.borderRadius !== undefined) ? this.resourceData.attributes.borderRadius : 10;
+
+                    // Calculate border-radius value based on shape (0% to 50%)
+                    var borderRadiusValue;
+                    if (shape === 'circle') {
+                        borderRadiusValue = '50%';
+                    } else if (shape === 'rectangle') {
+                        borderRadiusValue = '0';
+                    } else { // rounded
+                        borderRadiusValue = borderRadius + 'px';
+                    }
+
+                    // Calculate border width - we'll set it as a CSS variable and update it
+                    // Border width will be a percentage of the smaller dimension
+                    var borderWidthValue = borderWidth > 0 ? borderWidth + '%' : '0';
 
                     var resourceDetail = $('<div class="resourceDetail" data-type="hotspot" style="width: 100%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center;">'
                                         +  '    <div class="hotspot-container">'
-                                        +  '        <div class="hotspot-circle" style="background-color: ' + color + ';"></div>'
-                                        +  '        <div class="hotspot-pulse" style="border-color: ' + color + ';"></div>'
+                                        +  '        <div class="hotspot-square-wrapper">'
+                                        +  '            <div class="hotspot-element" style="border-radius: ' + borderRadiusValue + '; border-color: ' + color + ';"></div>'
+                                        +  '            <div class="hotspot-pulse" style="border-color: ' + color + '; border-radius: ' + borderRadiusValue + ';"></div>'
+                                        +  '        </div>'
                                         +  '    </div>'
                                         +  '</div>');
 
-                    // Apply mask for donut effect if innerSize > 0
-                    if (innerSize > 0) {
-                        var innerPercent = innerSize + '%';
-                        var maskValue = 'radial-gradient(circle, transparent ' + innerPercent + ', black ' + innerPercent + ')';
-                        resourceDetail.find('.hotspot-circle').css({
-                            'mask-image': maskValue,
-                            '-webkit-mask-image': maskValue
+                    var hotspotElement = resourceDetail.find('.hotspot-element');
+                    
+                    // Helper function to convert hex color to rgba
+                    var hexToRgba = function(hex, alpha) {
+                        var r = parseInt(hex.slice(1, 3), 16);
+                        var g = parseInt(hex.slice(3, 5), 16);
+                        var b = parseInt(hex.slice(5, 7), 16);
+                        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+                    };
+                    
+                    // Calculate and set border width in pixels (percentage of smaller dimension)
+                    var calculateBorderWidth = function(element, percentage) {
+                        if (percentage <= 0) return 0;
+                        // Wait for element to be in DOM to get dimensions
+                        setTimeout(function() {
+                            var width = element.width();
+                            var height = element.height();
+                            var smaller = Math.min(width, height);
+                            var actualWidth = (smaller * percentage) / 100;
+                            element.css('border-width', actualWidth + 'px');
+                        }, 0);
+                        return 0; // Initial value
+                    };
+                    
+                    // Set initial border width
+                    calculateBorderWidth(hotspotElement, borderWidth);
+                    hotspotElement.css({
+                        'background-color': 'transparent',
+                        'border-style': 'solid',
+                        'border-color': color
+                    });
+                    
+                    // Add hover effect: make background semi-transparent
+                    if (borderWidth > 0) {
+                        var hoverColor = hexToRgba(color, 0.3);
+                        hotspotElement.on('mouseenter', function() {
+                            $(this).css('background-color', hoverColor);
+                        });
+                        
+                        hotspotElement.on('mouseleave', function() {
+                            $(this).css('background-color', 'transparent');
                         });
                     }
 
-                    // Make it clickable if link is provided
+                    // Make it clickable if link is provided - only on the element itself
                     if (linkUrl) {
-                        resourceDetail.css('cursor', 'pointer');
-                        resourceDetail.on('click', function() {
+                        hotspotElement.css('cursor', 'pointer');
+                        hotspotElement.on('click', function(e) {
+                            e.stopPropagation(); // Prevent event bubbling
                             if (linkUrl.startsWith('http://') || linkUrl.startsWith('https://')) {
                                 window.open(linkUrl, '_blank');
                             } else {
@@ -183,71 +236,192 @@ FrameTrail.defineType(
                     var currentAttributes = overlayOrAnnotation.data.attributes || {};
 
                     if (!currentAttributes.color) {
-                        currentAttributes.color = '#ff0000';
+                        currentAttributes.color = '#0096ff';
                     }
                     if (!currentAttributes.linkUrl) {
                         currentAttributes.linkUrl = '';
                     }
-                    if (currentAttributes.innerSize === undefined) {
-                        currentAttributes.innerSize = 0;
+                    if (currentAttributes.borderWidth === undefined) {
+                        currentAttributes.borderWidth = 5;
+                    }
+                    if (!currentAttributes.shape) {
+                        currentAttributes.shape = 'circle';
+                    }
+                    if (currentAttributes.borderRadius === undefined) {
+                        currentAttributes.borderRadius = 10;
                     }
 
                     var hotspotEditorContainer = $('<div class="hotspotEditorContainer"></div>');
 
-                    // Inner circle size (donut hole) control
-                    hotspotEditorContainer.append('<label>'+ this.labels['SettingsHotspotInnerSize'] +'</label>');
-                    var innerSizeInput = $('<input type="number" min="0" max="95" step="1" value="' + currentAttributes.innerSize + '"/>');
-                    var innerSizeLabel = $('<span>%</span>');
-                    var innerSizeWrapper = $('<div class="innerSizeWrapper"></div>');
-                    innerSizeWrapper.append(innerSizeInput, innerSizeLabel);
+                    // Helper function to convert hex color to rgba
+                    var hexToRgba = function(hex, alpha) {
+                        var r = parseInt(hex.slice(1, 3), 16);
+                        var g = parseInt(hex.slice(3, 5), 16);
+                        var b = parseInt(hex.slice(5, 7), 16);
+                        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
+                    };
 
-                    innerSizeInput.on('change', function() {
-                        var newSize = parseFloat($(this).val());
-                        if (isNaN(newSize) || newSize < 0) newSize = 0;
-                        if (newSize > 95) newSize = 95;
-                        $(this).val(newSize);
-                        overlayOrAnnotation.data.attributes.innerSize = newSize;
-
+                    // Helper function to apply shape, border-radius, and border-width changes
+                    var applyShapeChanges = function(overlayOrAnnotation, shape, borderRadius, borderWidth, color) {
+                        var borderRadiusValue;
+                        if (shape === 'circle') {
+                            borderRadiusValue = '50%';
+                        } else if (shape === 'rectangle') {
+                            borderRadiusValue = '0';
+                        } else { // rounded
+                            borderRadiusValue = borderRadius + 'px';
+                        }
+                        
+                        // Calculate border width as percentage
+                        // Note: CSS doesn't support percentage borders directly, so we'll calculate it
+                        // based on the element's size using JavaScript
+                        var borderWidthValue = borderWidth > 0 ? borderWidth + '%' : '0';
+                        var hoverColor = borderWidth > 0 ? hexToRgba(color, 0.3) : 'transparent';
+                        
+                        // Helper to calculate actual border width in pixels
+                        var calculateBorderWidth = function(element, percentage) {
+                            if (percentage <= 0) return 0;
+                            var width = element.width();
+                            var height = element.height();
+                            var smaller = Math.min(width, height);
+                            return (smaller * percentage) / 100;
+                        };
+                        
                         if (overlayOrAnnotation.overlayElement) {
-                            var hotspotCircle = overlayOrAnnotation.overlayElement.find('.hotspot-circle');
-                            var innerPercent = newSize + '%';
-                            if (newSize > 0) {
-                                var maskValue = 'radial-gradient(circle, transparent ' + innerPercent + ', black ' + innerPercent + ')';
-                                hotspotCircle.css({
-                                    'mask-image': maskValue,
-                                    '-webkit-mask-image': maskValue
+                            var hotspotElement = overlayOrAnnotation.overlayElement.find('.hotspot-element');
+                            var hotspotPulse = overlayOrAnnotation.overlayElement.find('.hotspot-pulse');
+                            
+                            // Calculate actual border width in pixels
+                            var actualBorderWidth = calculateBorderWidth(hotspotElement, borderWidth);
+                            
+                            hotspotElement.css({
+                                'border-radius': borderRadiusValue,
+                                'border-width': actualBorderWidth + 'px',
+                                'border-color': color,
+                                'background-color': 'transparent'
+                            });
+                            hotspotPulse.css('border-radius', borderRadiusValue);
+                            
+                            // Update hover handlers
+                            hotspotElement.off('mouseenter mouseleave');
+                            if (borderWidth > 0) {
+                                hotspotElement.on('mouseenter', function() {
+                                    $(this).css('background-color', hoverColor);
                                 });
-                            } else {
-                                // Remove mask for full circle
-                                hotspotCircle.css({
-                                    'mask-image': '',
-                                    '-webkit-mask-image': ''
+                                hotspotElement.on('mouseleave', function() {
+                                    $(this).css('background-color', 'transparent');
                                 });
                             }
+                            
                             FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
                         } else {
                             // Update annotation elements in dom
                             $(overlayOrAnnotation.contentViewDetailElements).each(function() {
-                                var hotspotCircle = $(this).find('.hotspot-circle');
-                                var innerPercent = newSize + '%';
-                                if (newSize > 0) {
-                                    var maskValue = 'radial-gradient(circle, transparent ' + innerPercent + ', black ' + innerPercent + ')';
-                                    hotspotCircle.css({
-                                        'mask-image': maskValue,
-                                        '-webkit-mask-image': maskValue
+                                var hotspotElement = $(this).find('.hotspot-element');
+                                var hotspotPulse = $(this).find('.hotspot-pulse');
+                                
+                                // Calculate actual border width in pixels
+                                var actualBorderWidth = calculateBorderWidth(hotspotElement, borderWidth);
+                                
+                                hotspotElement.css({
+                                    'border-radius': borderRadiusValue,
+                                    'border-width': actualBorderWidth + 'px',
+                                    'border-color': color,
+                                    'background-color': 'transparent'
+                                });
+                                hotspotPulse.css('border-radius', borderRadiusValue);
+                                
+                                hotspotElement.off('mouseenter mouseleave');
+                                if (borderWidth > 0) {
+                                    hotspotElement.on('mouseenter', function() {
+                                        $(this).css('background-color', hoverColor);
                                     });
-                                } else {
-                                    hotspotCircle.css({
-                                        'mask-image': '',
-                                        '-webkit-mask-image': ''
+                                    hotspotElement.on('mouseleave', function() {
+                                        $(this).css('background-color', 'transparent');
                                     });
                                 }
                             });
                             FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
                         }
+                    };
+
+                    // Shape selector
+                    hotspotEditorContainer.append('<label>'+ this.labels['SettingsHotspotShape'] +'</label>');
+                    var shapeSelect = $('<select></select>');
+                    shapeSelect.append('<option value="circle"' + (currentAttributes.shape === 'circle' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeCircle'] +'</option>');
+                    shapeSelect.append('<option value="rectangle"' + (currentAttributes.shape === 'rectangle' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeRectangle'] +'</option>');
+                    shapeSelect.append('<option value="rounded"' + (currentAttributes.shape === 'rounded' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeRounded'] +'</option>');
+                    
+                    shapeSelect.on('change', function() {
+                        var newShape = $(this).val();
+                        overlayOrAnnotation.data.attributes.shape = newShape;
+                        
+                        // Show/hide border radius input based on shape
+                        if (newShape === 'rounded') {
+                            borderRadiusWrapper.show();
+                        } else {
+                            borderRadiusWrapper.hide();
+                        }
+                        
+                        // Apply shape changes
+                        var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
+                        var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
+                        applyShapeChanges(overlayOrAnnotation, newShape, overlayOrAnnotation.data.attributes.borderRadius, borderWidth, color);
+                    });
+                    
+                    hotspotEditorContainer.append(shapeSelect);
+                    
+                    // Border radius input (only visible for rounded rectangles)
+                    hotspotEditorContainer.append('<label>'+ this.labels['SettingsHotspotBorderRadius'] +'</label>');
+                    var borderRadiusInput = $('<input type="number" min="0" max="100" step="1" value="' + currentAttributes.borderRadius + '"/>');
+                    var borderRadiusLabel = $('<span>px</span>');
+                    var borderRadiusWrapper = $('<div class="innerSizeWrapper"></div>');
+                    borderRadiusWrapper.append(borderRadiusInput, borderRadiusLabel);
+                    
+                    // Hide border radius if shape is not rounded
+                    if (currentAttributes.shape !== 'rounded') {
+                        borderRadiusWrapper.hide();
+                    }
+                    
+                    borderRadiusInput.on('change', function() {
+                        var newRadius = parseFloat($(this).val());
+                        if (isNaN(newRadius) || newRadius < 0) newRadius = 0;
+                        if (newRadius > 100) newRadius = 100;
+                        $(this).val(newRadius);
+                        overlayOrAnnotation.data.attributes.borderRadius = newRadius;
+                        
+                        // Apply shape changes
+                        var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
+                        var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
+                        applyShapeChanges(overlayOrAnnotation, overlayOrAnnotation.data.attributes.shape, newRadius, borderWidth, color);
+                    });
+                    
+                    hotspotEditorContainer.append(borderRadiusWrapper);
+
+                    // Border width control
+                    hotspotEditorContainer.append('<label>'+ this.labels['SettingsHotspotBorderWidth'] +'</label>');
+                    var borderWidthInput = $('<input type="number" min="0" max="50" step="0.5" value="' + currentAttributes.borderWidth + '"/>');
+                    var borderWidthLabel = $('<span>%</span>');
+                    var borderWidthWrapper = $('<div class="innerSizeWrapper"></div>');
+                    borderWidthWrapper.append(borderWidthInput, borderWidthLabel);
+
+                    borderWidthInput.on('change', function() {
+                        var newWidth = parseFloat($(this).val());
+                        if (isNaN(newWidth) || newWidth < 0) newWidth = 0;
+                        if (newWidth > 50) newWidth = 50;
+                        $(this).val(newWidth);
+                        overlayOrAnnotation.data.attributes.borderWidth = newWidth;
+                        
+                        var shape = overlayOrAnnotation.data.attributes.shape || 'circle';
+                        var borderRadius = overlayOrAnnotation.data.attributes.borderRadius || 10;
+                        var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
+                        
+                        // Apply changes
+                        applyShapeChanges(overlayOrAnnotation, shape, borderRadius, newWidth, color);
+                        FrameTrail.module('HypervideoModel').newUnsavedChange(overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations');
                     });
 
-                    hotspotEditorContainer.append(innerSizeWrapper);
+                    hotspotEditorContainer.append(borderWidthWrapper);
 
                     // Color picker
                     hotspotEditorContainer.append('<label>'+ this.labels['SettingsHotspotColor'] +'</label>');
@@ -258,16 +432,45 @@ FrameTrail.defineType(
                         overlayOrAnnotation.data.attributes.color = newColor;
 
                         if (overlayOrAnnotation.overlayElement) {
-                            var hotspotCircle = overlayOrAnnotation.overlayElement.find('.hotspot-circle');
+                            var hotspotElement = overlayOrAnnotation.overlayElement.find('.hotspot-element');
                             var hotspotPulse = overlayOrAnnotation.overlayElement.find('.hotspot-pulse');
-                            hotspotCircle.css('background-color', newColor);
+                            hotspotElement.css('border-color', newColor);
                             hotspotPulse.css('border-color', newColor);
+                            
+                            // Update hover color if border width > 0
+                            var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
+                            if (borderWidth > 0) {
+                                var hoverColor = hexToRgba(newColor, 0.3);
+                                hotspotElement.off('mouseenter mouseleave');
+                                hotspotElement.on('mouseenter', function() {
+                                    $(this).css('background-color', hoverColor);
+                                });
+                                hotspotElement.on('mouseleave', function() {
+                                    $(this).css('background-color', 'transparent');
+                                });
+                            }
+                            
                             FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
                         } else {
                             // Update annotation elements in dom
                             $(overlayOrAnnotation.contentViewDetailElements).each(function() {
-                                $(this).find('.hotspot-circle').css('background-color', newColor);
-                                $(this).find('.hotspot-pulse').css('border-color', newColor);
+                                var hotspotElement = $(this).find('.hotspot-element');
+                                var hotspotPulse = $(this).find('.hotspot-pulse');
+                                hotspotElement.css('border-color', newColor);
+                                hotspotPulse.css('border-color', newColor);
+                                
+                                // Update hover color if border width > 0
+                                var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
+                                if (borderWidth > 0) {
+                                    var hoverColor = hexToRgba(newColor, 0.3);
+                                    hotspotElement.off('mouseenter mouseleave');
+                                    hotspotElement.on('mouseenter', function() {
+                                        $(this).css('background-color', hoverColor);
+                                    });
+                                    hotspotElement.on('mouseleave', function() {
+                                        $(this).css('background-color', 'transparent');
+                                    });
+                                }
                             });
                             FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
                         }
@@ -285,21 +488,53 @@ FrameTrail.defineType(
                             overlayOrAnnotation.data.attributes.linkUrl = newUrl;
 
                             if (overlayOrAnnotation.overlayElement) {
-                                var resourceDetail = overlayOrAnnotation.overlayElement.find('.resourceDetail[data-type="hotspot"]');
+                                var hotspotElement = overlayOrAnnotation.overlayElement.find('.hotspot-element');
+                                // Remove existing click handler
+                                hotspotElement.off('click');
+                                
                                 if (newUrl) {
-                                    resourceDetail.css('cursor', 'pointer');
+                                    hotspotElement.css('cursor', 'pointer');
+                                    // Attach click handler to the element
+                                    hotspotElement.on('click', function(e) {
+                                        e.stopPropagation();
+                                        if (newUrl.startsWith('http://') || newUrl.startsWith('https://')) {
+                                            window.open(newUrl, '_blank');
+                                        } else {
+                                            // Internal navigation - treat as time in seconds
+                                            var time = parseFloat(newUrl);
+                                            if (!isNaN(time)) {
+                                                FrameTrail.module('HypervideoController').currentTime = time;
+                                            }
+                                        }
+                                    });
                                 } else {
-                                    resourceDetail.css('cursor', 'default');
+                                    hotspotElement.css('cursor', 'default');
                                 }
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
                             } else {
                                 // Update annotation elements in dom
                                 $(overlayOrAnnotation.contentViewDetailElements).each(function() {
-                                    var resourceDetail = $(this).find('.resourceDetail[data-type="hotspot"]');
+                                    var hotspotElement = $(this).find('.hotspot-element');
+                                    // Remove existing click handler
+                                    hotspotElement.off('click');
+                                    
                                     if (newUrl) {
-                                        resourceDetail.css('cursor', 'pointer');
+                                        hotspotElement.css('cursor', 'pointer');
+                                        // Attach click handler to the element
+                                        hotspotElement.on('click', function(e) {
+                                            e.stopPropagation();
+                                            if (newUrl.startsWith('http://') || newUrl.startsWith('https://')) {
+                                                window.open(newUrl, '_blank');
+                                            } else {
+                                                // Internal navigation - treat as time in seconds
+                                                var time = parseFloat(newUrl);
+                                                if (!isNaN(time)) {
+                                                    FrameTrail.module('HypervideoController').currentTime = time;
+                                                }
+                                            }
+                                        });
                                     } else {
-                                        resourceDetail.css('cursor', 'default');
+                                        hotspotElement.css('cursor', 'default');
                                     }
                                 });
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
