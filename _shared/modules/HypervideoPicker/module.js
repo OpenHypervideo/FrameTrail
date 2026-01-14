@@ -80,40 +80,11 @@ FrameTrail.defineModule('HypervideoPicker', function(FrameTrail){
             }
         }
 
-        // Apply responsive sizing similar to ViewOverview
-        var dialogWidth = 900;
-        var dialogHeight = 600;
-        
-        // Calculate thumb sizes based on dialog width
-        var thumbWidth = '23%';
-        var thumbHeight = '160px';
-        var thumbMargin = '0.8%';
-
-        if (dialogWidth < 900) {
-            thumbWidth = '30.6%';
-            thumbHeight = '160px';
-            thumbMargin = '1%';
-        }
-        if (dialogWidth < 720) {
-            thumbHeight = '140px';
-        }
-        if (dialogWidth < 620) {
-            thumbWidth = '46.4%';
-            thumbHeight = '120px';
-            thumbMargin = '1.2%';
-        }
-
-        pickerList.find('.hypervideoThumb').css({
-            width: thumbWidth,
-            height: thumbHeight,
-            margin: thumbMargin
-        });
-
-        // Open dialog
+        // Open dialog - CSS Grid handles responsive layout automatically
         pickerDialog.dialog({
             resizable: true,
-            width: dialogWidth,
-            height: dialogHeight,
+            width: 900,
+            height: 600,
             modal: true,
             close: function() {
                 pickerDialog.remove();

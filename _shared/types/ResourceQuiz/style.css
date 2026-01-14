@@ -87,7 +87,7 @@
 	content: "\f29c";
 }
 
-.editPropertiesContainer .quizEditorContainer .formColumn {
+.editPropertiesContainer .quizEditorContainer .layoutRow > * {
 	margin-top: 10px;
 }
 

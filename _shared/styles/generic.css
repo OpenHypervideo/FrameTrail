@@ -126,47 +126,85 @@ input[readonly], textarea[readonly] {
 	background-color: #cfcfcf;
 }
 
-/* Bootstrap-like grid system with 15px gap between columns */
-/* Uses padding on columns and negative margins on parent containers */
+/* CSS Grid system with 4 columns and Bootstrap-like breakpoints */
+/* Gap of 15px (7.5px on each side) */
 
-.formRow {
-    margin-left: -7.5px;
-    margin-right: -7.5px;
-}
-
-.formRow::after {
-    content: "";
-    display: table;
-    clear: both;
-}
-
-.formColumn {
-    float: left;
-    padding-left: 7.5px;
-    padding-right: 7.5px;
+.layoutRow {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
     box-sizing: border-box;
 }
 
-/* Width is the percentage - padding is included via box-sizing: border-box */
-.formColumn.column1 {
-    width: 25%;
+/* All direct children of layoutRow are grid items */
+.layoutRow > * {
+    box-sizing: border-box;
+    min-width: 0; /* Prevents grid overflow */
 }
 
-.formColumn.column2 {
-    width: 50%;
+/* Default (xs): All columns span full width */
+.layoutRow > .column-1,
+.layoutRow > .column-2,
+.layoutRow > .column-3,
+.layoutRow > .column-4 {
+    grid-column: span 4;
 }
 
-.formColumn.column3 {
-    width: 75%;
+/* Small devices (≥576px) */
+@media (min-width: 576px) {
+    .layoutRow > .column-sm-1 { grid-column: span 1; }
+    .layoutRow > .column-sm-2 { grid-column: span 2; }
+    .layoutRow > .column-sm-3 { grid-column: span 3; }
+    .layoutRow > .column-sm-4 { grid-column: span 4; }
 }
 
-.formColumn.column4 {
-    width: 100%;
+/* Medium devices (≥768px) */
+@media (min-width: 768px) {
+    .layoutRow > .column-md-1 { grid-column: span 1; }
+    .layoutRow > .column-md-2 { grid-column: span 2; }
+    .layoutRow > .column-md-3 { grid-column: span 3; }
+    .layoutRow > .column-md-4 { grid-column: span 4; }
 }
 
-.formColumn input[type="text"], .formColumn textarea {
+/* Large devices (≥992px) */
+@media (min-width: 992px) {
+    .layoutRow > .column-lg-1 { grid-column: span 1; }
+    .layoutRow > .column-lg-2 { grid-column: span 2; }
+    .layoutRow > .column-lg-3 { grid-column: span 3; }
+    .layoutRow > .column-lg-4 { grid-column: span 4; }
+}
+
+/* Extra large devices (≥1200px) */
+@media (min-width: 1200px) {
+    .layoutRow > .column-xl-1 { grid-column: span 1; }
+    .layoutRow > .column-xl-2 { grid-column: span 2; }
+    .layoutRow > .column-xl-3 { grid-column: span 3; }
+    .layoutRow > .column-xl-4 { grid-column: span 4; }
+}
+
+/* Inputs in layoutRow children should be full width */
+.layoutRow > * input[type="text"], 
+.layoutRow > * textarea,
+.layoutRow > * select {
     width: 100%;
     box-sizing: border-box;
+}
+
+/* HypervideoPicker Grid Layout */
+.hypervideoPickerDialog .hypervideoPickerList {
+	display: grid;
+	grid-template-columns: repeat(4, 1fr);
+	gap: 15px;
+	box-sizing: border-box;
+	overflow-y: auto;
+}
+
+.hypervideoPickerDialog .hypervideoPickerList .hypervideoThumb {
+	width: 100%;
+	height: auto;
+	margin: 0;
+	aspect-ratio: 16 / 9;
+	grid-column: span 1;
 }
 
 .checkboxRow {
@@ -911,9 +949,6 @@ input:checked + .slider:before {
     padding: 0.2em 0 0;
 }
 
-.ui-tabs .ui-tabs-nav li {
-
-}
 
 .ui-tabs .ui-tabs-nav li.ui-tabs-right {
     float: right;
@@ -940,9 +975,6 @@ input:checked + .slider:before {
     opacity: 1;
 }
 
-.ui-tabs .ui-tabs-nav li.ui-state-active {
-
-}
 
 .ui-tabs .ui-tabs-nav li.ui-state-active a {
 	color: var(--primary-bg-color);

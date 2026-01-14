@@ -268,12 +268,12 @@ FrameTrail.defineType(
                         return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
                     };
 
-                    // Create form row container for all columns
-                    var formRow = $('<div class="formRow"></div>');
+                    // Create layout row container for all columns
+                    var layoutRow = $('<div class="layoutRow"></div>');
                     
                     // Shape and Color columns
-                    var shapeColumn = $('<div class="formColumn column1"></div>');
-                    var colorColumn = $('<div class="formColumn column1"></div>');
+                    var shapeColumn = $('<div class="column-1 column-md-1"></div>');
+                    var colorColumn = $('<div class="column-1 column-md-1"></div>');
 
                     // Helper function to apply shape, border-radius, and border-width changes
                     var applyShapeChanges = function(overlayOrAnnotation, shape, borderRadius, borderWidth, color) {
@@ -457,8 +457,8 @@ FrameTrail.defineType(
                     colorColumn.append(colorInput);
 
                     // Border Width and Border Radius columns
-                    var borderWidthColumn = $('<div class="formColumn column1"></div>');
-                    var borderRadiusColumn = $('<div class="formColumn column1"></div>');
+                    var borderWidthColumn = $('<div class="column-1 column-md-1"></div>');
+                    var borderRadiusColumn = $('<div class="column-1 column-md-1"></div>');
 
                     // Border width control column
                     borderWidthColumn.append('<label>'+ this.labels['SettingsHotspotBorderWidth'] +'</label>');
@@ -512,9 +512,9 @@ FrameTrail.defineType(
 
                     borderRadiusColumn.append(borderRadiusWrapper);
 
-                    // Append all columns to formRow, then formRow to container
-                    formRow.append(shapeColumn, colorColumn, borderWidthColumn, borderRadiusColumn);
-                    hotspotEditorContainer.append(formRow);
+                    // Append all columns to layoutRow, then layoutRow to container
+                    layoutRow.append(shapeColumn, colorColumn, borderWidthColumn, borderRadiusColumn);
+                    hotspotEditorContainer.append(layoutRow);
 
                     // Link URL input (full width, not in columns)
                     var linkLabel = $('<label>'+ this.labels['SettingsHotspotLink'] +'</label>');

@@ -19,8 +19,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                         +  '    <div class="overviewList"></div>'
                         +  '</div>'),
 
-        OverviewList     = domElement.find('.overviewList'),
-        listWidthState;
+        OverviewList     = domElement.find('.overviewList');
 
 
 
@@ -212,7 +211,6 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
         }
 
-        listWidthState = false;
         changeViewSize();
         OverviewList.find('.hypervideoThumb').css('transition-duration', '');
 
@@ -244,85 +242,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
         if ( FrameTrail.getState('viewMode') != 'overview' ) return;
 
-        var overviewListHeight = $(FrameTrail.getState('target')).find('.mainContainer').outerHeight()
-                                    - (FrameTrail.getState('editMode') ? 24 : 0),
-            overviewListWidth = $(FrameTrail.getState('target')).width()
-                                    - (FrameTrail.getState('sidebarOpen') ? $(FrameTrail.getState('target')).find('.sidebar').width() : 0);
-
-        OverviewList.height( overviewListHeight );
-
-        if ( overviewListWidth >= 1400 && listWidthState != 1400 ) {
-
-            listWidthState = 1400;
-
-            OverviewList.find('.hypervideoThumb').css({
-                height: 220 + 'px',
-                margin: 0.8 + '%',
-                width: 23 + '%'
-            });
-
-        } else if ( overviewListWidth >= 1220 && overviewListWidth < 1400 && listWidthState != 1220 ) {
-
-            listWidthState = 1220;
-
-            OverviewList.find('.hypervideoThumb').css({
-                height: 190 + 'px',
-                margin: 0.8 + '%',
-                width: 23 + '%'
-            });
-
-        } else if ( overviewListWidth >= 1010 && overviewListWidth < 1220 && listWidthState != 1010 ) {
-
-            listWidthState = 1010;
-
-            OverviewList.find('.hypervideoThumb').css({
-                height: 160 + 'px',
-                margin: 0.7 + '%',
-                width: 23 + '%'
-            });
-
-        } else if ( overviewListWidth >= 900 && overviewListWidth < 1010 && listWidthState != 900 ) {
-
-            listWidthState = 900;
-
-            OverviewList.find('.hypervideoThumb').css({
-                height: 180 + 'px',
-                margin: 1 + '%',
-                width: 30.6 + '%'
-            });
-
-        } else if ( overviewListWidth >= 720 && overviewListWidth < 900 && listWidthState != 720 ) {
-
-            listWidthState = 720;
-
-            OverviewList.find('.hypervideoThumb').css({
-                height: 160 + 'px',
-                margin: 1 + '%',
-                width: 30.6 + '%'
-            });
-
-        } else if ( overviewListWidth >= 620 && overviewListWidth < 720 && listWidthState != 620 ) {
-
-            listWidthState = 620;
-
-            OverviewList.find('.hypervideoThumb').css({
-                height: 140 + 'px',
-                margin: 1 + '%',
-                width: 30.6 + '%'
-            });
-
-        } else if ( overviewListWidth <= 620 && listWidthState != 400 ) {
-
-            listWidthState = 400;
-
-            OverviewList.find('.hypervideoThumb').css({
-                height: 120 + 'px',
-                margin: 1.2 + '%',
-                width: 46.4 + '%'
-            });
-
-        }
-
+        // Height is now set via CSS (100%), just update perfectScrollbar
         OverviewList.perfectScrollbar('update');
 
     };
@@ -361,7 +281,6 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
     function toggleViewMode(viewMode) {
 
         if (viewMode === 'overview') {
-            listWidthState = false;
             changeViewSize();
             domElement.addClass('active');
             FrameTrail.module('Titlebar').title = labels['GenericOverview'];
