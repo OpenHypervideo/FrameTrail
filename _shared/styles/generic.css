@@ -242,7 +242,7 @@ input[readonly], textarea[readonly] {
 	height: auto;
 	margin: 0;
 	aspect-ratio: 16 / 9;
-	grid-column: span 1;
+	grid-column: span 3;
 }
 
 .checkboxRow {
