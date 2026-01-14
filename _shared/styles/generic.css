@@ -119,6 +119,7 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
 
 input[type="color"] {
 	cursor: pointer;
+    width: 100%;
 }
 
 input[readonly], textarea[readonly] {

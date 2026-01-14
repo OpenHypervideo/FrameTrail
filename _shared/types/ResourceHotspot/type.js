@@ -265,8 +265,8 @@ FrameTrail.defineType(
                     var formRow = $('<div class="formRow"></div>');
                     
                     // Shape and Color columns
-                    var shapeColumn = $('<div class="formColumn column2"></div>');
-                    var colorColumn = $('<div class="formColumn column2"></div>');
+                    var shapeColumn = $('<div class="formColumn column1"></div>');
+                    var colorColumn = $('<div class="formColumn column1"></div>');
 
                     // Helper function to apply shape, border-radius, and border-width changes
                     var applyShapeChanges = function(overlayOrAnnotation, shape, borderRadius, borderWidth, color) {
@@ -434,8 +434,8 @@ FrameTrail.defineType(
                     colorColumn.append(colorInput);
 
                     // Border Width and Border Radius columns
-                    var borderWidthColumn = $('<div class="formColumn column2"></div>');
-                    var borderRadiusColumn = $('<div class="formColumn column2"></div>');
+                    var borderWidthColumn = $('<div class="formColumn column1"></div>');
+                    var borderRadiusColumn = $('<div class="formColumn column1"></div>');
 
                     // Border width control column
                     borderWidthColumn.append('<label>'+ this.labels['SettingsHotspotBorderWidth'] +'</label>');
