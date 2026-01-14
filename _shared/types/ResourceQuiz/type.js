@@ -261,6 +261,7 @@ FrameTrail.defineType(
 
                     /* Add Answer Text Fields */
 
+                    var formRow = $('<div class="formRow"></div>');
                     var leftColumn = $('<div class="formColumn column2"></div>');
 
                     leftColumn.append('<label>'+ this.labels['SettingsQuizAnswersLabel'] +'</label>');
@@ -368,8 +369,6 @@ FrameTrail.defineType(
                     });
 
                     leftColumn.append(newAnswerButton);
-
-                    quizEditorContainer.append(leftColumn);
 
                     var settingsCorrectShowTextCheckedString = (overlayOrAnnotation.data.attributes.onCorrectAnswer.showText) ? 'checked="checked"' : '',
                         settingsCorrectShowTextClass = (overlayOrAnnotation.data.attributes.onCorrectAnswer.showText) ? 'active' : '',
@@ -581,7 +580,8 @@ FrameTrail.defineType(
                         }
                     });
 
-                    quizEditorContainer.append(leftColumn, rightColumn);
+                    formRow.append(leftColumn, rightColumn);
+                    quizEditorContainer.append(formRow);
 
                     return quizEditorContainer;
 

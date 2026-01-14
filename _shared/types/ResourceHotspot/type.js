@@ -261,6 +261,13 @@ FrameTrail.defineType(
                         return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
                     };
 
+                    // Create form row container for all columns
+                    var formRow = $('<div class="formRow"></div>');
+                    
+                    // Shape and Color columns
+                    var shapeColumn = $('<div class="formColumn column2"></div>');
+                    var colorColumn = $('<div class="formColumn column2"></div>');
+
                     // Helper function to apply shape, border-radius, and border-width changes
                     var applyShapeChanges = function(overlayOrAnnotation, shape, borderRadius, borderWidth, color) {
                         var borderRadiusValue;
@@ -345,8 +352,8 @@ FrameTrail.defineType(
                         }
                     };
 
-                    // Shape selector
-                    hotspotEditorContainer.append('<label>'+ this.labels['SettingsHotspotShape'] +'</label>');
+                    // Shape selector column
+                    shapeColumn.append('<label>'+ this.labels['SettingsHotspotShape'] +'</label>');
                     var shapeSelect = $('<select></select>');
                     shapeSelect.append('<option value="circle"' + (currentAttributes.shape === 'circle' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeCircle'] +'</option>');
                     shapeSelect.append('<option value="rectangle"' + (currentAttributes.shape === 'rectangle' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeRectangle'] +'</option>');
@@ -356,11 +363,11 @@ FrameTrail.defineType(
                         var newShape = $(this).val();
                         overlayOrAnnotation.data.attributes.shape = newShape;
                         
-                        // Show/hide border radius input based on shape
+                        // Show/hide border radius column based on shape
                         if (newShape === 'rounded') {
-                            borderRadiusWrapper.show();
+                            borderRadiusColumn.show();
                         } else {
-                            borderRadiusWrapper.hide();
+                            borderRadiusColumn.hide();
                         }
                         
                         // Apply shape changes
@@ -369,62 +376,10 @@ FrameTrail.defineType(
                         applyShapeChanges(overlayOrAnnotation, newShape, overlayOrAnnotation.data.attributes.borderRadius, borderWidth, color);
                     });
                     
-                    hotspotEditorContainer.append(shapeSelect);
-                    
-                    // Border radius input (only visible for rounded rectangles)
-                    hotspotEditorContainer.append('<label>'+ this.labels['SettingsHotspotBorderRadius'] +'</label>');
-                    var borderRadiusInput = $('<input type="number" min="0" max="100" step="1" value="' + currentAttributes.borderRadius + '"/>');
-                    var borderRadiusLabel = $('<span>px</span>');
-                    var borderRadiusWrapper = $('<div class="innerSizeWrapper"></div>');
-                    borderRadiusWrapper.append(borderRadiusInput, borderRadiusLabel);
-                    
-                    // Hide border radius if shape is not rounded
-                    if (currentAttributes.shape !== 'rounded') {
-                        borderRadiusWrapper.hide();
-                    }
-                    
-                    borderRadiusInput.on('change', function() {
-                        var newRadius = parseFloat($(this).val());
-                        if (isNaN(newRadius) || newRadius < 0) newRadius = 0;
-                        if (newRadius > 100) newRadius = 100;
-                        $(this).val(newRadius);
-                        overlayOrAnnotation.data.attributes.borderRadius = newRadius;
-                        
-                        // Apply shape changes
-                        var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
-                        var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
-                        applyShapeChanges(overlayOrAnnotation, overlayOrAnnotation.data.attributes.shape, newRadius, borderWidth, color);
-                    });
-                    
-                    hotspotEditorContainer.append(borderRadiusWrapper);
+                    shapeColumn.append(shapeSelect);
 
-                    // Border width control
-                    hotspotEditorContainer.append('<label>'+ this.labels['SettingsHotspotBorderWidth'] +'</label>');
-                    var borderWidthInput = $('<input type="number" min="0" max="50" step="0.5" value="' + currentAttributes.borderWidth + '"/>');
-                    var borderWidthLabel = $('<span>%</span>');
-                    var borderWidthWrapper = $('<div class="innerSizeWrapper"></div>');
-                    borderWidthWrapper.append(borderWidthInput, borderWidthLabel);
-
-                    borderWidthInput.on('change', function() {
-                        var newWidth = parseFloat($(this).val());
-                        if (isNaN(newWidth) || newWidth < 0) newWidth = 0;
-                        if (newWidth > 50) newWidth = 50;
-                        $(this).val(newWidth);
-                        overlayOrAnnotation.data.attributes.borderWidth = newWidth;
-                        
-                        var shape = overlayOrAnnotation.data.attributes.shape || 'circle';
-                        var borderRadius = overlayOrAnnotation.data.attributes.borderRadius || 10;
-                        var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
-                        
-                        // Apply changes
-                        applyShapeChanges(overlayOrAnnotation, shape, borderRadius, newWidth, color);
-                        FrameTrail.module('HypervideoModel').newUnsavedChange(overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations');
-                    });
-
-                    hotspotEditorContainer.append(borderWidthWrapper);
-
-                    // Color picker
-                    hotspotEditorContainer.append('<label>'+ this.labels['SettingsHotspotColor'] +'</label>');
+                    // Color picker column
+                    colorColumn.append('<label>'+ this.labels['SettingsHotspotColor'] +'</label>');
                     var colorInput = $('<input type="color" value="' + currentAttributes.color + '"/>');
 
                     colorInput.on('change', function() {
@@ -476,9 +431,69 @@ FrameTrail.defineType(
                         }
                     });
 
-                    hotspotEditorContainer.append(colorInput);
+                    colorColumn.append(colorInput);
 
-                    // Link URL input
+                    // Border Width and Border Radius columns
+                    var borderWidthColumn = $('<div class="formColumn column2"></div>');
+                    var borderRadiusColumn = $('<div class="formColumn column2"></div>');
+
+                    // Border width control column
+                    borderWidthColumn.append('<label>'+ this.labels['SettingsHotspotBorderWidth'] +'</label>');
+                    var borderWidthInput = $('<input type="number" min="0" max="50" step="0.5" value="' + currentAttributes.borderWidth + '"/>');
+                    var borderWidthLabel = $('<span>%</span>');
+                    var borderWidthWrapper = $('<div class="innerSizeWrapper"></div>');
+                    borderWidthWrapper.append(borderWidthInput, borderWidthLabel);
+
+                    borderWidthInput.on('change', function() {
+                        var newWidth = parseFloat($(this).val());
+                        if (isNaN(newWidth) || newWidth < 0) newWidth = 0;
+                        if (newWidth > 50) newWidth = 50;
+                        $(this).val(newWidth);
+                        overlayOrAnnotation.data.attributes.borderWidth = newWidth;
+                        
+                        var shape = overlayOrAnnotation.data.attributes.shape || 'circle';
+                        var borderRadius = overlayOrAnnotation.data.attributes.borderRadius || 10;
+                        var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
+                        
+                        // Apply changes
+                        applyShapeChanges(overlayOrAnnotation, shape, borderRadius, newWidth, color);
+                        FrameTrail.module('HypervideoModel').newUnsavedChange(overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations');
+                    });
+
+                    borderWidthColumn.append(borderWidthWrapper);
+
+                    // Border radius input column (only visible for rounded rectangles)
+                    borderRadiusColumn.append('<label>'+ this.labels['SettingsHotspotBorderRadius'] +'</label>');
+                    var borderRadiusInput = $('<input type="number" min="0" max="100" step="1" value="' + currentAttributes.borderRadius + '"/>');
+                    var borderRadiusLabel = $('<span>px</span>');
+                    var borderRadiusWrapper = $('<div class="innerSizeWrapper"></div>');
+                    borderRadiusWrapper.append(borderRadiusInput, borderRadiusLabel);
+                    
+                    // Hide border radius if shape is not rounded
+                    if (currentAttributes.shape !== 'rounded') {
+                        borderRadiusColumn.hide();
+                    }
+                    
+                    borderRadiusInput.on('change', function() {
+                        var newRadius = parseFloat($(this).val());
+                        if (isNaN(newRadius) || newRadius < 0) newRadius = 0;
+                        if (newRadius > 100) newRadius = 100;
+                        $(this).val(newRadius);
+                        overlayOrAnnotation.data.attributes.borderRadius = newRadius;
+                        
+                        // Apply shape changes
+                        var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
+                        var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
+                        applyShapeChanges(overlayOrAnnotation, overlayOrAnnotation.data.attributes.shape, newRadius, borderWidth, color);
+                    });
+
+                    borderRadiusColumn.append(borderRadiusWrapper);
+
+                    // Append all columns to formRow, then formRow to container
+                    formRow.append(shapeColumn, colorColumn, borderWidthColumn, borderRadiusColumn);
+                    hotspotEditorContainer.append(formRow);
+
+                    // Link URL input (full width, not in columns)
                     hotspotEditorContainer.append('<label>'+ this.labels['SettingsHotspotLink'] +'</label>');
                     var linkInput = $('<input type="text" placeholder="https://example.com or time in seconds" value="' + currentAttributes.linkUrl + '"/>');
 

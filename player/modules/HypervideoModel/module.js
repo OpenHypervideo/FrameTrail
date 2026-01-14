@@ -402,8 +402,8 @@
 					"position": {
 						"top":      protoData.position.top,
 						"left":     protoData.position.left,
-						"width":    30,
-						"height":   30
+						"width":    protoData.position.width,
+						"height":   protoData.position.height
 					},
 					"events": {
 						"onStart": "FrameTrail.module('HypervideoController').pause();"

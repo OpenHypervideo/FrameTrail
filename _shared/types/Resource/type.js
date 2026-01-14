@@ -170,7 +170,7 @@ FrameTrail.defineType(
                                             + '            <li class="ui-tabs-right tab-label">'+ this.labels['SettingsActions'] +': </li>'
                                             + '        </ul>'
                                             + '        <div id="OverlayOptions"></div>'
-                                            + '        <div id="OverlayAppearance">'
+                                            + '        <div id="OverlayAppearance" class="formRow">'
                                             + '            <div class="formColumn column2">'
                                             + '                <div style="clear: both;">'+ this.labels['SettingsOpacity'] +'</div>'
                                             + '                <div class="opacitySlider"></div>'

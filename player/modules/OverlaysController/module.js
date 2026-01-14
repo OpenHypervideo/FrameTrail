@@ -490,7 +490,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                                 "position": {
                                     "top":      overlayPositionTop,
                                     "left":     overlayPositionLeft,
-                                    "width":    30,
+                                    "width":    20,
                                     "height":   30
                                 }
                             });

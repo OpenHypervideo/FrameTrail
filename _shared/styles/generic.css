@@ -117,14 +117,36 @@ input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
 	border-color: var(--primary-bg-color);
 }
 
+input[type="color"] {
+	cursor: pointer;
+}
+
 input[readonly], textarea[readonly] {
 	background-color: #cfcfcf;
 }
 
-.formColumn {
-    float: left;
+/* Bootstrap-like grid system with 15px gap between columns */
+/* Uses padding on columns and negative margins on parent containers */
+
+.formRow {
+    margin-left: -7.5px;
+    margin-right: -7.5px;
 }
 
+.formRow::after {
+    content: "";
+    display: table;
+    clear: both;
+}
+
+.formColumn {
+    float: left;
+    padding-left: 7.5px;
+    padding-right: 7.5px;
+    box-sizing: border-box;
+}
+
+/* Width is the percentage - padding is included via box-sizing: border-box */
 .formColumn.column1 {
     width: 25%;
 }
@@ -142,7 +164,7 @@ input[readonly], textarea[readonly] {
 }
 
 .formColumn input[type="text"], .formColumn textarea {
-    width: calc(100% - 20px);
+    width: 100%;
     box-sizing: border-box;
 }
 
