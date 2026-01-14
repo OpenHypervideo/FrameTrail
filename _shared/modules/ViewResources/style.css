@@ -90,7 +90,7 @@
 }
 
 .viewResources .resourcesList .resourceThumb.selected, .newHypervideoDialog .newHypervideoDialogResources .resourceThumb.selected {
-	outline: 2px solid var(--primary-bg-color);
+	outline: 4px solid #FF9900;
 }
 
 .viewResources .resourcesList .resourceThumb.markedForDeletion { 

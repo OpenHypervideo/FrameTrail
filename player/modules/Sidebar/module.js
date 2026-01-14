@@ -130,11 +130,44 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             ['video', 'youtube', 'vimeo']
         );
 
-        $('body').on('click.hypervideoAddResourcesItem', '.resourceThumb', function() {
+        // Store reference to the Add Hypervideo button for enabling/disabling
+        var addHypervideoButton = null;
+
+        // Validation function to check if form is valid
+        function validateHypervideoForm() {
+            var activeTab = newDialog.find('.newHypervideoTabs').tabs('option', 'active');
+            var isChooseVideoTab = (activeTab === 0); // First tab is ChooseVideo
+            var isEmptyVideoTab = (activeTab === 1); // Second tab is EmptyVideo
+            
+            if (isChooseVideoTab) {
+                // Choose Video tab: must have a selected video
+                var hasSelectedVideo = newDialog.find('.resourceThumb.selected').length > 0;
+                return hasSelectedVideo;
+            } else if (isEmptyVideoTab) {
+                // Empty Video tab: must have duration >= 4 seconds
+                var durationValue = parseFloat(newDialog.find('input[name="duration"]').val());
+                return !isNaN(durationValue) && durationValue >= 4;
+            }
+            
+            return false;
+        }
+
+        // Function to update the Add Hypervideo button state
+        function updateAddButtonState() {
+            if (addHypervideoButton) {
+                var isValid = validateHypervideoForm();
+                addHypervideoButton.button(isValid ? 'enable' : 'disable');
+            }
+        }
+
+        $('body').on('click.hypervideoAddResourcesItem', '.newHypervideoDialog .resourceThumb', function() {
 
             newDialog.find('.resourceThumb').removeClass('selected');
             $(this).addClass('selected');
             newDialog.find('input[name="resourcesID"]').val($(this).data('resourceid'));
+            
+            // Update button state when video is selected
+            updateAddButtonState();
 
         });
 
@@ -148,7 +181,15 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                     newDialog.find('input[name="resourcesID"]').prop('disabled',false);
                     newDialog.find('input[name="duration"]').prop('disabled',true);
                 }
+                
+                // Update button state when tab changes
+                updateAddButtonState();
             }
+        });
+
+        // Listen for changes to the duration input
+        newDialog.on('input change', 'input[name="duration"]', function() {
+            updateAddButtonState();
         });
 
         newDialog.find('.newHypervideoForm').ajaxForm({
@@ -237,9 +278,25 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             },
             beforeSerialize: function() {
 
-                // Subtitles Validation
+                // Video/Empty Video Validation
                 newDialog.dialog('widget').find('.message.error').removeClass('active').html('');
 
+                if (!validateHypervideoForm()) {
+                    var activeTab = newDialog.find('.newHypervideoTabs').tabs('option', 'active');
+                    var isChooseVideoTab = (activeTab === 0);
+                    var isEmptyVideoTab = (activeTab === 1);
+                    
+                    if (isChooseVideoTab) {
+                        newDialog.dialog('widget').find('.message.error').addClass('active').html('Please select a video from the list.');
+                    } else if (isEmptyVideoTab) {
+                        newDialog.dialog('widget').find('.message.error').addClass('active').html('Please enter a duration of at least 4 seconds.');
+                    } else {
+                        newDialog.dialog('widget').find('.message.error').addClass('active').html('Please choose a video or set a duration for an empty video.');
+                    }
+                    return false;
+                }
+
+                // Subtitles Validation
                 var err = 0;
                 newDialog.find('.subtitlesItem').each(function() {
                     $(this).css({'outline': ''});
@@ -311,6 +368,15 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             height:     500,
             create: function() {
                 newDialog.find('.message.error').appendTo($(this).dialog('widget').find('.ui-dialog-buttonpane'));
+                
+                // Store reference to the Add Hypervideo button and disable it initially
+                var buttonPane = $(this).dialog('widget').find('.ui-dialog-buttonpane');
+                addHypervideoButton = buttonPane.find('button').first();
+                addHypervideoButton.button('disable');
+            },
+            open: function() {
+                // Update button state when dialog opens (in case resources are already loaded)
+                updateAddButtonState();
             },
             close: function() {
                 $('body').off('click.hypervideoAddResourcesItem');
