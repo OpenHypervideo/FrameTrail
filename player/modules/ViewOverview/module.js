@@ -296,32 +296,46 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
         var thumbRect = preCapturedRect || thumbElement[0].getBoundingClientRect();
 
         // Calculate positions relative to mainContainer
-        var startX = thumbRect.left - mainContainerRect.left;
-        var startY = thumbRect.top - mainContainerRect.top;
         var startWidth = thumbRect.width;
         var startHeight = thumbRect.height;
         var endWidth = mainContainerRect.width;
         var endHeight = mainContainerRect.height;
 
-        // Create animation element (clone of thumb)
-        animationElement = thumbElement.clone();
-        animationElement.css({
+        // Get video container background color (like closing animation)
+        var viewVideo = $(FrameTrail.getState('target')).find('.viewVideo');
+        var videoContainer = viewVideo.find('.videoContainer').first();
+        var bgColor = '#000';
+        if (videoContainer.length > 0) {
+            var computedStyle = window.getComputedStyle(videoContainer[0]);
+            if (computedStyle.backgroundColor && computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+                bgColor = computedStyle.backgroundColor;
+            }
+        }
+
+        // Create simple, scalable animation element (like closing animation)
+        animationElement = $('<div></div>').css({
             position: 'fixed',
             left: thumbRect.left + 'px',
             top: thumbRect.top + 'px',
             width: startWidth + 'px',
             height: startHeight + 'px',
             margin: '0',
+            padding: '0',
             zIndex: 10000,
             pointerEvents: 'none',
-            transformOrigin: 'top left'
+            transformOrigin: 'top left',
+            overflow: 'hidden',
+            backgroundColor: bgColor,
+            border: '2px solid var(--primary-fg-color)',
+            boxSizing: 'border-box',
+            opacity: '1'
         });
         $('body').append(animationElement);
 
         // Hide the original thumb temporarily
         thumbElement.css('opacity', '0');
 
-        // Animate to full size
+        // Animate to full size with opacity change
         if (typeof anime !== 'undefined') {
             anime({
                 targets: animationElement[0],
@@ -329,6 +343,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 top: mainContainerRect.top + 'px',
                 width: endWidth + 'px',
                 height: endHeight + 'px',
+                opacity: 0.5,
                 duration: 400,
                 easing: 'easeInOutQuad',
                 complete: function() {
@@ -346,7 +361,8 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 left: mainContainerRect.left + 'px',
                 top: mainContainerRect.top + 'px',
                 width: endWidth + 'px',
-                height: endHeight + 'px'
+                height: endHeight + 'px',
+                opacity: 0.1
             }, 400, function() {
                 if (animationElement) {
                     animationElement.remove();
@@ -427,12 +443,13 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 border: '2px solid var(--primary-fg-color)',
                 // Ensure all children scale with the element
                 transform: 'scale(1)',
-                boxSizing: 'border-box'
+                boxSizing: 'border-box',
+                opacity: '0.5'
             });
             
             $('body').append(animationElement);
 
-            // Animate to thumb position
+            // Animate to thumb position with opacity change
             if (typeof anime !== 'undefined') {
                 anime({
                     targets: animationElement[0],
@@ -440,6 +457,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                     top: thumbRect.top + 'px',
                     width: thumbRect.width + 'px',
                     height: thumbRect.height + 'px',
+                    opacity: 1,
                     duration: 400,
                     easing: 'easeInOutQuad',
                     complete: function() {
@@ -456,7 +474,8 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                     left: thumbRect.left + 'px',
                     top: thumbRect.top + 'px',
                     width: thumbRect.width + 'px',
-                    height: thumbRect.height + 'px'
+                    height: thumbRect.height + 'px',
+                    opacity: 1
                 }, 400, function() {
                     if (animationElement) {
                         animationElement.remove();
