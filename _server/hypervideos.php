@@ -11,7 +11,7 @@ require_once("./user.php");
 Returning Code:
 0		=	Success. Hypervideo has been added. Returning new Object in response
 1		=	failed. User not logged in or inactive. See resp["string"]
-4		=	failed. Name (min 3 chars) or Description have not been submitted.
+4		=	failed. Name (min 3 chars) has not been submitted.
  *
  */
 function hypervideoAdd($src, $subtitles = false) {
@@ -43,10 +43,10 @@ function hypervideoAdd($src, $subtitles = false) {
 
 	$newHV = json_decode($src, true);
 
-	if ((!$newHV["meta"]["description"]) || (!$newHV["meta"]["name"]) || (strlen($newHV["meta"]["name"]) <3)) {
+	if ((!$newHV["meta"]["name"]) || (strlen($newHV["meta"]["name"]) <3)) {
 		$return["status"] = "fail";
 		$return["code"] = 4;
-		$return["string"] = "Name (min 3 chars) or Description have not been submitted.";
+		$return["string"] = "Name (min 3 chars) has not been submitted.";
 		return $return;
 	}
 
@@ -108,7 +108,7 @@ Returning Code:
 0		=	Success. Hypervideo has been cloned. Returning new Object in response
 1		=	failed. User not logged in or inactive
 3		=	failed. Could not find the resources folder
-4		=	failed. Name (min 3 chars) or Description have not been submitted.
+4		=	failed. Name (min 3 chars) has not been submitted.
 5		=	failed. hypervideoID has not been found
  */
 function hypervideoClone($hypervideoID, $src) {
@@ -136,10 +136,10 @@ function hypervideoClone($hypervideoID, $src) {
 
 	$newHV = json_decode($src,true);
 
-	if ((!$newHV["meta"]["description"]) || (!$newHV["meta"]["name"]) || (strlen($newHV["meta"]["name"]) <3)) {
+	if ((!$newHV["meta"]["name"]) || (strlen($newHV["meta"]["name"]) <3)) {
 		$return["status"] = "fail";
 		$return["code"] = 4;
-		$return["string"] = "Name (min 3 chars) or Description have not been submitted.";
+		$return["string"] = "Name (min 3 chars) has not been submitted.";
 		return $return;
 	}
 
