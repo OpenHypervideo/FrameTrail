@@ -382,8 +382,8 @@ FrameTrail.defineType(
                     colorColumn.append('<label>'+ this.labels['SettingsHotspotColor'] +'</label>');
                     var colorInput = $('<input type="color" value="' + currentAttributes.color + '"/>');
 
-                    colorInput.on('change', function() {
-                        var newColor = $(this).val();
+                    // Helper function to update color visually
+                    var updateColor = function(newColor, trackChange) {
                         overlayOrAnnotation.data.attributes.color = newColor;
 
                         if (overlayOrAnnotation.overlayElement) {
@@ -405,7 +405,9 @@ FrameTrail.defineType(
                                 });
                             }
                             
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                            if (trackChange) {
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                            }
                         } else {
                             // Update annotation elements in dom
                             $(overlayOrAnnotation.contentViewDetailElements).each(function() {
@@ -427,8 +429,22 @@ FrameTrail.defineType(
                                     });
                                 }
                             });
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                            if (trackChange) {
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                            }
                         }
+                    };
+
+                    // Update color in real-time as user interacts with picker
+                    colorInput.on('input', function() {
+                        var newColor = $(this).val();
+                        updateColor(newColor, false);
+                    });
+
+                    // Track change when picker is closed
+                    colorInput.on('change', function() {
+                        var newColor = $(this).val();
+                        updateColor(newColor, true);
                     });
 
                     colorColumn.append(colorInput);
