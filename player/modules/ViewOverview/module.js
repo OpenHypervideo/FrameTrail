@@ -19,7 +19,9 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                         +  '    <div class="overviewList"></div>'
                         +  '</div>'),
 
-        OverviewList     = domElement.find('.overviewList');
+        OverviewList     = domElement.find('.overviewList'),
+        animationElement = null,
+        lastSelectedThumb = null;
 
 
 
@@ -103,14 +105,21 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                     evt.preventDefault();
                     evt.stopPropagation();
 
-                    var newHypervideoID = $(this).attr('data-hypervideoid'),
+                    var clickedThumb = $(this);
+                    var newHypervideoID = clickedThumb.attr('data-hypervideoid'),
                         update = (FrameTrail.module('RouteNavigation').hypervideoID == undefined) ? false : true;
 
+                    // Store reference to clicked thumb for animation
+                    lastSelectedThumb = clickedThumb;
 
                     //TODO: PUT IN SEPARATE FUNCTION
 
                     if ( FrameTrail.module('RouteNavigation').hypervideoID == newHypervideoID ) {
 
+                        // Store the clicked thumb for animation in toggleViewMode
+                        lastSelectedThumb = clickedThumb;
+                        
+                        // Just switch to video view - animation will happen in toggleViewMode
                         FrameTrail.changeState('viewMode', 'video');
 
                     } else {
@@ -273,17 +282,293 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
 
     /**
+     * Animates a hypervideo thumb from its grid position to full mainContainer size
+     * @method animateThumbToFullSize
+     * @param {jQuery} thumbElement The thumb element to animate
+     * @param {Function} callback Function to call after animation completes
+     * @param {Object} preCapturedRect Optional: thumb rect captured before overview is hidden
+     */
+    function animateThumbToFullSize(thumbElement, callback, preCapturedRect) {
+        var mainContainer = $(FrameTrail.getState('target')).find('.mainContainer');
+        var mainContainerRect = mainContainer[0].getBoundingClientRect();
+        
+        // Use pre-captured rect if provided, otherwise get it now
+        var thumbRect = preCapturedRect || thumbElement[0].getBoundingClientRect();
+
+        // Calculate positions relative to mainContainer
+        var startX = thumbRect.left - mainContainerRect.left;
+        var startY = thumbRect.top - mainContainerRect.top;
+        var startWidth = thumbRect.width;
+        var startHeight = thumbRect.height;
+        var endWidth = mainContainerRect.width;
+        var endHeight = mainContainerRect.height;
+
+        // Create animation element (clone of thumb)
+        animationElement = thumbElement.clone();
+        animationElement.css({
+            position: 'fixed',
+            left: thumbRect.left + 'px',
+            top: thumbRect.top + 'px',
+            width: startWidth + 'px',
+            height: startHeight + 'px',
+            margin: '0',
+            zIndex: 10000,
+            pointerEvents: 'none',
+            transformOrigin: 'top left'
+        });
+        $('body').append(animationElement);
+
+        // Hide the original thumb temporarily
+        thumbElement.css('opacity', '0');
+
+        // Animate to full size
+        if (typeof anime !== 'undefined') {
+            anime({
+                targets: animationElement[0],
+                left: mainContainerRect.left + 'px',
+                top: mainContainerRect.top + 'px',
+                width: endWidth + 'px',
+                height: endHeight + 'px',
+                duration: 400,
+                easing: 'easeInOutQuad',
+                complete: function() {
+                    if (animationElement) {
+                        animationElement.remove();
+                        animationElement = null;
+                    }
+                    thumbElement.css('opacity', '');
+                    if (callback) callback();
+                }
+            });
+        } else {
+            // Fallback if anime.js is not available
+            animationElement.animate({
+                left: mainContainerRect.left + 'px',
+                top: mainContainerRect.top + 'px',
+                width: endWidth + 'px',
+                height: endHeight + 'px'
+            }, 400, function() {
+                if (animationElement) {
+                    animationElement.remove();
+                    animationElement = null;
+                }
+                thumbElement.css('opacity', '');
+                if (callback) callback();
+            });
+        }
+    }
+
+    /**
+     * Animates from full mainContainer size back to the thumb position in the grid
+     * @method animateFullSizeToThumb
+     * @param {String} hypervideoID The ID of the hypervideo to animate to
+     * @param {Function} callback Function to call after animation completes
+     */
+    function animateFullSizeToThumb(hypervideoID, capturedVideoContainer, mainContainerRect, callback) {
+        // First, ensure overview is visible so thumbs can be positioned
+        // Show overview but keep it visually behind the animation (it's already added to DOM)
+        domElement.addClass('active');
+        changeViewSize();
+        
+        // Function to find thumb and perform animation
+        function findThumbAndAnimate() {
+            // Find the thumb element - try both attribute variations
+            var thumbElement = OverviewList.find('.hypervideoThumb[data-hypervideoid="' + hypervideoID + '"]');
+            if (thumbElement.length === 0) {
+                // Try alternative attribute name (capital ID)
+                thumbElement = OverviewList.find('.hypervideoThumb[data-hypervideoID="' + hypervideoID + '"]');
+            }
+            
+            if (thumbElement.length === 0) {
+                // Thumb not found yet, try again after a short delay
+                window.setTimeout(findThumbAndAnimate, 50);
+                return;
+            }
+            
+            // Get thumb position relative to viewport
+            var thumbRect = thumbElement[0].getBoundingClientRect();
+            
+            // Check if thumb has valid dimensions and position (not 0x0 and not at 0,0)
+            if (thumbRect.width === 0 || thumbRect.height === 0 || 
+                (thumbRect.left === 0 && thumbRect.top === 0 && thumbRect.width < 100)) {
+                // Thumb not positioned yet, try again
+                window.setTimeout(findThumbAndAnimate, 50);
+                return;
+            }
+
+            // Create animation element - use a simple scalable representation
+            // Instead of cloning the video container (which has fixed-size video elements that don't scale),
+            // create a simple div that scales smoothly like the thumb does in the opening animation
+            var computedStyle = capturedVideoContainer && capturedVideoContainer.length > 0 
+                ? window.getComputedStyle(capturedVideoContainer[0]) 
+                : null;
+            
+            // Get background color from the video container
+            var bgColor = '#000';
+            if (computedStyle && computedStyle.backgroundColor && computedStyle.backgroundColor !== 'rgba(0, 0, 0, 0)') {
+                bgColor = computedStyle.backgroundColor;
+            }
+            
+            // Create a simple, scalable div (no nested elements with fixed sizes)
+            // Add active border like the active hypervideo thumb has
+            animationElement = $('<div></div>').css({
+                position: 'fixed',
+                left: mainContainerRect.left + 'px',
+                top: mainContainerRect.top + 'px',
+                width: mainContainerRect.width + 'px',
+                height: mainContainerRect.height + 'px',
+                margin: '0',
+                padding: '0',
+                zIndex: 10000,
+                pointerEvents: 'none',
+                transformOrigin: 'top left',
+                overflow: 'hidden',
+                backgroundColor: bgColor,
+                border: '2px solid var(--primary-fg-color)',
+                // Ensure all children scale with the element
+                transform: 'scale(1)',
+                boxSizing: 'border-box'
+            });
+            
+            $('body').append(animationElement);
+
+            // Animate to thumb position
+            if (typeof anime !== 'undefined') {
+                anime({
+                    targets: animationElement[0],
+                    left: thumbRect.left + 'px',
+                    top: thumbRect.top + 'px',
+                    width: thumbRect.width + 'px',
+                    height: thumbRect.height + 'px',
+                    duration: 400,
+                    easing: 'easeInOutQuad',
+                    complete: function() {
+                        if (animationElement) {
+                            animationElement.remove();
+                            animationElement = null;
+                        }
+                        if (callback) callback();
+                    }
+                });
+            } else {
+                // Fallback if anime.js is not available
+                animationElement.animate({
+                    left: thumbRect.left + 'px',
+                    top: thumbRect.top + 'px',
+                    width: thumbRect.width + 'px',
+                    height: thumbRect.height + 'px'
+                }, 400, function() {
+                    if (animationElement) {
+                        animationElement.remove();
+                        animationElement = null;
+                    }
+                    if (callback) callback();
+                });
+            }
+        }
+        
+        // Wait for overview to be visible and layout to complete
+        // Use requestAnimationFrame to ensure DOM is updated, then wait for layout
+        requestAnimationFrame(function() {
+            requestAnimationFrame(function() {
+                // Start looking for the thumb
+                findThumbAndAnimate();
+            });
+        });
+    }
+
+    /**
      * Description
      * @method toggleViewMode
      * @param {} viewMode
+     * @param {} oldViewMode
      * @return
      */
-    function toggleViewMode(viewMode) {
+    function toggleViewMode(viewMode, oldViewMode) {
 
         if (viewMode === 'overview') {
-            changeViewSize();
-            domElement.addClass('active');
-            FrameTrail.module('Titlebar').title = labels['GenericOverview'];
+            // Animate from video view back to thumb position
+            var currentHypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
+            if (oldViewMode === 'video' && currentHypervideoID) {
+                // Capture video view immediately and synchronously (before other modules hide it)
+                var viewVideo = $(FrameTrail.getState('target')).find('.viewVideo');
+                var videoContainer = viewVideo.find('.videoContainer').first();
+                var mainContainer = $(FrameTrail.getState('target')).find('.mainContainer');
+                var mainContainerRect = mainContainer.length > 0 ? mainContainer[0].getBoundingClientRect() : null;
+                
+                // Check if we have a video view to animate from
+                if (viewVideo.length > 0 && videoContainer.length > 0 && mainContainerRect) {
+                    // Store reference to video container for animation
+                    var capturedContainer = videoContainer;
+                    
+                    // Delay showing overview until animation completes
+                    animateFullSizeToThumb(currentHypervideoID, capturedContainer, mainContainerRect, function() {
+                        FrameTrail.module('Titlebar').title = labels['GenericOverview'];
+                    });
+                } else {
+                    // Video view not available, just show overview
+                    changeViewSize();
+                    domElement.addClass('active');
+                    FrameTrail.module('Titlebar').title = labels['GenericOverview'];
+                }
+            } else {
+                changeViewSize();
+                domElement.addClass('active');
+                FrameTrail.module('Titlebar').title = labels['GenericOverview'];
+            }
+        } else if (viewMode === 'video' && oldViewMode === 'overview') {
+            // Animate from thumb position to full size when switching from overview to video
+            // Check if animation is already in progress
+            if (animationElement && animationElement.length > 0) {
+                // Animation already in progress, just hide overview
+                domElement.removeClass('active');
+                return;
+            }
+            
+            // Use the last selected thumb if available (from click), otherwise find active thumb
+            var thumbToAnimate = lastSelectedThumb;
+            
+            if (!thumbToAnimate || thumbToAnimate.length === 0) {
+                // Find the active hypervideo thumb
+                var currentHypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
+                if (currentHypervideoID) {
+                    thumbToAnimate = OverviewList.find('.hypervideoThumb.activeHypervideo');
+                    if (thumbToAnimate.length === 0) {
+                        // Try alternative attribute name
+                        thumbToAnimate = OverviewList.find('.hypervideoThumb[data-hypervideoid="' + currentHypervideoID + '"]');
+                        if (thumbToAnimate.length === 0) {
+                            thumbToAnimate = OverviewList.find('.hypervideoThumb[data-hypervideoID="' + currentHypervideoID + '"]');
+                        }
+                    }
+                }
+            }
+            
+            if (thumbToAnimate && thumbToAnimate.length > 0) {
+                // Clear the stored thumb
+                lastSelectedThumb = null;
+                
+                // Capture thumb position while overview is still visible
+                var thumbRect = thumbToAnimate[0].getBoundingClientRect();
+                
+                // Only animate if thumb has valid position (not at 0,0 with tiny size)
+                if (thumbRect.width > 0 && thumbRect.height > 0 && 
+                    !(thumbRect.left === 0 && thumbRect.top === 0 && thumbRect.width < 100)) {
+                    
+                    // Hide overview immediately so only video view is active
+                    domElement.removeClass('active');
+                    
+                    // Animate thumb to full size, passing the pre-captured rect
+                    animateThumbToFullSize(thumbToAnimate, function() {
+                        // Animation complete, video view is already shown by ViewVideo module
+                    }, thumbRect);
+                } else {
+                    // Thumb position not valid, just hide overview
+                    domElement.removeClass('active');
+                }
+            } else {
+                // Thumb not found, just hide overview
+                domElement.removeClass('active');
+            }
         } else if (viewMode != 'resources') {
             domElement.removeClass('active');
         }
