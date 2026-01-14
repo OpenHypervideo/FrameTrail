@@ -130,6 +130,13 @@ FrameTrail.defineType(
                             e.stopPropagation(); // Prevent event bubbling
                             if (linkUrl.startsWith('http://') || linkUrl.startsWith('https://')) {
                                 window.open(linkUrl, '_blank');
+                            } else if (linkUrl.startsWith('#hypervideo=')) {
+                                // Internal hypervideo navigation
+                                var hypervideoID = linkUrl.replace('#hypervideo=', '');
+                                history.pushState({
+                                    editMode: FrameTrail.getState('editMode')
+                                }, "", linkUrl);
+                                FrameTrail.module('HypervideoModel').updateHypervideo(hypervideoID, false, true);
                             } else {
                                 // Internal navigation - treat as time in seconds
                                 var time = parseFloat(linkUrl);
@@ -510,7 +517,38 @@ FrameTrail.defineType(
                     hotspotEditorContainer.append(formRow);
 
                     // Link URL input (full width, not in columns)
-                    hotspotEditorContainer.append('<label>'+ this.labels['SettingsHotspotLink'] +'</label>');
+                    var linkLabel = $('<label>'+ this.labels['SettingsHotspotLink'] +'</label>');
+                    hotspotEditorContainer.append(linkLabel);
+                    
+                    // Add picker button next to label
+                    var pickerButton = $('<button type="button" class="button btn btn-sm hypervideoPickerButton" title="'+ this.labels['SettingsHotspotPickHypervideo'] +'"><span class="icon-link"></span> '+ this.labels['SettingsHotspotPickHypervideo'] +'</button>');
+                    pickerButton.css({
+                        'margin-left': '10px',
+                        'margin-bottom': '5px'
+                    });
+                    
+                    pickerButton.click(function(evt) {
+                        evt.preventDefault();
+                        evt.stopPropagation();
+                        
+                        // Initialize HypervideoPicker module if not already loaded
+                        if (!FrameTrail.module('HypervideoPicker')) {
+                            FrameTrail.initModule('HypervideoPicker');
+                        }
+                        
+                        // Open picker dialog
+                        FrameTrail.module('HypervideoPicker').openPicker(function(hypervideoID) {
+                            // Insert hypervideo link into input field
+                            var hypervideoLink = '#hypervideo=' + hypervideoID;
+                            linkInput.val(hypervideoLink);
+                            
+                            // Trigger keyup event to update the hotspot
+                            linkInput.trigger('keyup');
+                        });
+                    });
+                    
+                    linkLabel.after(pickerButton);
+                    
                     var linkInput = $('<input type="text" placeholder="https://example.com or time in seconds" value="' + currentAttributes.linkUrl + '"/>');
 
                     linkInput.on('keyup', function(evt) {
@@ -530,6 +568,13 @@ FrameTrail.defineType(
                                         e.stopPropagation();
                                         if (newUrl.startsWith('http://') || newUrl.startsWith('https://')) {
                                             window.open(newUrl, '_blank');
+                                        } else if (newUrl.startsWith('#hypervideo=')) {
+                                            // Internal hypervideo navigation
+                                            var hypervideoID = newUrl.replace('#hypervideo=', '');
+                                            history.pushState({
+                                                editMode: FrameTrail.getState('editMode')
+                                            }, "", newUrl);
+                                            FrameTrail.module('HypervideoModel').updateHypervideo(hypervideoID, false, true);
                                         } else {
                                             // Internal navigation - treat as time in seconds
                                             var time = parseFloat(newUrl);
