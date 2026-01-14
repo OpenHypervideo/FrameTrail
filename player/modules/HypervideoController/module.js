@@ -1312,6 +1312,15 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 			return;
 		}
 
+		// Clamp the time to valid range
+		var minTime = HypervideoModel.offsetIn;
+		var maxTime = HypervideoModel.offsetIn + HypervideoModel.duration;
+		if (aNumberAsFloat < minTime) {
+			aNumberAsFloat = minTime;
+		} else if (aNumberAsFloat > maxTime) {
+			aNumberAsFloat = maxTime;
+		}
+
 		if (HypervideoModel.videoType == 'native') {
 
 			videoElement.currentTime = currentTime = aNumberAsFloat;
