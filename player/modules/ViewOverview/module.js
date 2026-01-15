@@ -544,50 +544,64 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 return;
             }
             
-            // Use the last selected thumb if available (from click), otherwise find active thumb
-            var thumbToAnimate = lastSelectedThumb;
-            
-            if (!thumbToAnimate || thumbToAnimate.length === 0) {
-                // Find the active hypervideo thumb
-                var currentHypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
-                if (currentHypervideoID) {
-                    thumbToAnimate = OverviewList.find('.hypervideoThumb.activeHypervideo');
-                    if (thumbToAnimate.length === 0) {
-                        // Try alternative attribute name
-                        thumbToAnimate = OverviewList.find('.hypervideoThumb[data-hypervideoid="' + currentHypervideoID + '"]');
+            // Use requestAnimationFrame to ensure ViewVideo has processed first, then hide it
+            var viewVideo = $(FrameTrail.getState('target')).find('.viewVideo');
+            requestAnimationFrame(function() {
+                // Hide video view after ViewVideo has shown it
+                viewVideo.removeClass('active');
+                
+                // Use the last selected thumb if available (from click), otherwise find active thumb
+                var thumbToAnimate = lastSelectedThumb;
+                
+                if (!thumbToAnimate || thumbToAnimate.length === 0) {
+                    // Find the active hypervideo thumb
+                    var currentHypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
+                    if (currentHypervideoID) {
+                        thumbToAnimate = OverviewList.find('.hypervideoThumb.activeHypervideo');
                         if (thumbToAnimate.length === 0) {
-                            thumbToAnimate = OverviewList.find('.hypervideoThumb[data-hypervideoID="' + currentHypervideoID + '"]');
+                            // Try alternative attribute name
+                            thumbToAnimate = OverviewList.find('.hypervideoThumb[data-hypervideoid="' + currentHypervideoID + '"]');
+                            if (thumbToAnimate.length === 0) {
+                                thumbToAnimate = OverviewList.find('.hypervideoThumb[data-hypervideoID="' + currentHypervideoID + '"]');
+                            }
                         }
                     }
                 }
-            }
-            
-            if (thumbToAnimate && thumbToAnimate.length > 0) {
-                // Clear the stored thumb
-                lastSelectedThumb = null;
                 
-                // Capture thumb position while overview is still visible
-                var thumbRect = thumbToAnimate[0].getBoundingClientRect();
-                
-                // Only animate if thumb has valid position (not at 0,0 with tiny size)
-                if (thumbRect.width > 0 && thumbRect.height > 0 && 
-                    !(thumbRect.left === 0 && thumbRect.top === 0 && thumbRect.width < 100)) {
+                if (thumbToAnimate && thumbToAnimate.length > 0) {
+                    // Clear the stored thumb
+                    lastSelectedThumb = null;
                     
-                    // Hide overview immediately so only video view is active
-                    domElement.removeClass('active');
+                    // Capture thumb position while overview is still visible
+                    var thumbRect = thumbToAnimate[0].getBoundingClientRect();
                     
-                    // Animate thumb to full size, passing the pre-captured rect
-                    animateThumbToFullSize(thumbToAnimate, function() {
-                        // Animation complete, video view is already shown by ViewVideo module
-                    }, thumbRect);
+                    // Only animate if thumb has valid position (not at 0,0 with tiny size)
+                    if (thumbRect.width > 0 && thumbRect.height > 0 && 
+                        !(thumbRect.left === 0 && thumbRect.top === 0 && thumbRect.width < 100)) {
+                        
+                        // Hide overview during animation
+                        domElement.removeClass('active');
+                        
+                        // Animate thumb to full size, passing the pre-captured rect
+                        animateThumbToFullSize(thumbToAnimate, function() {
+                            // Animation complete, now show the video view
+                            viewVideo.addClass('active');
+                            // Ensure ViewVideo is properly initialized
+                            if (FrameTrail.module('ViewVideo') && FrameTrail.module('ViewVideo').onChange && FrameTrail.module('ViewVideo').onChange.viewMode) {
+                                FrameTrail.module('ViewVideo').onChange.viewMode('video');
+                            }
+                        }, thumbRect);
+                    } else {
+                        // Thumb position not valid, show video view immediately
+                        viewVideo.addClass('active');
+                        domElement.removeClass('active');
+                    }
                 } else {
-                    // Thumb position not valid, just hide overview
+                    // Thumb not found, show video view immediately
+                    viewVideo.addClass('active');
                     domElement.removeClass('active');
                 }
-            } else {
-                // Thumb not found, just hide overview
-                domElement.removeClass('active');
-            }
+            });
         } else if (viewMode != 'resources') {
             domElement.removeClass('active');
         }
