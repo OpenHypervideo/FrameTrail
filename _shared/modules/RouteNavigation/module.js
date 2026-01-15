@@ -139,7 +139,7 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
 			vars = hash.split("&"),
 			pair;
 
-		console.log(key, value);
+		//console.log(key, value);
 
 		for (var i = 0; i < vars.length; i++) {
 			pair = vars[i].split("=");

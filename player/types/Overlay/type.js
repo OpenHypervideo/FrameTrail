@@ -903,7 +903,7 @@ FrameTrail.defineType(
                 // TODO
 
                 setActiveInContentView: function (contentView) {
-                    console.log(this, 'setActiveInContentView', contentView);
+                    //console.log(this, 'setActiveInContentView', contentView);
 
 
                     this._activeStateInContentView.push(contentView);
@@ -911,7 +911,7 @@ FrameTrail.defineType(
 
 
                 setInactiveInContentView: function (contentView) {
-                    console.log(this, 'setInactiveInContentView', contentView);
+                    //console.log(this, 'setInactiveInContentView', contentView);
 
                     this._activeStateInContentView = this._activeStateInContentView.filter(function (each) {
                         return each !== contentView;
