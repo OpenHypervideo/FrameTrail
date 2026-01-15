@@ -1177,7 +1177,15 @@
 		FrameTrail.changeState('viewMode', 'video');
 
 		FrameTrail.module('RouteNavigation').hypervideoID = newHypervideoID;
-		//FrameTrail.module('RouteNavigation').hashTime = undefined;
+		// Clear hashTime when switching hypervideos to prevent old time from persisting
+		// Check if new URL has t= parameter, and if not, clear the internal hashTime
+		var hash = window.location.hash.substring(1);
+		var hasTimeParam = hash.split('&').some(function(param) {
+			return param.split('=')[0] === 't' && param.split('=')[1];
+		});
+		if (!hasTimeParam && FrameTrail.module('RouteNavigation').clearHashTime) {
+			FrameTrail.module('RouteNavigation').clearHashTime();
+		}
 
 		FrameTrail.module('Database').updateHypervideoData(function() {
 

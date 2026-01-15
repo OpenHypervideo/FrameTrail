@@ -153,6 +153,17 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
 
 	}
 
+	/**
+	 * I clear the internal hashTime variable without modifying the URL.
+	 * This is used when switching hypervideos to ensure old time values don't persist.
+	 * @method clearHashTime
+	 * @private
+	 */
+	function clearHashTime() {
+		hashTime = '';
+		oldHashTime = '';
+	}
+
 
 	/**
 	 * I update the application state, when the hash fragment has changed.
@@ -194,9 +205,13 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
 			onAnnotationChange && onAnnotationChange.call();
 		}
 
-		hashTime = getHashVariable('t');
+		hashTime = getHashVariable('t') || '';
 
-		if ((hashTime !== oldHashTime) && !hypervideoChange) {
+		if (hypervideoChange) {
+			// When switching hypervideos, explicitly clear hashTime if not present in URL
+			// and reset oldHashTime to ensure we don't use the old time from the previous hypervideo
+			oldHashTime = hashTime;
+		} else if (hashTime !== oldHashTime) {
 			oldHashTime = hashTime;
 			onHashTimeChange && onHashTimeChange.call();
 		}
@@ -271,8 +286,14 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
 	     * @attribute onHashTimeChange
 	     * @type Function
 	     */
-	    set onHashTimeChange(handler) { return onHashTimeChange = handler },
+		set onHashTimeChange(handler) { return onHashTimeChange = handler },
 
+		/**
+		 * Clear the internal hashTime without modifying the URL.
+		 * Used when switching hypervideos to prevent old time values from persisting.
+		 * @method clearHashTime
+		 */
+		clearHashTime: clearHashTime,
 
    		getResourceURL: getResourceURL
 
