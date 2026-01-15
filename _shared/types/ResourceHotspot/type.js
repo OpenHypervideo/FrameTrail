@@ -69,11 +69,17 @@ FrameTrail.defineType(
                     // Calculate border width - we'll set it as a CSS variable and update it
                     // Border width will be a percentage of the smaller dimension
                     var borderWidthValue = borderWidth > 0 ? borderWidth + '%' : '0';
+                    
+                    // Always use an <a> tag (even when empty, to avoid element replacement during editing)
+                    var elementAttrs = ' href="' + (linkUrl || '#') + '"';
+                    if (linkUrl && (linkUrl.startsWith('http://') || linkUrl.startsWith('https://'))) {
+                        elementAttrs += ' target="_blank"';
+                    }
 
                     var resourceDetail = $('<div class="resourceDetail" data-type="hotspot" style="width: 100%; height: 100%; position: relative; display: flex; align-items: center; justify-content: center;">'
                                         +  '    <div class="hotspot-container">'
                                         +  '        <div class="hotspot-square-wrapper">'
-                                        +  '            <div class="hotspot-element" style="border-radius: ' + borderRadiusValue + '; border-color: ' + color + ';"></div>'
+                                        +  '            <a class="hotspot-element"' + elementAttrs + ' style="border-radius: ' + borderRadiusValue + '; border-color: ' + color + '; text-decoration: none; display: block;"></a>'
                                         +  '            <div class="hotspot-pulse" style="border-color: ' + color + '; border-radius: ' + borderRadiusValue + ';"></div>'
                                         +  '        </div>'
                                         +  '    </div>'
@@ -122,28 +128,12 @@ FrameTrail.defineType(
                             $(this).css('background-color', 'transparent');
                         });
                     }
-
-                    // Make it clickable if link is provided - only on the element itself
-                    if (linkUrl) {
-                        hotspotElement.css('cursor', 'pointer');
+                    
+                    // Prevent navigation when link is empty (href="#")
+                    if (!linkUrl) {
                         hotspotElement.on('click', function(e) {
-                            e.stopPropagation(); // Prevent event bubbling
-                            if (linkUrl.startsWith('http://') || linkUrl.startsWith('https://')) {
-                                window.open(linkUrl, '_blank');
-                            } else if (linkUrl.startsWith('#hypervideo=')) {
-                                // Internal hypervideo navigation
-                                var hypervideoID = linkUrl.replace('#hypervideo=', '');
-                                history.pushState({
-                                    editMode: FrameTrail.getState('editMode')
-                                }, "", linkUrl);
-                                FrameTrail.module('HypervideoModel').updateHypervideo(hypervideoID, false, true);
-                            } else {
-                                // Internal navigation - treat as time in seconds
-                                var time = parseFloat(linkUrl);
-                                if (!isNaN(time)) {
-                                    FrameTrail.module('HypervideoController').currentTime = time;
-                                }
-                            }
+                            e.preventDefault();
+                            e.stopPropagation();
                         });
                     }
 
@@ -516,16 +506,82 @@ FrameTrail.defineType(
                     layoutRow.append(shapeColumn, colorColumn, borderWidthColumn, borderRadiusColumn);
                     hotspotEditorContainer.append(layoutRow);
 
-                    // Link URL input (full width, not in columns)
-                    var linkLabel = $('<label>'+ this.labels['SettingsHotspotLink'] +'</label>');
+                    // Link URL input row with picker and delete buttons
+                    var linkLabel = $('<hr><label>'+ this.labels['SettingsHotspotLink'] +'</label>');
                     hotspotEditorContainer.append(linkLabel);
                     
-                    // Add picker button next to label
-                    var pickerButton = $('<button type="button" class="button btn btn-sm hypervideoPickerButton" title="'+ this.labels['SettingsHotspotPickHypervideo'] +'"><span class="icon-link"></span> '+ this.labels['SettingsHotspotPickHypervideo'] +'</button>');
-                    pickerButton.css({
-                        'margin-left': '10px',
-                        'margin-bottom': '5px'
+                    // Helper function to update link URL and trigger change
+                    // Always uses <a> tag, just updates href attribute (same as renderContent)
+                    var updateLinkUrl = function(newUrl) {
+                        overlayOrAnnotation.data.attributes.linkUrl = newUrl;
+                        linkInput.val(newUrl);
+                        
+                        // Use '#' if empty, same as renderContent
+                        var href = newUrl || '#';
+
+                        if (overlayOrAnnotation.overlayElement) {
+                            var hotspotElement = overlayOrAnnotation.overlayElement.find('.hotspot-element');
+                            hotspotElement.attr('href', href);
+                            if (newUrl && (newUrl.startsWith('http://') || newUrl.startsWith('https://'))) {
+                                hotspotElement.attr('target', '_blank');
+                            } else {
+                                hotspotElement.removeAttr('target');
+                            }
+                            // Prevent navigation when link is empty (same as renderContent)
+                            hotspotElement.off('click');
+                            if (!newUrl) {
+                                hotspotElement.on('click', function(e) {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                });
+                            }
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        } else {
+                            // Update annotation elements in dom
+                            $(overlayOrAnnotation.contentViewDetailElements).each(function() {
+                                var hotspotElement = $(this).find('.hotspot-element');
+                                hotspotElement.attr('href', href);
+                                if (newUrl && (newUrl.startsWith('http://') || newUrl.startsWith('https://'))) {
+                                    hotspotElement.attr('target', '_blank');
+                                } else {
+                                    hotspotElement.removeAttr('target');
+                                }
+                                // Prevent navigation when link is empty (same as renderContent)
+                                hotspotElement.off('click');
+                                if (!newUrl) {
+                                    hotspotElement.on('click', function(e) {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                    });
+                                }
+                            });
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                        }
+                    };
+                    
+                    // Create row container for link input with buttons
+                    var linkInputRow = $('<div class="linkInputRow"></div>');
+                    
+                    // Text input (stretches to fill remaining width)
+                    var linkInput = $('<input type="text" class="linkInput" placeholder="https://example.com" value="' + currentAttributes.linkUrl + '"/>');
+                    
+                    linkInput.on('keyup', function(evt) {
+                        if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
+                            var newUrl = $(this).val();
+                            updateLinkUrl(newUrl);
+                        }
                     });
+                    
+                    // Delete button (icon only)
+                    var deleteButton = $('<button type="button" class="button btn btn-sm linkDeleteButton" title="'+ this.labels['GenericDelete'] +'"><span class="icon-cancel"></span></button>');
+                    deleteButton.click(function(evt) {
+                        evt.preventDefault();
+                        evt.stopPropagation();
+                        updateLinkUrl('');
+                    });
+                    
+                    // Picker button (variable size depending on language)
+                    var pickerButton = $('<button type="button" class="button btn btn-sm hypervideoPickerButton" title="'+ this.labels['SettingsHotspotPickHypervideo'] +'"><span class="icon-hypervideo" style="margin-right: 8px;"></span>'+ this.labels['SettingsHotspotPickHypervideo'] +'</button>');
                     
                     pickerButton.click(function(evt) {
                         evt.preventDefault();
@@ -540,85 +596,16 @@ FrameTrail.defineType(
                         FrameTrail.module('HypervideoPicker').openPicker(function(hypervideoID) {
                             // Insert hypervideo link into input field
                             var hypervideoLink = '#hypervideo=' + hypervideoID;
-                            linkInput.val(hypervideoLink);
-                            
-                            // Trigger keyup event to update the hotspot
-                            linkInput.trigger('keyup');
+                            updateLinkUrl(hypervideoLink);
                         });
                     });
                     
-                    linkLabel.after(pickerButton);
+                    // Append elements in order: input, delete button, picker button (from left to right)
+                    linkInputRow.append(linkInput);
+                    linkInputRow.append(deleteButton);
+                    linkInputRow.append(pickerButton);
                     
-                    var linkInput = $('<input type="text" placeholder="https://example.com or time in seconds" value="' + currentAttributes.linkUrl + '"/>');
-
-                    linkInput.on('keyup', function(evt) {
-                        if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
-                            var newUrl = $(this).val();
-                            overlayOrAnnotation.data.attributes.linkUrl = newUrl;
-
-                            if (overlayOrAnnotation.overlayElement) {
-                                var hotspotElement = overlayOrAnnotation.overlayElement.find('.hotspot-element');
-                                // Remove existing click handler
-                                hotspotElement.off('click');
-                                
-                                if (newUrl) {
-                                    hotspotElement.css('cursor', 'pointer');
-                                    // Attach click handler to the element
-                                    hotspotElement.on('click', function(e) {
-                                        e.stopPropagation();
-                                        if (newUrl.startsWith('http://') || newUrl.startsWith('https://')) {
-                                            window.open(newUrl, '_blank');
-                                        } else if (newUrl.startsWith('#hypervideo=')) {
-                                            // Internal hypervideo navigation
-                                            var hypervideoID = newUrl.replace('#hypervideo=', '');
-                                            history.pushState({
-                                                editMode: FrameTrail.getState('editMode')
-                                            }, "", newUrl);
-                                            FrameTrail.module('HypervideoModel').updateHypervideo(hypervideoID, false, true);
-                                        } else {
-                                            // Internal navigation - treat as time in seconds
-                                            var time = parseFloat(newUrl);
-                                            if (!isNaN(time)) {
-                                                FrameTrail.module('HypervideoController').currentTime = time;
-                                            }
-                                        }
-                                    });
-                                } else {
-                                    hotspotElement.css('cursor', 'default');
-                                }
-                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                            } else {
-                                // Update annotation elements in dom
-                                $(overlayOrAnnotation.contentViewDetailElements).each(function() {
-                                    var hotspotElement = $(this).find('.hotspot-element');
-                                    // Remove existing click handler
-                                    hotspotElement.off('click');
-                                    
-                                    if (newUrl) {
-                                        hotspotElement.css('cursor', 'pointer');
-                                        // Attach click handler to the element
-                                        hotspotElement.on('click', function(e) {
-                                            e.stopPropagation();
-                                            if (newUrl.startsWith('http://') || newUrl.startsWith('https://')) {
-                                                window.open(newUrl, '_blank');
-                                            } else {
-                                                // Internal navigation - treat as time in seconds
-                                                var time = parseFloat(newUrl);
-                                                if (!isNaN(time)) {
-                                                    FrameTrail.module('HypervideoController').currentTime = time;
-                                                }
-                                            }
-                                        });
-                                    } else {
-                                        hotspotElement.css('cursor', 'default');
-                                    }
-                                });
-                                FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
-                            }
-                        }
-                    });
-
-                    hotspotEditorContainer.append(linkInput);
+                    hotspotEditorContainer.append(linkInputRow);
 
                     return hotspotEditorContainer;
 

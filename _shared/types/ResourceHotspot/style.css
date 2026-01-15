@@ -46,6 +46,13 @@
 	cursor: pointer; /* Pointer cursor on hover */
 }
 
+/* When hotspot-element is an <a> tag, ensure proper link styling */
+a.hotspot-element {
+	text-decoration: none;
+	color: inherit;
+	display: block;
+}
+
 .hotspot-inner {
 	position: absolute;
 	top: 50%;
