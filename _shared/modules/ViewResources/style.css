@@ -46,21 +46,12 @@
 
 .viewResources .resourcesControls .viewControls {
 	float: right;
-	margin-right: 10px;
 }
 
 .viewResources .resourcesControls .viewToggle {
-	background-color: transparent;
-	border: 2px solid var(--primary-bg-color);
-	border-radius: 4px;
-	padding: 8px 12px;
-	margin-left: 4px;
+	margin-right: 0px;
 	cursor: pointer;
 	transition: all 0.2s ease;
-}
-
-.viewResources .resourcesControls .viewToggle:hover {
-	background-color: rgba(0, 0, 0, 0.1);
 }
 
 .viewResources .resourcesControls .viewToggle.active {
@@ -204,6 +195,7 @@
 /* List View - full width rows */
 .viewResources .resourcesList.view-list .resourceThumb {
 	width: 100%;
+	box-sizing: border-box;
 	height: 80px;
 	margin: 4px 0;
 	display: flex;
