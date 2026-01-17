@@ -343,7 +343,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 top: mainContainerRect.top + 'px',
                 width: endWidth + 'px',
                 height: endHeight + 'px',
-                opacity: 0.5,
+                opacity: 1,
                 duration: 400,
                 easing: 'easeInOutQuad',
                 complete: function() {
@@ -362,7 +362,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 top: mainContainerRect.top + 'px',
                 width: endWidth + 'px',
                 height: endHeight + 'px',
-                opacity: 0.1
+                opacity: 1
             }, 400, function() {
                 if (animationElement) {
                     animationElement.remove();
@@ -444,7 +444,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 // Ensure all children scale with the element
                 transform: 'scale(1)',
                 boxSizing: 'border-box',
-                opacity: '0.5'
+                opacity: '1'
             });
             
             $('body').append(animationElement);
