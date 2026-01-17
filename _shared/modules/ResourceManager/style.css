@@ -80,3 +80,149 @@
 	height: 100%;
 	cursor: default;
 }
+
+/* Drag and Drop Zone */
+
+.dropZoneContainer {
+	margin-bottom: 20px;
+	display: block;
+}
+
+.dropZone {
+	border: 3px dashed var(--primary-bg-color);
+	border-radius: 8px;
+	padding: 40px 20px;
+	text-align: center;
+	background-color: rgba(255, 255, 255, 0.05);
+	cursor: pointer;
+	transition: all 0.3s ease;
+	margin-bottom: 15px;
+}
+
+.dropZone:hover {
+	background-color: rgba(255, 255, 255, 0.1);
+	border-color: var(--primary-color);
+}
+
+.dropZone.dragover {
+	background-color: rgba(56, 142, 60, 0.2);
+	border-color: #4caf50;
+	border-style: solid;
+}
+
+.dropZoneContent span[class^="icon-"]::before,
+.dropZoneContent span[class*=" icon-"]::before {
+	font-size: 48px;
+	display: block;
+	margin-bottom: 10px;
+	opacity: 0.6;
+}
+
+.dropZoneContent p {
+	margin: 8px 0;
+	font-size: 16px;
+	font-weight: bold;
+}
+
+.dropZoneContent .dropZoneHint {
+	font-size: 13px;
+	opacity: 0.7;
+	font-weight: normal;
+}
+
+/* Upload Queue */
+
+.uploadQueue {
+	max-height: 300px;
+	overflow-y: auto;
+	margin-bottom: 10px;
+	border: 1px solid var(--primary-bg-color);
+	border-radius: 4px;
+	background-color: rgba(0, 0, 0, 0.1);
+	display: none;
+}
+
+.uploadQueue .queueRow {
+	display: flex;
+	padding: 8px 12px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+	align-items: center;
+	font-size: 13px;
+}
+
+.uploadQueue .queueRow:last-child {
+	border-bottom: none;
+}
+
+.uploadQueue .queueRow.pending {
+	opacity: 0.7;
+}
+
+.uploadQueue .queueRow.uploading {
+	background-color: rgba(33, 150, 243, 0.1);
+	border-left: 3px solid #2196f3;
+}
+
+.uploadQueue .queueRow.completed {
+	background-color: rgba(76, 175, 80, 0.1);
+}
+
+.uploadQueue .queueRow.error {
+	background-color: rgba(244, 67, 54, 0.1);
+	color: #f44336;
+}
+
+.uploadQueue .fileName {
+	flex: 1;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	margin-right: 10px;
+}
+
+.uploadQueue .fileSize {
+	width: 80px;
+	text-align: right;
+	margin-right: 10px;
+	opacity: 0.7;
+}
+
+.uploadQueue .fileType {
+	width: 70px;
+	text-align: center;
+	padding: 2px 8px;
+	background-color: var(--primary-bg-color);
+	border-radius: 3px;
+	font-size: 11px;
+	text-transform: uppercase;
+	margin-right: 10px;
+}
+
+.uploadQueue .status {
+	width: 120px;
+	text-align: right;
+	font-weight: bold;
+}
+
+.queueSummary {
+	padding: 8px 12px;
+	font-size: 14px;
+	font-weight: bold;
+	text-align: center;
+	background-color: rgba(255, 255, 255, 0.05);
+	border-radius: 4px;
+	display: none;
+}
+
+/* Hide traditional form when queue is active */
+
+.dropZoneContainer.hasQueue + .uploadForm {
+	display: none !important;
+}
+
+/* Adjust dialog when queue is shown */
+
+.uploadDialog .dropZoneContainer.hasQueue .uploadQueue,
+.uploadDialog .dropZoneContainer.hasQueue .queueSummary {
+	display: block;
+}

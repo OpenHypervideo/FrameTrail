@@ -119,24 +119,68 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
 				exit;
 			}
 
-			/* TODO: Check file size correctly */
-			/*
-			if ( $_FILES["image"]["size"] >= $upload_mb ) {
+			// Validate file size
+			$sizeValidation = validateFileSize($files["image"]["size"]);
+			if (!$sizeValidation['valid']) {
 				$return["status"] = "fail";
 				$return["code"] = 10;
-				$return["string"] = "File too big";
+				$return["string"] = $sizeValidation['error'];
 				return $return;
 				exit;
 			}
-			*/
+
+			// Check if optimization is enabled
+			$configFile = $conf["dir"]["data"]."/config.json";
+			$optimizationEnabled = false;
+			if (file_exists($configFile)) {
+				$configJson = file_get_contents($configFile);
+				$config = json_decode($configJson, true);
+				if (isset($config['mediaOptimization']['enabled'])) {
+					$optimizationEnabled = $config['mediaOptimization']['enabled'];
+				}
+			}
 
 			$filearray = preg_split("/\./", $files["image"]["name"]);
 			$filetype = array_pop($filearray);
+
+			// Preserve original file extension (GIF, PNG, JPG)
 			$filename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_".sanitize($name),0,90).".".$filetype;
+			$finalPath = $conf["dir"]["data"]."/resources/".$filename;
+
+			// Move uploaded file to temporary location first
+			$tempPath = $files["image"]["tmp_name"];
+
+			if ($optimizationEnabled) {
+				// Optimize the image
+				$optimizeResult = optimizeImage($tempPath, $finalPath, 1920, 85);
+
+				if (isset($optimizeResult['error'])) {
+					// Optimization failed, fall back to original file
+					error_log('FrameTrail: Image optimization failed: ' . $optimizeResult['error'] . ', saving original');
+					move_uploaded_file($tempPath, $finalPath);
+				}
+				// If optimization succeeded, optimized file is already at $finalPath
+
+				// Generate thumbnail
+				$baseFilename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_thumb_".sanitize($name),0,90);
+				$thumbFilename = $baseFilename.".png";
+				$thumbPath = $conf["dir"]["data"]."/resources/".$thumbFilename;
+
+				$thumbResult = generateThumbnail($finalPath, $thumbPath);
+				if (isset($thumbResult['error'])) {
+					error_log('FrameTrail: Thumbnail generation failed: ' . $thumbResult['error']);
+					// Continue without thumbnail
+				} else {
+					$newResource["thumb"] = $thumbFilename;
+				}
+			} else {
+				// No optimization, just move the file
+				move_uploaded_file($tempPath, $finalPath);
+			}
+
 			$newResource["src"] = $filename;
 			$newResource["type"] = "image";
 			$newResource["attributes"] = ($attributes) ? $attributes : Array();
-			move_uploaded_file($files["image"]["tmp_name"], $conf["dir"]["data"]."/resources/".$filename);
 		break;
 		case "pdf":
 			if ($uploadsAllowed === false) {
@@ -155,16 +199,15 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
 				exit;
 			}
 
-			/* TODO: Check file size correctly */
-			/*
-			if ( $_FILES["pdf"]["size"] >= $upload_mb ) {
+			// Validate file size
+			$sizeValidation = validateFileSize($files["pdf"]["size"]);
+			if (!$sizeValidation['valid']) {
 				$return["status"] = "fail";
 				$return["code"] = 10;
-				$return["string"] = "File too big";
+				$return["string"] = $sizeValidation['error'];
 				return $return;
 				exit;
 			}
-			*/
 
 			$filearray = preg_split("/\./", $files["pdf"]["name"]);
 			$filetype = array_pop($filearray);
@@ -191,16 +234,15 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
 				exit;
 			}
 
-			/* TODO: Check file size correctly */
-			/*
-			if ( $_FILES["audio"]["size"] >= $upload_mb ) {
+			// Validate file size
+			$sizeValidation = validateFileSize($files["audio"]["size"]);
+			if (!$sizeValidation['valid']) {
 				$return["status"] = "fail";
 				$return["code"] = 10;
-				$return["string"] = "File too big";
+				$return["string"] = $sizeValidation['error'];
 				return $return;
 				exit;
 			}
-			*/
 
 			$filearray = preg_split("/\./", $files["audio"]["name"]);
 			$filetype = array_pop($filearray);
@@ -232,17 +274,15 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
 				exit;
 			}
 
-			/* TODO: Check file size correctly */
-			/*
-			if ( $_FILES["mp4"]["size"] >= $upload_mb ) {
+			// Validate file size
+			$sizeValidation = validateFileSize($_FILES["mp4"]["size"]);
+			if (!$sizeValidation['valid']) {
 				$return["status"] = "fail";
 				$return["code"] = 10;
-				$return["string"] = "File too big";
+				$return["string"] = $sizeValidation['error'];
 				return $return;
 				exit;
 			}
-			*/
-
 
 			$filename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_".sanitize($name),0,90);
 			move_uploaded_file($files["mp4"]["tmp_name"], $conf["dir"]["data"]."/resources/".$filename.".mp4");
@@ -469,7 +509,7 @@ function fileDelete($resourcesID) {
 		
 		$hvJson = file_get_contents($conf["dir"]["data"]."/hypervideos/".$hvk."/hypervideo.json");
 		$hvIndex = json_decode($hvJson,true);
-		foreach ($hvJson["contents"] as $hvcontentsKey=>$hvcontentsVal) {
+		foreach ($hvIndex["contents"] as $hvcontentsKey=>$hvcontentsVal) {
 			if ($hvcontentsVal["body"]["frametrail:resourceId"] == $resourcesID) {
 				$usedcnt++;
 				$tmp = array();
@@ -480,7 +520,7 @@ function fileDelete($resourcesID) {
 				array_push($used, $tmp);
 			}
 		}
-		foreach ($hvJson["clips"] as $hvclipsKey=>$hvclipsVal) {
+		foreach ($hvIndex["clips"] as $hvclipsKey=>$hvclipsVal) {
 			if ($hvclipsVal["resourceId"] == $resourcesID) {
 				$usedcnt++;
 				$tmp = array();
@@ -796,6 +836,247 @@ function updateCSSFile($cssstring) {
 		return $return;
 
 	}
+}
+
+/**
+ * Optimize an uploaded image
+ * - Resize if larger than maxWidth
+ * - Compress to specified quality
+ * - Preserve format (JPEG, PNG, GIF)
+ *
+ * @param string $sourcePath Path to source image
+ * @param string $destPath Path to save optimized image
+ * @param int $maxWidth Maximum width (default 1920)
+ * @param int $quality JPEG quality 0-100 (default 85), PNG compression 0-9 (default 6)
+ * @return array Success/error response
+ */
+function optimizeImage($sourcePath, $destPath, $maxWidth = 1920, $quality = 85) {
+	global $conf;
+
+	// Check if GD library is available
+	if (!function_exists('imagecreatefromjpeg')) {
+		error_log('FrameTrail: GD library not available for image optimization');
+		return ['error' => 'GD library not available'];
+	}
+
+	// Get image info
+	$imageInfo = @getimagesize($sourcePath);
+	if (!$imageInfo) {
+		return ['error' => 'Invalid image file'];
+	}
+
+	$sourceImage = null;
+	$imageType = $imageInfo['mime'];
+
+	// Load source image based on type
+	switch ($imageType) {
+		case 'image/jpeg':
+			$sourceImage = @imagecreatefromjpeg($sourcePath);
+			break;
+		case 'image/png':
+			$sourceImage = @imagecreatefrompng($sourcePath);
+			break;
+		case 'image/gif':
+			// Don't process GIFs - they may be animated
+			// Just copy the original file
+			copy($sourcePath, $destPath);
+			return ['success' => true, 'resized' => false, 'preserved' => 'GIF (may be animated)'];
+		default:
+			return ['error' => 'Unsupported image type: ' . $imageType];
+	}
+
+	if (!$sourceImage) {
+		return ['error' => 'Failed to load image'];
+	}
+
+	$width = imagesx($sourceImage);
+	$height = imagesy($sourceImage);
+
+	// Calculate new dimensions if resizing needed
+	if ($width > $maxWidth) {
+		$newWidth = $maxWidth;
+		$newHeight = (int)(($height / $width) * $newWidth);
+
+		// Create new image with calculated dimensions
+		$destImage = imagecreatetruecolor($newWidth, $newHeight);
+
+		// Preserve transparency for PNG
+		if ($imageType === 'image/png') {
+			imagealphablending($destImage, false);
+			imagesavealpha($destImage, true);
+			$transparent = imagecolorallocatealpha($destImage, 0, 0, 0, 127);
+			imagefill($destImage, 0, 0, $transparent);
+		}
+
+		// Resample image
+		imagecopyresampled($destImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $width, $height);
+
+		// Save in original format
+		$saved = false;
+		if ($imageType === 'image/jpeg') {
+			$saved = imagejpeg($destImage, $destPath, $quality);
+		} else if ($imageType === 'image/png') {
+			// PNG compression level 0-9 (9 = maximum compression)
+			$pngCompression = 6;
+			$saved = imagepng($destImage, $destPath, $pngCompression);
+		}
+
+		imagedestroy($destImage);
+		imagedestroy($sourceImage);
+
+		if ($saved) {
+			return ['success' => true, 'resized' => true, 'originalSize' => [$width, $height], 'newSize' => [$newWidth, $newHeight]];
+		} else {
+			return ['error' => 'Failed to save optimized image'];
+		}
+	} else {
+		// Image is already small enough, just optimize compression
+		$saved = false;
+		if ($imageType === 'image/jpeg') {
+			// Re-save JPEG with specified quality
+			$saved = imagejpeg($sourceImage, $destPath, $quality);
+		} else if ($imageType === 'image/png') {
+			// Re-save PNG with compression
+			$pngCompression = 6;
+			$saved = imagepng($sourceImage, $destPath, $pngCompression);
+		}
+
+		imagedestroy($sourceImage);
+
+		if ($saved) {
+			return ['success' => true, 'resized' => false];
+		} else {
+			return ['error' => 'Failed to save optimized image'];
+		}
+	}
+}
+
+/**
+ * Generate thumbnail for an image
+ * - Creates a 400x300 thumbnail
+ * - Saves as PNG to preserve transparency
+ *
+ * @param string $sourcePath Path to source image
+ * @param string $thumbPath Path to save thumbnail
+ * @return array Success/error response
+ */
+function generateThumbnail($sourcePath, $thumbPath) {
+	global $conf;
+
+	// Check if GD library is available
+	if (!function_exists('imagecreatefromjpeg')) {
+		error_log('FrameTrail: GD library not available for thumbnail generation');
+		return ['error' => 'GD library not available'];
+	}
+
+	// Get image info
+	$imageInfo = @getimagesize($sourcePath);
+	if (!$imageInfo) {
+		return ['error' => 'Invalid image file'];
+	}
+
+	$sourceImage = null;
+	$imageType = $imageInfo['mime'];
+
+	// Load source image based on type
+	switch ($imageType) {
+		case 'image/jpeg':
+			$sourceImage = @imagecreatefromjpeg($sourcePath);
+			break;
+		case 'image/png':
+			$sourceImage = @imagecreatefrompng($sourcePath);
+			break;
+		case 'image/gif':
+			$sourceImage = @imagecreatefromgif($sourcePath);
+			break;
+		default:
+			return ['error' => 'Unsupported image type: ' . $imageType];
+	}
+
+	if (!$sourceImage) {
+		return ['error' => 'Failed to load image'];
+	}
+
+	$sourceWidth = imagesx($sourceImage);
+	$sourceHeight = imagesy($sourceImage);
+
+	// Target thumbnail dimensions (400x300 max, maintaining aspect ratio)
+	$thumbWidth = 400;
+	$thumbHeight = 300;
+
+	// Calculate dimensions while maintaining aspect ratio
+	$aspectRatio = $sourceWidth / $sourceHeight;
+	if ($aspectRatio > ($thumbWidth / $thumbHeight)) {
+		// Width is limiting factor
+		$newWidth = $thumbWidth;
+		$newHeight = (int)($thumbWidth / $aspectRatio);
+	} else {
+		// Height is limiting factor
+		$newHeight = $thumbHeight;
+		$newWidth = (int)($thumbHeight * $aspectRatio);
+	}
+
+	// Create thumbnail canvas
+	$thumbImage = imagecreatetruecolor($newWidth, $newHeight);
+
+	// Preserve transparency
+	imagealphablending($thumbImage, false);
+	imagesavealpha($thumbImage, true);
+	$transparent = imagecolorallocatealpha($thumbImage, 0, 0, 0, 127);
+	imagefill($thumbImage, 0, 0, $transparent);
+
+	// Resample image to thumbnail size
+	imagecopyresampled($thumbImage, $sourceImage, 0, 0, 0, 0, $newWidth, $newHeight, $sourceWidth, $sourceHeight);
+
+	// Save as PNG (preserves transparency)
+	$saved = imagepng($thumbImage, $thumbPath, 6);
+
+	imagedestroy($thumbImage);
+	imagedestroy($sourceImage);
+
+	if ($saved) {
+		return ['success' => true, 'thumbSize' => [$newWidth, $newHeight]];
+	} else {
+		return ['error' => 'Failed to save thumbnail'];
+	}
+}
+
+/**
+ * Validate file size against upload limits
+ *
+ * @param int $fileSize File size in bytes
+ * @return array Valid/error response
+ */
+function validateFileSize($fileSize) {
+	$maxUploadSize = fileGetMaxUploadSize();
+
+	if ($fileSize > $maxUploadSize['maxuploadbytes']) {
+		return [
+			'valid' => false,
+			'error' => 'File size (' . formatBytes($fileSize) . ') exceeds maximum upload size (' . formatBytes($maxUploadSize['maxuploadbytes']) . ')'
+		];
+	}
+
+	return ['valid' => true];
+}
+
+/**
+ * Format bytes to human-readable format
+ *
+ * @param int $bytes
+ * @param int $precision
+ * @return string
+ */
+function formatBytes($bytes, $precision = 2) {
+	$units = ['B', 'KB', 'MB', 'GB', 'TB'];
+
+	$bytes = max($bytes, 0);
+	$pow = floor(($bytes ? log($bytes) : 0) / log(1024));
+	$pow = min($pow, count($units) - 1);
+
+	$bytes /= pow(1024, $pow);
+
+	return round($bytes, $precision) . ' ' . $units[$pow];
 }
 
 

@@ -21,7 +21,12 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
 
     var maxUploadBytes,
         tmpObj,
-        previewXHR;
+        previewXHR,
+        uploadQueue = [],
+        completedUploads = [],
+        isUploading = false,
+        currentUploadDialog = null,
+        currentSuccessCallback = null;
 
 
 
@@ -63,6 +68,229 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
 
 
 	/**
+	 * Detect resource type from file object
+	 * @method detectResourceType
+	 * @param {File} file
+	 * @return {Object} {type: string, needsTranscoding: boolean, canUpload: boolean, error: string}
+	 */
+	function detectResourceType(file) {
+		var mimeType = file.type;
+		var fileName = file.name.toLowerCase();
+		var result = {
+			type: null,
+			needsTranscoding: false,
+			canUpload: true,
+			error: null
+		};
+
+		// Image detection
+		if (mimeType.indexOf('image/') === 0 || /\.(jpg|jpeg|png|gif)$/i.test(fileName)) {
+			result.type = 'image';
+			return result;
+		}
+
+		// PDF detection
+		if (mimeType === 'application/pdf' || /\.pdf$/i.test(fileName)) {
+			result.type = 'pdf';
+			return result;
+		}
+
+		// Video detection
+		if (mimeType.indexOf('video/') === 0 || /\.(mp4|mov|avi|webm|m4v|mkv|flv)$/i.test(fileName)) {
+			result.type = 'video';
+			// Check if it's already MP4
+			if (mimeType === 'video/mp4' || /\.mp4$/i.test(fileName)) {
+				result.needsTranscoding = false;
+			} else {
+				// Other video formats need transcoding
+				result.needsTranscoding = true;
+				result.canUpload = false;
+				result.error = 'Video must be in MP4 format. Please convert ' + fileName + ' to MP4 before uploading.';
+			}
+			return result;
+		}
+
+		// Audio detection
+		if (mimeType.indexOf('audio/') === 0 || /\.(mp3|wav|ogg|m4a|aac)$/i.test(fileName)) {
+			result.type = 'audio';
+			// Check if it's already MP3
+			if (mimeType === 'audio/mp3' || mimeType === 'audio/mpeg' || /\.mp3$/i.test(fileName)) {
+				result.needsTranscoding = false;
+			} else {
+				// Other audio formats need transcoding
+				result.needsTranscoding = true;
+				result.canUpload = false;
+				result.error = 'Audio must be in MP3 format. Please convert ' + fileName + ' to MP3 before uploading.';
+			}
+			return result;
+		}
+
+		// Unknown type
+		result.canUpload = false;
+		result.error = 'Unsupported file type: ' + fileName;
+		return result;
+	}
+
+	/**
+	 * Process upload queue - uploads files one at a time
+	 * @method processUploadQueue
+	 * @private
+	 */
+	function processUploadQueue() {
+		if (isUploading || uploadQueue.length === 0) {
+			return;
+		}
+
+		isUploading = true;
+		var queueItem = uploadQueue[0];
+
+		// Mark as uploading and update UI
+		queueItem.status = 'uploading';
+		updateQueueUI();
+
+		// Upload the file
+		uploadSingleFile(queueItem.file, queueItem.type, function(success, error) {
+			// Update status
+			if (success) {
+				queueItem.status = 'completed';
+			} else {
+				queueItem.status = 'error';
+				queueItem.error = error;
+			}
+
+			// Move to completed list
+			completedUploads.push(uploadQueue.shift());
+			isUploading = false;
+
+			updateQueueUI();
+
+			// Process next file
+			if (uploadQueue.length > 0) {
+				setTimeout(processUploadQueue, 100);
+			} else {
+				// All uploads complete
+				finishBatchUpload();
+			}
+		});
+	}
+
+	/**
+	 * Update the queue UI display
+	 * @method updateQueueUI
+	 * @private
+	 */
+	function updateQueueUI() {
+		if (!currentUploadDialog) return;
+
+		var queueContainer = currentUploadDialog.find('.uploadQueue');
+		if (queueContainer.length === 0) return;
+
+		queueContainer.empty();
+
+		var completed = 0;
+		var failed = 0;
+
+		// Combine completed and pending uploads for display
+		var allItems = completedUploads.concat(uploadQueue);
+
+		allItems.forEach(function(item, index) {
+			var statusClass = item.status || 'pending';
+			var statusText = item.status === 'error' ? (item.error || 'Failed') :
+			                 item.status === 'completed' ? 'Completed' :
+			                 item.status === 'uploading' ? 'Uploading...' : 'Pending';
+
+			if (item.status === 'completed') completed++;
+			if (item.status === 'error') failed++;
+
+			var queueRow = $('<div class="queueRow ' + statusClass + '">' +
+			                 '<span class="fileName">' + item.file.name + '</span>' +
+			                 '<span class="fileSize">' + bytesToSize(item.file.size) + '</span>' +
+			                 '<span class="fileType">' + (item.type || '?') + '</span>' +
+			                 '<span class="status">' + statusText + '</span>' +
+			                 '</div>');
+			queueContainer.append(queueRow);
+		});
+
+		// Update summary
+		var summary = currentUploadDialog.find('.queueSummary');
+		if (summary.length > 0) {
+			var total = allItems.length;
+			summary.text('Uploading: ' + completed + ' of ' + total + ' files' +
+			            (failed > 0 ? ' (' + failed + ' failed)' : ''));
+		}
+	}
+
+	/**
+	 * Finish batch upload and reload resources
+	 * @method finishBatchUpload
+	 * @private
+	 */
+	function finishBatchUpload() {
+		FrameTrail.module('Database').loadResourceData(function() {
+			if (currentUploadDialog) {
+				currentUploadDialog.find('.queueSummary').text('All uploads complete!');
+
+				// Update button text to "Close" using jQuery UI button API
+				var buttons = currentUploadDialog.dialog('option', 'buttons');
+				buttons[0].text = 'Close';
+				currentUploadDialog.dialog('option', 'buttons', buttons);
+				currentUploadDialog.closest('.ui-dialog').find('.newResourceConfirm').prop('disabled', false);
+
+				// Call success callback if provided
+				if (currentSuccessCallback) {
+					currentSuccessCallback.call();
+				}
+			}
+		});
+	}
+
+	/**
+	 * Upload a single file
+	 * @method uploadSingleFile
+	 * @param {File} file
+	 * @param {String} type
+	 * @param {Function} callback
+	 * @private
+	 */
+	function uploadSingleFile(file, type, callback) {
+		// Generate a unique name from filename
+		var fileName = file.name.replace(/\.[^/.]+$/, ""); // Remove extension
+
+		var formData = new FormData();
+		formData.append('a', 'fileUpload');
+		formData.append('name', fileName);
+		formData.append('type', type);
+
+		if (type === 'image') {
+			formData.append('image', file);
+		} else if (type === 'video') {
+			formData.append('mp4', file);
+		} else if (type === 'audio') {
+			formData.append('audio', file);
+		} else if (type === 'pdf') {
+			formData.append('pdf', file);
+		}
+
+		$.ajax({
+			url: '_server/ajaxServer.php',
+			type: 'POST',
+			data: formData,
+			processData: false,
+			contentType: false,
+			success: function(response) {
+				if (response.code === 0) {
+					callback(true);
+				} else {
+					callback(false, 'Upload failed: ' + (response.string || 'Unknown error'));
+				}
+			},
+			error: function() {
+				callback(false, 'Network error');
+			}
+		});
+	}
+
+	/**
 	 * I open a jquery UI dialog, which allows the user to upload a new resource.
      * When the onlyVideo parameter is set to true, I allow only uploads of videos (needed during creation of a new hypervideo)
 	 *
@@ -83,6 +311,17 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                     maxUploadBytes = response.maxuploadbytes;
 
                     var uploadDialog =  $('<div class="uploadDialog" title="'+ labels['ResourceAddNew'] +'">'
+                                        + '    <div class="dropZoneContainer">'
+                                        + '        <div class="dropZone">'
+                                        + '            <div class="dropZoneContent">'
+                                        + '                <span class="icon-upload"></span>'
+                                        + '                <p>Drag and drop files here</p>'
+                                        + '                <p class="dropZoneHint">or use the tabs below to upload</p>'
+                                        + '            </div>'
+                                        + '        </div>'
+                                        + '        <div class="uploadQueue"></div>'
+                                        + '        <div class="queueSummary"></div>'
+                                        + '    </div>'
                                         + '    <form class="uploadForm" method="post">'
                                         + '        <div class="resourceInputTabContainer">'
                                         + '            <ul class="resourceInputTabList">'
@@ -147,6 +386,107 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                         + '</div>'
 
                                         + '</div>');
+
+                    // Store reference to current dialog and callback
+                    currentUploadDialog = uploadDialog;
+                    currentSuccessCallback = successCallback;
+
+                    // Setup drag and drop zone
+                    var dropZone = uploadDialog.find('.dropZone');
+
+                    dropZone.on('dragover', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        $(this).addClass('dragover');
+                    });
+
+                    dropZone.on('dragleave', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        $(this).removeClass('dragover');
+                    });
+
+                    dropZone.on('drop', function(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        $(this).removeClass('dragover');
+
+                        var files = e.originalEvent.dataTransfer.files;
+                        if (files.length > 0) {
+                            handleFilesDrop(files);
+                        }
+                    });
+
+                    // Also handle click to open file picker
+                    dropZone.on('click', function() {
+                        var input = $('<input type="file" multiple style="display:none">');
+                        input.on('change', function() {
+                            if (this.files.length > 0) {
+                                handleFilesDrop(this.files);
+                            }
+                        });
+                        input.click();
+                    });
+
+                    /**
+                     * Handle files dropped or selected
+                     */
+                    function handleFilesDrop(files) {
+                        uploadQueue = [];
+                        completedUploads = [];
+                        var errors = [];
+
+                        for (var i = 0; i < files.length; i++) {
+                            var file = files[i];
+
+                            // Check file size
+                            if (file.size > maxUploadBytes) {
+                                errors.push(file.name + ' exceeds maximum size of ' + bytesToSize(maxUploadBytes));
+                                continue;
+                            }
+
+                            // Detect file type
+                            var detection = detectResourceType(file);
+
+                            if (!detection.canUpload) {
+                                errors.push(detection.error);
+                                continue;
+                            }
+
+                            // Add to queue
+                            uploadQueue.push({
+                                file: file,
+                                type: detection.type,
+                                status: 'pending',
+                                error: null
+                            });
+                        }
+
+                        // Show errors if any
+                        if (errors.length > 0) {
+                            uploadDialog.find('.message.error').remove();
+                            $('.uploadDialog').append('<div class="message active error">' + errors.join('<br>') + '</div>');
+                        }
+
+                        // If we have files to upload, show queue and start
+                        if (uploadQueue.length > 0) {
+                            uploadDialog.find('.dropZoneContainer').addClass('hasQueue');
+                            uploadDialog.find('.uploadQueue').show();
+                            uploadDialog.find('.queueSummary').show();
+                            updateQueueUI();
+
+                            // Hide traditional upload form
+                            uploadDialog.find('.uploadForm').hide();
+
+                            // Enable upload button and change text to "Start Upload"
+                            setTimeout(function() {
+                                var buttons = uploadDialog.dialog('option', 'buttons');
+                                buttons[0].text = 'Start Upload';
+                                uploadDialog.dialog('option', 'buttons', buttons);
+                                uploadDialog.closest('.ui-dialog').find('.newResourceConfirm').prop('disabled', false);
+                            }, 100);
+                        }
+                    }
 
                     uploadDialog.find('input[type="file"]').on('change', function() {
 
@@ -518,6 +858,12 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                         modal: true,
                         close: function() {
                             if (previewXHR) { previewXHR.abort() };
+                            // Clear queue and reset
+                            uploadQueue = [];
+                            completedUploads = [];
+                            isUploading = false;
+                            currentUploadDialog = null;
+                            currentSuccessCallback = null;
                             $(this).dialog('close');
                             //$(this).find('.uploadForm').resetForm();
                             $(this).remove();
@@ -529,12 +875,41 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                 text: 'Add Resource',
                                 click: function() {
                                     if (previewXHR) { previewXHR.abort() };
-                                    $('.uploadForm').submit();
+
+                                    // Check if upload is complete - button should close dialog
+                                    if (uploadDialog.find('.queueSummary').text().indexOf('complete') !== -1) {
+                                        uploadQueue = [];
+                                        completedUploads = [];
+                                        isUploading = false;
+                                        currentUploadDialog = null;
+                                        currentSuccessCallback = null;
+                                        $(this).dialog('close');
+                                        return;
+                                    }
+
+                                    // Check if we're in batch upload mode
+                                    if (uploadQueue.length > 0 && uploadDialog.find('.dropZoneContainer').hasClass('hasQueue')) {
+                                        // Start batch upload
+                                        var buttons = uploadDialog.dialog('option', 'buttons');
+                                        buttons[0].text = 'Uploading...';
+                                        uploadDialog.dialog('option', 'buttons', buttons);
+                                        uploadDialog.closest('.ui-dialog').find('.newResourceConfirm').prop('disabled', true);
+                                        processUploadQueue();
+                                    } else {
+                                        // Traditional single file upload
+                                        $('.uploadForm').submit();
+                                    }
                                 }
                             },
                             {
                                 text: 'Cancel',
                                 click: function() {
+                                    // Clear queue and reset
+                                    uploadQueue = [];
+                                    completedUploads = [];
+                                    isUploading = false;
+                                    currentUploadDialog = null;
+                                    currentSuccessCallback = null;
                                     $(this).dialog('close');
                                 }
                             }
