@@ -22,8 +22,8 @@ FrameTrail let's you experience, manage & edit non-linear interactive video in a
 ### Managing
 * Manage **users** (Access Rights, Activation)
 * Manage **resources** (Add / Upload, Edit, Delete)
-  * HTML5 Video (WEBM & MP4)
-  * Image (JPG, PNG, GIF)
+  * Videos
+  * Images
   * Wikipedia
   * Location (Open Streetmap)
   * Youtube Video
