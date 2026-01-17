@@ -289,7 +289,11 @@ switch($_REQUEST["a"]) {
 				"theme"=> "",
 				"defaultHypervideoHidden"=> false,
 				"userColorCollection"=> $tmpColors,
-				"videoFit"=> "contain"
+				"videoFit"=> "contain",
+				"mediaOptimization"=> array(
+					"enabled"=> true,
+					"useFFmpeg"=> false
+				)
 			);
 			if (!file_put_contents($conf["dir"]["data"]."/config.json", json_encode($tmpConf,$conf["settings"]["json_flags"]))) {
 				$errorCnt++;

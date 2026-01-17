@@ -842,9 +842,12 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 							+   '    <div class="column-3">'
 							+   '        <input type="checkbox" name="defaultHypervideoHidden" id="defaultHypervideoHidden" value="defaultHypervideoHidden" '+((configData.defaultHypervideoHidden.toString() == "true") ? "checked" : "")+'>'
 							+   '        <label for="defaultHypervideoHidden" data-tooltip-bottom-left="'+ labels['MessageNewHypervideoHidden'] +'">'+ labels['SettingsNewHypervideoHidden'] +'</label><br>'
-							+   '        <div class="message active" style="width: calc(100% - 50px)">'+ labels['MessageHiddenHypervideoStillAccessible'] +'.</div>'
 							+   '        <input type="checkbox" name="allowUploads" id="allowUploads" value="allowUploads" '+((configData.allowUploads.toString() == "true") ? "checked" : "")+'>'
 							+   '        <label for="allowUploads" data-tooltip-left="'+ labels['MessageAllowFileUploads'] +'">'+ labels['SettingsAllowUploads'] +'</label><br>'
+							+   '        <input type="checkbox" name="mediaOptimizationEnabled" id="mediaOptimizationEnabled" value="mediaOptimizationEnabled" '+((configData.mediaOptimization && configData.mediaOptimization.enabled) ? "checked" : "")+'>'
+							+   '        <label for="mediaOptimizationEnabled" data-tooltip-left="'+ labels['MessageMediaOptimization'] +'">'+ labels['SettingsMediaOptimization'] +'</label><br>'
+							+   '        <input type="checkbox" name="mediaOptimizationUseFFmpeg" id="mediaOptimizationUseFFmpeg" value="mediaOptimizationUseFFmpeg" '+((configData.mediaOptimization && configData.mediaOptimization.useFFmpeg) ? "checked" : "")+'>'
+							+   '        <label for="mediaOptimizationUseFFmpeg" data-tooltip-left="'+ labels['MessageUseFFmpeg'] +'">'+ labels['SettingsUseFFmpeg'] +'</label><br>'
 							+   '    </div>'
 							+   '    <div class="column-3">'
 							+   '        <input type="checkbox" name="captureUserTraces" id="captureUserTraces" value="captureUserTraces" '+((configData.captureUserTraces.toString() == "true") ? "checked" : "")+'>'
@@ -877,7 +880,20 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 			var key = $(evt.currentTarget).attr('name'),
 				value = evt.currentTarget.checked;
 
-			FrameTrail.module('Database').config[key] = value;
+			// Handle nested mediaOptimization properties
+			if (key === 'mediaOptimizationEnabled') {
+				if (!FrameTrail.module('Database').config.mediaOptimization) {
+					FrameTrail.module('Database').config.mediaOptimization = {};
+				}
+				FrameTrail.module('Database').config.mediaOptimization.enabled = value;
+			} else if (key === 'mediaOptimizationUseFFmpeg') {
+				if (!FrameTrail.module('Database').config.mediaOptimization) {
+					FrameTrail.module('Database').config.mediaOptimization = {};
+				}
+				FrameTrail.module('Database').config.mediaOptimization.useFFmpeg = value;
+			} else {
+				FrameTrail.module('Database').config[key] = value;
+			}
 			FrameTrail.module('HypervideoModel').newUnsavedChange('config');
 		});
 
