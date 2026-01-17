@@ -26,7 +26,12 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
         completedUploads = [],
         isUploading = false,
         currentUploadDialog = null,
-        currentSuccessCallback = null;
+        currentSuccessCallback = null,
+        mediaOptimizationConfig = {
+            enabled: false,
+            ffmpegEnabled: false,
+            ffmpegAvailable: false
+        };
 
 
 
@@ -104,8 +109,14 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
 			} else {
 				// Other video formats need transcoding
 				result.needsTranscoding = true;
-				result.canUpload = false;
-				result.error = 'Video must be in MP4 format. Please convert ' + fileName + ' to MP4 before uploading.';
+				// Check if FFmpeg is available for transcoding
+					if (mediaOptimizationConfig.ffmpegEnabled && mediaOptimizationConfig.ffmpegAvailable) {
+					result.canUpload = true;
+					result.error = null; // Will be transcoded server-side
+					} else {
+					result.canUpload = false;
+					result.error = 'Video must be in MP4 format. Please convert ' + fileName + ' to MP4 before uploading.';
+					}
 			}
 			return result;
 		}
@@ -119,8 +130,14 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
 			} else {
 				// Other audio formats need transcoding
 				result.needsTranscoding = true;
-				result.canUpload = false;
-				result.error = 'Audio must be in MP3 format. Please convert ' + fileName + ' to MP3 before uploading.';
+				// Check if FFmpeg is available for transcoding
+				if (mediaOptimizationConfig.ffmpegEnabled && mediaOptimizationConfig.ffmpegAvailable) {
+					result.canUpload = true;
+					result.error = null; // Will be transcoded server-side
+				} else {
+					result.canUpload = false;
+					result.error = 'Audio must be in MP3 format. Please convert ' + fileName + ' to MP3 before uploading.';
+				}
 			}
 			return result;
 		}
@@ -302,13 +319,26 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
 	function uploadResource(successCallback, onlyVideo) {
         FrameTrail.module('UserManagement').ensureAuthenticated(function(){
 
-            $.ajax({
-                type:     'GET',
-                url:        '_server/ajaxServer.php',
-                data:       {'a':'fileGetMaxUploadSize'},
-                success: function(response) {
+            // Fetch both max upload size and media optimization config
+            $.when(
+                $.ajax({
+                    type: 'GET',
+                    url: '_server/ajaxServer.php',
+                    data: {'a':'fileGetMaxUploadSize'}
+                }),
+                $.ajax({
+                    type: 'GET',
+                    url: '_server/ajaxServer.php',
+                    data: {'a':'fileGetMediaOptimizationConfig'}
+                })
+            ).done(function(maxSizeResponse, mediaConfigResponse) {
 
-                    maxUploadBytes = response.maxuploadbytes;
+                maxUploadBytes = maxSizeResponse[0].maxuploadbytes;
+
+                // Update media optimization config
+                if (mediaConfigResponse[0] && mediaConfigResponse[0].config) {
+                    mediaOptimizationConfig = mediaConfigResponse[0].config;
+                }
 
                     var uploadDialog =  $('<div class="uploadDialog" title="'+ labels['ResourceAddNew'] +'">'
                                         + '    <div class="dropZoneContainer">'
@@ -919,9 +949,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                         }
                     });
 
-
-                }
-            });
+            }); // End of $.when().done()
 
         });
     }

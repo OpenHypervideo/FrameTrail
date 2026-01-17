@@ -244,13 +244,49 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
 				exit;
 			}
 
-			$filearray = preg_split("/\./", $files["audio"]["name"]);
-			$filetype = array_pop($filearray);
-			$filename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_".sanitize($name),0,90).".".$filetype;
+			$filename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_".sanitize($name),0,90).".mp3";
+			$finalPath = $conf["dir"]["data"]."/resources/".$filename;
+			$uploadedType = $files["audio"]["type"];
+
+			// Check if FFmpeg transcoding is enabled and needed
+			// Read from _data/config.json
+			$configFile = new sharedFile($conf["dir"]["data"]."/config.json");
+			$configJson = $configFile->read();
+			$configData = json_decode($configJson, true);
+			$ffmpegEnabled = isset($configData["mediaOptimization"]["useFFmpeg"]) && $configData["mediaOptimization"]["useFFmpeg"] === true;
+			$needsTranscoding = !in_array($uploadedType, array("audio/mp3", "audio/mpeg"));
+
+			if ($needsTranscoding) {
+				if (!$ffmpegEnabled) {
+					// FFmpeg disabled, only accept MP3
+					$return["status"] = "fail";
+					$return["code"] = 6;
+					$return["string"] = "Wrong audio file format. Only MP3 is supported. Enable FFmpeg transcoding in config to upload other formats.";
+					return $return;
+					exit;
+				}
+
+				// FFmpeg enabled, transcode to MP3
+				$tempPath = $files["audio"]["tmp_name"];
+				$transcodeResult = transcodeAudioToMP3($tempPath, $finalPath, 192);
+
+				if (isset($transcodeResult['error'])) {
+					$return["status"] = "fail";
+					$return["code"] = 6;
+					$return["string"] = "Audio transcoding failed: " . $transcodeResult['error'];
+					return $return;
+					exit;
+				}
+
+				error_log('FrameTrail: Audio transcoded from ' . $uploadedType . ' to MP3');
+			} else {
+				// Already MP3, just move it
+				move_uploaded_file($files["audio"]["tmp_name"], $finalPath);
+			}
+
 			$newResource["src"] = $filename;
 			$newResource["type"] = "audio";
 			$newResource["attributes"] = ($attributes) ? $attributes : Array();
-			move_uploaded_file($files["audio"]["tmp_name"], $conf["dir"]["data"]."/resources/".$filename);
 		break;
 		case "video":
 			if ($uploadsAllowed === false) {
@@ -266,12 +302,6 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
 				$return["string"] = "Not enough video sources";
 				return $return;
 				exit;
-			} else if ( (!in_array($_FILES["mp4"]["type"], array("video/mp4", "video/mpeg4"))) ) {
-				$return["status"] = "fail";
-				$return["code"] = 6;
-				$return["string"] = "Wrong video file format";
-				return $return;
-				exit;
 			}
 
 			// Validate file size
@@ -285,7 +315,60 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
 			}
 
 			$filename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_".sanitize($name),0,90);
-			move_uploaded_file($files["mp4"]["tmp_name"], $conf["dir"]["data"]."/resources/".$filename.".mp4");
+			$finalPath = $conf["dir"]["data"]."/resources/".$filename.".mp4";
+			$uploadedType = $_FILES["mp4"]["type"];
+
+			// Check if FFmpeg transcoding is enabled and needed
+			// Read from _data/config.json
+			$configFile = new sharedFile($conf["dir"]["data"]."/config.json");
+			$configJson = $configFile->read();
+			$configData = json_decode($configJson, true);
+			$ffmpegEnabled = isset($configData["mediaOptimization"]["useFFmpeg"]) && $configData["mediaOptimization"]["useFFmpeg"] === true;
+			$needsTranscoding = !in_array($uploadedType, array("video/mp4", "video/mpeg4"));
+
+			if ($needsTranscoding) {
+				if (!$ffmpegEnabled) {
+					// FFmpeg disabled, only accept MP4
+					$return["status"] = "fail";
+					$return["code"] = 6;
+					$return["string"] = "Wrong video file format. Only MP4 is supported. Enable FFmpeg transcoding in config to upload other formats.";
+					return $return;
+					exit;
+				}
+
+				// FFmpeg enabled, transcode to MP4
+				$tempPath = $files["mp4"]["tmp_name"];
+				$transcodeResult = transcodeVideoToMP4($tempPath, $finalPath, 1920);
+
+				if (isset($transcodeResult['error'])) {
+					$return["status"] = "fail";
+					$return["code"] = 6;
+					$return["string"] = "Video transcoding failed: " . $transcodeResult['error'];
+					return $return;
+					exit;
+				}
+
+				error_log('FrameTrail: Video transcoded from ' . $uploadedType . ' to MP4');
+			} else {
+				// Already MP4, just move it
+				move_uploaded_file($files["mp4"]["tmp_name"], $finalPath);
+			}
+
+			// Generate video thumbnail using FFmpeg (at 50% of video duration)
+			// Matches client-side: 400x300 canvas saved as PNG via canvas.toDataURL()
+			$baseFilename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_thumb_".sanitize($name),0,90);
+			$thumbFilename = $baseFilename.".png";
+			$thumbPath = $conf["dir"]["data"]."/resources/".$thumbFilename;
+
+			$thumbResult = generateVideoThumbnail($finalPath, $thumbPath);
+			if (isset($thumbResult['error'])) {
+				error_log('FrameTrail: Video thumbnail generation failed: ' . $thumbResult['error']);
+				// Continue without thumbnail - not a fatal error
+			} else {
+				$newResource["thumb"] = $thumbFilename;
+				error_log('FrameTrail: Video thumbnail generated: ' . $thumbFilename);
+			}
+
 			$newResource["src"] = $filename.".mp4";
 			$newResource["attributes"] = ($attributes) ? $attributes : Array();
 			foreach ($files["subtitles"]["name"] as $k=>$v) {
@@ -738,6 +821,38 @@ function fileGetMaxUploadSize() {
 	return $return;
 }
 
+/**
+ * Get media optimization configuration including FFmpeg availability
+ *
+ * @return array Configuration response
+ */
+function fileGetMediaOptimizationConfig() {
+	global $conf;
+
+	// Read configuration from _data/config.json (not config.php)
+	$configFile = new sharedFile($conf["dir"]["data"]."/config.json");
+	$configJson = $configFile->read();
+	$configData = json_decode($configJson, true);
+
+	$config = [
+		'enabled' => isset($configData['mediaOptimization']['enabled']) && $configData['mediaOptimization']['enabled'] === true,
+		'ffmpegEnabled' => isset($configData['mediaOptimization']['useFFmpeg']) && $configData['mediaOptimization']['useFFmpeg'] === true,
+		'ffmpegAvailable' => false
+	];
+
+	// Check if FFmpeg is actually available when enabled
+	if ($config['ffmpegEnabled']) {
+		$ffmpegPath = detectFFmpegPath();
+		$config['ffmpegAvailable'] = ($ffmpegPath !== null);
+	}
+
+	$return["status"] = "success";
+	$return["code"] = 0;
+	$return["string"] = "Media optimization config retrieved";
+	$return["config"] = $config;
+	return $return;
+}
+
 function parse_size($size) {
 	$unit = preg_replace('/[^bkmgtpezy]/i', '', $size); // Remove the non-unit characters from the size.
 	$size = preg_replace('/[^0-9\.]/', '', $size); // Remove the non-numeric characters from the size.
@@ -953,7 +1068,7 @@ function optimizeImage($sourcePath, $destPath, $maxWidth = 1920, $quality = 85) 
 
 /**
  * Generate thumbnail for an image
- * - Creates a 400x300 thumbnail
+ * - Creates a 350x250 thumbnail (matching client-side canvas dimensions)
  * - Saves as PNG to preserve transparency
  *
  * @param string $sourcePath Path to source image
@@ -1000,9 +1115,10 @@ function generateThumbnail($sourcePath, $thumbPath) {
 	$sourceWidth = imagesx($sourceImage);
 	$sourceHeight = imagesy($sourceImage);
 
-	// Target thumbnail dimensions (400x300 max, maintaining aspect ratio)
-	$thumbWidth = 400;
-	$thumbHeight = 300;
+	// Target thumbnail dimensions (350x250 max, matching client-side canvas)
+	// Client-side uses: <canvas width="350px" height="250px">
+	$thumbWidth = 350;
+	$thumbHeight = 250;
 
 	// Calculate dimensions while maintaining aspect ratio
 	$aspectRatio = $sourceWidth / $sourceHeight;
@@ -1042,6 +1158,71 @@ function generateThumbnail($sourcePath, $thumbPath) {
 }
 
 /**
+ * Generate video thumbnail using FFmpeg
+ * Extracts a frame at 50% of video duration (like client-side generation)
+ *
+ * @param string $videoPath Path to video file
+ * @param string $thumbPath Path for output thumbnail
+ * @return array Success/error response
+ */
+function generateVideoThumbnail($videoPath, $thumbPath) {
+	$ffmpegPath = detectFFmpegPath();
+
+	if (!$ffmpegPath) {
+		return ['error' => 'FFmpeg not available for thumbnail generation'];
+	}
+
+	// First, get video duration using ffprobe or ffmpeg
+	$durationCommand = sprintf(
+		'%s -i %s 2>&1 | grep "Duration"',
+		escapeshellcmd($ffmpegPath),
+		escapeshellarg($videoPath)
+	);
+
+	exec($durationCommand, $durationOutput, $returnCode);
+
+	// Parse duration from output like: "Duration: 00:01:30.45"
+	$timeOffset = 2.0; // Default fallback
+	if (!empty($durationOutput) && preg_match('/Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})/', $durationOutput[0], $matches)) {
+		$hours = (int)$matches[1];
+		$minutes = (int)$matches[2];
+		$seconds = (float)$matches[3];
+		$totalSeconds = ($hours * 3600) + ($minutes * 60) + $seconds;
+
+		// Extract frame at 50% of video duration
+		$timeOffset = $totalSeconds / 2.0;
+		error_log('FrameTrail: Video duration: ' . $totalSeconds . 's, extracting thumbnail at ' . $timeOffset . 's (50%)');
+	}
+
+	// Extract a single frame from the video at 50% duration
+	// -ss: seek to time position
+	// -i: input file
+	// -vframes 1: extract only 1 frame
+	// -vf scale: scale to max 400px width, height auto (maintains aspect ratio)
+	// Client-side draws video on canvas maintaining aspect ratio, no black bars
+	$command = sprintf(
+		'%s -ss %f -i %s -vframes 1 -vf "scale=\'min(400,iw)\':-2" %s 2>&1',
+		escapeshellcmd($ffmpegPath),
+		$timeOffset,
+		escapeshellarg($videoPath),
+		escapeshellarg($thumbPath)
+	);
+
+	error_log('FrameTrail: Generating video thumbnail: ' . $command);
+
+	exec($command, $output, $returnCode);
+
+	if ($returnCode === 0 && file_exists($thumbPath)) {
+		error_log('FrameTrail: Video thumbnail generated successfully');
+		return ['success' => true, 'path' => $thumbPath];
+	} else {
+		$errorMsg = 'Thumbnail generation failed: ' . implode("\n", $output);
+		error_log('FrameTrail: ' . $errorMsg);
+		return ['error' => $errorMsg];
+	}
+}
+
+/**
  * Validate file size against upload limits
  *
  * @param int $fileSize File size in bytes
@@ -1077,6 +1258,144 @@ function formatBytes($bytes, $precision = 2) {
 	$bytes /= pow(1024, $pow);
 
 	return round($bytes, $precision) . ' ' . $units[$pow];
+}
+
+/**
+ * Detect FFmpeg installation on server
+ *
+ * @return string|null FFmpeg path if found, null otherwise
+ */
+function detectFFmpegPath() {
+	// Try common paths where FFmpeg might be installed
+	$paths = [
+		'/usr/bin/ffmpeg',
+		'/usr/local/bin/ffmpeg',
+		'/opt/homebrew/bin/ffmpeg', // macOS Homebrew
+		'ffmpeg' // System PATH
+	];
+
+	foreach ($paths as $path) {
+		// Try to execute FFmpeg version check
+		@exec(escapeshellcmd($path) . ' -version 2>&1', $output, $returnCode);
+		if ($returnCode === 0 && !empty($output)) {
+			// Verify it's actually FFmpeg by checking output
+			if (stripos(implode(' ', $output), 'ffmpeg') !== false) {
+				error_log('FrameTrail: FFmpeg found at: ' . $path);
+				return $path;
+			}
+		}
+		// Clear output for next iteration
+		$output = [];
+	}
+
+	error_log('FrameTrail: FFmpeg not found in common locations');
+	return null;
+}
+
+/**
+ * Transcode video to MP4 format with H.264/AAC codecs
+ *
+ * @param string $sourcePath Path to source video file
+ * @param string $destPath Path for output MP4 file
+ * @param int $maxWidth Maximum width (default 1920)
+ * @return array Success/error response with details
+ */
+function transcodeVideoToMP4($sourcePath, $destPath, $maxWidth = 1920) {
+	$ffmpegPath = detectFFmpegPath();
+
+	if (!$ffmpegPath) {
+		return ['error' => 'FFmpeg not available on this server'];
+	}
+
+	// Good defaults for web video
+	$crf = 23; // Quality (0-51, 23 = default, lower = better quality but larger file)
+
+	// Build FFmpeg command
+	// -i: input file
+	// -c:v libx264: H.264 video codec
+	// -crf 23: Constant Rate Factor quality
+	// -vf "scale=...": Scale video maintaining aspect ratio
+	// -c:a aac: AAC audio codec
+	// -b:a 192k: Audio bitrate 192 kbps
+	// -movflags +faststart: Enable streaming before complete download
+	// -y: Overwrite output file if exists
+	$command = sprintf(
+		'%s -i %s -c:v libx264 -crf %d -vf "scale=\'min(%d,iw)\':-2" -c:a aac -b:a 192k -movflags +faststart -y %s 2>&1',
+		escapeshellcmd($ffmpegPath),
+		escapeshellarg($sourcePath),
+		$crf,
+		$maxWidth,
+		escapeshellarg($destPath)
+	);
+
+	error_log('FrameTrail: Running FFmpeg command: ' . $command);
+
+	exec($command, $output, $returnCode);
+
+	if ($returnCode === 0 && file_exists($destPath)) {
+		$outputSize = filesize($destPath);
+		$inputSize = filesize($sourcePath);
+		error_log('FrameTrail: Video transcoding successful. Input: ' . formatBytes($inputSize) . ', Output: ' . formatBytes($outputSize));
+		return [
+			'success' => true,
+			'path' => $destPath,
+			'inputSize' => $inputSize,
+			'outputSize' => $outputSize
+		];
+	} else {
+		$errorMsg = 'Transcoding failed: ' . implode("\n", $output);
+		error_log('FrameTrail: ' . $errorMsg);
+		return ['error' => $errorMsg];
+	}
+}
+
+/**
+ * Transcode audio to MP3 format
+ *
+ * @param string $sourcePath Path to source audio file
+ * @param string $destPath Path for output MP3 file
+ * @param int $bitrate Audio bitrate in kbps (default 192)
+ * @return array Success/error response with details
+ */
+function transcodeAudioToMP3($sourcePath, $destPath, $bitrate = 192) {
+	$ffmpegPath = detectFFmpegPath();
+
+	if (!$ffmpegPath) {
+		return ['error' => 'FFmpeg not available on this server'];
+	}
+
+	// Build FFmpeg command
+	// -i: input file
+	// -c:a libmp3lame: MP3 audio codec
+	// -b:a: Audio bitrate
+	// -y: Overwrite output file if exists
+	$command = sprintf(
+		'%s -i %s -c:a libmp3lame -b:a %dk -y %s 2>&1',
+		escapeshellcmd($ffmpegPath),
+		escapeshellarg($sourcePath),
+		$bitrate,
+		escapeshellarg($destPath)
+	);
+
+	error_log('FrameTrail: Running FFmpeg command: ' . $command);
+
+	exec($command, $output, $returnCode);
+
+	if ($returnCode === 0 && file_exists($destPath)) {
+		$outputSize = filesize($destPath);
+		$inputSize = filesize($sourcePath);
+		error_log('FrameTrail: Audio transcoding successful. Input: ' . formatBytes($inputSize) . ', Output: ' . formatBytes($outputSize));
+		return [
+			'success' => true,
+			'path' => $destPath,
+			'inputSize' => $inputSize,
+			'outputSize' => $outputSize
+		];
+	} else {
+		$errorMsg = 'Transcoding failed: ' . implode("\n", $output);
+		error_log('FrameTrail: ' . $errorMsg);
+		return ['error' => $errorMsg];
+	}
 }
 
 
