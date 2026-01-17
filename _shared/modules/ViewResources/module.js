@@ -21,6 +21,10 @@ FrameTrail.defineModule('ViewResources', function(FrameTrail){
                         +  '        <button class="resourceUpload"><span class="icon-doc-new"></span>'+ labels['GenericAddNew'] +'</button>'
                         +  '        <button class="resourceDelete"><span class="icon-trash"></span>'+ labels['GenericDelete'] +'</button>'
                         +  '        <button class="resourceDeleteConfirm">'+ labels['GenericConfirmDelete'] +'</button>'
+                        +  '        <div class="viewControls">'
+                        +  '            <button class="viewToggle" data-view="grid-medium" title="Grid View"><span class="icon-th"></span></button>'
+                        +  '            <button class="viewToggle" data-view="list" title="List View"><span class="icon-list"></span></button>'
+                        +  '        </div>'
                         +  '        <div class="message"></div>'
                         +  '        <div style="clear: both;"></div>'
                         +  '    </div>'
@@ -39,7 +43,7 @@ FrameTrail.defineModule('ViewResources', function(FrameTrail){
                         +  '            <input type="checkbox" id="onlyCC" name="onlyCC" /><label for="onlyCC">'+ labels['ResourceTypesOnlyCC'] +'</label>'
                         +  '        </div>'
                         +  '    </div>'
-                        +  '    <div class="resourcesList"></div>'
+                        +  '    <div class="resourcesList view-grid-medium"></div>'
                         +  '</div>'),
 
 
@@ -75,8 +79,26 @@ FrameTrail.defineModule('ViewResources', function(FrameTrail){
         ResourcesList.addClass('onlyCC');
      } else {
         ResourcesList.removeClass('onlyCC');
-     }   
+     }
     });
+
+    // View toggle functionality
+    domElement.find('.viewToggle').click(function() {
+        var viewMode = $(this).data('view');
+
+        // Remove all view classes
+        ResourcesList.removeClass('view-grid-small view-grid-medium view-grid-large view-list');
+
+        // Add selected view class
+        ResourcesList.addClass('view-' + viewMode);
+
+        // Update active state on buttons
+        domElement.find('.viewToggle').removeClass('active');
+        $(this).addClass('active');
+    });
+
+    // Set initial active state for grid view button
+    domElement.find('.viewToggle[data-view="grid-medium"]').addClass('active');
 
 
 

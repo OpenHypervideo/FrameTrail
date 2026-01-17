@@ -44,30 +44,97 @@
 	display: inline-block;
 }
 
+.viewResources .resourcesControls .viewControls {
+	float: right;
+	margin-right: 10px;
+}
+
+.viewResources .resourcesControls .viewToggle {
+	background-color: transparent;
+	border: 2px solid var(--primary-bg-color);
+	border-radius: 4px;
+	padding: 8px 12px;
+	margin-left: 4px;
+	cursor: pointer;
+	transition: all 0.2s ease;
+}
+
+.viewResources .resourcesControls .viewToggle:hover {
+	background-color: rgba(0, 0, 0, 0.1);
+}
+
+.viewResources .resourcesControls .viewToggle.active {
+	background-color: var(--primary-bg-color);
+	color: var(--primary-fg-color);
+}
+
+.viewResources .resourcesControls .viewToggle [class^="icon-"]::before,
+.viewResources .resourcesControls .viewToggle [class*=" icon-"]::before {
+	font-size: 16px;
+}
+
 .viewResources .resourcesFilter {
 	width: 100%;
-	padding: 10px 0;
+	padding: 10px;
+	box-sizing: border-box;
 	clear: both;
+	background-color: rgba(0, 0, 0, 0.03);
+	border-bottom: 1px solid #afafaf;
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 6px;
 }
 
+/* Hide radio button inputs, style labels as pills */
 .viewResources .resourcesFilter input[type="radio"] {
-	margin: 0px 5px 3px 10px;
-}
-
-.viewResources .resourcesFilter input[type="radio"]:hover {
-	cursor: pointer;
+	position: absolute;
+	opacity: 0;
+	pointer-events: none;
 }
 
 .viewResources .resourcesFilter label {
 	cursor: pointer;
+	padding: 6px 12px;
+	border-radius: 16px;
+	background-color: var(--primary-fg-color);
+	border: 2px solid var(--primary-bg-color);
+	font-size: 12px;
+	transition: all 0.2s ease;
+	display: inline-block;
+	user-select: none;
+}
+
+.viewResources .resourcesFilter label:hover {
+	background-color: rgba(0, 0, 0, 0.05);
+}
+
+.viewResources .resourcesFilter input[type="radio"]:checked + label {
+	background-color: var(--primary-bg-color);
+	color: var(--primary-fg-color);
+	font-weight: bold;
 }
 
 .viewResources .resourcesFilter .resourcesCheckboxes {
-	float: right;
+	margin-left: auto;
+	display: flex;
+	align-items: center;
+	gap: 6px;
 }
 
-.viewResources .resourcesFilter .resourcesCheckboxes input {
-	vertical-align: baseline;
+.viewResources .resourcesFilter .resourcesCheckboxes input[type="checkbox"] {
+	position: relative;
+	opacity: 1;
+	pointer-events: auto;
+	vertical-align: middle;
+	cursor: pointer;
+}
+
+.viewResources .resourcesFilter .resourcesCheckboxes label {
+	background: transparent;
+	border: none;
+	padding: 0;
+	font-weight: normal;
 }
 
 .viewResources .resourcesList {
@@ -99,6 +166,75 @@
 
 .viewResources .resourcesList .resourceThumb.markedForDeletion .resourceOverlay {
 	background: rgba(205, 10, 10, .6);
+}
+
+/* Grid View Modes */
+
+/* Medium Grid (default) - 120x80 thumbnails */
+.viewResources .resourcesList.view-grid-medium .resourceThumb {
+	width: 120px;
+	height: 80px;
+	margin: 6px;
+}
+
+/* Small Grid - 90x60 thumbnails */
+.viewResources .resourcesList.view-grid-small .resourceThumb {
+	width: 90px;
+	height: 60px;
+	margin: 4px;
+}
+
+.viewResources .resourcesList.view-grid-small .resourceThumb .resourceTitle {
+	font-size: 10px;
+	padding: 2px 4px;
+}
+
+/* Large Grid - 180x120 thumbnails */
+.viewResources .resourcesList.view-grid-large .resourceThumb {
+	width: 180px;
+	height: 120px;
+	margin: 8px;
+}
+
+.viewResources .resourcesList.view-grid-large .resourceThumb .resourceTitle {
+	font-size: 13px;
+	padding: 4px 6px;
+}
+
+/* List View - full width rows */
+.viewResources .resourcesList.view-list .resourceThumb {
+	width: 100%;
+	height: 80px;
+	margin: 4px 0;
+	display: flex;
+	align-items: center;
+	float: none;
+	background-position: left center;
+	background-size: 120px 80px;
+	background-repeat: no-repeat;
+	padding-left: 130px;
+}
+
+.viewResources .resourcesList.view-list .resourceThumb .resourceTitle {
+	flex: 1;
+	text-align: left;
+	font-size: 14px;
+	padding: 8px;
+	position: static;
+	background: transparent;
+}
+
+.viewResources .resourcesList.view-list .resourceThumb .resourceOverlay {
+	position: absolute;
+	left: 0;
+	width: 120px;
+	height: 80px;
+}
+
+.viewResources .resourcesList.view-list .resourceThumb .resourcePreviewButton {
+	position: static;
+	margin-left: auto;
+	margin-right: 10px;
 }
 
 .viewResources .resourcesList .loadingScreen {
