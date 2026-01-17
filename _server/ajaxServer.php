@@ -82,6 +82,11 @@ switch($_REQUEST["a"]) {
 		$return = fileGetMaxUploadSize();
 		break;
 
+	case "fileGetMediaOptimizationConfig":
+		include_once("files.php");
+		$return = fileGetMediaOptimizationConfig();
+		break;
+
 	case "fileGetUrlInfo":
 		include_once("files.php");
 		$return = fileGetUrlInfo($_REQUEST["url"]);
