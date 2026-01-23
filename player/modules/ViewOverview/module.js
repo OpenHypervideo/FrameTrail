@@ -79,7 +79,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 if ( (admin || owner) && editMode ) {
 
                     var hypervideoOptions = $('<div class="hypervideoOptions"></div>');
-                    var editButton = $('<button class="hypervideoEditButton" data-tooltip-bottom="'+ labels['SettingsHypervideoSettings'] +'"><span class="icon-cog"></span></button>');
+                    var editButton = $('<button class="hypervideoEditButton" data-tooltip-bottom="'+ labels['SettingsHypervideoSettings'] +'"><span class="icon-pencil"></span></button>');
                     
                     // Capture the hypervideoID in the closure to avoid referencing the last thumb
                     (function(hypervideoID) {

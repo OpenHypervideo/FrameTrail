@@ -449,10 +449,10 @@ input:checked + .slider:before {
 
 .themeItem {
     float: left;
-    width: 100px;
+    width: 93px;
     height: 40px;
     padding: 4px 8px;
-    margin-right: 8px;
+    margin: 6px;
     background: var(--primary-bg-color);
     color: var(--primary-fg-color);
     border: 1px solid var(--secondary-fg-color);
@@ -463,7 +463,7 @@ input:checked + .slider:before {
 }
 
 .themeItem.active, .themeItem:hover {
-    height: 60px;
+    outline: 4px solid #F90;
 }
 
 .themeItem .themeColorContainer {
