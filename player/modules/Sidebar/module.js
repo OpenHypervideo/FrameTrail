@@ -702,6 +702,11 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
         changeViewSize();
 
+        // Update button permissions when entering video mode (after hypervideo switch)
+        if (viewMode === 'video') {
+            updateEditModeButtonPermissions();
+        }
+
     };
 
     /**
@@ -754,6 +759,34 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
 
     /**
+     * I update the disabled state of edit mode buttons based on user permissions.
+     * Admins and hypervideo owners can edit all aspects (layout, overlays, codesnippets).
+     * Other users can only edit annotations.
+     * @method updateEditModeButtonPermissions
+     */
+    function updateEditModeButtonPermissions() {
+
+        if (!FrameTrail.getState('loggedIn')) {
+            return;
+        }
+
+        if (FrameTrail.module('RouteNavigation').hypervideoID) {
+            if (FrameTrail.module('UserManagement').userRole == 'admin' || parseInt(FrameTrail.module('HypervideoModel').creatorId) == FrameTrail.module('UserManagement').userID) {
+                // Admin or owner: enable all buttons
+                videoContainerControls.find('.editMode').removeClass('disabled');
+            } else {
+                // Non-owner: disable layout, overlays, codesnippets (can only edit annotations)
+                videoContainerControls.find('.editMode').removeClass('disabled');
+                videoContainerControls.find('.editMode[data-editmode="layout"]').addClass('disabled');
+                videoContainerControls.find('.editMode[data-editmode="overlays"]').addClass('disabled');
+                videoContainerControls.find('.editMode[data-editmode="codesnippets"]').addClass('disabled');
+            }
+        }
+
+    }
+
+
+    /**
      * I react to a change in the global state "loggedIn"
      * @method changeUserLogin
      * @param {Boolean} loggedIn
@@ -761,26 +794,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
     function changeUserLogin(loggedIn) {
 
         if (loggedIn) {
-
-            if ( FrameTrail.module('RouteNavigation').hypervideoID ) {
-                //console.log(FrameTrail.module('HypervideoModel').creatorId);
-                //console.log(FrameTrail.module('UserManagement').userID);
-                if (FrameTrail.module('UserManagement').userRole == 'admin' || parseInt(FrameTrail.module('HypervideoModel').creatorId) == FrameTrail.module('UserManagement').userID) {
-
-                    videoContainerControls.find('.editMode').removeClass('disabled');
-
-                } else {
-
-                    videoContainerControls.find('.editMode[data-editmode="overlays"]').addClass('disabled');
-                    videoContainerControls.find('.editMode[data-editmode="codesnippets"]').addClass('disabled');
-
-                }
-            }
-
-        } else {
-
-            // not logged in
-
+            updateEditModeButtonPermissions();
         }
 
     }
