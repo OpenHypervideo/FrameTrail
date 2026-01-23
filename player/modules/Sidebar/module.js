@@ -533,15 +533,35 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             success: function(response) {
                 switch(response['code']) {
                     case 0:
-                        // TODO: find a nice way to remove Element of deleted Hypervideo from Overview List
                         deleteDialog.dialog('close');
-                        $('#OverviewList div[data-hypervideoid="'+thisID+'"]').remove();
 
-                        // Redirect to Overview when current Hypervideo has been deleted
-                        if ( thisID == FrameTrail.module('RouteNavigation').hypervideoID ) {
-                            alert(labels['MessageDeleteHypervideoRedirect']);
-                            window.location.hash = "#";
-                        }
+                        // Refresh the hypervideo list to remove deleted entry
+                        FrameTrail.module('Database').loadHypervideoData(
+                            function(){
+                                FrameTrail.module('ViewOverview').refreshList();
+
+                                // Redirect to Overview when current Hypervideo has been deleted
+                                if ( thisID == FrameTrail.module('RouteNavigation').hypervideoID ) {
+                                    alert(labels['MessageDeleteHypervideoRedirect']);
+
+                                    // Exit edit mode if active
+                                    if (FrameTrail.getState('editMode')) {
+                                        FrameTrail.changeState('editMode', false);
+                                    }
+
+                                    // Clear the current hypervideo reference
+                                    FrameTrail.module('RouteNavigation').hypervideoID = null;
+
+                                    // Hide the video mode button since no hypervideo is selected
+                                    $('.titlebar button[data-viewmode="video"]').hide();
+
+                                    // Update URL and switch to overview
+                                    window.location.hash = "#";
+                                    FrameTrail.changeState('viewMode', 'overview');
+                                }
+                            },
+                            function(){}
+                        );
 
                     break;
                     case 1:

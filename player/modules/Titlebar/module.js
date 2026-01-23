@@ -163,6 +163,20 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
         }
     });
 
+    /**
+     * I check if the current user can edit the current hypervideo.
+     * User must be admin or the owner (creator) of the hypervideo.
+     * @method canEditCurrentHypervideo
+     * @return {Boolean}
+     */
+    function canEditCurrentHypervideo() {
+        var userRole = FrameTrail.module('UserManagement').userRole;
+        var userID = FrameTrail.module('UserManagement').userID;
+        var creatorId = FrameTrail.module('HypervideoModel').creatorId;
+        
+        return userRole === 'admin' || String(creatorId) === String(userID);
+    }
+
 
     /**
      * I am called from {{#crossLink "Interface/create:method"}}Interface/create(){{/crossLink}}.
@@ -255,8 +269,8 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
         domElement.find('[data-viewmode=' + viewMode + ']').addClass('active');
 
-        // Show/hide hypervideo edit button based on view mode and edit mode
-        if (viewMode === 'video' && FrameTrail.getState('editMode') && FrameTrail.module('RouteNavigation').hypervideoID) {
+        // Show/hide hypervideo edit button based on view mode, edit mode, and permission
+        if (viewMode === 'video' && FrameTrail.getState('editMode') && FrameTrail.module('RouteNavigation').hypervideoID && canEditCurrentHypervideo()) {
             HypervideoEditButton.addClass('active');
         } else {
             HypervideoEditButton.removeClass('active');
@@ -284,8 +298,8 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                 ManageResourcesButton.show();
                 SharingWidget.hide();
 
-                // Show hypervideo edit button if in video view
-                if (FrameTrail.getState('viewMode') === 'video' && FrameTrail.module('RouteNavigation').hypervideoID) {
+                // Show hypervideo edit button if in video view and user has permission
+                if (FrameTrail.getState('viewMode') === 'video' && FrameTrail.module('RouteNavigation').hypervideoID && canEditCurrentHypervideo()) {
                     HypervideoEditButton.addClass('active');
                 }
 
