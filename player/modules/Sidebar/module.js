@@ -442,12 +442,27 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             success: function(response) {
                 switch(response['code']) {
                     case 0:
-                        // TODO: UPDATE LIST / HYPERVIDEO OBJECT IN CLIENT! @Michi
+                        var wasEditMode = FrameTrail.getState('editMode');
+
                         forkDialog.dialog('close');
                         FrameTrail.module('Database').loadHypervideoData(
                             function(){
                                 FrameTrail.module('ViewOverview').refreshList();
-                                alert('TODO: switch to new hypervideo');
+
+                                var newHypervideoID = response['newHypervideoID'];
+
+                                // Update URL hash with new hypervideo ID
+                                history.pushState({
+                                    editMode: wasEditMode
+                                }, "", "#hypervideo=" + newHypervideoID);
+
+                                // Exit edit mode if active (will be restored by updateHypervideo if wasEditMode is true)
+                                if (wasEditMode) {
+                                    FrameTrail.changeState('editMode', false);
+                                }
+
+                                // Switch to the new hypervideo, restoring edit mode if it was active
+                                FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, wasEditMode, true);
                             },
                             function(){}
                         );

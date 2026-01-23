@@ -296,7 +296,7 @@ function hypervideoDelete($hypervideoID,$hypervideoName) {
 		return $return;
 	}
 
-	if (($_SESSION["ohv"]["user"]["role"] != "admin") && ($_SESSION["ohv"]["user"]["id"] != $hv["hypervideos"][$hypervideoID]["creatorId"])) {
+	if (($_SESSION["ohv"]["user"]["role"] != "admin") && ($_SESSION["ohv"]["user"]["id"] != $hv["meta"]["creatorId"])) {
 		$return["status"] = "fail";
 		$return["code"] = 6;
 		$return["string"] = "Permission denied! The User is not an admin, nor is it his own hypervideo.";
