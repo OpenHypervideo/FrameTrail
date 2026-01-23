@@ -24,12 +24,12 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                             + '  </div>'
                             + '  <div class="titlebarTitle"><button class="hypervideoEditButton" data-tooltip-bottom="'+ labels['SettingsHypervideoSettings'] +'"><span class="icon-pencil"></span></button></div>'
                             + '  <div class="titlebarActionButtonContainer">'
-                            + '      <button class="manageResourcesButton resourceManagerIcon" data-tooltip-bottom-right="'+ labels['ResourcesManage'] +'"><span class="icon-folder-open"></span></button>'
                             + '      <button class="adminSettingsButton" data-tooltip-bottom-right="'+ labels['GenericAdministration'] +'"><span class="icon-cog"></span></button>'
-                            + '      <button class="startEditButton" data-tooltip-bottom-right="'+ labels['GenericEditStart'] +'"><span class="icon-edit"></span></button>'
-                            + '      <button class="leaveEditModeButton" data-tooltip-bottom-right="'+ labels['GenericEditEnd'] +'"><span class="icon-edit-circled"></span></button>'
+                            + '      <button class="manageResourcesButton resourceManagerIcon" data-tooltip-bottom-right="'+ labels['ResourcesManage'] +'"><span class="icon-folder-open"></span></button>'
                             + '      <button class="userSettingsButton" data-tooltip-bottom-right="'+ labels['UserManagement'] +'"><span class="icon-user"></span></button>'
                             + '      <button class="logoutButton" data-tooltip-bottom-right="'+ labels['UserLogout'] +'"><span class="icon-logout"></span></button>'
+                            + '      <button class="startEditButton" data-tooltip-bottom-right="'+ labels['GenericEditStart'] +'"><span class="icon-edit"></span></button>'
+                            + '      <button class="leaveEditModeButton" data-tooltip-bottom-right="'+ labels['GenericEditEnd'] +'"><span class="icon-ok-squared"></span></button>'
                             + '  </div>'
                             + '  <div class="sharingWidget"><button class="sharingWidgetButton" data-tooltip-bottom-right="'+ labels['GenericShareEmbed'] +'"><span class="icon-share"></span></button></div>'
                             + '</div>'
@@ -294,6 +294,12 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                     AdminSettingsButton.show();
                 }
 
+                // Show user settings and logout buttons if logged in
+                if (FrameTrail.getState('loggedIn')) {
+                    UserSettingsButton.show();
+                    domElement.find('.logoutButton').show();
+                }
+
             }
 
         } else {
@@ -313,6 +319,10 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             AdminSettingsButton.hide();
             SharingWidget.show();
 
+            // Hide user settings and logout buttons when leaving edit mode
+            UserSettingsButton.hide();
+            domElement.find('.logoutButton').hide();
+
         }
 
     }
@@ -327,8 +337,11 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
         if (loggedIn) {
 
-            domElement.find('.logoutButton').show();
-            UserSettingsButton.show();
+            // Only show user settings and logout buttons if in edit mode
+            if (FrameTrail.getState('editMode')) {
+                domElement.find('.logoutButton').show();
+                UserSettingsButton.show();
+            }
 
             // Show admin settings button if admin and in edit mode
             if (FrameTrail.module('UserManagement').userRole === 'admin' && FrameTrail.getState('editMode')) {

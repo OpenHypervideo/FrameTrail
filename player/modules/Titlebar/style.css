@@ -139,7 +139,7 @@
 	display: inline-block;
 }
 
-.titlebar .titlebarActionButtonContainer, .titlebar .sharingWidget, .titlebar .logoutButton {
+.titlebar .titlebarActionButtonContainer, .titlebar .sharingWidget {
 	float: right;
 }
 
@@ -147,8 +147,17 @@
 	display: none !important;
 }
 
-.titlebar .titlebarActionButtonContainer .manageResourcesButton, .titlebar .titlebarActionButtonContainer .adminSettingsButton, .titlebar .titlebarActionButtonContainer .startEditButton, .titlebar .titlebarActionButtonContainer .leaveEditModeButton, .titlebar .titlebarActionButtonContainer .userSettingsButton {
+.titlebar .titlebarActionButtonContainer .manageResourcesButton, 
+.titlebar .titlebarActionButtonContainer .adminSettingsButton, 
+.titlebar .titlebarActionButtonContainer .startEditButton, 
+.titlebar .titlebarActionButtonContainer .leaveEditModeButton, 
+.titlebar .titlebarActionButtonContainer .userSettingsButton, 
+.titlebar .titlebarActionButtonContainer .logoutButton {
 	float: left;
+}
+
+.titlebar .titlebarActionButtonContainer .leaveEditModeButton {
+	border-left: 1px solid #bbb;
 }
 
 .newHypervideoDialog .message.error {
