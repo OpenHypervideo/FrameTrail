@@ -79,7 +79,18 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 if ( (admin || owner) && editMode ) {
 
                     var hypervideoOptions = $('<div class="hypervideoOptions"></div>');
-                    //TODO: check if options still necessary or empty
+                    var editButton = $('<button class="hypervideoEditButton" data-tooltip-bottom="'+ labels['SettingsHypervideoSettings'] +'"><span class="icon-cog"></span></button>');
+                    
+                    // Capture the hypervideoID in the closure to avoid referencing the last thumb
+                    (function(hypervideoID) {
+                        editButton.click(function(evt) {
+                            evt.preventDefault();
+                            evt.stopPropagation();
+                            FrameTrail.module('HypervideoSettingsDialog').open(hypervideoID);
+                        });
+                    })(id);
+                    
+                    hypervideoOptions.append(editButton);
                     thumb.append(hypervideoOptions);
 
                 }

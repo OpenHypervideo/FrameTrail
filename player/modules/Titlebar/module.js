@@ -22,9 +22,10 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                             + '      <button data-viewmode="overview" data-tooltip-bottom-left="'+ labels['GenericOverview'] +'"><span class="icon-overview"></span></button>'
                             + '      <button data-viewmode="video"><span class="icon-hypervideo"></span></button>'
                             + '  </div>'
-                            + '  <div class="titlebarTitle"></div>'
+                            + '  <div class="titlebarTitle"><button class="hypervideoEditButton" data-tooltip-bottom="'+ labels['SettingsHypervideoSettings'] +'"><span class="icon-pencil"></span></button></div>'
                             + '  <div class="titlebarActionButtonContainer">'
                             + '      <button class="manageResourcesButton resourceManagerIcon" data-tooltip-bottom-right="'+ labels['ResourcesManage'] +'"><span class="icon-folder-open"></span></button>'
+                            + '      <button class="adminSettingsButton" data-tooltip-bottom-right="'+ labels['GenericAdministration'] +'"><span class="icon-cog"></span></button>'
                             + '      <button class="startEditButton" data-tooltip-bottom-right="'+ labels['GenericEditStart'] +'"><span class="icon-edit"></span></button>'
                             + '      <button class="leaveEditModeButton" data-tooltip-bottom-right="'+ labels['GenericEditEnd'] +'"><span class="icon-edit-circled"></span></button>'
                             + '      <button class="userSettingsButton" data-tooltip-bottom-right="'+ labels['UserManagement'] +'"><span class="icon-user"></span></button>'
@@ -34,7 +35,10 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                             + '</div>'
                           ),
     TitlebarViewMode        = domElement.find('.titlebarViewMode'),
+    TitlebarTitle           = domElement.find('.titlebarTitle'),
+    HypervideoEditButton    = domElement.find('.hypervideoEditButton'),
     ManageResourcesButton   = domElement.find('.manageResourcesButton'),
+    AdminSettingsButton     = domElement.find('.adminSettingsButton'),
     StartEditButton         = domElement.find('.startEditButton'),
     LeaveEditModeButton     = domElement.find('.leaveEditModeButton'),
     UserSettingsButton      = domElement.find('.userSettingsButton'),
@@ -145,6 +149,20 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
         FrameTrail.module('ViewResources').open();
     });
 
+    AdminSettingsButton.click(function() {
+        FrameTrail.module('AdminSettingsDialog').open();
+    });
+
+    // Use event delegation to handle clicks even if button is recreated
+    domElement.on('click', '.hypervideoEditButton', function(evt) {
+        evt.preventDefault();
+        evt.stopPropagation();
+        var hypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
+        if (hypervideoID) {
+            FrameTrail.module('HypervideoSettingsDialog').open(hypervideoID);
+        }
+    });
+
 
     /**
      * I am called from {{#crossLink "Interface/create:method"}}Interface/create(){{/crossLink}}.
@@ -237,6 +255,13 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
         domElement.find('[data-viewmode=' + viewMode + ']').addClass('active');
 
+        // Show/hide hypervideo edit button based on view mode and edit mode
+        if (viewMode === 'video' && FrameTrail.getState('editMode') && FrameTrail.module('RouteNavigation').hypervideoID) {
+            HypervideoEditButton.addClass('active');
+        } else {
+            HypervideoEditButton.removeClass('active');
+        }
+
     }
 
 
@@ -259,6 +284,16 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                 ManageResourcesButton.show();
                 SharingWidget.hide();
 
+                // Show hypervideo edit button if in video view
+                if (FrameTrail.getState('viewMode') === 'video' && FrameTrail.module('RouteNavigation').hypervideoID) {
+                    HypervideoEditButton.addClass('active');
+                }
+
+                // Show admin settings button if admin
+                if (FrameTrail.module('UserManagement').userRole === 'admin') {
+                    AdminSettingsButton.show();
+                }
+
             }
 
         } else {
@@ -274,6 +309,8 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
             LeaveEditModeButton.hide();
             ManageResourcesButton.hide();
+            HypervideoEditButton.removeClass('active');
+            AdminSettingsButton.hide();
             SharingWidget.show();
 
         }
@@ -293,10 +330,16 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             domElement.find('.logoutButton').show();
             UserSettingsButton.show();
 
+            // Show admin settings button if admin and in edit mode
+            if (FrameTrail.module('UserManagement').userRole === 'admin' && FrameTrail.getState('editMode')) {
+                AdminSettingsButton.show();
+            }
+
         } else {
 
             domElement.find('.logoutButton').hide();
             UserSettingsButton.hide();
+            AdminSettingsButton.hide();
 
         }
 
@@ -346,7 +389,12 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
          * @writeOnly
          */
         set title(aString) {
-            domElement.find('.titlebarTitle').html(aString);
+            var titleText = aString;
+            var editButton = TitlebarTitle.find('.hypervideoEditButton');
+            TitlebarTitle.html(titleText);
+            if (editButton.length > 0) {
+                TitlebarTitle.append(editButton);
+            }
         },
 
         /**

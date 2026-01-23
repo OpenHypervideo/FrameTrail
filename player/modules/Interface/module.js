@@ -24,6 +24,9 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
 
 	var labels = FrameTrail.module('Localization').labels;
 
+	FrameTrail.initModule('HypervideoSettingsDialog');
+	FrameTrail.initModule('AdminSettingsDialog');
+	
 	FrameTrail.initModule('Titlebar');
   	FrameTrail.initModule('Sidebar');
 

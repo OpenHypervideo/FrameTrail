@@ -64,3 +64,36 @@
 		grid-column: span 2;
 	}
 }
+
+.viewOverview .hypervideoThumb {
+	position: relative;
+}
+
+.viewOverview .hypervideoOptions {
+	position: absolute;
+	top: 10px;
+	right: 10px;
+	z-index: 10;
+}
+
+.viewOverview .hypervideoOptions .hypervideoEditButton {
+	width: 32px;
+	height: 32px;
+	padding: 0;
+	border: none;
+	background-color: rgba(0, 0, 0, 0.6);
+	color: white;
+	cursor: pointer;
+	border-radius: 4px;
+	font-size: 16px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0.8;
+	transition: opacity 0.2s;
+}
+
+.viewOverview .hypervideoOptions .hypervideoEditButton:hover {
+	opacity: 1;
+	background-color: rgba(0, 0, 0, 0.8);
+}

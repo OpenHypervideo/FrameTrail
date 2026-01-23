@@ -37,7 +37,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                             + '                    <div style="clear: both;"></div>'
                             + '                </div>'
                             + '                <button class="editMode" data-editmode="preview"><span class="icon-eye"></span><span class="editModeLabel">'+ labels['SidebarPreview'] +'</span></button>'
-                            + '                <button class="editMode" data-editmode="settings"><span class="icon-cog"></span><span class="editModeLabel">'+ labels['SidebarSettings'] +'</span></button>'
+                            + '                <button class="editMode" data-editmode="layout"><span class="icon-website"></span><span class="editModeLabel">'+ labels['SidebarLayout'] +'</span></button>'
                             + '                <button class="editMode" data-editmode="overlays"><span class="icon-object-ungroup"></span><span class="editModeLabel">'+ labels['SidebarOverlays'] +'</span></button>'
                             + '                <button class="editMode" data-editmode="codesnippets"><span class="icon-code"></span><span class="editModeLabel">'+ labels['SidebarCustomCode'] +'</span></button>'
                             + '                <button class="editMode" data-editmode="annotations"><span class="icon-annotations"></span><span class="editModeLabel">'+ labels['SidebarMyAnnotations'] +'<span class="icon-user"></span></button>'
@@ -680,7 +680,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             // camelCase not valid in attributes
             domElement.find('button[data-editmode="codesnippets"]').addClass('unsavedChanges');
         } else if (category == 'config' || category == 'layout' || category == 'globalCSS') {
-            domElement.find('button[data-editmode="settings"]').addClass('unsavedChanges');
+            domElement.find('button[data-editmode="layout"]').addClass('unsavedChanges');
         } else {
             domElement.find('button[data-editmode="'+category+'"]').addClass('unsavedChanges');
         }
@@ -771,7 +771,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
                 } else {
 
-                    videoContainerControls.find('.editMode[data-editmode="settings"]').addClass('disabled');
                     videoContainerControls.find('.editMode[data-editmode="overlays"]').addClass('disabled');
                     videoContainerControls.find('.editMode[data-editmode="codesnippets"]').addClass('disabled');
 

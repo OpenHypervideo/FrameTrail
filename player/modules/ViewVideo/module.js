@@ -424,13 +424,13 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         var editMode            = FrameTrail.getState('editMode'),
             playerMargin        = parseInt(PlayerContainer.css('marginTop')),
             editBorder          = (editMode != false) ? 20 : 0,
-            slidePosition       = (editMode == 'settings') ? 'middle' : FrameTrail.getState('slidePosition'),
+            slidePosition       = (editMode == 'layout') ? 'middle' : FrameTrail.getState('slidePosition'),
             slidingMode         = FrameTrail.getState('hv_config_slidingMode'),
 
-            areaTopVisible      = ( (editMode != false && editMode != 'preview' && editMode != 'settings') ? false : FrameTrail.getState('hv_config_areaTopVisible') ),
-            areaBottomVisible   = ( (editMode != false && editMode != 'preview' && editMode != 'settings') ? false : FrameTrail.getState('hv_config_areaBottomVisible') ),
-            areaLeftVisible     = ( (editMode != false && editMode != 'preview' && editMode != 'settings') ? false : FrameTrail.getState('hv_config_areaLeftVisible') ),
-            areaRightVisible    = ( (editMode != false && editMode != 'preview' && editMode != 'settings') ? false : FrameTrail.getState('hv_config_areaRightVisible') );
+            areaTopVisible      = ( (editMode != false && editMode != 'preview' && editMode != 'layout') ? false : FrameTrail.getState('hv_config_areaTopVisible') ),
+            areaBottomVisible   = ( (editMode != false && editMode != 'preview' && editMode != 'layout') ? false : FrameTrail.getState('hv_config_areaBottomVisible') ),
+            areaLeftVisible     = ( (editMode != false && editMode != 'preview' && editMode != 'layout') ? false : FrameTrail.getState('hv_config_areaLeftVisible') ),
+            areaRightVisible    = ( (editMode != false && editMode != 'preview' && editMode != 'layout') ? false : FrameTrail.getState('hv_config_areaRightVisible') );
 
         if (slidingMode == 'overlay') {
             PlayerContainer.css({
@@ -455,7 +455,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
                 slideArea.css({
                     marginTop:
-                        - ((editMode != false && editMode != 'preview' && editMode != 'settings') ? playerMargin : 0)
+                        - ((editMode != false && editMode != 'preview' && editMode != 'layout') ? playerMargin : 0)
                         + 'px',
                     minHeight:
                         $(FrameTrail.getState('target')).find('.mainContainer').height()
@@ -543,11 +543,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         } else {
 
-            var topMargin = (areaTopVisible && editMode != 'settings') ? AreaTopDetails.height() : playerMargin;
-
-            if ( areaTopVisible && editMode == 'settings' ) {
-                topMargin = 0;
-            }
+            var topMargin = areaTopVisible ? AreaTopDetails.height() : playerMargin;
 
 
             slideArea.css({
@@ -556,8 +552,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                     + 'px',
                 minHeight:
                     $(FrameTrail.getState('target')).find('.mainContainer').height()
-                    + ((areaTopVisible && editMode != 'settings') ? AreaTopDetails.height() : playerMargin)
-                    + ((areaBottomVisible && editMode != 'settings') ? AreaBottomDetails.height() : playerMargin)
+                    + (areaTopVisible ? AreaTopDetails.height() : playerMargin)
+                    + (areaBottomVisible ? AreaBottomDetails.height() : playerMargin)
                     - editBorder
                     + 'px'
             });
@@ -585,7 +581,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                 minHeight: ''
             });
             PlayerContainer.css({
-                marginBottom: (editMode == 'settings' && areaBottomVisible) ? '' : 0
+                marginBottom: 0
             });
             EditingOptions.find('.ui-tabs').tabs('refresh');
         } else {
@@ -666,7 +662,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         var videoContainerWidth;
 
-        if ( ( FrameTrail.getState('editMode') != false && FrameTrail.getState('editMode') != 'preview' && FrameTrail.getState('editMode') != 'settings' ) ) {
+        if ( ( FrameTrail.getState('editMode') != false && FrameTrail.getState('editMode') != 'preview' && FrameTrail.getState('editMode') != 'layout' ) ) {
             videoContainerWidth = mainContainerWidth - domElement.find('.infoAreaRight').outerWidth();
         } else {
             videoContainerWidth = mainContainerWidth
@@ -800,8 +796,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                 leaveEditMode();
                 enterPreviewMode();
                 break;
-            case 'settings':
-                enterSettingsMode();
+            case 'layout':
+                enterLayoutMode();
                 break;
             case 'overlays':
                 enterOverlayMode();
@@ -905,11 +901,12 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         FrameTrail.module('ViewLayout').updateContentInContentViews();
     }
 
+
     /**
-     * I am called when the app enters the editMode "settings"
-     * @method enterSettingsMode
+     * I am called when the app enters the editMode "layout"
+     * @method enterLayoutMode
      */
-    function enterSettingsMode() {
+    function enterLayoutMode() {
 
         AreaTopDetails.hide();
         AreaBottomDetails.hide();

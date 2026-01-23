@@ -123,6 +123,22 @@
 	color: var(--primary-bg-color);
 }
 
+.titlebar .titlebarTitle .hypervideoEditButton {
+	padding: 0 6px;
+  	height: 0px;
+	opacity: 0.7;
+	display: none;
+	z-index: 1;
+}
+
+.titlebar .titlebarTitle .hypervideoEditButton:hover {
+	opacity: 1;
+}
+
+.titlebar .titlebarTitle .hypervideoEditButton.active {
+	display: inline-block;
+}
+
 .titlebar .titlebarActionButtonContainer, .titlebar .sharingWidget, .titlebar .logoutButton {
 	float: right;
 }
@@ -131,7 +147,7 @@
 	display: none !important;
 }
 
-.titlebar .titlebarActionButtonContainer .manageResourcesButton, .titlebar .titlebarActionButtonContainer .startEditButton, .titlebar .titlebarActionButtonContainer .leaveEditModeButton, .titlebar .titlebarActionButtonContainer .userSettingsButton {
+.titlebar .titlebarActionButtonContainer .manageResourcesButton, .titlebar .titlebarActionButtonContainer .adminSettingsButton, .titlebar .titlebarActionButtonContainer .startEditButton, .titlebar .titlebarActionButtonContainer .leaveEditModeButton, .titlebar .titlebarActionButtonContainer .userSettingsButton {
 	float: left;
 }
 
