@@ -405,8 +405,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         newDialog.dialog({
             modal: true,
             resizable: false,
-            width:      725,
-            height:     500,
+            width:      830,
+            height:     600,
             create: function() {
                 newDialog.find('.message.error').appendTo($(this).dialog('widget').find('.ui-dialog-buttonpane'));
                 

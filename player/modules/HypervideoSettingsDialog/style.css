@@ -22,11 +22,6 @@
     line-height: 1.8;
 }
 
-.videoResourceList {
-    max-height: 200px;
-    overflow-y: auto;
-}
-
 .emptyVideoDurationInput {
     padding: 10px 0;
 }

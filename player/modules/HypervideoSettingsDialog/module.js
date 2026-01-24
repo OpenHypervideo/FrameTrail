@@ -779,7 +779,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         hypervideoDialog.dialog({
             modal: true,
             resizable: false,
-            width: 800,
+            width: 830,
             height: 600,
             close: function() {
                 // If dialog was closed without saving (X button or ESC), nothing happens
