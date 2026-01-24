@@ -1201,7 +1201,9 @@
         		"captionsVisible": hypervideos[thisHypervideoID].config.captionsVisible,
                 "clipTimeVisible": hypervideos[thisHypervideoID].config.clipTimeVisible,
         		"hidden": hypervideos[thisHypervideoID].hidden,
-                "layoutArea": FrameTrail.module('ViewLayout').getLayoutAreaData()
+                "layoutArea": (FrameTrail.module('ViewLayout') && FrameTrail.module('ViewLayout').getLayoutAreaData) 
+                    ? FrameTrail.module('ViewLayout').getLayoutAreaData() 
+                    : hypervideos[thisHypervideoID].config.layoutArea
         	},
         	"clips": hypervideos[thisHypervideoID].clips,
         	"globalEvents": (codeSnippets.globalEvents) ? codeSnippets.globalEvents : {},

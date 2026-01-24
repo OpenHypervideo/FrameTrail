@@ -16,6 +16,31 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
     var labels = FrameTrail.module('Localization').labels;
 
+    /**
+     * Convert seconds to hours, minutes, seconds object
+     * @method secondsToHMS
+     * @param {Number} totalSeconds
+     * @return {Object} { hours, minutes, seconds }
+     */
+    function secondsToHMS(totalSeconds) {
+        var h = Math.floor(totalSeconds / 3600);
+        var m = Math.floor((totalSeconds % 3600) / 60);
+        var s = Math.floor(totalSeconds % 60);
+        return { hours: h, minutes: m, seconds: s };
+    }
+
+    /**
+     * Convert hours, minutes, seconds to total seconds
+     * @method hmsToSeconds
+     * @param {Number} h - hours
+     * @param {Number} m - minutes
+     * @param {Number} s - seconds
+     * @return {Number} total seconds
+     */
+    function hmsToSeconds(h, m, s) {
+        return (parseInt(h) || 0) * 3600 + (parseInt(m) || 0) * 60 + (parseInt(s) || 0);
+    }
+
     var domElement  = $(      '<div class="sidebar">'
                             + '    <div class="sidebarContainer">'
                             + '        <div data-viewmode="overview">'
@@ -91,7 +116,12 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                         + '            </div>'
                         + '            <div id="EmptyVideo">'
                         + '                <div class="message active">'+ labels['MessageEmptyVideoSetDuration'] +'</div>'
-                        + '                <input type="text" name="duration" placeholder="'+ labels['GenericDuration'] +'">'
+                        + '                <div class="durationInput">'
+                        + '                    <input type="number" name="duration_hours" min="0" max="99" value="0" class="durationHours"> : '
+                        + '                    <input type="number" name="duration_minutes" min="0" max="59" value="0" class="durationMinutes"> : '
+                        + '                    <input type="number" name="duration_seconds" min="0" max="4" value="4" class="durationSeconds">'
+                        + '                    <span class="durationLabel">('+ labels['SettingsDurationHoursMinutesSeconds'] +')</span>'
+                        + '                </div>'
                         + '            </div>'
                         + '        </div>'
                         + '        <div class="message error"></div>'
@@ -145,11 +175,22 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 return hasSelectedVideo;
             } else if (isEmptyVideoTab) {
                 // Empty Video tab: must have duration >= 4 seconds
-                var durationValue = parseFloat(newDialog.find('input[name="duration"]').val());
-                return !isNaN(durationValue) && durationValue >= 4;
+                var hours = parseInt(newDialog.find('input[name="duration_hours"]').val()) || 0;
+                var minutes = parseInt(newDialog.find('input[name="duration_minutes"]').val()) || 0;
+                var seconds = parseInt(newDialog.find('input[name="duration_seconds"]').val()) || 0;
+                var durationValue = hmsToSeconds(hours, minutes, seconds);
+                return durationValue >= 4;
             }
             
             return false;
+        }
+        
+        // Get duration in seconds from HH:MM:SS inputs
+        function getDurationFromInputs() {
+            var hours = parseInt(newDialog.find('input[name="duration_hours"]').val()) || 0;
+            var minutes = parseInt(newDialog.find('input[name="duration_minutes"]').val()) || 0;
+            var seconds = parseInt(newDialog.find('input[name="duration_seconds"]').val()) || 0;
+            return hmsToSeconds(hours, minutes, seconds);
         }
 
         // Function to update the Add Hypervideo button state
@@ -175,11 +216,11 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             activate: function(event, ui) {
                 if ( ui.newPanel.attr('id') == 'EmptyVideo' ) {
                     newDialog.find('input[name="resourcesID"]').prop('disabled',true);
-                    newDialog.find('input[name="duration"]').prop('disabled',false);
+                    newDialog.find('.durationInput input').prop('disabled',false);
                     newDialog.find('.resourceThumb').removeClass('selected');
                 } else {
                     newDialog.find('input[name="resourcesID"]').prop('disabled',false);
-                    newDialog.find('input[name="duration"]').prop('disabled',true);
+                    newDialog.find('.durationInput input').prop('disabled',true);
                 }
                 
                 // Update button state when tab changes
@@ -187,8 +228,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             }
         });
 
-        // Listen for changes to the duration input
-        newDialog.on('input change', 'input[name="duration"]', function() {
+        // Listen for changes to the duration inputs
+        newDialog.on('input change', '.durationInput input', function() {
             updateAddButtonState();
         });
 
@@ -229,7 +270,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                         {
                             "resourceId": (selectedResourcesID.length > 0) ? selectedResourcesID : null,
                             "src": (selectedResourcesID.length > 0) ? FrameTrail.module('Database').resources[parseInt(selectedResourcesID)].src : null,
-                            "duration": ($('.newHypervideoForm').find('input[name="duration"]').val().length > 0) ? parseFloat($('.newHypervideoForm').find('input[name="duration"]').val()) : 0,
+                            "duration": (selectedResourcesID.length === 0) ? getDurationFromInputs() : 0,
                             "start": 0,
                             "end": 0,
                             "in": 0,
@@ -287,11 +328,11 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                     var isEmptyVideoTab = (activeTab === 1);
                     
                     if (isChooseVideoTab) {
-                        newDialog.dialog('widget').find('.message.error').addClass('active').html('Please select a video from the list.');
+                        newDialog.dialog('widget').find('.message.error').addClass('active').html(labels['ErrorSelectVideoFromList']);
                     } else if (isEmptyVideoTab) {
-                        newDialog.dialog('widget').find('.message.error').addClass('active').html('Please enter a duration of at least 4 seconds.');
+                        newDialog.dialog('widget').find('.message.error').addClass('active').html(labels['ErrorDurationMinimum4Seconds']);
                     } else {
-                        newDialog.dialog('widget').find('.message.error').addClass('active').html('Please choose a video or set a duration for an empty video.');
+                        newDialog.dialog('widget').find('.message.error').addClass('active').html(labels['ErrorChooseVideoOrSetDuration']);
                     }
                     return false;
                 }

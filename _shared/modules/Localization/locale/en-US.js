@@ -321,5 +321,19 @@ window.FrameTrail_L10n['en-US'] = {
 	"UserRegister": "Register New User",
 	"UserRoleAdmin": "Admin",
 	"UserRoleUser": "User",
-	"UserSelect": "Select a User"
+	"UserSelect": "Select a User",
+	"SettingsDurationHoursMinutesSeconds": "H:M:S",
+	"ErrorDurationMinimum4Seconds": "Please enter a duration of at least 4 seconds.",
+	"ErrorSelectVideoFromList": "Please select a video from the list.",
+	"ErrorChooseVideoOrSetDuration": "Please choose a video or set a duration for an empty video.",
+	"DurationChangeWarningTitle": "Duration Change Warning",
+	"DurationChangeWarningMessage": "The following items will be affected by this duration change:",
+	"DurationChangeOverlaysDeleted": "overlay(s) will be deleted (start after new duration)",
+	"DurationChangeOverlaysTruncated": "overlay(s) will be truncated to end at",
+	"DurationChangeCodeSnippetsDeleted": "code snippet(s) will be deleted (start after new duration)",
+	"DurationChangeAnnotationsDeleted": "annotation(s) will be deleted (start after new duration)",
+	"DurationChangeAnnotationsTruncated": "annotation(s) will be truncated to end at",
+	"SettingsVideoSource": "Video Source",
+	"SettingsCurrentSource": "Current source",
+	"SettingsChangeVideoSource": "Change Video Source"
 }

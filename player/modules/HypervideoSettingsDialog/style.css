@@ -1,3 +1,32 @@
-.hypervideoSettingsDialog {
-    
+/* Duration Input Styles */
+.durationInput {
+    display: inline-flex;
+    align-items: center;
+}
+
+.durationInput input[type="number"] {
+    width: 50px;
+    text-align: center;
+}
+
+.durationInput .durationLabel {
+    margin-left: 10px;
+    opacity: 0.7;
+    font-size: 12px;
+}
+
+/* Duration Change Confirmation Dialog */
+.durationChangeConfirmDialog .affectedItems {
+    padding: 10px;
+    background: #f8f9fa;
+    line-height: 1.8;
+}
+
+.videoResourceList {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.emptyVideoDurationInput {
+    padding: 10px 0;
 }
