@@ -71,7 +71,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 						+	'             <p class="administrationFormStatus message"></p>'
 						+   '             <button class="administrationFormRefresh">'+ labels['GenericRefresh'] +'</button>'
 						+   '             <form class="administrationForm" method="post">'
-                        +   '               <div class="selectUserContainer" class="ui-front">'
+                        +   '               <div class="custom-select" style="float: left; margin-top: 10px;">'
 						+   '                   <select name="userID" id="user_change_user">'
 						+  	'                       <option value="" selected disabled>'+ labels['UserSelect'] +'</option>'
 			            +   '                   </select>'
@@ -225,45 +225,38 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 					domElement.find("#user_change_user").append('<option value="' + id + '">' + allUsers[id].name + '</option>');
 				}
 
-                domElement.find('#user_change_user').selectmenu({
-			        width: 150,
-			        icons: { button: "icon-angle-down" }
-			    });
-                
-                domElement.find("#user_change_user").unbind('selectmenuchange').bind('selectmenuchange', function(evt){
-
-					evt.preventDefault();
-
-					$.ajax({
-						method: "POST",
-						url: 	"_server/ajaxServer.php",
-						data: 	{	"a": "userGet",
-									"userID": $("#user_change_user option:selected").val()
-								},
-
-						success: function(ret) {
-							domElement.find("#user_change_name").val(ret["response"]["name"]);
-							domElement.find("#user_change_mail").val(ret["response"]["mail"]);
-							domElement.find("#user_change_color").val(ret["response"]["color"]);
-							domElement.find("#user_change_passwd").val("");
-							domElement.find(".administrationForm input[name='role']").prop("checked",false).removeAttr("checked");
-							domElement.find(".administrationForm input#user_change_role_"+ret["response"]["role"]).prop("checked",true).attr("checked","checked");
-							domElement.find(".administrationForm input[name='active']").prop("checked",false).removeAttr("checked");
-							domElement.find(".administrationForm input#user_change_active_"+ret["response"]["active"]).prop("checked",true).attr("checked","checked");
-							getUserColorCollection(function() {
-								renderUserColorCollectionForm(ret["response"]["color"],"#user_change_colorContainer");
-							});
-                            domElement.find('.userDataContainer').show();
-						}
-					});
-
-
-				});
-
 			}
 		});
 
 	}
+
+	// Bind change event once on the native select element
+	domElement.find("#user_change_user").on('change', function(evt){
+
+		$.ajax({
+			method: "POST",
+			url: 	"_server/ajaxServer.php",
+			data: 	{	"a": "userGet",
+						"userID": $(this).val()
+					},
+
+			success: function(ret) {
+				domElement.find("#user_change_name").val(ret["response"]["name"]);
+				domElement.find("#user_change_mail").val(ret["response"]["mail"]);
+				domElement.find("#user_change_color").val(ret["response"]["color"]);
+				domElement.find("#user_change_passwd").val("");
+				domElement.find(".administrationForm input[name='role']").prop("checked",false).removeAttr("checked");
+				domElement.find(".administrationForm input#user_change_role_"+ret["response"]["role"]).prop("checked",true).attr("checked","checked");
+				domElement.find(".administrationForm input[name='active']").prop("checked",false).removeAttr("checked");
+				domElement.find(".administrationForm input#user_change_active_"+ret["response"]["active"]).prop("checked",true).attr("checked","checked");
+				getUserColorCollection(function() {
+					renderUserColorCollectionForm(ret["response"]["color"],"#user_change_colorContainer");
+				});
+				domElement.find('.userDataContainer').show();
+			}
+		});
+
+	});
 
 
 	domElement.find('.administrationFormRefresh').click(refreshAdministrationForm);
