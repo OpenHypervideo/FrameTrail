@@ -131,6 +131,11 @@ switch($_REQUEST["a"]) {
 		$return = annotationfileSave($_REQUEST["hypervideoID"],$_REQUEST["annotationfileID"],$_REQUEST["action"],$_REQUEST["name"],$_REQUEST["description"],$_REQUEST["hidden"],$_REQUEST["src"]);
 		break;
 
+	case "updateAnnotationSources":
+		include_once("annotationfiles.php");
+		$return = updateAnnotationSources($_REQUEST["hypervideoID"],$_REQUEST["newSourcePath"]);
+		break;
+
 	/**
 	 * in case we need to provide an api interface for deleting annotations:
 	 *

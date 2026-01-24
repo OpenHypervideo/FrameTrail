@@ -217,4 +217,90 @@ function annotationfileDelete($hypervideoID,$annotationfileID) {
 }
 
 
+/**
+ * Update target.source in all annotation files for a hypervideo
+ * Called when the video source changes to maintain data consistency
+ * 
+ * @param $hypervideoID
+ * @param $newSourcePath - The new video source path to set
+ * @return mixed
+ *
+ * Returning Code:
+ * 0		=	Success. All annotation files updated
+ * 1		=	failed. Not logged in. Or User not active
+ * 3		=	failed. Could not find the annotations folder
+ * 5		=	failed. Permission denied
+ */
+function updateAnnotationSources($hypervideoID, $newSourcePath) {
+	global $conf;
+
+	$login = userCheckLogin();
+
+	if ($login["code"] != 1) {
+		$return["status"] = "fail";
+		$return["code"] = 1;
+		$return["string"] = $login["string"];
+		return $return;
+	}
+
+	// Check if user is admin or hypervideo owner
+	$hvFile = $conf["dir"]["data"]."/hypervideos/".$hypervideoID."/hypervideo.json";
+	if (!file_exists($hvFile)) {
+		$return["status"] = "fail";
+		$return["code"] = 3;
+		$return["string"] = "Hypervideo not found";
+		return $return;
+	}
+
+	$hvContent = json_decode(file_get_contents($hvFile), true);
+	if (($hvContent["meta"]["creatorId"] != $_SESSION["ohv"]["user"]["id"]) && ($_SESSION["ohv"]["user"]["role"] != "admin")) {
+		$return["status"] = "fail";
+		$return["code"] = 5;
+		$return["string"] = "Permission denied! The User is not an admin, nor is it his own hypervideo.";
+		return $return;
+	}
+
+	$annotationsDir = $conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/";
+
+	if (!is_dir($annotationsDir)) {
+		// No annotations directory - that's okay, nothing to update
+		$return["status"] = "success";
+		$return["code"] = 0;
+		$return["string"] = "No annotations to update";
+		$return["filesUpdated"] = 0;
+		return $return;
+	}
+
+	$filesUpdated = 0;
+	$files = glob($annotationsDir . "*.json");
+
+	foreach ($files as $file) {
+		$filename = basename($file);
+		if ($filename === "_index.json") {
+			continue;
+		}
+
+		$content = json_decode(file_get_contents($file), true);
+		if (is_array($content)) {
+			$modified = false;
+			foreach ($content as &$annotation) {
+				if (isset($annotation["target"]["source"])) {
+					$annotation["target"]["source"] = $newSourcePath;
+					$modified = true;
+				}
+			}
+			if ($modified) {
+				file_put_contents($file, json_encode($content, $conf["settings"]["json_flags"]));
+				$filesUpdated++;
+			}
+		}
+	}
+
+	$return["status"] = "success";
+	$return["code"] = 0;
+	$return["string"] = "Annotation sources updated";
+	$return["filesUpdated"] = $filesUpdated;
+	return $return;
+}
+
 ?>
