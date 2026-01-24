@@ -239,10 +239,12 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             return;
         }
 
+        var formBuilder = FrameTrail.module('HypervideoFormBuilder');
+
         // Check if this is a canvas (empty) video - no resourceId means canvas
         var isCanvasVideo = hypervideo.clips && hypervideo.clips[0] && !hypervideo.clips[0].resourceId && !hypervideo.clips[0].src;
         var originalDuration = isCanvasVideo ? (hypervideo.clips[0].duration || 0) : 0;
-        var originalDurationHMS = secondsToHMS(originalDuration);
+        var originalDurationHMS = formBuilder.secondsToHMS(originalDuration);
         var pendingDurationChange = null; // Will hold { newDuration, outOfRangeItems } if duration change needs confirmation
         
         // Video source replacement tracking
@@ -251,31 +253,19 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         var pendingSourceChange = null; // Will hold { resourceId, src, duration, outOfRangeItems } if source change needs confirmation
         var sourceChangeConfirmed = false;
 
+        var captionsVisible = hypervideo.config && hypervideo.config.captionsVisible && hypervideo.config.captionsVisible.toString() === 'true';
 
         var EditHypervideoForm = $('<form method="POST" class="editHypervideoForm">'
                                   +'    <div class="message error"></div>'
-                                  +'    <div class="layoutRow">'
-                                  +'        <div class="column-3">'
-                                  +'            <label for="name">'+ labels['SettingsHypervideoName'] +'</label>'
-                                  +'            <input type="text" name="name" placeholder="'+ labels['SettingsHypervideoName'] +'" value="'+ (hypervideo.name || '') +'"><br>'
-                                  +'            <input type="checkbox" name="hidden" id="hypervideo_hidden" value="hidden" '+((hypervideo.hidden && hypervideo.hidden.toString() == "true") ? "checked" : "")+'>'
-                                  +'            <label for="hypervideo_hidden">'+ labels['SettingsHiddenFromOtherUsers'] +'</label>'
-                                  +'        </div>'
-                                  +'        <div class="column-3">'
-                                  +'            <label for="description">'+ labels['GenericDescription'] +'</label>'
-                                  +'            <textarea name="description" placeholder="'+ labels['GenericDescription'] +'">'+ (hypervideo.description || '') +'</textarea><br>'
-                                  +'        </div>'
-                                  +'        <div class="column-6">'
-                                  +'            <div class="subtitlesSettingsWrapper">'
-                                  +'                <div>'+ labels['GenericSubtitles'] +' ('+ labels['MessageSubtitlesAlsoUsedForInteractiveTranscripts'] +')</div>'
-                                  +'                <button class="subtitlesPlus" type="button">'+ labels['GenericAdd'] +' <span class="icon-plus"></span></button>'
-                                  +'                <input type="checkbox" name="config[captionsVisible]" id="captionsVisible" value="true" '+((hypervideo.config && hypervideo.config.captionsVisible && hypervideo.config.captionsVisible.toString() == 'true') ? "checked" : "")+'>'
-                                  +'                <label for="captionsVisible">'+ labels['SettingsSubtitlesShowByDefault'] +'</label>'
-                                  +'                <div class="existingSubtitlesContainer"></div>'
-                                  +'                <div class="newSubtitlesContainer"></div>'
-                                  +'            </div>'
-                                  +'        </div>'
-                                  +'    </div>'
+                                  + formBuilder.generateBasicInfoSection({
+                                        name: hypervideo.name || '',
+                                        description: hypervideo.description || '',
+                                        hidden: hypervideo.hidden && hypervideo.hidden.toString() === "true"
+                                    })
+                                  + formBuilder.generateSubtitlesSection({
+                                        captionsVisible: captionsVisible,
+                                        showExistingContainer: true
+                                    })
                                   +'    <hr>'
                                   +'    <div class="videoSourceSection">'
                                   +'        <div>'+ labels['SettingsVideoSource'] +'</div>'
@@ -315,48 +305,14 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             var hours = parseInt(EditHypervideoForm.find('input[name="new_duration_hours"]').val()) || 0;
             var minutes = parseInt(EditHypervideoForm.find('input[name="new_duration_minutes"]').val()) || 0;
             var seconds = parseInt(EditHypervideoForm.find('input[name="new_duration_seconds"]').val()) || 0;
-            return hmsToSeconds(hours, minutes, seconds);
+            return formBuilder.hmsToSeconds(hours, minutes, seconds);
         }
 
-        if (hypervideo.subtitles && hypervideo.subtitles.length > 0) {
-            var langMapping = database.subtitlesLangMapping;
+        // Populate existing subtitles using shared module
+        formBuilder.populateExistingSubtitles(EditHypervideoForm, hypervideo.subtitles);
 
-            for (var i=0; i < hypervideo.subtitles.length; i++) {
-                var currentSubtitles = hypervideo.subtitles[i],
-                    existingSubtitlesItem = $('<div class="existingSubtitlesItem"><span>'+ langMapping[hypervideo.subtitles[i].srclang] +'</span></div>'),
-                    existingSubtitlesDelete = $('<button class="subtitlesDelete" type="button" data-lang="'+ hypervideo.subtitles[i].srclang +'"><span class="icon-cancel"></span></button>');
-
-                existingSubtitlesDelete.click(function(evt) {
-                    $(this).parent().remove();
-                    EditHypervideoForm.find('.subtitlesSettingsWrapper').append('<input type="hidden" name="SubtitlesToDelete[]" value="'+ $(this).attr('data-lang') +'">');
-                }).appendTo(existingSubtitlesItem);
-
-                EditHypervideoForm.find('.existingSubtitlesContainer').append(existingSubtitlesItem);
-            }
-        }
-
-        // Manage Subtitles
-        EditHypervideoForm.find('.subtitlesPlus').on('click', function() {
-            var langOptions = '';
-            for (var lang in FrameTrail.module('Database').subtitlesLangMapping) {
-                langOptions += '<option value="'+ lang +'">'+ FrameTrail.module('Database').subtitlesLangMapping[lang] +'</option>';
-            }
-
-            var languageSelect =  '<select class="subtitlesTmpKeySetter">'
-                            + '    <option value="" disabled selected style="display:none;">'+ labels['GenericLanguage'] +'</option>'
-                            + langOptions
-                            + '</select>';
-
-            EditHypervideoForm.find('.newSubtitlesContainer').append('<span class="subtitlesItem">'+ languageSelect +'<input type="file" name="subtitles[]"><button class="subtitlesRemove" type="button">x</button><br></span>');
-        });
-
-        EditHypervideoForm.find('.newSubtitlesContainer').on('click', '.subtitlesRemove', function(evt) {
-            $(this).parent().remove();
-        });
-
-        EditHypervideoForm.find('.newSubtitlesContainer').on('change', '.subtitlesTmpKeySetter', function() {
-            $(this).parent().find('input[type="file"]').attr('name', 'subtitles['+$(this).val()+']');
-        });
+        // Attach subtitle event handlers using shared module
+        formBuilder.attachSubtitleHandlers(EditHypervideoForm);
 
         // Video Source Tabs Initialization
         (function() {
@@ -405,7 +361,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             var hours = parseInt(EditHypervideoForm.find('input[name="new_duration_hours"]').val()) || 0;
             var minutes = parseInt(EditHypervideoForm.find('input[name="new_duration_minutes"]').val()) || 0;
             var seconds = parseInt(EditHypervideoForm.find('input[name="new_duration_seconds"]').val()) || 0;
-            return hmsToSeconds(hours, minutes, seconds);
+            return formBuilder.hmsToSeconds(hours, minutes, seconds);
         }
 
         // Check if source is being changed
@@ -635,7 +591,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                                 EditHypervideoForm.submit();
                             }, function() {
                                 // User cancelled - reset duration inputs to original values
-                                var hms = secondsToHMS(originalDuration);
+                                var hms = formBuilder.secondsToHMS(originalDuration);
                                 EditHypervideoForm.find('input[name="new_duration_hours"]').val(hms.hours);
                                 EditHypervideoForm.find('input[name="new_duration_minutes"]').val(hms.minutes);
                                 EditHypervideoForm.find('input[name="new_duration_seconds"]').val(hms.seconds);

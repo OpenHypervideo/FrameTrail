@@ -42,6 +42,7 @@
     FrameTrail.initModule('Database');
     FrameTrail.initModule('TagModel');
     FrameTrail.initModule('ResourceManager');
+    FrameTrail.initModule('HypervideoFormBuilder');
     FrameTrail.initModule('HypervideoModel');
 
     // Set up the interface
