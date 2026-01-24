@@ -138,7 +138,7 @@ window.FrameTrail_L10n['de'] = {
 	"MessageDeleteHypervideoReEnter": "Bitte Hypervideo Namen kopieren / einfügen",
 	"MessageDragAnnotationsIntoTimeline": "Ziehe Annotationen von den Timelines in deine eigene Annotations-Timeline",
 	"MessageEmbedNotAllowed": "Diese Seite erlaubt das Einbetten in andere Seiten nicht (Same Origin Policy). Dies bedeutet die Seite kann nicht direkt in FrameTrail angezeigt werden.",
-	"MessageEmptyVideoSetDuration": "Bitte lege eine Dauer in Sekunden fest",
+	"MessageEmptyVideoSetDuration": "Ein leeres Video benötigt eine Dauer. Bitte lege eine Dauer (min. 4 Sekunden) fest:",
 	"MessageEventHandlerContainsErrors": "Event Handler enthält Fehler",
 	"MessageForkHypervideo": "Wenn du ein Hypervideo duplizierst, erstellst du eine Kopie (fork), welche du weiter bearbeiten kannst.",
 	"MessageGeneratingThumbnail": "Thumbnail wird generiert ...",

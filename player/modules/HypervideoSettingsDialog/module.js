@@ -290,6 +290,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                                   +'                </div>'
                                   +'                <div id="SetEmptyVideo">'
                                   +'                    <div class="emptyVideoDurationInput">'
+                                  +'                        <div class="message active">'+ labels['MessageEmptyVideoSetDuration'] +'</div>'
                                   +'                        <label>'+ labels['GenericDuration'] +':</label>'
                                   +'                        <div class="durationInput">'
                                   +'                            <input type="number" name="new_duration_hours" min="0" max="99" value="'+ (isCanvasVideo ? originalDurationHMS.hours : 0) +'" class="durationHours"> : '

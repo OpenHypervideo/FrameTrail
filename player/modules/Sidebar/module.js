@@ -116,6 +116,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                         + '            </div>'
                         + '            <div id="EmptyVideo">'
                         + '                <div class="message active">'+ labels['MessageEmptyVideoSetDuration'] +'</div>'
+                        +'                 <label>'+ labels['GenericDuration'] +':</label>'
                         + '                <div class="durationInput">'
                         + '                    <input type="number" name="duration_hours" min="0" max="99" value="0" class="durationHours"> : '
                         + '                    <input type="number" name="duration_minutes" min="0" max="59" value="0" class="durationMinutes"> : '
