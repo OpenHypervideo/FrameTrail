@@ -120,6 +120,8 @@ window.FrameTrail_L10n['de'] = {
 	"GenericTextTranscript": "Text Transkript",
 	"GenericTimelines": "Timelines",
 	"GenericType": "Typ",
+	"GenericUndo": "Rückgängig",
+	"GenericRedo": "Wiederherstellen",
 	"GenericYes": "Ja",
 	"HypervideoAdd": "Hypervideo hinzufügen",
 	"HypervideoNew": "Neues Hypervideo",

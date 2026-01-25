@@ -27,6 +27,8 @@ FrameTrail.defineType(
         return {
             constructor: function(data){
 
+                this.labels = FrameTrail.module('Localization').labels;
+
                 this.data = data;
 
                 this.resourceItem = FrameTrail.newObject(
@@ -442,6 +444,41 @@ FrameTrail.defineType(
                                 ]
                             });
 
+                            // Register undo command for timeline drag
+                            (function(annotationId, capturedOldStart, capturedOldEnd, capturedNewStart, capturedNewEnd, labels) {
+                                var findAnnotation = function() {
+                                    var annotations = FrameTrail.module('HypervideoModel').annotations;
+                                    for (var i = 0; i < annotations.length; i++) {
+                                        if (annotations[i].data.created === annotationId) {
+                                            return annotations[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: 'annotations',
+                                    description: labels['SidebarMyAnnotations'] + ' Move',
+                                    undo: function() {
+                                        var annotation = findAnnotation();
+                                        if (!annotation) return;
+                                        annotation.data.start = capturedOldStart;
+                                        annotation.data.end = capturedOldEnd;
+                                        annotation.updateTimelineElement();
+                                        FrameTrail.module('AnnotationsController').stackTimelineView();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                    },
+                                    redo: function() {
+                                        var annotation = findAnnotation();
+                                        if (!annotation) return;
+                                        annotation.data.start = capturedNewStart;
+                                        annotation.data.end = capturedNewEnd;
+                                        annotation.updateTimelineElement();
+                                        FrameTrail.module('AnnotationsController').stackTimelineView();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                    }
+                                });
+                            })(self.data.created, oldAnnotationData.start, oldAnnotationData.end, self.data.start, self.data.end, self.labels);
+
                         }
                     });
 
@@ -585,6 +622,41 @@ FrameTrail.defineType(
                                     }
                                 ]
                             });
+
+                            // Register undo command for timeline resize
+                            (function(annotationId, capturedOldStart, capturedOldEnd, capturedNewStart, capturedNewEnd, labels) {
+                                var findAnnotation = function() {
+                                    var annotations = FrameTrail.module('HypervideoModel').annotations;
+                                    for (var i = 0; i < annotations.length; i++) {
+                                        if (annotations[i].data.created === annotationId) {
+                                            return annotations[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: 'annotations',
+                                    description: labels['SidebarMyAnnotations'] + ' Resize',
+                                    undo: function() {
+                                        var annotation = findAnnotation();
+                                        if (!annotation) return;
+                                        annotation.data.start = capturedOldStart;
+                                        annotation.data.end = capturedOldEnd;
+                                        annotation.updateTimelineElement();
+                                        FrameTrail.module('AnnotationsController').stackTimelineView();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                    },
+                                    redo: function() {
+                                        var annotation = findAnnotation();
+                                        if (!annotation) return;
+                                        annotation.data.start = capturedNewStart;
+                                        annotation.data.end = capturedNewEnd;
+                                        annotation.updateTimelineElement();
+                                        FrameTrail.module('AnnotationsController').stackTimelineView();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                    }
+                                });
+                            })(self.data.created, oldAnnotationData.start, oldAnnotationData.end, self.data.start, self.data.end, self.labels);
 
                         }
                     });

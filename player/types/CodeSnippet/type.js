@@ -269,7 +269,8 @@ FrameTrail.defineType(
                  */
                 makeTimelineElementDraggable: function () {
 
-                    var self = this;
+                    var self = this,
+                        oldStart;
 
 
                     this.timelineElement.draggable({
@@ -315,6 +316,9 @@ FrameTrail.defineType(
                                 FrameTrail.module('CodeSnippetsController').codeSnippetInFocus = self;
                             }
 
+                            // Capture old value for undo
+                            oldStart = self.data.start;
+
                         },
 
                         stop: function(event, ui) {
@@ -328,13 +332,47 @@ FrameTrail.defineType(
                                 videoDuration = HypervideoModel.duration,
                                 leftPercent   = 100 * (ui.helper.position().left / ui.helper.parent().width());
 
-                            self.data.start = (leftPercent * (videoDuration / 100)) + HypervideoModel.offsetIn;
+                            var newStart = (leftPercent * (videoDuration / 100)) + HypervideoModel.offsetIn;
+                            self.data.start = newStart;
 
                             self.updateTimelineElement();
 
                             FrameTrail.module('CodeSnippetsController').stackTimelineView();
 
                             FrameTrail.module('HypervideoModel').newUnsavedChange('codeSnippets');
+
+                            // Register undo command for timeline drag
+                            (function(codeSnippetId, capturedOldStart, capturedNewStart) {
+                                var findCodeSnippet = function() {
+                                    var codeSnippets = FrameTrail.module('HypervideoModel').codeSnippets;
+                                    for (var i = 0; i < codeSnippets.length; i++) {
+                                        if (codeSnippets[i].data.created === codeSnippetId) {
+                                            return codeSnippets[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: 'codeSnippets',
+                                    description: self.labels['SidebarCustomCode'] + ' Move',
+                                    undo: function() {
+                                        var codeSnippet = findCodeSnippet();
+                                        if (!codeSnippet) return;
+                                        codeSnippet.data.start = capturedOldStart;
+                                        codeSnippet.updateTimelineElement();
+                                        FrameTrail.module('CodeSnippetsController').stackTimelineView();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('codeSnippets');
+                                    },
+                                    redo: function() {
+                                        var codeSnippet = findCodeSnippet();
+                                        if (!codeSnippet) return;
+                                        codeSnippet.data.start = capturedNewStart;
+                                        codeSnippet.updateTimelineElement();
+                                        FrameTrail.module('CodeSnippetsController').stackTimelineView();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('codeSnippets');
+                                    }
+                                });
+                            })(self.data.created, oldStart, newStart);
 
                         }
                     });
@@ -393,9 +431,14 @@ FrameTrail.defineType(
                       theme: 'hopscotch'
                     });
 
+                    // Capture initial value for undo
+                    this._snippetBeforeEdit = this.data.snippet;
+                    this._snippetChanged = false;
+
                     codeEditor.on('change', function(instance, changeObj) {
                         self.data.snippet = codeEditor.getValue();
                         self.initCodeSnippetFunction();
+                        self._snippetChanged = true;
 
                         FrameTrail.module('HypervideoModel').newUnsavedChange('codeSnippets');
                     });
@@ -423,6 +466,44 @@ FrameTrail.defineType(
                  * @method removedFromFocus
                  */
                 removedFromFocus: function () {
+
+                    var self = this;
+
+                    // Register undo command if code was changed
+                    if (this._snippetChanged && this._snippetBeforeEdit !== this.data.snippet) {
+                        (function(codeSnippetId, capturedOldSnippet, capturedNewSnippet) {
+                            var findCodeSnippet = function() {
+                                var codeSnippets = FrameTrail.module('HypervideoModel').codeSnippets;
+                                for (var i = 0; i < codeSnippets.length; i++) {
+                                    if (codeSnippets[i].data.created === codeSnippetId) {
+                                        return codeSnippets[i];
+                                    }
+                                }
+                                return null;
+                            };
+                            FrameTrail.module('UndoManager').register({
+                                category: 'codeSnippets',
+                                description: self.labels['SidebarCustomCode'] + ' Edit',
+                                undo: function() {
+                                    var codeSnippet = findCodeSnippet();
+                                    if (!codeSnippet) return;
+                                    codeSnippet.data.snippet = capturedOldSnippet;
+                                    codeSnippet.initCodeSnippetFunction();
+                                    FrameTrail.module('HypervideoModel').newUnsavedChange('codeSnippets');
+                                },
+                                redo: function() {
+                                    var codeSnippet = findCodeSnippet();
+                                    if (!codeSnippet) return;
+                                    codeSnippet.data.snippet = capturedNewSnippet;
+                                    codeSnippet.initCodeSnippetFunction();
+                                    FrameTrail.module('HypervideoModel').newUnsavedChange('codeSnippets');
+                                }
+                            });
+                        })(this.data.created, this._snippetBeforeEdit, this.data.snippet);
+                    }
+
+                    this._snippetBeforeEdit = null;
+                    this._snippetChanged = false;
 
                     FrameTrail.module('ViewVideo').EditPropertiesContainer.removeClass('active').empty();
 

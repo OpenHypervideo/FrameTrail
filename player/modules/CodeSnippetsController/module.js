@@ -372,10 +372,37 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
 
                     stackTimelineView();
 
-                    ViewVideo.PlayerProgress.find('.ui-slider-handle').removeClass('highlight');
+                    // Register undo command for adding code snippet
+                    (function(codeSnippetData) {
+                        var findCodeSnippet = function() {
+                            var codeSnippets = FrameTrail.module('HypervideoModel').codeSnippets;
+                            for (var i = 0; i < codeSnippets.length; i++) {
+                                if (codeSnippets[i].data.created === codeSnippetData.created) {
+                                    return codeSnippets[i];
+                                }
+                            }
+                            return null;
+                        };
+                        FrameTrail.module('UndoManager').register({
+                            category: 'codeSnippets',
+                            description: labels['SidebarCustomCode'] + ' ' + labels['GenericAdd'],
+                            undo: function() {
+                                var codeSnippet = findCodeSnippet();
+                                if (codeSnippet) {
+                                    deleteCodeSnippet(codeSnippet, true);
+                                }
+                            },
+                            redo: function() {
+                                var restoredCodeSnippet = FrameTrail.module('HypervideoModel').newCodeSnippet(codeSnippetData, true);
+                                restoredCodeSnippet.renderTimelineInDOM();
+                                restoredCodeSnippet.startEditing();
+                                updateStatesOfCodeSnippets(FrameTrail.module('HypervideoController').currentTime);
+                                stackTimelineView();
+                            }
+                        });
+                    })(JSON.parse(JSON.stringify(newCodeSnippet.data)));
 
-                    //TODO: Check if this is the right place
-                    //FrameTrail.module('HypervideoModel').newUnsavedChange('codeSnippets');
+                    ViewVideo.PlayerProgress.find('.ui-slider-handle').removeClass('highlight');
 
 
                 }
@@ -567,13 +594,43 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
      * a codeSnippet. I call other necessary methods for it.
      * @method deleteCodeSnippet
      * @param {CodeSnippet} codeSnippet
+     * @param {Boolean} skipUndo - If true, don't register undo command (used during undo/redo)
      */
-    function deleteCodeSnippet(codeSnippet) {
+    function deleteCodeSnippet(codeSnippet, skipUndo) {
+
+        // Capture data before deletion for undo
+        var codeSnippetData = JSON.parse(JSON.stringify(codeSnippet.data));
 
         setCodeSnippetInFocus(null);
         codeSnippet.removeFromDOM();
         FrameTrail.module('HypervideoModel').removeCodeSnippet(codeSnippet);
         stackTimelineView();
+
+        // Register undo command
+        if (!skipUndo) {
+            FrameTrail.module('UndoManager').register({
+                category: 'codeSnippets',
+                description: labels['SidebarCustomCode'] + ' ' + labels['GenericDelete'],
+                undo: function() {
+                    // Recreate the code snippet
+                    var newCodeSnippet = FrameTrail.module('HypervideoModel').newCodeSnippet(codeSnippetData, true);
+                    newCodeSnippet.renderTimelineInDOM();
+                    newCodeSnippet.startEditing();
+                    updateStatesOfCodeSnippets(FrameTrail.module('HypervideoController').currentTime);
+                    stackTimelineView();
+                },
+                redo: function() {
+                    // Find the code snippet by matching data and delete it again
+                    var codeSnippetsArray = FrameTrail.module('HypervideoModel').codeSnippets;
+                    for (var i = 0; i < codeSnippetsArray.length; i++) {
+                        if (codeSnippetsArray[i].data.created === codeSnippetData.created) {
+                            deleteCodeSnippet(codeSnippetsArray[i], true);
+                            break;
+                        }
+                    }
+                }
+            });
+        }
 
     }
 

@@ -62,6 +62,40 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
                 return false;
             }
 
+            // Undo/Redo when ctrl+z / ctrl+shift+z (or cmd on Mac)
+            // Only when in edit mode and not focused on input/textarea/CodeMirror
+            if ((evt.metaKey || evt.ctrlKey) && evt.keyCode == 90) {
+                // Check if we're in edit mode and not in an editable element
+                if (FrameTrail.getState('editMode') &&
+                    evt.target.tagName !== 'INPUT' &&
+                    evt.target.tagName !== 'TEXTAREA' &&
+                    !$(evt.target).closest('.CodeMirror').length) {
+
+                    if (evt.shiftKey) {
+                        // Redo: Ctrl+Shift+Z / Cmd+Shift+Z
+                        FrameTrail.module('UndoManager').redo();
+                    } else {
+                        // Undo: Ctrl+Z / Cmd+Z
+                        FrameTrail.module('UndoManager').undo();
+                    }
+                    evt.preventDefault();
+                    return false;
+                }
+            }
+
+            // Redo with Ctrl+Y (Windows convention)
+            if ((evt.metaKey || evt.ctrlKey) && evt.keyCode == 89) {
+                if (FrameTrail.getState('editMode') &&
+                    evt.target.tagName !== 'INPUT' &&
+                    evt.target.tagName !== 'TEXTAREA' &&
+                    !$(evt.target).closest('.CodeMirror').length) {
+
+                    FrameTrail.module('UndoManager').redo();
+                    evt.preventDefault();
+                    return false;
+                }
+            }
+
             if (	evt.target.tagName === 'INPUT'
     			 || evt.target.tagName === 'TEXTAREA') {
 

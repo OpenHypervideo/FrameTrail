@@ -42,15 +42,12 @@
 
 		annotations             = [],
 
-		unsavedSettings         = false,
 		unsavedOverlays         = false,
 		unsavedCodeSnippets     = false,
 		unsavedEvents           = false,
 		unsavedCustomCSS        = false,
 		unsavedAnnotations      = false,
-		unsavedLayout           = false,
-		unsavedConfig           = false,
-		unsavedGlobalCSS        = false;
+		unsavedLayout           = false;
 
 
 
@@ -379,16 +376,20 @@
 	 *
 	 * @method newOverlay
 	 * @param {} protoData
+	 * @param {Boolean} skipUndo - If true, skip undo registration (used during undo/redo restore)
 	 * @return Overlay
 	 */
-	function newOverlay(protoData) {
+	function newOverlay(protoData, skipUndo) {
 
 		var resourceDatabase = FrameTrail.module('Database').resources,
-			newOverlay,
+			newOverlayObj,
 			newData;
 
-			// TODO: clean code
-			if ( protoData.type == 'text' || protoData.type == 'quiz' || protoData.type == 'hotspot' ) {
+			// Check if protoData already has 'created' timestamp (restoring from undo)
+			if (protoData.created) {
+				// Restoring from saved data - use as-is
+				newData = JSON.parse(JSON.stringify(protoData));
+			} else if ( protoData.type == 'text' || protoData.type == 'quiz' || protoData.type == 'hotspot' ) {
 				newData = {
 					"name":         protoData.name,
 					"creator":      FrameTrail.getState('username'),
@@ -434,8 +435,8 @@
 			}
 
 			FrameTrail.module('Database').overlays.push(newData);
-			newOverlay = FrameTrail.newObject('Overlay', newData)
-			overlays.push(newOverlay);
+			newOverlayObj = FrameTrail.newObject('Overlay', newData)
+			overlays.push(newOverlayObj);
 
 			newUnsavedChange('overlays');
 
@@ -445,7 +446,7 @@
 				overlay: overlayData
 			});
 
-			return newOverlay;
+			return newOverlayObj;
 
 	};
 
@@ -456,26 +457,34 @@
 	 *
 	 * @method newCodeSnippet
 	 * @param {} protoData
+	 * @param {Boolean} skipUndo - If true, skip undo registration (used during undo/redo restore)
 	 * @return CodeSnippet
 	 */
-	function newCodeSnippet(protoData) {
+	function newCodeSnippet(protoData, skipUndo) {
 
-		var newCodeSnippet,
+		var newCodeSnippetObj,
+			newData;
 
-			newData = {
-							"name":         protoData.name,
-							"creator":      FrameTrail.getState('username'),
-							"creatorId":    FrameTrail.module('UserManagement').userID,
-							"created":      Date.now(),
-							"snippet":      protoData.snippet,
-							"start":        protoData.start,
-							"attributes":   {}
-						};
+			// Check if protoData already has 'created' timestamp (restoring from undo)
+			if (protoData.created) {
+				// Restoring from saved data - use as-is
+				newData = JSON.parse(JSON.stringify(protoData));
+			} else {
+				newData = {
+								"name":         protoData.name,
+								"creator":      FrameTrail.getState('username'),
+								"creatorId":    FrameTrail.module('UserManagement').userID,
+								"created":      Date.now(),
+								"snippet":      protoData.snippet,
+								"start":        protoData.start,
+								"attributes":   {}
+							};
+			}
 
 
 			FrameTrail.module('Database').codeSnippets.timebasedEvents.push(newData);
-			newCodeSnippet = FrameTrail.newObject('CodeSnippet', newData)
-			codeSnippets.push(newCodeSnippet);
+			newCodeSnippetObj = FrameTrail.newObject('CodeSnippet', newData)
+			codeSnippets.push(newCodeSnippetObj);
 
 			newUnsavedChange('codeSnippets');
 
@@ -486,7 +495,7 @@
 				codesnippet: codesnippetData
 			});
 
-			return newCodeSnippet;
+			return newCodeSnippetObj;
 
 	};
 
@@ -498,18 +507,22 @@
 	 *
 	 * @method newAnnotation
 	 * @param {} protoData
+	 * @param {Boolean} skipUndo - If true, skip undo registration (used during undo/redo restore)
 	 * @return Annotation
 	 */
-	function newAnnotation(protoData) {
+	function newAnnotation(protoData, skipUndo) {
 
-		var newAnnotation,
+		var newAnnotationObj,
 			database         = FrameTrail.module('Database'),
 			resourceDatabase = database.resources,
 			ownerId          = FrameTrail.module('UserManagement').userID,
 			newData;
 
-			// TODO: clean code
-			if ( protoData.type == 'text' ) {
+			// Check if protoData already has 'created' timestamp (restoring from undo)
+			if (protoData.created) {
+				// Restoring from saved data - use as-is
+				newData = JSON.parse(JSON.stringify(protoData));
+			} else if ( protoData.type == 'text' ) {
 				newData = {
 					"name":         protoData.name,
 					"creator":      FrameTrail.getState('username'),
@@ -568,8 +581,8 @@
 
 			FrameTrail.module('Database').annotations.push(newData);
 
-			newAnnotation = FrameTrail.newObject('Annotation', newData);
-			annotations.push(newAnnotation);
+			newAnnotationObj = FrameTrail.newObject('Annotation', newData);
+			annotations.push(newAnnotationObj);
 
 			newUnsavedChange('annotations');
 
@@ -579,7 +592,7 @@
 				annotation: annoData
 			});
 
-			return newAnnotation;
+			return newAnnotationObj;
 
 	};
 
@@ -862,11 +875,7 @@
 	 */
 	function newUnsavedChange(category) {
 
-		if (category === 'settings') {
-
-			unsavedSettings = true;
-
-		} else if (category === 'overlays') {
+		if (category === 'overlays') {
 
 			unsavedOverlays = true;
 
@@ -889,14 +898,6 @@
 		} else if (category === 'layout') {
 
 			unsavedLayout = true;
-
-		} else if (category === 'config') {
-
-			unsavedConfig = true;
-
-		} else if (category === 'globalCSS') {
-
-			unsavedGlobalCSS = true;
 
 		}
 
@@ -942,12 +943,7 @@
 
 				FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateSaving']);
 
-				if ( unsavedSettings ) {
-
-					//TODO: avoid this by adding a subtitles dialog to the settings tab
-					$('.editHypervideoForm').submit();
-
-				} else if ( unsavedOverlays || unsavedCodeSnippets
+				if ( unsavedOverlays || unsavedCodeSnippets
 					|| unsavedEvents || unsavedCustomCSS || unsavedLayout) {
 					saveRequests.push(function(){
 						FrameTrail.module('Database').saveHypervideo(databaseCallback);
@@ -957,18 +953,6 @@
 				if (unsavedAnnotations) {
 					saveRequests.push(function(){
 						FrameTrail.module('Database').saveAnnotations(databaseCallback);
-					});
-				}
-
-				if (unsavedConfig) {
-					saveRequests.push(function(){
-						FrameTrail.module('Database').saveConfig(databaseCallback);
-					});
-				}
-
-				if (unsavedGlobalCSS) {
-					saveRequests.push(function(){
-						FrameTrail.module('Database').saveGlobalCSS(databaseCallback);
 					});
 				}
 
@@ -1006,15 +990,12 @@
 			FrameTrail.module('InterfaceModal').showSuccessMessage(labels['MessageSaveSuccess']);
 			FrameTrail.module('InterfaceModal').hideMessage(2000);
 
-			unsavedSettings     = false;
 			unsavedOverlays     = false;
 			unsavedCodeSnippets = false;
 			unsavedEvents       = false;
 			unsavedCustomCSS    = false;
 			unsavedAnnotations  = false;
 			unsavedLayout       = false;
-			unsavedConfig       = false;
-			unsavedGlobalCSS    = false;
 			FrameTrail.changeState('unsavedChanges', false);
 
 			FrameTrail.triggerEvent('userAction', {
@@ -1161,6 +1142,9 @@
 	function updateHypervideo(newHypervideoID, restartEditMode, update) {
 
 		FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateLoading']);
+
+		// Clear undo history when switching hypervideos
+		FrameTrail.module('UndoManager').clear();
 
 		if ( FrameTrail.module('HypervideoController') ) {
 			FrameTrail.module('HypervideoController').pause();

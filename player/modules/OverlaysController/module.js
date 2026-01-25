@@ -518,6 +518,35 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
                     stackTimelineView();
 
+                    // Register undo command for adding overlay
+                    (function(overlayData) {
+                        var findOverlay = function() {
+                            var overlays = FrameTrail.module('HypervideoModel').overlays;
+                            for (var i = 0; i < overlays.length; i++) {
+                                if (overlays[i].data.created === overlayData.created) {
+                                    return overlays[i];
+                                }
+                            }
+                            return null;
+                        };
+                        FrameTrail.module('UndoManager').register({
+                            category: 'overlays',
+                            description: labels['SidebarOverlays'] + ' ' + labels['GenericAdd'],
+                            undo: function() {
+                                var overlay = findOverlay();
+                                if (overlay) {
+                                    deleteOverlay(overlay, true);
+                                }
+                            },
+                            redo: function() {
+                                var restoredOverlay = FrameTrail.module('HypervideoModel').newOverlay(overlayData, true);
+                                restoredOverlay.renderInDOM();
+                                restoredOverlay.startEditing();
+                                updateStatesOfOverlays(FrameTrail.module('HypervideoController').currentTime);
+                                stackTimelineView();
+                            }
+                        });
+                    })(JSON.parse(JSON.stringify(newOverlay.data)));
 
                     ViewVideo.PlayerProgress.find('.ui-slider-handle').removeClass('highlight');
 
@@ -618,13 +647,43 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
      *
      * @method deleteOverlay
      * @param {Overlay} overlay
+     * @param {Boolean} skipUndo - If true, don't register undo command (used during undo/redo)
      */
-    function deleteOverlay(overlay) {
+    function deleteOverlay(overlay, skipUndo) {
+
+        // Capture data before deletion for undo
+        var overlayData = JSON.parse(JSON.stringify(overlay.data));
 
         setOverlayInFocus(null);
         overlay.removeFromDOM();
         FrameTrail.module('HypervideoModel').removeOverlay(overlay);
         stackTimelineView();
+
+        // Register undo command
+        if (!skipUndo) {
+            FrameTrail.module('UndoManager').register({
+                category: 'overlays',
+                description: labels['SidebarOverlays'] + ' ' + labels['GenericDelete'],
+                undo: function() {
+                    // Recreate the overlay
+                    var newOverlay = FrameTrail.module('HypervideoModel').newOverlay(overlayData, true);
+                    newOverlay.renderInDOM();
+                    newOverlay.startEditing();
+                    updateStatesOfOverlays(FrameTrail.module('HypervideoController').currentTime);
+                    stackTimelineView();
+                },
+                redo: function() {
+                    // Find the overlay by matching data and delete it again
+                    var overlaysArray = FrameTrail.module('HypervideoModel').overlays;
+                    for (var i = 0; i < overlaysArray.length; i++) {
+                        if (overlaysArray[i].data.created === overlayData.created) {
+                            deleteOverlay(overlaysArray[i], true);
+                            break;
+                        }
+                    }
+                }
+            });
+        }
 
     };
 

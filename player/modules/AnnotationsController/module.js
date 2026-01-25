@@ -646,6 +646,35 @@
 
                     stackTimelineView();
 
+                    // Register undo command for adding annotation
+                    (function(annotationData) {
+                        var findAnnotation = function() {
+                            var annotations = FrameTrail.module('HypervideoModel').annotations;
+                            for (var i = 0; i < annotations.length; i++) {
+                                if (annotations[i].data.created === annotationData.created) {
+                                    return annotations[i];
+                                }
+                            }
+                            return null;
+                        };
+                        FrameTrail.module('UndoManager').register({
+                            category: 'annotations',
+                            description: labels['SidebarMyAnnotations'] + ' ' + labels['GenericAdd'],
+                            undo: function() {
+                                var annotation = findAnnotation();
+                                if (annotation) {
+                                    deleteAnnotation(annotation, true);
+                                }
+                            },
+                            redo: function() {
+                                var restoredAnnotation = FrameTrail.module('HypervideoModel').newAnnotation(annotationData, true);
+                                restoredAnnotation.renderInDOM();
+                                restoredAnnotation.startEditing();
+                                updateStatesOfAnnotations(FrameTrail.module('HypervideoController').currentTime);
+                                stackTimelineView();
+                            }
+                        });
+                    })(JSON.parse(JSON.stringify(newAnnotation.data)));
 
                     ViewVideo.PlayerProgress.find('.ui-slider-handle').removeClass('highlight');
 
@@ -668,8 +697,12 @@
      * an annotation.
      * @method deleteAnnotation
      * @param {Annotation} annotation
+     * @param {Boolean} skipUndo - If true, don't register undo command (used during undo/redo)
      */
-    function deleteAnnotation(annotation) {
+    function deleteAnnotation(annotation, skipUndo) {
+
+        // Capture data before deletion for undo
+        var annotationData = JSON.parse(JSON.stringify(annotation.data));
 
         setAnnotationInFocus(null);
         annotation.removeFromDOM();
@@ -677,6 +710,32 @@
         FrameTrail.module('HypervideoModel').removeAnnotation(annotation);
 
         stackTimelineView();
+
+        // Register undo command
+        if (!skipUndo) {
+            FrameTrail.module('UndoManager').register({
+                category: 'annotations',
+                description: labels['SidebarMyAnnotations'] + ' ' + labels['GenericDelete'],
+                undo: function() {
+                    // Recreate the annotation
+                    var newAnnotation = FrameTrail.module('HypervideoModel').newAnnotation(annotationData, true);
+                    newAnnotation.renderInDOM();
+                    newAnnotation.startEditing();
+                    updateStatesOfAnnotations(FrameTrail.module('HypervideoController').currentTime);
+                    stackTimelineView();
+                },
+                redo: function() {
+                    // Find the annotation by matching data and delete it again
+                    var annotationsArray = FrameTrail.module('HypervideoModel').annotations;
+                    for (var i = 0; i < annotationsArray.length; i++) {
+                        if (annotationsArray[i].data.created === annotationData.created) {
+                            deleteAnnotation(annotationsArray[i], true);
+                            break;
+                        }
+                    }
+                }
+            });
+        }
 
     }
 

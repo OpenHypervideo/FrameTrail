@@ -33,6 +33,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                             + '                    <button class="newHypervideoButton" data-tooltip-bottom-left="'+ labels['HypervideoNew'] +'"><span class="icon-hypervideo-add"></span></button>'
                             + '                    <button class="forkButton" data-tooltip-bottom-left="'+ labels['GenericForkHypervideo'] +'"><span class="icon-hypervideo-fork"></span></button>'
                             + '                    <button class="saveButton" data-tooltip-bottom-left="'+ labels['GenericSaveChanges'] +'"><span class="icon-floppy"></span></button>'
+                            + '                    <button class="undoButton" disabled data-tooltip-bottom-left="'+ labels['GenericUndo'] +'"><span class="icon-ccw"></span></button>'
+                            + '                    <button class="redoButton" disabled data-tooltip-bottom-left="'+ labels['GenericRedo'] +'"><span class="icon-cw"></span></button>'
                             + '                    <button class="exportButton" data-tooltip-bottom-left="'+ labels['GenericExportHypervideo'] +'"><span class="icon-download"></span></button>'
                             + '                    <div style="clear: both;"></div>'
                             + '                </div>'
@@ -59,7 +61,9 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         SaveButton             = domElement.find('.saveButton'),
         ForkButton             = domElement.find('.forkButton'),
         ExportButton           = domElement.find('.exportButton'),
-        DeleteButton           = domElement.find('.hypervideoDeleteButton');
+        DeleteButton           = domElement.find('.hypervideoDeleteButton'),
+        UndoButton             = domElement.find('.undoButton'),
+        RedoButton             = domElement.find('.redoButton');
 
 
     NewHypervideoButton.click(function(evt) {
@@ -365,6 +369,33 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
     SaveButton.click(function(){
         FrameTrail.module('HypervideoModel').save();
+    });
+
+    UndoButton.click(function(){
+        FrameTrail.module('UndoManager').undo();
+    });
+
+    RedoButton.click(function(){
+        FrameTrail.module('UndoManager').redo();
+    });
+
+    // Listen for undo state changes to update button states
+    FrameTrail.addEventListener('undoStateChanged', function(evt) {
+        var state = evt.detail;
+        UndoButton.prop('disabled', !state.canUndo);
+        RedoButton.prop('disabled', !state.canRedo);
+
+        // Update tooltips with action descriptions
+        if (state.undoDescription) {
+            UndoButton.attr('data-tooltip-bottom-left', labels['GenericUndo'] + ': ' + state.undoDescription);
+        } else {
+            UndoButton.attr('data-tooltip-bottom-left', labels['GenericUndo']);
+        }
+        if (state.redoDescription) {
+            RedoButton.attr('data-tooltip-bottom-left', labels['GenericRedo'] + ': ' + state.redoDescription);
+        } else {
+            RedoButton.attr('data-tooltip-bottom-left', labels['GenericRedo']);
+        }
     });
 
     ForkButton.click(function(evt) {
@@ -678,7 +709,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         if (category == 'codeSnippets' || category == 'events' || category == 'customCSS') {
             // camelCase not valid in attributes
             domElement.find('button[data-editmode="codesnippets"]').addClass('unsavedChanges');
-        } else if (category == 'config' || category == 'layout' || category == 'globalCSS') {
+        } else if (category == 'layout') {
             domElement.find('button[data-editmode="layout"]').addClass('unsavedChanges');
         } else {
             domElement.find('button[data-editmode="'+category+'"]').addClass('unsavedChanges');
@@ -725,6 +756,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 NewHypervideoButton.show();
                 ExportButton.hide();
                 SaveButton.show();
+                UndoButton.show();
+                RedoButton.show();
 
                 videoContainerControls.find('.editMode').addClass('inEditMode');
 
@@ -744,6 +777,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             NewHypervideoButton.hide();
             //ExportButton.show();
             SaveButton.hide();
+            UndoButton.hide();
+            RedoButton.hide();
 
             videoContainerControls.find('.editMode').removeClass('inEditMode');
 

@@ -99,7 +99,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 	}
 
 
-	function createContentView(whichArea, templateContentViewData, renderPreview) {
+	function createContentView(whichArea, templateContentViewData, renderPreview, skipUndo) {
 
 		var arrayOfContentViews = ({
 			'top': contentViewsTop,
@@ -131,10 +131,16 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
 		updateLayoutAreaVisibility();
 
+		return newContentView;
+
 	}
 
 
-	function removeContentView(contentViewToRemove) {
+	function removeContentView(contentViewToRemove, skipUndo) {
+
+		// Capture data before removal for undo
+		var contentViewData = JSON.parse(JSON.stringify(contentViewToRemove.contentViewData)),
+			whichArea = contentViewToRemove.whichArea;
 
 		var layoutAreaToRemovefrom = ({
 			'top': contentViewsTop,
@@ -142,6 +148,19 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 			'left': contentViewsLeft,
 			'right': contentViewsRight
 		})[contentViewToRemove.whichArea];
+
+		// Also remove from config
+		var configAreaName = ({
+			'top': 'areaTop',
+			'bottom': 'areaBottom',
+			'left': 'areaLeft',
+			'right': 'areaRight'
+		})[whichArea];
+
+		var configIndex = configLayoutArea[configAreaName].indexOf(contentViewToRemove.contentViewData);
+		if (configIndex > -1) {
+			configLayoutArea[configAreaName].splice(configIndex, 1);
+		}
 
 		contentViewToRemove.contentCollection.forEach(function(contentItem) {
             contentViewToRemove.removeContentCollectionElements(contentItem);
@@ -158,6 +177,34 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 		updateLayoutAreaVisibility();
 
 		FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+
+		// Register undo command
+		if (!skipUndo) {
+			var labels = FrameTrail.module('Localization').labels;
+			FrameTrail.module('UndoManager').register({
+				category: 'layout',
+				description: labels['SidebarLayout'] + ' ' + labels['GenericDelete'],
+				undo: function() {
+					var restoredContentView = createContentView(whichArea, contentViewData, true, true);
+					FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+				},
+				redo: function() {
+					// Find the content view by matching data
+					var contentViewsArray = ({
+						'top': contentViewsTop,
+						'bottom': contentViewsBottom,
+						'left': contentViewsLeft,
+						'right': contentViewsRight
+					})[whichArea];
+					for (var i = 0; i < contentViewsArray.length; i++) {
+						if (JSON.stringify(contentViewsArray[i].contentViewData) === JSON.stringify(contentViewData)) {
+							removeContentView(contentViewsArray[i], true);
+							break;
+						}
+					}
+				}
+			});
+		}
 
 	}
 
@@ -382,9 +429,41 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 				var whichArea = layoutArea.split('area')[1].toLowerCase(),
 					renderPreview = true;
 
-				createContentView(whichArea, templateContentViewData, renderPreview);
+				var newContentView = createContentView(whichArea, templateContentViewData, renderPreview);
 
 				FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+
+				// Register undo command for adding content view
+				(function(areaName, viewData) {
+					var findContentView = function() {
+						var contentViewsArray = ({
+							'top': contentViewsTop,
+							'bottom': contentViewsBottom,
+							'left': contentViewsLeft,
+							'right': contentViewsRight
+						})[areaName];
+						for (var i = 0; i < contentViewsArray.length; i++) {
+							if (JSON.stringify(contentViewsArray[i].contentViewData) === JSON.stringify(viewData)) {
+								return contentViewsArray[i];
+							}
+						}
+						return null;
+					};
+					FrameTrail.module('UndoManager').register({
+						category: 'layout',
+						description: labels['SidebarLayout'] + ' ' + labels['GenericAdd'],
+						undo: function() {
+							var contentView = findContentView();
+							if (contentView) {
+								removeContentView(contentView, true);
+							}
+						},
+						redo: function() {
+							createContentView(areaName, viewData, true, true);
+							FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+						}
+					});
+				})(whichArea, JSON.parse(JSON.stringify(templateContentViewData)));
 
 			}
 

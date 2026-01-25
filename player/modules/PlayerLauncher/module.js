@@ -56,6 +56,9 @@
     // Set up User Traces
     FrameTrail.initModule('UserTraces');
 
+    // Set up Undo Manager
+    FrameTrail.initModule('UndoManager');
+
 
     // start the actual init process
 
