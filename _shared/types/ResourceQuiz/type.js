@@ -588,6 +588,21 @@ FrameTrail.defineType(
                     layoutRow.append(leftColumn, rightColumn);
                     quizEditorContainer.append(layoutRow);
 
+                    // Helper function to update quiz DOM elements by re-rendering
+                    var updateQuizVisuals = function(el) {
+                        if (el.overlayElement) {
+                            // Re-render overlay content
+                            el.overlayElement.children('.resourceDetail').remove();
+                            el.overlayElement.append(el.resourceItem.renderContent());
+                        } else {
+                            // Re-render annotation content in all content views
+                            $(el.contentViewDetailElements).each(function() {
+                                $(this).find('.resourceDetail').remove();
+                                $(this).append(el.resourceItem.renderContent());
+                            });
+                        }
+                    };
+
                     // Register undo when focus leaves the quiz editor (if changes were made)
                     quizEditorContainer.on('focusout', function(evt) {
                         // Only register if focus is leaving the container entirely
@@ -605,7 +620,7 @@ FrameTrail.defineType(
                             var category = isOverlay ? 'overlays' : 'annotations';
                             var elementId = overlayOrAnnotation.data.created;
                             
-                            (function(id, oldAttr, newAttr, cat, labels) {
+                            (function(id, oldAttr, newAttr, cat, labels, updateFn) {
                                 var findElement = function() {
                                     var arr = cat === 'overlays' ? 
                                         FrameTrail.module('HypervideoModel').overlays : 
@@ -624,16 +639,18 @@ FrameTrail.defineType(
                                         var el = findElement();
                                         if (!el) return;
                                         el.data.attributes = JSON.parse(oldAttr);
+                                        updateFn(el);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     },
                                     redo: function() {
                                         var el = findElement();
                                         if (!el) return;
                                         el.data.attributes = JSON.parse(newAttr);
+                                        updateFn(el);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     }
                                 });
-                            })(elementId, snapshotAttrs, currentAttrs, category, self.labels);
+                            })(elementId, snapshotAttrs, currentAttrs, category, self.labels, updateQuizVisuals);
                             
                             // Update snapshot to current state
                             quizAttributesSnapshot = JSON.parse(currentAttrs);
