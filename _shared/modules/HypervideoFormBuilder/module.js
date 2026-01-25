@@ -22,28 +22,31 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
     }
 
     /**
-     * Convert seconds to hours, minutes, seconds object
-     * @method secondsToHMS
+     * Convert seconds to HH:MM:SS time string
+     * @method secondsToTimeString
      * @param {Number} totalSeconds
-     * @return {Object} { hours, minutes, seconds }
+     * @return {String} time string in HH:MM:SS format
      */
-    function secondsToHMS(totalSeconds) {
+    function secondsToTimeString(totalSeconds) {
         var h = Math.floor(totalSeconds / 3600);
         var m = Math.floor((totalSeconds % 3600) / 60);
         var s = Math.floor(totalSeconds % 60);
-        return { hours: h, minutes: m, seconds: s };
+        return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
     }
 
     /**
-     * Convert hours, minutes, seconds to total seconds
-     * @method hmsToSeconds
-     * @param {Number} h - hours
-     * @param {Number} m - minutes
-     * @param {Number} s - seconds
+     * Convert HH:MM:SS time string to total seconds
+     * @method timeStringToSeconds
+     * @param {String} timeString - time in HH:MM:SS format
      * @return {Number} total seconds
      */
-    function hmsToSeconds(h, m, s) {
-        return (parseInt(h) || 0) * 3600 + (parseInt(m) || 0) * 60 + (parseInt(s) || 0);
+    function timeStringToSeconds(timeString) {
+        if (!timeString) return 0;
+        var parts = timeString.split(':');
+        var h = parseInt(parts[0]) || 0;
+        var m = parseInt(parts[1]) || 0;
+        var s = parseInt(parts[2]) || 0;
+        return h * 3600 + m * 60 + s;
     }
 
     /**
@@ -104,11 +107,10 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
      * Generate the video source section HTML
      * @method generateVideoSourceSection
      * @param {Object} options - { 
-     *   durationHMS: { hours: 0, minutes: 0, seconds: 4 },
+     *   duration: 120,  // Duration in seconds (default 2 minutes)
      *   currentResourceId: null,
      *   currentSrc: null,
      *   showUploadButton: true,
-     *   durationInputPrefix: '',  // Use 'new_' for edit dialog
      *   isEditMode: false  // If true, includes newResourceId/Src/Duration hidden inputs
      * }
      * @return {String} HTML string
@@ -116,11 +118,12 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
     function generateVideoSourceSection(options) {
         var labels = getLabels();
         options = options || {};
-        var durationHMS = options.durationHMS || { hours: 0, minutes: 0, seconds: 4 };
+        // Default duration is 2 minutes (120 seconds)
+        var duration = options.duration !== undefined ? options.duration : 120;
+        var durationTimeString = secondsToTimeString(duration);
         var currentResourceId = options.currentResourceId || '';
         var currentSrc = options.currentSrc || '';
         var showUploadButton = options.showUploadButton !== false;
-        var durationInputPrefix = options.durationInputPrefix || '';
         var isEditMode = options.isEditMode || false;
 
         var html = '<div class="videoSourceSection">'
@@ -142,12 +145,8 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
               + '        <div id="EmptyVideo">'
               + '            <div class="message active">'+ labels['MessageEmptyVideoSetDuration'] +'</div>'
               + '            <label>'+ labels['GenericDuration'] +':</label>'
-              + '            <div class="durationInput">'
-              + '                <input type="number" name="'+ durationInputPrefix +'duration_hours" min="0" max="99" value="'+ durationHMS.hours +'" class="durationHours"> : '
-              + '                <input type="number" name="'+ durationInputPrefix +'duration_minutes" min="0" max="59" value="'+ durationHMS.minutes +'" class="durationMinutes"> : '
-              + '                <input type="number" name="'+ durationInputPrefix +'duration_seconds" min="0" max="59" value="'+ durationHMS.seconds +'" class="durationSeconds">'
-              + '                <span class="durationLabel">('+ labels['SettingsDurationHoursMinutesSeconds'] +')</span>'
-              + '            </div>'
+              + '            <input type="time" name="duration" step="1" min="00:00:04" value="'+ durationTimeString +'">'
+               + '            <label>(HH:MM:SS)</label>'
               + '        </div>'
               + '    </div>';
 
@@ -248,111 +247,20 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
         }
     }
 
-    /**
-     * Validate subtitle fields in a form
-     * @method validateSubtitles
-     * @param {jQuery} formElement - The form jQuery element
-     * @param {jQuery} errorContainer - The error message container
-     * @return {Boolean} true if valid, false otherwise
-     */
-    function validateSubtitles(formElement, errorContainer) {
-        var labels = getLabels();
-        var err = 0;
-
-        formElement.find('.subtitlesItem').each(function() {
-            $(this).css({'outline': ''});
-
-            var fileInput = $(this).find('input[type="file"]:first');
-            var langSelect = $(this).find('.subtitlesTmpKeySetter:first');
-
-            // Check if language is selected and file is chosen
-            if (fileInput.attr('name') === 'subtitles[]' || 
-                langSelect.val() === '' || 
-                fileInput.val().length === 0) {
-                $(this).css({'outline': '1px solid #cd0a0a'});
-                errorContainer.addClass('active').html(labels['ErrorSubtitlesEmptyFields']);
-                err++;
-            } 
-            // Check file extension is .vtt
-            else if (!(new RegExp('(' + ['.vtt'].join('|').replace(/\./g, '\\.') + ')$')).test(fileInput.val())) {
-                $(this).css({'outline': '1px solid #cd0a0a'});
-                errorContainer.addClass('active').html(labels['ErrorSubtitlesWrongFormat']);
-                err++;
-            }
-
-            // Check for duplicate languages
-            var selectedLang = langSelect.val();
-            if (selectedLang && formElement.find('.subtitlesItem input[type="file"][name="subtitles['+ selectedLang +']"]').length > 1) {
-                errorContainer.addClass('active').html(labels['ErrorSubtitlesLanguageDuplicate']);
-                err++;
-            }
-        });
-
-        return err === 0;
-    }
-
-    /**
-     * Extract subtitle data from form for saving
-     * @method extractSubtitleData
-     * @param {jQuery} formElement - The form jQuery element
-     * @return {Array} Array of subtitle objects { src, srclang }
-     */
-    function extractSubtitleData(formElement) {
-        var subtitles = [];
-
-        formElement.find('.newSubtitlesContainer').find('input[type=file]').each(function() {
-            var match = /subtitles\[(.+)\]/g.exec($(this).attr('name'));
-
-            if (match) {
-                subtitles.push({
-                    "src": match[1] + ".vtt",
-                    "srclang": match[1]
-                });
-            }
-        });
-
-        return subtitles;
-    }
-
-    /**
-     * Initialize video source tabs with jQuery UI
-     * @method initVideoSourceTabs
-     * @param {jQuery} formElement - The form jQuery element
-     * @param {Boolean} isCanvasVideo - Whether current video is a canvas/empty video
-     * @param {Function} onTabChange - Optional callback when tab changes
-     */
-    function initVideoSourceTabs(formElement, isCanvasVideo, onTabChange) {
-        formElement.find('.videoSourceTabs').tabs({
-            active: isCanvasVideo ? 1 : 0,
-            activate: function(event, ui) {
-                if (ui.newPanel.attr('id') === 'EmptyVideo') {
-                    formElement.find('input[name="resourcesID"]').prop('disabled', true);
-                    formElement.find('.durationInput input').prop('disabled', false);
-                    formElement.find('.resourceThumb').removeClass('selected');
-                } else {
-                    formElement.find('input[name="resourcesID"]').prop('disabled', false);
-                    formElement.find('.durationInput input').prop('disabled', true);
-                }
-                if (onTabChange) onTabChange(event, ui);
-            }
-        });
-    }
-
     // Export public interface
     return {
 
-        secondsToHMS: secondsToHMS,
-        hmsToSeconds: hmsToSeconds,
+        // Time conversion utilities
+        secondsToTimeString: secondsToTimeString,
+        timeStringToSeconds: timeStringToSeconds,
 
+        // Form generation
         generateSettingsRow: generateSettingsRow,
         generateVideoSourceSection: generateVideoSourceSection,
 
-        createSubtitleItem: createSubtitleItem,
+        // Subtitle handling
         attachSubtitleHandlers: attachSubtitleHandlers,
-        populateExistingSubtitles: populateExistingSubtitles,
-        validateSubtitles: validateSubtitles,
-        extractSubtitleData: extractSubtitleData,
-        initVideoSourceTabs: initVideoSourceTabs
+        populateExistingSubtitles: populateExistingSubtitles
 
     };
 

@@ -27,18 +27,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
     }
 
     /**
-     * Convert hours, minutes, seconds to total seconds
-     * @method hmsToSeconds
-     * @param {Number} h - hours
-     * @param {Number} m - minutes
-     * @param {Number} s - seconds
-     * @return {Number} total seconds
-     */
-    function hmsToSeconds(h, m, s) {
-        return (parseInt(h) || 0) * 3600 + (parseInt(m) || 0) * 60 + (parseInt(s) || 0);
-    }
-
-    /**
      * Get items that would be out of range if duration is changed
      * @method getOutOfRangeItems
      * @param {Number} newDuration - new duration in seconds
@@ -244,7 +232,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         // Check if this is a canvas (empty) video - no resourceId means canvas
         var isCanvasVideo = hypervideo.clips && hypervideo.clips[0] && !hypervideo.clips[0].resourceId && !hypervideo.clips[0].src;
         var originalDuration = isCanvasVideo ? (hypervideo.clips[0].duration || 0) : 0;
-        var originalDurationHMS = formBuilder.secondsToHMS(originalDuration);
         var pendingDurationChange = null; // Will hold { newDuration, outOfRangeItems } if duration change needs confirmation
         
         // Video source replacement tracking
@@ -265,23 +252,19 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                                     })
                                   +'    <hr>'
                                   + formBuilder.generateVideoSourceSection({
-                                        durationHMS: isCanvasVideo ? originalDurationHMS : { hours: 0, minutes: 5, seconds: 0 },
+                                        duration: isCanvasVideo ? originalDuration : 120,  // Use existing duration or 2 minutes default
                                         currentResourceId: originalResourceId || '',
                                         currentSrc: originalSrc || '',
                                         showUploadButton: true,
-                                        durationInputPrefix: 'new_',
                                         isEditMode: true
                                     })
                                   +'    <div class="message error"></div>'
                                   +'</form>');
         
-        // Helper to get duration from form inputs (uses Empty Video tab inputs)
+        // Helper to get duration from form input
         function getDurationFromForm() {
             if (!isCanvasVideo) return originalDuration;
-            var hours = parseInt(EditHypervideoForm.find('input[name="new_duration_hours"]').val()) || 0;
-            var minutes = parseInt(EditHypervideoForm.find('input[name="new_duration_minutes"]').val()) || 0;
-            var seconds = parseInt(EditHypervideoForm.find('input[name="new_duration_seconds"]').val()) || 0;
-            return formBuilder.hmsToSeconds(hours, minutes, seconds);
+            return formBuilder.timeStringToSeconds(EditHypervideoForm.find('input[name="duration"]').val());
         }
 
         // Populate existing subtitles using shared module
@@ -334,10 +317,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
         // Helper to get new empty video duration
         function getNewEmptyDuration() {
-            var hours = parseInt(EditHypervideoForm.find('input[name="new_duration_hours"]').val()) || 0;
-            var minutes = parseInt(EditHypervideoForm.find('input[name="new_duration_minutes"]').val()) || 0;
-            var seconds = parseInt(EditHypervideoForm.find('input[name="new_duration_seconds"]').val()) || 0;
-            return formBuilder.hmsToSeconds(hours, minutes, seconds);
+            return formBuilder.timeStringToSeconds(EditHypervideoForm.find('input[name="duration"]').val());
         }
 
         // Check if source is being changed
@@ -566,11 +546,8 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                                 pendingDurationChange = { newDuration: newDuration, outOfRangeItems: outOfRangeItems };
                                 EditHypervideoForm.submit();
                             }, function() {
-                                // User cancelled - reset duration inputs to original values
-                                var hms = formBuilder.secondsToHMS(originalDuration);
-                                EditHypervideoForm.find('input[name="new_duration_hours"]').val(hms.hours);
-                                EditHypervideoForm.find('input[name="new_duration_minutes"]').val(hms.minutes);
-                                EditHypervideoForm.find('input[name="new_duration_seconds"]').val(hms.seconds);
+                                // User cancelled - reset duration input to original value
+                                EditHypervideoForm.find('input[name="duration"]').val(formBuilder.secondsToTimeString(originalDuration));
                             });
                             return false;
                         }

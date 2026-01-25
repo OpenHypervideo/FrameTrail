@@ -102,7 +102,7 @@ button.active, input[type="submit"].active, input[type="button"].active, .button
     color: var(--primary-fg-color);
 }
 
-input[type="text"], input[type="password"], textarea, input[type="number"] {
+input[type="text"], input[type="password"], textarea, input[type="number"], input[type="time"] {
 	font-family: TitilliumWeb,"Helvetica Neue",Helvetica,Arial,sans-serif;
 	font-size: 14px;
 	margin: 4px 8px 4px 0;
@@ -1215,17 +1215,4 @@ input:checked + .slider:before {
     pointer-events: none;
     font-size: 14px;
     color: #666;
-}
-
-/* Shared Duration Input Styles */
-.durationInput {
-    display: inline-flex;
-    align-items: center;
-    margin-top: 10px;
-}
-
-.durationInput .durationLabel {
-    margin-left: 10px;
-    opacity: 0.7;
-    font-size: 12px;
 }
