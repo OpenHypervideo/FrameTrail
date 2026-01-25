@@ -1651,6 +1651,8 @@ FrameTrail.defineType(
                             buttons: [
                                 { text: self.labels['GenericApply'],
                                     click: function() {
+                                        // Capture old data before changes
+                                        var oldContentViewData = JSON.parse(JSON.stringify(self.contentViewData));
 
                                         var newContentViewData = self.getDataFromEditingUI($(this));
 
@@ -1661,6 +1663,30 @@ FrameTrail.defineType(
                                         self.updateContent();
 
                                         FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+
+                                        // Register undo for content view settings change
+                                        (function(contentViewRef, oldData, newData, labels) {
+                                            FrameTrail.module('UndoManager').register({
+                                                category: 'layout',
+                                                description: labels['SidebarLayout'] + ' ' + labels['GenericType'],
+                                                undo: function() {
+                                                    contentViewRef.contentViewData = JSON.parse(JSON.stringify(oldData));
+                                                    contentViewRef.updateContentViewPreview();
+                                                    contentViewRef.updateContent();
+                                                    var currentTime = FrameTrail.module('HypervideoController').currentTime;
+                                                    contentViewRef.updateTimedStateOfContentViews(currentTime);
+                                                    FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+                                                },
+                                                redo: function() {
+                                                    contentViewRef.contentViewData = JSON.parse(JSON.stringify(newData));
+                                                    contentViewRef.updateContentViewPreview();
+                                                    contentViewRef.updateContent();
+                                                    var currentTime = FrameTrail.module('HypervideoController').currentTime;
+                                                    contentViewRef.updateTimedStateOfContentViews(currentTime);
+                                                    FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+                                                }
+                                            });
+                                        })(self, oldContentViewData, JSON.parse(JSON.stringify(newContentViewData)), self.labels);
 
                                         $(this).dialog( 'close' );
 

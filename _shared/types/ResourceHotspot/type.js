@@ -304,7 +304,10 @@ FrameTrail.defineType(
                                 'border-color': color,
                                 'background-color': 'transparent'
                             });
-                            hotspotPulse.css('border-radius', borderRadiusValue);
+                            hotspotPulse.css({
+                                'border-radius': borderRadiusValue,
+                                'border-color': color
+                            });
                             
                             // Update hover handlers
                             hotspotElement.off('mouseenter mouseleave');
@@ -333,7 +336,10 @@ FrameTrail.defineType(
                                     'border-color': color,
                                     'background-color': 'transparent'
                                 });
-                                hotspotPulse.css('border-radius', borderRadiusValue);
+                                hotspotPulse.css({
+                                    'border-radius': borderRadiusValue,
+                                    'border-color': color
+                                });
                                 
                                 hotspotElement.off('mouseenter mouseleave');
                                 if (borderWidth > 0) {
@@ -384,7 +390,7 @@ FrameTrail.defineType(
                             var category = isOverlay ? 'overlays' : 'annotations';
                             var elementId = overlayOrAnnotation.data.created;
                             
-                            (function(id, oldS, newS, cat, labels) {
+                            (function(id, oldS, newS, cat, labels, applyFn) {
                                 var findElement = function() {
                                     var arr = cat === 'overlays' ? 
                                         FrameTrail.module('HypervideoModel').overlays : 
@@ -403,16 +409,24 @@ FrameTrail.defineType(
                                         var el = findElement();
                                         if (!el) return;
                                         el.data.attributes.shape = oldS;
+                                        var bw = el.data.attributes.borderWidth || 5;
+                                        var c = el.data.attributes.color || '#0096ff';
+                                        var br = el.data.attributes.borderRadius || 10;
+                                        applyFn(el, oldS, br, bw, c);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     },
                                     redo: function() {
                                         var el = findElement();
                                         if (!el) return;
                                         el.data.attributes.shape = newS;
+                                        var bw = el.data.attributes.borderWidth || 5;
+                                        var c = el.data.attributes.color || '#0096ff';
+                                        var br = el.data.attributes.borderRadius || 10;
+                                        applyFn(el, newS, br, bw, c);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     }
                                 });
-                            })(elementId, oldShape, newShape, category, self.labels);
+                            })(elementId, oldShape, newShape, category, self.labels, applyShapeChanges);
                         }
                         shapeBeforeChange = newShape;
                     });
@@ -498,7 +512,7 @@ FrameTrail.defineType(
                             var category = isOverlay ? 'overlays' : 'annotations';
                             var elementId = overlayOrAnnotation.data.created;
                             
-                            (function(id, oldC, newC, cat, labels) {
+                            (function(id, oldC, newC, cat, labels, applyFn) {
                                 var findElement = function() {
                                     var arr = cat === 'overlays' ? 
                                         FrameTrail.module('HypervideoModel').overlays : 
@@ -517,16 +531,24 @@ FrameTrail.defineType(
                                         var el = findElement();
                                         if (!el) return;
                                         el.data.attributes.color = oldC;
+                                        var shape = el.data.attributes.shape || 'circle';
+                                        var bw = el.data.attributes.borderWidth || 5;
+                                        var br = el.data.attributes.borderRadius || 10;
+                                        applyFn(el, shape, br, bw, oldC);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     },
                                     redo: function() {
                                         var el = findElement();
                                         if (!el) return;
                                         el.data.attributes.color = newC;
+                                        var shape = el.data.attributes.shape || 'circle';
+                                        var bw = el.data.attributes.borderWidth || 5;
+                                        var br = el.data.attributes.borderRadius || 10;
+                                        applyFn(el, shape, br, bw, newC);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     }
                                 });
-                            })(elementId, colorBeforeChange, newColor, category, self.labels);
+                            })(elementId, colorBeforeChange, newColor, category, self.labels, applyShapeChanges);
                         }
                         colorBeforeChange = newColor;
                     });
@@ -571,7 +593,7 @@ FrameTrail.defineType(
                             var category = isOverlay ? 'overlays' : 'annotations';
                             var elementId = overlayOrAnnotation.data.created;
                             
-                            (function(id, oldW, newW, cat, labels) {
+                            (function(id, oldW, newW, cat, labels, applyFn) {
                                 var findElement = function() {
                                     var arr = cat === 'overlays' ? 
                                         FrameTrail.module('HypervideoModel').overlays : 
@@ -590,16 +612,24 @@ FrameTrail.defineType(
                                         var el = findElement();
                                         if (!el) return;
                                         el.data.attributes.borderWidth = oldW;
+                                        var shape = el.data.attributes.shape || 'circle';
+                                        var br = el.data.attributes.borderRadius || 10;
+                                        var c = el.data.attributes.color || '#0096ff';
+                                        applyFn(el, shape, br, oldW, c);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     },
                                     redo: function() {
                                         var el = findElement();
                                         if (!el) return;
                                         el.data.attributes.borderWidth = newW;
+                                        var shape = el.data.attributes.shape || 'circle';
+                                        var br = el.data.attributes.borderRadius || 10;
+                                        var c = el.data.attributes.color || '#0096ff';
+                                        applyFn(el, shape, br, newW, c);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     }
                                 });
-                            })(elementId, oldWidth, newWidth, category, self.labels);
+                            })(elementId, oldWidth, newWidth, category, self.labels, applyShapeChanges);
                         }
                         borderWidthBeforeChange = newWidth;
                     });
@@ -642,7 +672,7 @@ FrameTrail.defineType(
                             var category = isOverlay ? 'overlays' : 'annotations';
                             var elementId = overlayOrAnnotation.data.created;
                             
-                            (function(id, oldR, newR, cat, labels) {
+                            (function(id, oldR, newR, cat, labels, applyFn) {
                                 var findElement = function() {
                                     var arr = cat === 'overlays' ? 
                                         FrameTrail.module('HypervideoModel').overlays : 
@@ -661,16 +691,24 @@ FrameTrail.defineType(
                                         var el = findElement();
                                         if (!el) return;
                                         el.data.attributes.borderRadius = oldR;
+                                        var shape = el.data.attributes.shape || 'circle';
+                                        var bw = el.data.attributes.borderWidth || 5;
+                                        var c = el.data.attributes.color || '#0096ff';
+                                        applyFn(el, shape, oldR, bw, c);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     },
                                     redo: function() {
                                         var el = findElement();
                                         if (!el) return;
                                         el.data.attributes.borderRadius = newR;
+                                        var shape = el.data.attributes.shape || 'circle';
+                                        var bw = el.data.attributes.borderWidth || 5;
+                                        var c = el.data.attributes.color || '#0096ff';
+                                        applyFn(el, shape, newR, bw, c);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     }
                                 });
-                            })(elementId, oldRadius, newRadius, category, self.labels);
+                            })(elementId, oldRadius, newRadius, category, self.labels, applyShapeChanges);
                         }
                         borderRadiusBeforeChange = newRadius;
                     });
@@ -752,7 +790,7 @@ FrameTrail.defineType(
                             var category = isOverlay ? 'overlays' : 'annotations';
                             var elementId = overlayOrAnnotation.data.created;
                             
-                            (function(id, oldLink, newLnk, cat, labels) {
+                            (function(id, oldLink, newLnk, cat, labels, updateFn) {
                                 var findElement = function() {
                                     var arr = cat === 'overlays' ? 
                                         FrameTrail.module('HypervideoModel').overlays : 
@@ -770,17 +808,17 @@ FrameTrail.defineType(
                                     undo: function() {
                                         var el = findElement();
                                         if (!el) return;
-                                        el.data.attributes.linkUrl = oldLink;
+                                        updateFn(oldLink);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     },
                                     redo: function() {
                                         var el = findElement();
                                         if (!el) return;
-                                        el.data.attributes.linkUrl = newLnk;
+                                        updateFn(newLnk);
                                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                                     }
                                 });
-                            })(elementId, linkBeforeEdit, newLink, category, self.labels);
+                            })(elementId, linkBeforeEdit, newLink, category, self.labels, updateLinkUrl);
                         }
                     });
                     

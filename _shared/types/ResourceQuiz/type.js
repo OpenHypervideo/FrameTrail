@@ -226,7 +226,12 @@ FrameTrail.defineType(
                  */
                 renderQuizEditor: function(overlayOrAnnotation) {
 
+                    var self = this;
                     var currentAttributes = overlayOrAnnotation.data.attributes;
+                    
+                    // Capture snapshot of quiz attributes for undo
+                    var quizAttributesSnapshot = JSON.parse(JSON.stringify(currentAttributes));
+                    var quizChanged = false;
 
                     /* Add Question Text Field */
                     
@@ -582,6 +587,58 @@ FrameTrail.defineType(
 
                     layoutRow.append(leftColumn, rightColumn);
                     quizEditorContainer.append(layoutRow);
+
+                    // Register undo when focus leaves the quiz editor (if changes were made)
+                    quizEditorContainer.on('focusout', function(evt) {
+                        // Only register if focus is leaving the container entirely
+                        var newFocusTarget = evt.relatedTarget;
+                        if (newFocusTarget && $.contains(quizEditorContainer[0], newFocusTarget)) {
+                            return; // Focus is still within the container
+                        }
+                        
+                        // Check if attributes changed by comparing to snapshot
+                        var currentAttrs = JSON.stringify(overlayOrAnnotation.data.attributes);
+                        var snapshotAttrs = JSON.stringify(quizAttributesSnapshot);
+                        
+                        if (currentAttrs !== snapshotAttrs) {
+                            var isOverlay = !!overlayOrAnnotation.overlayElement;
+                            var category = isOverlay ? 'overlays' : 'annotations';
+                            var elementId = overlayOrAnnotation.data.created;
+                            
+                            (function(id, oldAttr, newAttr, cat, labels) {
+                                var findElement = function() {
+                                    var arr = cat === 'overlays' ? 
+                                        FrameTrail.module('HypervideoModel').overlays : 
+                                        FrameTrail.module('HypervideoModel').annotations;
+                                    for (var i = 0; i < arr.length; i++) {
+                                        if (arr[i].data.created === id) {
+                                            return arr[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: cat,
+                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Quiz',
+                                    undo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes = JSON.parse(oldAttr);
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    },
+                                    redo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes = JSON.parse(newAttr);
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    }
+                                });
+                            })(elementId, snapshotAttrs, currentAttrs, category, self.labels);
+                            
+                            // Update snapshot to current state
+                            quizAttributesSnapshot = JSON.parse(currentAttrs);
+                        }
+                    });
 
                     return quizEditorContainer;
 
