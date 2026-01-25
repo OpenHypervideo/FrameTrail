@@ -270,6 +270,7 @@
 .editPropertiesContainer .timeControls .ui-spinner input {
 	width: 34px;
 	overflow: hidden;
+	padding: 0;
 }
 
 .editPropertiesContainer .timeControls label, 

@@ -139,7 +139,7 @@
 	display: none;
 }
 
-.viewResources .resourcesList .resourceThumb, .newHypervideoDialog .newHypervideoDialogResources .resourceThumb, .hypervideoSettingsDialog .videoResourceList .resourceThumb {
+.viewResources .resourcesList .resourceThumb, .videoResourceList .resourceThumb {
 	float: left;
 	position: relative;
 	width: 120px;
@@ -147,7 +147,7 @@
 	margin: 6px;
 }
 
-.viewResources .resourcesList .resourceThumb.selected, .newHypervideoDialog .newHypervideoDialogResources .resourceThumb.selected, .hypervideoSettingsDialog .videoResourceList .resourceThumb.selected {
+.viewResources .resourcesList .resourceThumb.selected, .videoResourceList .resourceThumb.selected {
 	outline: 4px solid #FF9900;
 }
 

@@ -256,46 +256,20 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         var captionsVisible = hypervideo.config && hypervideo.config.captionsVisible && hypervideo.config.captionsVisible.toString() === 'true';
 
         var EditHypervideoForm = $('<form method="POST" class="editHypervideoForm">'
-                                  +'    <div class="message error"></div>'
-                                  + formBuilder.generateBasicInfoSection({
+                                  + formBuilder.generateSettingsRow({
                                         name: hypervideo.name || '',
                                         description: hypervideo.description || '',
-                                        hidden: hypervideo.hidden && hypervideo.hidden.toString() === "true"
-                                    })
-                                  + formBuilder.generateSubtitlesSection({
+                                        hidden: hypervideo.hidden && hypervideo.hidden.toString() === "true",
                                         captionsVisible: captionsVisible,
-                                        showExistingContainer: true
+                                        showExistingSubtitles: true
                                     })
                                   +'    <hr>'
-                                  +'    <div class="videoSourceSection">'
-                                  +'        <div>'+ labels['SettingsVideoSource'] +'</div>'
-                                  +'        <div class="videoSourceSelector">'
-                                  +'            <div class="videoSourceTabs">'
-                                  +'                <ul>'
-                                  +'                    <li><a href="#ChooseNewVideo">'+ labels['SettingsChooseVideo'] +'</a></li>'
-                                  +'                    <li><a href="#SetEmptyVideo">'+ labels['GenericEmptyVideo'] +'</a></li>'
-                                  +'                </ul>'
-                                  +'                <div id="ChooseNewVideo">'
-                                  +'                    <div class="videoResourceList"></div>'
-                                  +'                </div>'
-                                  +'                <div id="SetEmptyVideo">'
-                                  +'                    <div class="emptyVideoDurationInput">'
-                                  +'                        <div class="message active">'+ labels['MessageEmptyVideoSetDuration'] +'</div>'
-                                  +'                        <label>'+ labels['GenericDuration'] +':</label>'
-                                  +'                        <div class="durationInput">'
-                                  +'                            <input type="number" name="new_duration_hours" min="0" max="99" value="'+ (isCanvasVideo ? originalDurationHMS.hours : 0) +'" class="durationHours"> : '
-                                  +'                            <input type="number" name="new_duration_minutes" min="0" max="59" value="'+ (isCanvasVideo ? originalDurationHMS.minutes : 5) +'" class="durationMinutes"> : '
-                                  +'                            <input type="number" name="new_duration_seconds" min="0" max="59" value="'+ (isCanvasVideo ? originalDurationHMS.seconds : 0) +'" class="durationSeconds">'
-                                  +'                            <span class="durationLabel">('+ labels['SettingsDurationHoursMinutesSeconds'] +')</span>'
-                                  +'                        </div>'
-                                  +'                    </div>'
-                                  +'                </div>'
-                                  +'            </div>'
-                                  +'            <input type="hidden" name="newResourceId" value="'+ (originalResourceId || '') +'">'
-                                  +'            <input type="hidden" name="newResourceSrc" value="'+ (originalSrc || '') +'">'
-                                  +'            <input type="hidden" name="newResourceDuration" value="">'
-                                  +'        </div>'
-                                  +'    </div>'
+                                  + formBuilder.generateVideoSourceSection({
+                                        durationHMS: isCanvasVideo ? originalDurationHMS : { hours: 0, minutes: 5, seconds: 0 },
+                                        currentResourceId: originalResourceId || '',
+                                        showUploadButton: true,
+                                        durationInputPrefix: 'new_'
+                                    })
                                   +'    <div class="message error"></div>'
                                   +'</form>');
         

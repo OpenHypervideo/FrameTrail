@@ -69,13 +69,11 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
         var newDialog = $('<div class="newHypervideoDialog" title="'+ labels['HypervideoNew'] +'">'
                         + '    <form class="newHypervideoForm" method="post">'
-                        + formBuilder.generateBasicInfoSection({ hidden: defaultHidden })
-                        + formBuilder.generateSubtitlesSection({ showExistingContainer: false })
+                        + formBuilder.generateSettingsRow({ hidden: defaultHidden })
                         + '        <hr>'
                         + formBuilder.generateVideoSourceSection({ 
-                              isCanvasVideo: false, 
                               durationHMS: { hours: 0, minutes: 0, seconds: 4 },
-                              isEdit: false 
+                              showUploadButton: true
                           })
                         + '        <div class="message error"></div>'
                         + '    </form>'
@@ -84,9 +82,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         // Attach subtitle event handlers using shared module
         formBuilder.attachSubtitleHandlers(newDialog);
 
-
-
-        FrameTrail.module('ResourceManager').renderList(newDialog.find('.newHypervideoDialogResources'), true,
+        // Render video resource list
+        FrameTrail.module('ResourceManager').renderList(newDialog.find('.videoResourceList'), true,
             'type',
             'contains',
             ['video', 'youtube', 'vimeo']
@@ -97,7 +94,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
         // Validation function to check if form is valid
         function validateHypervideoForm() {
-            var activeTab = newDialog.find('.newHypervideoTabs').tabs('option', 'active');
+            var activeTab = newDialog.find('.videoSourceTabs').tabs('option', 'active');
             var isChooseVideoTab = (activeTab === 0); // First tab is ChooseVideo
             var isEmptyVideoTab = (activeTab === 1); // Second tab is EmptyVideo
             
@@ -144,7 +141,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
         });
 
-        newDialog.find('.newHypervideoTabs').tabs({
+        newDialog.find('.videoSourceTabs').tabs({
             activate: function(event, ui) {
                 if ( ui.newPanel.attr('id') == 'EmptyVideo' ) {
                     newDialog.find('input[name="resourcesID"]').prop('disabled',true);
@@ -255,7 +252,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 newDialog.dialog('widget').find('.message.error').removeClass('active').html('');
 
                 if (!validateHypervideoForm()) {
-                    var activeTab = newDialog.find('.newHypervideoTabs').tabs('option', 'active');
+                    var activeTab = newDialog.find('.videoSourceTabs').tabs('option', 'active');
                     var isChooseVideoTab = (activeTab === 0);
                     var isEmptyVideoTab = (activeTab === 1);
                     
@@ -320,10 +317,10 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
             FrameTrail.module('ResourceManager').uploadResource(function(){
 
-                var NewHypervideoDialogResources = newDialog.find('.newHypervideoDialogResources');
-                NewHypervideoDialogResources.empty();
+                var videoResourceList = newDialog.find('.videoResourceList');
+                videoResourceList.empty();
 
-                FrameTrail.module('ResourceManager').renderList(NewHypervideoDialogResources, true,
+                FrameTrail.module('ResourceManager').renderList(videoResourceList, true,
                     'type',
                     'contains',
                     'video'

@@ -102,7 +102,7 @@ button.active, input[type="submit"].active, input[type="button"].active, .button
     color: var(--primary-fg-color);
 }
 
-input[type="text"], input[type="password"], textarea {
+input[type="text"], input[type="password"], textarea, input[type="number"] {
 	font-family: TitilliumWeb,"Helvetica Neue",Helvetica,Arial,sans-serif;
 	font-size: 14px;
 	margin: 4px 8px 4px 0;
@@ -110,7 +110,6 @@ input[type="text"], input[type="password"], textarea {
     border: 2px solid var(--semi-transparent-bg-color);
     background: var(--primary-fg-color);
     color: var(--primary-bg-color);
-    width: 155px;
 }
 
 input[type="text"]:focus, input[type="password"]:focus, textarea:focus {
@@ -1216,4 +1215,17 @@ input:checked + .slider:before {
     pointer-events: none;
     font-size: 14px;
     color: #666;
+}
+
+/* Shared Duration Input Styles */
+.durationInput {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.durationInput .durationLabel {
+    margin-left: 10px;
+    opacity: 0.7;
+    font-size: 12px;
 }

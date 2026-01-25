@@ -47,56 +47,53 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
     }
 
     /**
-     * Generate the basic info section HTML (name, hidden, description)
-     * @method generateBasicInfoSection
-     * @param {Object} values - { name: '', description: '', hidden: false }
+     * Generate the settings row HTML (basic info + subtitles in one row)
+     * @method generateSettingsRow
+     * @param {Object} options - {
+     *   name: '',
+     *   description: '',
+     *   hidden: false,
+     *   captionsVisible: false,
+     *   showExistingSubtitles: false
+     * }
      * @return {String} HTML string
      */
-    function generateBasicInfoSection(values) {
-        var labels = getLabels();
-        values = values || {};
-        var name = values.name || '';
-        var description = values.description || '';
-        var hidden = values.hidden || false;
-
-        return '<div class="layoutRow">'
-             + '    <div class="column-3">'
-             + '        <label for="name">'+ labels['SettingsHypervideoName'] +'</label>'
-             + '        <input type="text" name="name" placeholder="'+ labels['SettingsHypervideoName'] +'" value="'+ name +'"><br>'
-             + '        <input type="checkbox" name="hidden" id="hypervideo_hidden" value="hidden" '+ (hidden ? 'checked' : '') +'>'
-             + '        <label for="hypervideo_hidden">'+ labels['SettingsHiddenFromOtherUsers'] +'</label>'
-             + '    </div>'
-             + '    <div class="column-3">'
-             + '        <label for="description">'+ labels['GenericDescription'] +'</label>'
-             + '        <textarea name="description" placeholder="'+ labels['GenericDescription'] +'">'+ description +'</textarea><br>'
-             + '    </div>'
-             + '</div>';
-    }
-
-    /**
-     * Generate the subtitles section HTML
-     * @method generateSubtitlesSection
-     * @param {Object} options - { captionsVisible: false, showExistingContainer: true }
-     * @return {String} HTML string
-     */
-    function generateSubtitlesSection(options) {
+    function generateSettingsRow(options) {
         var labels = getLabels();
         options = options || {};
+        var name = options.name || '';
+        var description = options.description || '';
+        var hidden = options.hidden || false;
         var captionsVisible = options.captionsVisible || false;
-        var showExistingContainer = options.showExistingContainer !== false;
+        var showExistingSubtitles = options.showExistingSubtitles || false;
 
-        var html = '<div class="column-6">'
-                 + '    <div class="subtitlesSettingsWrapper">'
-                 + '        <div>'+ labels['GenericSubtitles'] +' ('+ labels['MessageSubtitlesAlsoUsedForInteractiveTranscripts'] +')</div>'
-                 + '        <button class="subtitlesPlus" type="button">'+ labels['GenericAdd'] +' <span class="icon-plus"></span></button>'
-                 + '        <input type="checkbox" name="config[captionsVisible]" id="captionsVisible" value="true" '+ (captionsVisible ? 'checked' : '') +'>'
-                 + '        <label for="captionsVisible">'+ labels['SettingsSubtitlesShowByDefault'] +'</label>';
+        var html = '<div class="layoutRow">'
+                 // Column 1: Name & Hidden
+                 + '    <div class="column-3">'
+                 + '        <label for="name">'+ labels['SettingsHypervideoName'] +'</label>'
+                 + '        <input type="text" name="name" placeholder="'+ labels['SettingsHypervideoName'] +'" value="'+ name +'"><br>'
+                 + '        <input type="checkbox" name="hidden" id="hypervideo_hidden" value="hidden" '+ (hidden ? 'checked' : '') +'>'
+                 + '        <label for="hypervideo_hidden">'+ labels['SettingsHiddenFromOtherUsers'] +'</label>'
+                 + '    </div>'
+                 // Column 2: Description
+                 + '    <div class="column-3">'
+                 + '        <label for="description">'+ labels['GenericDescription'] +'</label>'
+                 + '        <textarea name="description" placeholder="'+ labels['GenericDescription'] +'">'+ description +'</textarea><br>'
+                 + '    </div>'
+                 // Column 3: Subtitles
+                 + '    <div class="column-6">'
+                 + '        <div class="subtitlesSettingsWrapper">'
+                 + '            <div>'+ labels['GenericSubtitles'] +' ('+ labels['MessageSubtitlesAlsoUsedForInteractiveTranscripts'] +')</div>'
+                 + '            <button class="subtitlesPlus" type="button">'+ labels['GenericAdd'] +' <span class="icon-plus"></span></button>'
+                 + '            <input type="checkbox" name="config[captionsVisible]" id="captionsVisible" value="true" '+ (captionsVisible ? 'checked' : '') +'>'
+                 + '            <label for="captionsVisible">'+ labels['SettingsSubtitlesShowByDefault'] +'</label>';
 
-        if (showExistingContainer) {
-            html += '        <div class="existingSubtitlesContainer"></div>';
+        if (showExistingSubtitles) {
+            html += '            <div class="existingSubtitlesContainer"></div>';
         }
 
-        html += '        <div class="newSubtitlesContainer"></div>'
+        html += '            <div class="newSubtitlesContainer"></div>'
+              + '        </div>'
               + '    </div>'
               + '</div>';
 
@@ -107,71 +104,51 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
      * Generate the video source section HTML
      * @method generateVideoSourceSection
      * @param {Object} options - { 
-     *   isCanvasVideo: false, 
      *   durationHMS: { hours: 0, minutes: 0, seconds: 4 },
      *   currentResourceId: null,
      *   currentSrc: null,
-     *   isEdit: false,
-     *   inputPrefix: '' // 'new_' for edit dialog
+     *   showUploadButton: true,
+     *   durationInputPrefix: ''  // Use 'new_' for edit dialog
      * }
      * @return {String} HTML string
      */
     function generateVideoSourceSection(options) {
         var labels = getLabels();
         options = options || {};
-        var isCanvasVideo = options.isCanvasVideo || false;
         var durationHMS = options.durationHMS || { hours: 0, minutes: 0, seconds: 4 };
         var currentResourceId = options.currentResourceId || '';
         var currentSrc = options.currentSrc || '';
-        var isEdit = options.isEdit || false;
-        var inputPrefix = options.inputPrefix || '';
+        var showUploadButton = options.showUploadButton !== false;
+        var durationInputPrefix = options.durationInputPrefix || '';
 
-        var chooseTabId = isEdit ? 'ChooseNewVideo' : 'ChooseVideo';
-        var emptyTabId = isEdit ? 'SetEmptyVideo' : 'EmptyVideo';
-        var tabsClass = isEdit ? 'videoSourceTabs' : 'newHypervideoTabs';
-        var resourceListClass = isEdit ? 'videoResourceList' : 'newHypervideoDialogResources';
+        var html = '<div class="videoSourceSection">'
+                 + '    <div>'+ labels['SettingsVideoSource'] +'</div>'
+                 + '    <div class="videoSourceTabs">'
+                 + '        <ul>'
+                 + '            <li><a href="#ChooseVideo">'+ labels['SettingsChooseVideo'] +'</a></li>'
+                 + '            <li><a href="#EmptyVideo">'+ labels['GenericEmptyVideo'] +'</a></li>'
+                 + '        </ul>'
+                 + '        <div id="ChooseVideo">';
 
-        var html = '';
-
-        if (isEdit) {
-            html += '<div class="videoSourceSection">'
-                  + '    <div>'+ labels['SettingsVideoSource'] +'</div>'
-                  + '    <div class="videoSourceSelector">';
+        if (showUploadButton) {
+            html += '            <button type="button" class="uploadNewVideoResource">'+ labels['ResourceUploadVideo'] +'</button>';
         }
 
-        html += '<div class="'+ tabsClass +'">'
-              + '    <ul>'
-              + '        <li><a href="#'+ chooseTabId +'">'+ labels['SettingsChooseVideo'] +'</a></li>'
-              + '        <li><a href="#'+ emptyTabId +'">'+ labels['GenericEmptyVideo'] +'</a></li>'
-              + '    </ul>'
-              + '    <div id="'+ chooseTabId +'">';
-
-        if (!isEdit) {
-            html += '        <button type="button" class="uploadNewVideoResource">'+ labels['ResourceUploadVideo'] +'</button>';
-        }
-
-        html += '        <div class="'+ resourceListClass +'"></div>'
-              + '        <input type="hidden" name="'+ inputPrefix +'resourcesID">'
-              + '    </div>'
-              + '    <div id="'+ emptyTabId +'">'
-              + '        <div class="message active">'+ labels['MessageEmptyVideoSetDuration'] +'</div>'
-              + '        <label>'+ labels['GenericDuration'] +':</label>'
-              + '        <div class="durationInput">'
-              + '            <input type="number" name="'+ inputPrefix +'duration_hours" min="0" max="99" value="'+ durationHMS.hours +'" class="durationHours"> : '
-              + '            <input type="number" name="'+ inputPrefix +'duration_minutes" min="0" max="59" value="'+ durationHMS.minutes +'" class="durationMinutes"> : '
-              + '            <input type="number" name="'+ inputPrefix +'duration_seconds" min="0" max="59" value="'+ durationHMS.seconds +'" class="durationSeconds">'
-              + '            <span class="durationLabel">('+ labels['SettingsDurationHoursMinutesSeconds'] +')</span>'
+        html += '            <div class="videoResourceList"></div>'
+              + '            <input type="hidden" name="resourcesID" value="'+ currentResourceId +'">'
+              + '        </div>'
+              + '        <div id="EmptyVideo">'
+              + '            <div class="message active">'+ labels['MessageEmptyVideoSetDuration'] +'</div>'
+              + '            <label>'+ labels['GenericDuration'] +':</label>'
+              + '            <div class="durationInput">'
+              + '                <input type="number" name="'+ durationInputPrefix +'duration_hours" min="0" max="99" value="'+ durationHMS.hours +'" class="durationHours"> : '
+              + '                <input type="number" name="'+ durationInputPrefix +'duration_minutes" min="0" max="59" value="'+ durationHMS.minutes +'" class="durationMinutes"> : '
+              + '                <input type="number" name="'+ durationInputPrefix +'duration_seconds" min="0" max="59" value="'+ durationHMS.seconds +'" class="durationSeconds">'
+              + '                <span class="durationLabel">('+ labels['SettingsDurationHoursMinutesSeconds'] +')</span>'
+              + '            </div>'
               + '        </div>'
               + '    </div>'
               + '</div>';
-
-        if (isEdit) {
-            html += '        <input type="hidden" name="newResourceId" value="'+ currentResourceId +'">'
-                  + '        <input type="hidden" name="newResourceSrc" value="'+ currentSrc +'">'
-                  + '        <input type="hidden" name="newResourceDuration" value="">'
-                  + '    </div>'
-                  + '</div>';
-        }
 
         return html;
     }
@@ -327,22 +304,45 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
         return subtitles;
     }
 
+    /**
+     * Initialize video source tabs with jQuery UI
+     * @method initVideoSourceTabs
+     * @param {jQuery} formElement - The form jQuery element
+     * @param {Boolean} isCanvasVideo - Whether current video is a canvas/empty video
+     * @param {Function} onTabChange - Optional callback when tab changes
+     */
+    function initVideoSourceTabs(formElement, isCanvasVideo, onTabChange) {
+        formElement.find('.videoSourceTabs').tabs({
+            active: isCanvasVideo ? 1 : 0,
+            activate: function(event, ui) {
+                if (ui.newPanel.attr('id') === 'EmptyVideo') {
+                    formElement.find('input[name="resourcesID"]').prop('disabled', true);
+                    formElement.find('.durationInput input').prop('disabled', false);
+                    formElement.find('.resourceThumb').removeClass('selected');
+                } else {
+                    formElement.find('input[name="resourcesID"]').prop('disabled', false);
+                    formElement.find('.durationInput input').prop('disabled', true);
+                }
+                if (onTabChange) onTabChange(event, ui);
+            }
+        });
+    }
+
     // Export public interface
     return {
 
         secondsToHMS: secondsToHMS,
         hmsToSeconds: hmsToSeconds,
 
-        generateBasicInfoSection: generateBasicInfoSection,
-        generateSubtitlesSection: generateSubtitlesSection,
+        generateSettingsRow: generateSettingsRow,
         generateVideoSourceSection: generateVideoSourceSection,
 
-        generateLanguageOptions: generateLanguageOptions,
         createSubtitleItem: createSubtitleItem,
         attachSubtitleHandlers: attachSubtitleHandlers,
         populateExistingSubtitles: populateExistingSubtitles,
         validateSubtitles: validateSubtitles,
-        extractSubtitleData: extractSubtitleData
+        extractSubtitleData: extractSubtitleData,
+        initVideoSourceTabs: initVideoSourceTabs
 
     };
 
