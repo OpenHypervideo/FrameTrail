@@ -138,7 +138,8 @@ FrameTrail.defineType(
                  */
                 renderBasicPropertiesControls: function(overlay) {
 
-                    var controlsContainer = $('<div class="controlsWrapper"></div>'),
+                    var self = this,
+                        controlsContainer = $('<div class="controlsWrapper"></div>'),
                         manualInputMode   = true,
                         defaultControls   = $('<div class="timeControls">'
                         					+ '    <div class="propertiesTypeIcon" data-type="' + overlay.data.type + '"><span class="icon-doc-inv"></span></div>'
@@ -335,6 +336,55 @@ FrameTrail.defineType(
                                 });
                             }
 
+                        }
+                    });
+
+                    // Add undo support for time spinners
+                    var timeBeforeEdit = {};
+                    controlsContainer.find('#TimeStart, #TimeEnd').on('focus', function() {
+                        timeBeforeEdit = {
+                            start: overlay.data.start,
+                            end: overlay.data.end
+                        };
+                    }).on('blur', function() {
+                        if (timeBeforeEdit.start !== overlay.data.start ||
+                            timeBeforeEdit.end !== overlay.data.end) {
+                            (function(overlayId, oldTime, newTime, labels) {
+                                var findOverlay = function() {
+                                    var overlays = FrameTrail.module('HypervideoModel').overlays;
+                                    for (var i = 0; i < overlays.length; i++) {
+                                        if (overlays[i].data.created === overlayId) {
+                                            return overlays[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: 'overlays',
+                                    description: labels['SidebarOverlays'] + ' Time',
+                                    undo: function() {
+                                        var o = findOverlay();
+                                        if (!o) return;
+                                        o.data.start = oldTime.start;
+                                        o.data.end = oldTime.end;
+                                        o.updateTimelineElement();
+                                        FrameTrail.module('OverlaysController').stackTimelineView();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                    },
+                                    redo: function() {
+                                        var o = findOverlay();
+                                        if (!o) return;
+                                        o.data.start = newTime.start;
+                                        o.data.end = newTime.end;
+                                        o.updateTimelineElement();
+                                        FrameTrail.module('OverlaysController').stackTimelineView();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                    }
+                                });
+                            })(overlay.data.created, 
+                               JSON.parse(JSON.stringify(timeBeforeEdit)), 
+                               { start: overlay.data.start, end: overlay.data.end }, 
+                               self.labels);
                         }
                     });
 
@@ -550,6 +600,63 @@ FrameTrail.defineType(
                         }
                     });
 
+                    // Add undo support for position spinners
+                    var positionBeforeEdit = {};
+                    controlsContainer.find('.positionTop, .positionLeft, .positionWidth, .positionHeight').on('focus', function() {
+                        positionBeforeEdit = {
+                            top: overlay.data.position.top,
+                            left: overlay.data.position.left,
+                            width: overlay.data.position.width,
+                            height: overlay.data.position.height
+                        };
+                    }).on('blur', function() {
+                        var currentPosition = overlay.data.position;
+                        if (positionBeforeEdit.top !== currentPosition.top ||
+                            positionBeforeEdit.left !== currentPosition.left ||
+                            positionBeforeEdit.width !== currentPosition.width ||
+                            positionBeforeEdit.height !== currentPosition.height) {
+                            (function(overlayId, oldPos, newPos, labels) {
+                                var findOverlay = function() {
+                                    var overlays = FrameTrail.module('HypervideoModel').overlays;
+                                    for (var i = 0; i < overlays.length; i++) {
+                                        if (overlays[i].data.created === overlayId) {
+                                            return overlays[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: 'overlays',
+                                    description: labels['SidebarOverlays'] + ' Position',
+                                    undo: function() {
+                                        var o = findOverlay();
+                                        if (!o) return;
+                                        o.data.position.top = oldPos.top;
+                                        o.data.position.left = oldPos.left;
+                                        o.data.position.width = oldPos.width;
+                                        o.data.position.height = oldPos.height;
+                                        o.updateOverlayElement();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                    },
+                                    redo: function() {
+                                        var o = findOverlay();
+                                        if (!o) return;
+                                        o.data.position.top = newPos.top;
+                                        o.data.position.left = newPos.left;
+                                        o.data.position.width = newPos.width;
+                                        o.data.position.height = newPos.height;
+                                        o.updateOverlayElement();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                    }
+                                });
+                            })(overlay.data.created, 
+                               JSON.parse(JSON.stringify(positionBeforeEdit)), 
+                               JSON.parse(JSON.stringify(currentPosition)), 
+                               self.labels);
+                        }
+                    });
+
+                    var opacityBeforeSlide;
                     controlsContainer.find('.opacitySlider').slider({
                         value: (overlay.data.attributes.opacity || 1),
                         step: 0.01,
@@ -563,6 +670,9 @@ FrameTrail.defineType(
                                 overlay.data.attributes = {};
                             }
                         },
+                        start: function(evt, ui) {
+                            opacityBeforeSlide = overlay.data.attributes.opacity || 1;
+                        },
                         slide:  function(evt, ui) {
 
                             overlay.data.attributes.opacity = ui.value;
@@ -571,6 +681,39 @@ FrameTrail.defineType(
 
                             FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 
+                        },
+                        stop: function(evt, ui) {
+                            if (opacityBeforeSlide !== ui.value) {
+                                (function(overlayId, oldOpacity, newOpacity, labels) {
+                                    var findOverlay = function() {
+                                        var overlays = FrameTrail.module('HypervideoModel').overlays;
+                                        for (var i = 0; i < overlays.length; i++) {
+                                            if (overlays[i].data.created === overlayId) {
+                                                return overlays[i];
+                                            }
+                                        }
+                                        return null;
+                                    };
+                                    FrameTrail.module('UndoManager').register({
+                                        category: 'overlays',
+                                        description: labels['SidebarOverlays'] + ' ' + labels['SettingsOpacity'],
+                                        undo: function() {
+                                            var o = findOverlay();
+                                            if (!o) return;
+                                            o.data.attributes.opacity = oldOpacity;
+                                            o.updateOverlayElement();
+                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                        },
+                                        redo: function() {
+                                            var o = findOverlay();
+                                            if (!o) return;
+                                            o.data.attributes.opacity = newOpacity;
+                                            o.updateOverlayElement();
+                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                        }
+                                    });
+                                })(overlay.data.created, opacityBeforeSlide, ui.value, self.labels);
+                            }
                         }
                     });
 
@@ -605,15 +748,66 @@ FrameTrail.defineType(
                                 tabSize: 2,
                                 theme: 'hopscotch'
                             });
+                        
+                        // Track changes for undo
+                        codeEditor._eventCodeBeforeEdit = null;
+                        codeEditor._eventCodeChanged = false;
+                        
+                        codeEditor.on('focus', function(instance) {
+                            var thisTextarea = $(instance.getTextArea());
+                            instance._eventCodeBeforeEdit = overlay.data.events[thisTextarea.data('eventname')] || '';
+                            instance._eventCodeChanged = false;
+                        });
+                        
                         codeEditor.on('change', function(instance, changeObj) {
 
                             var thisTextarea = $(instance.getTextArea());
 
                             overlay.data.events[thisTextarea.data('eventname')] = instance.getValue();
                             thisTextarea.val(instance.getValue());
+                            instance._eventCodeChanged = true;
 
                             FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
                         });
+                        
+                        codeEditor.on('blur', function(instance) {
+                            var thisTextarea = $(instance.getTextArea());
+                            var eventName = thisTextarea.data('eventname');
+                            var newValue = instance.getValue();
+                            
+                            if (instance._eventCodeChanged && instance._eventCodeBeforeEdit !== newValue) {
+                                (function(overlayId, evtName, oldCode, newCode, labels) {
+                                    var findOverlay = function() {
+                                        var overlays = FrameTrail.module('HypervideoModel').overlays;
+                                        for (var i = 0; i < overlays.length; i++) {
+                                            if (overlays[i].data.created === overlayId) {
+                                                return overlays[i];
+                                            }
+                                        }
+                                        return null;
+                                    };
+                                    FrameTrail.module('UndoManager').register({
+                                        category: 'overlays',
+                                        description: labels['SidebarOverlays'] + ' ' + labels['SettingsActions'],
+                                        undo: function() {
+                                            var o = findOverlay();
+                                            if (!o) return;
+                                            o.data.events[evtName] = oldCode;
+                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                        },
+                                        redo: function() {
+                                            var o = findOverlay();
+                                            if (!o) return;
+                                            o.data.events[evtName] = newCode;
+                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                        }
+                                    });
+                                })(overlay.data.created, eventName, instance._eventCodeBeforeEdit, newValue, self.labels);
+                            }
+                            instance._eventCodeBeforeEdit = null;
+                            instance._eventCodeChanged = false;
+                        });
+                        
                         codeEditor.setSize(null, 'calc(100% - 40px)');
                     }
 
@@ -682,7 +876,8 @@ FrameTrail.defineType(
                  */
                 renderBasicTimeControls: function(annotation) {
 
-                    var controlsContainer = $('<div class="controlsWrapper"></div>'),
+                    var self = this,
+                        controlsContainer = $('<div class="controlsWrapper"></div>'),
                         manualInputMode   = true,
                         defaultControls   = $('<div class="timeControls">'
                                             + '    <div class="propertiesTypeIcon" data-type="' + annotation.data.type + '"><span class="icon-doc-inv"></span></div>'
@@ -750,12 +945,47 @@ FrameTrail.defineType(
                             deleteButton.click(function() {
 
                                 // Delete tag
-                                annotation.data.tags.splice(annotation.data.tags.indexOf($(this).parent().attr('data-tag')), 1);
+                                var tagToRemove = $(this).parent().attr('data-tag');
+                                annotation.data.tags.splice(annotation.data.tags.indexOf(tagToRemove), 1);
                                 updateExistingTags();
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
 
                                 FrameTrail.module('ViewLayout').updateManagedContent();
                                 FrameTrail.module('ViewLayout').updateContentInContentViews();
+
+                                // Register undo for tag removal
+                                (function(annotationId, removedTag, labels) {
+                                    var findAnnotation = function() {
+                                        var annotations = FrameTrail.module('HypervideoModel').annotations;
+                                        for (var i = 0; i < annotations.length; i++) {
+                                            if (annotations[i].data.created === annotationId) {
+                                                return annotations[i];
+                                            }
+                                        }
+                                        return null;
+                                    };
+                                    FrameTrail.module('UndoManager').register({
+                                        category: 'annotations',
+                                        description: labels['SidebarMyAnnotations'] + ' Tag',
+                                        undo: function() {
+                                            var a = findAnnotation();
+                                            if (!a) return;
+                                            a.data.tags.push(removedTag);
+                                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                            FrameTrail.module('ViewLayout').updateManagedContent();
+                                            FrameTrail.module('ViewLayout').updateContentInContentViews();
+                                        },
+                                        redo: function() {
+                                            var a = findAnnotation();
+                                            if (!a) return;
+                                            var idx = a.data.tags.indexOf(removedTag);
+                                            if (idx !== -1) a.data.tags.splice(idx, 1);
+                                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                            FrameTrail.module('ViewLayout').updateManagedContent();
+                                            FrameTrail.module('ViewLayout').updateContentInContentViews();
+                                        }
+                                    });
+                                })(annotation.data.created, tagToRemove, self.labels);
 
                             });
                             tagItem.append(deleteButton);
@@ -778,12 +1008,47 @@ FrameTrail.defineType(
                             tagItem.click(function() {
 
                                 // Add tag
-                                annotation.data.tags.push( $(this).attr('data-tag') );
+                                var tagToAdd = $(this).attr('data-tag');
+                                annotation.data.tags.push(tagToAdd);
                                 updateExistingTags();
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
 
                                 FrameTrail.module('ViewLayout').updateManagedContent();
                                 FrameTrail.module('ViewLayout').updateContentInContentViews();
+
+                                // Register undo for tag addition
+                                (function(annotationId, addedTag, labels) {
+                                    var findAnnotation = function() {
+                                        var annotations = FrameTrail.module('HypervideoModel').annotations;
+                                        for (var i = 0; i < annotations.length; i++) {
+                                            if (annotations[i].data.created === annotationId) {
+                                                return annotations[i];
+                                            }
+                                        }
+                                        return null;
+                                    };
+                                    FrameTrail.module('UndoManager').register({
+                                        category: 'annotations',
+                                        description: labels['SidebarMyAnnotations'] + ' Tag',
+                                        undo: function() {
+                                            var a = findAnnotation();
+                                            if (!a) return;
+                                            var idx = a.data.tags.indexOf(addedTag);
+                                            if (idx !== -1) a.data.tags.splice(idx, 1);
+                                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                            FrameTrail.module('ViewLayout').updateManagedContent();
+                                            FrameTrail.module('ViewLayout').updateContentInContentViews();
+                                        },
+                                        redo: function() {
+                                            var a = findAnnotation();
+                                            if (!a) return;
+                                            a.data.tags.push(addedTag);
+                                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                            FrameTrail.module('ViewLayout').updateManagedContent();
+                                            FrameTrail.module('ViewLayout').updateContentInContentViews();
+                                        }
+                                    });
+                                })(annotation.data.created, tagToAdd, self.labels);
 
                             });
                             tagManagementUI.find('.newTagButton .contextSelectList').append(tagItem);
@@ -910,6 +1175,55 @@ FrameTrail.defineType(
                                 });
                             }
 
+                        }
+                    });
+
+                    // Add undo support for annotation time spinners
+                    var annotationTimeBeforeEdit = {};
+                    controlsContainer.find('#TimeStart, #TimeEnd').on('focus', function() {
+                        annotationTimeBeforeEdit = {
+                            start: annotation.data.start,
+                            end: annotation.data.end
+                        };
+                    }).on('blur', function() {
+                        if (annotationTimeBeforeEdit.start !== annotation.data.start ||
+                            annotationTimeBeforeEdit.end !== annotation.data.end) {
+                            (function(annotationId, oldTime, newTime, labels) {
+                                var findAnnotation = function() {
+                                    var annotations = FrameTrail.module('HypervideoModel').annotations;
+                                    for (var i = 0; i < annotations.length; i++) {
+                                        if (annotations[i].data.created === annotationId) {
+                                            return annotations[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: 'annotations',
+                                    description: labels['SidebarMyAnnotations'] + ' Time',
+                                    undo: function() {
+                                        var a = findAnnotation();
+                                        if (!a) return;
+                                        a.data.start = oldTime.start;
+                                        a.data.end = oldTime.end;
+                                        a.updateTimelineElement();
+                                        FrameTrail.module('AnnotationsController').stackTimelineView();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                    },
+                                    redo: function() {
+                                        var a = findAnnotation();
+                                        if (!a) return;
+                                        a.data.start = newTime.start;
+                                        a.data.end = newTime.end;
+                                        a.updateTimelineElement();
+                                        FrameTrail.module('AnnotationsController').stackTimelineView();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                    }
+                                });
+                            })(annotation.data.created, 
+                               JSON.parse(JSON.stringify(annotationTimeBeforeEdit)), 
+                               { start: annotation.data.start, end: annotation.data.end }, 
+                               self.labels);
                         }
                     });
 

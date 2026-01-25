@@ -172,6 +172,8 @@ FrameTrail.defineType(
                  */
                 renderTextEditors: function(overlayOrAnnotation) {
 
+                    var self = this;
+                    
                     delete window.editor;
                     delete window.htmlCodeEditor;
                     delete window.oldTextContent;
@@ -284,6 +286,9 @@ FrameTrail.defineType(
                         var thisTextarea = $(instance.getTextArea());
 
                         thisTextarea.val(instance.getValue());
+                        
+                        // Track change for undo
+                        instance._textChanged = true;
 
                         if (window.editor && changeObj.origin != 'setValue') {
                             window.editor.setValue(instance.getValue());
@@ -375,6 +380,57 @@ FrameTrail.defineType(
 
 
                     });
+                    
+                    // Track text content for undo
+                    window.htmlCodeEditor._textBeforeEdit = overlayOrAnnotation.data.attributes.text || '';
+                    window.htmlCodeEditor._textChanged = false;
+                    
+                    window.htmlCodeEditor.on('focus', function(instance) {
+                        instance._textBeforeEdit = overlayOrAnnotation.data.attributes.text || '';
+                        instance._textChanged = false;
+                    });
+                    
+                    window.htmlCodeEditor.on('blur', function(instance) {
+                        var newText = overlayOrAnnotation.data.attributes.text || '';
+                        if (instance._textChanged && instance._textBeforeEdit !== newText) {
+                            var isOverlay = !!overlayOrAnnotation.overlayElement;
+                            var category = isOverlay ? 'overlays' : 'annotations';
+                            var elementId = overlayOrAnnotation.data.created;
+                            
+                            (function(id, oldText, newTxt, cat, labels) {
+                                var findElement = function() {
+                                    var arr = cat === 'overlays' ? 
+                                        FrameTrail.module('HypervideoModel').overlays : 
+                                        FrameTrail.module('HypervideoModel').annotations;
+                                    for (var i = 0; i < arr.length; i++) {
+                                        if (arr[i].data.created === id) {
+                                            return arr[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: cat,
+                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Text',
+                                    undo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.text = oldText;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    },
+                                    redo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.text = newTxt;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    }
+                                });
+                            })(elementId, instance._textBeforeEdit, newText, category, self.labels);
+                        }
+                        instance._textBeforeEdit = null;
+                        instance._textChanged = false;
+                    });
+                    
                     window.htmlCodeEditor.setSize(null, '100%');
 
                     /* Init WYSIHTML5 Visual Editor */

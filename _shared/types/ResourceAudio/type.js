@@ -142,7 +142,9 @@ FrameTrail.defineType(
                                         +  '    <span class="slider round"></span>'
                                         +  '</label>');
 
+                    var self = this;
                     syncedCheckbox.find('input[type="checkbox"]').on('change', function () {
+                        var wasChecked = !this.checked; // opposite of current state
                         if (this.checked) {
                             overlay.data.attributes.autoPlay = true;
                             overlay.syncedMedia = true;
@@ -154,6 +156,39 @@ FrameTrail.defineType(
                         }
 
                         FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        
+                        // Register undo for autoPlay toggle
+                        (function(overlayId, oldVal, newVal, labels) {
+                            var findOverlay = function() {
+                                var overlays = FrameTrail.module('HypervideoModel').overlays;
+                                for (var i = 0; i < overlays.length; i++) {
+                                    if (overlays[i].data.created === overlayId) {
+                                        return overlays[i];
+                                    }
+                                }
+                                return null;
+                            };
+                            FrameTrail.module('UndoManager').register({
+                                category: 'overlays',
+                                description: labels['SidebarOverlays'] + ' ' + labels['SettingsSynchronization'],
+                                undo: function() {
+                                    var o = findOverlay();
+                                    if (!o) return;
+                                    o.data.attributes.autoPlay = oldVal;
+                                    o.syncedMedia = oldVal;
+                                    o.setSyncedMedia(oldVal);
+                                    FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                },
+                                redo: function() {
+                                    var o = findOverlay();
+                                    if (!o) return;
+                                    o.data.attributes.autoPlay = newVal;
+                                    o.syncedMedia = newVal;
+                                    o.setSyncedMedia(newVal);
+                                    FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                }
+                            });
+                        })(overlay.data.created, wasChecked, this.checked, self.labels);
                     });
 
                     checkboxRow.append(syncedCheckbox, syncedLabel);

@@ -356,8 +356,14 @@ FrameTrail.defineType(
                     shapeSelect.append('<option value="rectangle"' + (currentAttributes.shape === 'rectangle' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeRectangle'] +'</option>');
                     shapeSelect.append('<option value="rounded"' + (currentAttributes.shape === 'rounded' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeRounded'] +'</option>');
                     
+                    var shapeBeforeChange = currentAttributes.shape || 'circle';
+                    shapeSelect.on('focus', function() {
+                        shapeBeforeChange = overlayOrAnnotation.data.attributes.shape || 'circle';
+                    });
+                    
                     shapeSelect.on('change', function() {
                         var newShape = $(this).val();
+                        var oldShape = shapeBeforeChange;
                         overlayOrAnnotation.data.attributes.shape = newShape;
                         
                         // Show/hide border radius column based on shape
@@ -371,6 +377,44 @@ FrameTrail.defineType(
                         var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
                         var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
                         applyShapeChanges(overlayOrAnnotation, newShape, overlayOrAnnotation.data.attributes.borderRadius, borderWidth, color);
+                        
+                        // Register undo for shape change
+                        if (oldShape !== newShape) {
+                            var isOverlay = !!overlayOrAnnotation.overlayElement;
+                            var category = isOverlay ? 'overlays' : 'annotations';
+                            var elementId = overlayOrAnnotation.data.created;
+                            
+                            (function(id, oldS, newS, cat, labels) {
+                                var findElement = function() {
+                                    var arr = cat === 'overlays' ? 
+                                        FrameTrail.module('HypervideoModel').overlays : 
+                                        FrameTrail.module('HypervideoModel').annotations;
+                                    for (var i = 0; i < arr.length; i++) {
+                                        if (arr[i].data.created === id) {
+                                            return arr[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: cat,
+                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Shape',
+                                    undo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.shape = oldS;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    },
+                                    redo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.shape = newS;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    }
+                                });
+                            })(elementId, oldShape, newShape, category, self.labels);
+                        }
+                        shapeBeforeChange = newShape;
                     });
                     
                     shapeColumn.append(shapeSelect);
@@ -433,6 +477,11 @@ FrameTrail.defineType(
                     };
 
                     // Update color in real-time as user interacts with picker
+                    var colorBeforeChange = currentAttributes.color || '#0096ff';
+                    colorInput.on('focus', function() {
+                        colorBeforeChange = overlayOrAnnotation.data.attributes.color || '#0096ff';
+                    });
+                    
                     colorInput.on('input', function() {
                         var newColor = $(this).val();
                         updateColor(newColor, false);
@@ -442,6 +491,44 @@ FrameTrail.defineType(
                     colorInput.on('change', function() {
                         var newColor = $(this).val();
                         updateColor(newColor, true);
+                        
+                        // Register undo for color change
+                        if (colorBeforeChange !== newColor) {
+                            var isOverlay = !!overlayOrAnnotation.overlayElement;
+                            var category = isOverlay ? 'overlays' : 'annotations';
+                            var elementId = overlayOrAnnotation.data.created;
+                            
+                            (function(id, oldC, newC, cat, labels) {
+                                var findElement = function() {
+                                    var arr = cat === 'overlays' ? 
+                                        FrameTrail.module('HypervideoModel').overlays : 
+                                        FrameTrail.module('HypervideoModel').annotations;
+                                    for (var i = 0; i < arr.length; i++) {
+                                        if (arr[i].data.created === id) {
+                                            return arr[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: cat,
+                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Color',
+                                    undo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.color = oldC;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    },
+                                    redo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.color = newC;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    }
+                                });
+                            })(elementId, colorBeforeChange, newColor, category, self.labels);
+                        }
+                        colorBeforeChange = newColor;
                     });
 
                     colorColumn.append(colorInput);
@@ -457,11 +544,17 @@ FrameTrail.defineType(
                     var borderWidthWrapper = $('<div class="innerSizeWrapper"></div>');
                     borderWidthWrapper.append(borderWidthInput, borderWidthLabel);
 
+                    var borderWidthBeforeChange = currentAttributes.borderWidth;
+                    borderWidthInput.on('focus', function() {
+                        borderWidthBeforeChange = overlayOrAnnotation.data.attributes.borderWidth;
+                    });
+                    
                     borderWidthInput.on('change', function() {
                         var newWidth = parseFloat($(this).val());
                         if (isNaN(newWidth) || newWidth < 0) newWidth = 0;
                         if (newWidth > 50) newWidth = 50;
                         $(this).val(newWidth);
+                        var oldWidth = borderWidthBeforeChange;
                         overlayOrAnnotation.data.attributes.borderWidth = newWidth;
                         
                         var shape = overlayOrAnnotation.data.attributes.shape || 'circle';
@@ -471,6 +564,44 @@ FrameTrail.defineType(
                         // Apply changes
                         applyShapeChanges(overlayOrAnnotation, shape, borderRadius, newWidth, color);
                         FrameTrail.module('HypervideoModel').newUnsavedChange(overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations');
+                        
+                        // Register undo for border width change
+                        if (oldWidth !== newWidth) {
+                            var isOverlay = !!overlayOrAnnotation.overlayElement;
+                            var category = isOverlay ? 'overlays' : 'annotations';
+                            var elementId = overlayOrAnnotation.data.created;
+                            
+                            (function(id, oldW, newW, cat, labels) {
+                                var findElement = function() {
+                                    var arr = cat === 'overlays' ? 
+                                        FrameTrail.module('HypervideoModel').overlays : 
+                                        FrameTrail.module('HypervideoModel').annotations;
+                                    for (var i = 0; i < arr.length; i++) {
+                                        if (arr[i].data.created === id) {
+                                            return arr[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: cat,
+                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Border',
+                                    undo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.borderWidth = oldW;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    },
+                                    redo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.borderWidth = newW;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    }
+                                });
+                            })(elementId, oldWidth, newWidth, category, self.labels);
+                        }
+                        borderWidthBeforeChange = newWidth;
                     });
 
                     borderWidthColumn.append(borderWidthWrapper);
@@ -487,17 +618,61 @@ FrameTrail.defineType(
                         borderRadiusColumn.hide();
                     }
                     
+                    var borderRadiusBeforeChange = currentAttributes.borderRadius || 10;
+                    borderRadiusInput.on('focus', function() {
+                        borderRadiusBeforeChange = overlayOrAnnotation.data.attributes.borderRadius || 10;
+                    });
+                    
                     borderRadiusInput.on('change', function() {
                         var newRadius = parseFloat($(this).val());
                         if (isNaN(newRadius) || newRadius < 0) newRadius = 0;
                         if (newRadius > 100) newRadius = 100;
                         $(this).val(newRadius);
+                        var oldRadius = borderRadiusBeforeChange;
                         overlayOrAnnotation.data.attributes.borderRadius = newRadius;
                         
                         // Apply shape changes
                         var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
                         var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
                         applyShapeChanges(overlayOrAnnotation, overlayOrAnnotation.data.attributes.shape, newRadius, borderWidth, color);
+                        
+                        // Register undo for border radius change
+                        if (oldRadius !== newRadius) {
+                            var isOverlay = !!overlayOrAnnotation.overlayElement;
+                            var category = isOverlay ? 'overlays' : 'annotations';
+                            var elementId = overlayOrAnnotation.data.created;
+                            
+                            (function(id, oldR, newR, cat, labels) {
+                                var findElement = function() {
+                                    var arr = cat === 'overlays' ? 
+                                        FrameTrail.module('HypervideoModel').overlays : 
+                                        FrameTrail.module('HypervideoModel').annotations;
+                                    for (var i = 0; i < arr.length; i++) {
+                                        if (arr[i].data.created === id) {
+                                            return arr[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: cat,
+                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Border Radius',
+                                    undo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.borderRadius = oldR;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    },
+                                    redo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.borderRadius = newR;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    }
+                                });
+                            })(elementId, oldRadius, newRadius, category, self.labels);
+                        }
+                        borderRadiusBeforeChange = newRadius;
                     });
 
                     borderRadiusColumn.append(borderRadiusWrapper);
@@ -564,6 +739,50 @@ FrameTrail.defineType(
                     
                     // Text input (stretches to fill remaining width)
                     var linkInput = $('<input type="text" class="linkInput" placeholder="https://example.com" value="' + currentAttributes.linkUrl + '"/>');
+                    
+                    var linkBeforeEdit = '';
+                    linkInput.on('focus', function() {
+                        linkBeforeEdit = overlayOrAnnotation.data.attributes.linkUrl || '';
+                    });
+                    
+                    linkInput.on('blur', function() {
+                        var newLink = overlayOrAnnotation.data.attributes.linkUrl || '';
+                        if (linkBeforeEdit !== newLink) {
+                            var isOverlay = !!overlayOrAnnotation.overlayElement;
+                            var category = isOverlay ? 'overlays' : 'annotations';
+                            var elementId = overlayOrAnnotation.data.created;
+                            
+                            (function(id, oldLink, newLnk, cat, labels) {
+                                var findElement = function() {
+                                    var arr = cat === 'overlays' ? 
+                                        FrameTrail.module('HypervideoModel').overlays : 
+                                        FrameTrail.module('HypervideoModel').annotations;
+                                    for (var i = 0; i < arr.length; i++) {
+                                        if (arr[i].data.created === id) {
+                                            return arr[i];
+                                        }
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: cat,
+                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Link',
+                                    undo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.linkUrl = oldLink;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    },
+                                    redo: function() {
+                                        var el = findElement();
+                                        if (!el) return;
+                                        el.data.attributes.linkUrl = newLnk;
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                                    }
+                                });
+                            })(elementId, linkBeforeEdit, newLink, category, self.labels);
+                        }
+                    });
                     
                     linkInput.on('keyup', function(evt) {
                         if (!evt.originalEvent.metaKey && evt.originalEvent.key != 'Meta') {
