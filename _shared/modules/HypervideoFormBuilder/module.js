@@ -108,7 +108,8 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
      *   currentResourceId: null,
      *   currentSrc: null,
      *   showUploadButton: true,
-     *   durationInputPrefix: ''  // Use 'new_' for edit dialog
+     *   durationInputPrefix: '',  // Use 'new_' for edit dialog
+     *   isEditMode: false  // If true, includes newResourceId/Src/Duration hidden inputs
      * }
      * @return {String} HTML string
      */
@@ -120,6 +121,7 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
         var currentSrc = options.currentSrc || '';
         var showUploadButton = options.showUploadButton !== false;
         var durationInputPrefix = options.durationInputPrefix || '';
+        var isEditMode = options.isEditMode || false;
 
         var html = '<div class="videoSourceSection">'
                  + '    <div>'+ labels['SettingsVideoSource'] +'</div>'
@@ -147,8 +149,16 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
               + '                <span class="durationLabel">('+ labels['SettingsDurationHoursMinutesSeconds'] +')</span>'
               + '            </div>'
               + '        </div>'
-              + '    </div>'
-              + '</div>';
+              + '    </div>';
+
+        // Edit mode needs additional hidden inputs for tracking source changes
+        if (isEditMode) {
+            html += '    <input type="hidden" name="newResourceId" value="'+ currentResourceId +'">'
+                  + '    <input type="hidden" name="newResourceSrc" value="'+ currentSrc +'">'
+                  + '    <input type="hidden" name="newResourceDuration" value="">';
+        }
+
+        html += '</div>';
 
         return html;
     }

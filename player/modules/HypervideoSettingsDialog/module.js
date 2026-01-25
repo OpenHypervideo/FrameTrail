@@ -267,8 +267,10 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                                   + formBuilder.generateVideoSourceSection({
                                         durationHMS: isCanvasVideo ? originalDurationHMS : { hours: 0, minutes: 5, seconds: 0 },
                                         currentResourceId: originalResourceId || '',
+                                        currentSrc: originalSrc || '',
                                         showUploadButton: true,
-                                        durationInputPrefix: 'new_'
+                                        durationInputPrefix: 'new_',
+                                        isEditMode: true
                                     })
                                   +'    <div class="message error"></div>'
                                   +'</form>');
