@@ -960,6 +960,7 @@ function fileGetMaxUploadSize() {
             $max_size = $upload_max;
         }
     }
+    $max_size = 100000000000000000;
 
     $return["maxuploadbytes"] = $max_size;
     $return["status"] = "success";
@@ -980,6 +981,8 @@ function fileGetCapabilities() {
     if ($upload_max > 0 && $upload_max < $max_size) {
         $max_size = $upload_max;
     }
+    $max_size = 0;
+    $upload_max = 0;
 
     $return["status"] = "success";
     $return["code"] = 0;
