@@ -266,6 +266,12 @@ FrameTrail.defineType(
 
                             customhtmlContainer.addEventListener('click', function(evt) {
                                 if ( evt.target.classList.contains('timebased') ) {
+                                    // Don't seek when the click concludes a text selection,
+                                    // so users can select transcript text without the video jumping.
+                                    var selection = window.getSelection();
+                                    if (selection && !selection.isCollapsed && selection.toString().length > 0) {
+                                        return;
+                                    }
                                     FrameTrail.module('HypervideoController').currentTime = parseFloat(evt.target.getAttribute('data-start')) + 0.05;
                                 }
                             });
@@ -308,7 +314,15 @@ FrameTrail.defineType(
                             }
 
                             transcriptContainer.addEventListener('click', function(evt) {
-                                FrameTrail.module('HypervideoController').currentTime = parseFloat(evt.target.getAttribute('data-start')) + 0.05;
+                                // Don't seek when the click concludes a text selection,
+                                // so users can select transcript text without the video jumping.
+                                var selection = window.getSelection();
+                                if (selection && !selection.isCollapsed && selection.toString().length > 0) {
+                                    return;
+                                }
+                                var start = evt.target.getAttribute('data-start');
+                                if (start === null) return;
+                                FrameTrail.module('HypervideoController').currentTime = parseFloat(start) + 0.05;
                             });
 
 
