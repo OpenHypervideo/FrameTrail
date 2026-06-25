@@ -16,13 +16,29 @@
 
 FrameTrail.defineModule('InteractionController', function(FrameTrail){
 
-    // Prevent accidental drag-selection of text (one-time global setup).
+    // Prevent accidental drag-selection of text within FrameTrail's own UI.
     // Uses pointer events to cover both mouse and touch input.
     // Double/triple-click word/line selection is still allowed via e.detail >= 2.
+    //
+    // Scope notes (important — this used to be a document-wide block):
+    //  - The block only applies inside this FrameTrail instance's root element,
+    //    so text on the surrounding host page (when FrameTrail is embedded) stays
+    //    selectable.
+    //  - Selectable content regions are exempted: the interactive transcript,
+    //    form fields, contenteditable areas, and anything opting in via the
+    //    .ft-selectable class. This lets users select transcript text while
+    //    overlay/timeline/slider dragging is still protected.
     document.addEventListener('pointerdown', function(e) {
         if (e.pointerType !== 'mouse') return; // touch/pen don't trigger selectstart
         if (e.detail >= 2) return;
-        if (e.target.closest('[contenteditable]')) return;
+
+        // Only guard within this instance's own UI; never touch host-page selection.
+        var rootSelector = FrameTrail.getState('target');
+        if (!rootSelector || !e.target.closest(rootSelector)) return;
+
+        // Leave genuinely selectable regions alone.
+        if (e.target.closest('[contenteditable], input, textarea, .transcriptContainer, .customhtmlContainer, .ft-selectable')) return;
+
         function onSelectStart(evt) {
             evt.preventDefault();
         }
