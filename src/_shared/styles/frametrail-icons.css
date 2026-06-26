@@ -1,6 +1,6 @@
 @font-face {
     font-family: "FrameTrail";
-    src: url("../fonts/FrameTrail_Icons/frametrail-icons.woff2") format("woff2");
+    src: url("../fonts/FrameTrail_Icons/frametrail-icons.woff2?v=2") format("woff2");
     font-weight: normal;
     font-style: normal;
     font-display: block;
@@ -22,6 +22,18 @@
     /* Better Font Rendering =========== */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+.icon-bell-slash-fill:before {
+    content: "\f13f";
+}
+.icon-bell-slash:before {
+    content: "\f150";
+}
+.icon-bell-fill:before {
+    content: "\f14e";
+}
+.icon-bell:before {
+    content: "\f4cf";
 }
 .ui-icon-closethick:before {
     content: "\e810";
