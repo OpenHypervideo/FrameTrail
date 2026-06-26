@@ -259,8 +259,11 @@ inline_font() {
     local b64=$(base64 -w0 "$font_file" 2>/dev/null || base64 -i "$font_file")
     # Escape the url path for use in sed
     local escaped_path=$(printf '%s\n' "$url_path" | sed 's/[.[\/*^$()+?{|]/\\&/g')
-    sed -i.bak "s|url('${escaped_path}')|url('data:font/woff2;base64,${b64}')|g" "$css_file"
-    sed -i.bak "s|url(\"${escaped_path}\")|url(\"data:font/woff2;base64,${b64}\")|g" "$css_file"
+    local data_uri="data:font/woff2;base64,${b64}"
+    # Optional ?query suffix matches cache-bust params (e.g. ?v=2 on icon font)
+    sed -i.bak -E \
+        "s|url\\(['\"]${escaped_path}(\\?[^'\"]*)?['\"]\\)|url('${data_uri}')|g" \
+        "$css_file"
 }
 
 # FrameTrail icon webfont
