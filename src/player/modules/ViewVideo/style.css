@@ -585,6 +585,40 @@
     opacity: 1;
 }
 
+/* Scrub Preview */
+
+.playerProgress .scrubPreview {
+    position: absolute;
+    display: none;
+    bottom: 16px;
+    width: 160px;
+    height: 90px;
+    margin-left: -80px;
+    background-color: #000;
+    background-repeat: no-repeat;
+    border: 2px solid var(--primary-bg-color);
+    border-radius: 3px;
+    box-shadow: 0 0 3px 1px rgba(0, 0, 0, 0.7);
+    pointer-events: none;
+    z-index: 100001;
+}
+
+.playerProgress .scrubPreview.active {
+    display: block;
+}
+
+.playerProgress .scrubPreview .scrubPreviewTime {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 0 4px;
+    font-size: 11px;
+    color: #fff;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 2px;
+}
+
 /* Chapters Button & Panel */
 
 .playerContainer .controls .playerControl.chapterButton .chapterSelectContainer {

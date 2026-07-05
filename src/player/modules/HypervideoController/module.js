@@ -843,6 +843,80 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         ViewVideo.adjustHypervideo();
 
         updateChapterDisplay();
+        initScrubPreview();
+
+    };
+
+
+    var scrubPreviewElement = null;
+
+    /**
+     * I probe for a scrub preview sprite ({videoBasename}_scrub.jpg next to the
+     * video file, 25 frames tiled 5x5 at 160x90 — see generateScrubSprite() in
+     * _server/files.php) and, when present, show frame previews while hovering
+     * or dragging the progress bar. Without a sprite nothing changes.
+     *
+     * @method initScrubPreview
+     * @private
+     */
+    function initScrubPreview() {
+
+        var HypervideoModel = FrameTrail.module('HypervideoModel');
+
+        if (scrubPreviewElement) {
+            scrubPreviewElement.remove();
+            scrubPreviewElement = null;
+        }
+
+        if (HypervideoModel.videoType !== 'native' || !HypervideoModel.sourcePath) { return; }
+        if (/\.m3u8/.test(HypervideoModel.sourcePath)) { return; }
+
+        var TILE_COLUMNS = 5,
+            TILE_COUNT   = 25,
+            TILE_WIDTH   = 160,
+            TILE_HEIGHT  = 90;
+
+        var spriteUrl = FrameTrail.module('RouteNavigation').getResourceURL(
+            HypervideoModel.sourcePath.replace(/\.[^.\/]+$/, '') + '_scrub.jpg'
+        );
+
+        var probeImage = new Image();
+        probeImage.onload = function() {
+
+            var progressEl = ViewVideo.PlayerProgress;
+
+            scrubPreviewElement = document.createElement('div');
+            scrubPreviewElement.className = 'scrubPreview';
+            scrubPreviewElement.style.backgroundImage = 'url("' + spriteUrl + '")';
+            scrubPreviewElement.innerHTML = '<div class="scrubPreviewTime"></div>';
+            progressEl.appendChild(scrubPreviewElement);
+
+            var updatePreview = function(evt) {
+                if (!scrubPreviewElement) { return; }
+                var rect = progressEl.getBoundingClientRect();
+                if (!rect.width) { return; }
+                var ratio = Math.max(0, Math.min(1, (evt.clientX - rect.left) / rect.width));
+                var tileIndex = Math.min(TILE_COUNT - 1, Math.floor(ratio * TILE_COUNT));
+                scrubPreviewElement.style.backgroundPosition =
+                    (-(tileIndex % TILE_COLUMNS) * TILE_WIDTH) + 'px ' +
+                    (-Math.floor(tileIndex / TILE_COLUMNS) * TILE_HEIGHT) + 'px';
+                scrubPreviewElement.style.left = Math.max(TILE_WIDTH / 2, Math.min(rect.width - TILE_WIDTH / 2, evt.clientX - rect.left)) + 'px';
+                scrubPreviewElement.querySelector('.scrubPreviewTime').textContent =
+                    formatTime(ratio * FrameTrail.module('HypervideoModel').duration);
+                scrubPreviewElement.classList.add('active');
+            };
+
+            var hidePreview = function() {
+                if (!scrubPreviewElement) { return; }
+                scrubPreviewElement.classList.remove('active');
+            };
+
+            progressEl.addEventListener('pointermove', updatePreview);
+            progressEl.addEventListener('pointerleave', hidePreview);
+            progressEl.addEventListener('pointerup', hidePreview);
+
+        };
+        probeImage.src = spriteUrl;
 
     };
 

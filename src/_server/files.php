@@ -302,6 +302,9 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
                 }
             }
 
+            // Generate scrub preview sprite (silently skipped when FFmpeg is unavailable)
+            generateScrubSprite($finalPath);
+
             $newResource["src"] = $filename.".mp4";
             $newResource["type"] = "video";
             $newResource["attributes"] = [];
@@ -1328,6 +1331,64 @@ function generateVideoThumbnail($videoPath, $thumbPath) {
         error_log('FrameTrail: ' . $errorMsg);
         return ['error' => $errorMsg];
     }
+}
+
+/**
+ * Generate a scrub preview sprite sheet next to the video file.
+ *
+ * Convention (shared with the client-side scrub preview in HypervideoController):
+ * 25 frames sampled evenly across the video, tiled 5x5, each tile 160x90
+ * (letterboxed), saved as {videoBasename}_scrub.jpg. The sprite is NOT a
+ * resource entry — the client probes for the file by naming convention and
+ * degrades gracefully when it does not exist.
+ *
+ * @param string $videoPath
+ * @return array Success/error response
+ */
+function generateScrubSprite($videoPath) {
+    $ffmpegPath = detectFFmpegPath();
+
+    if (!$ffmpegPath) {
+        return ['error' => 'FFmpeg not available for scrub sprite generation'];
+    }
+
+    $durationCommand = sprintf(
+        '%s -i %s 2>&1 | grep "Duration"',
+        escapeshellcmd($ffmpegPath),
+        escapeshellarg($videoPath)
+    );
+    exec($durationCommand, $durationOutput, $returnCode);
+
+    $totalSeconds = 0;
+    if (!empty($durationOutput) && preg_match('/Duration: (\d{2}):(\d{2}):(\d{2}\.\d{2})/', $durationOutput[0], $matches)) {
+        $totalSeconds = ((int)$matches[1] * 3600) + ((int)$matches[2] * 60) + (float)$matches[3];
+    }
+    if ($totalSeconds <= 0) {
+        return ['error' => 'Could not determine video duration for scrub sprite'];
+    }
+
+    $tiles = 25;
+    $fps = $tiles / $totalSeconds;
+    $spritePath = preg_replace('/\.[^.]+$/', '', $videoPath) . '_scrub.jpg';
+
+    $command = sprintf(
+        '%s -y -i %s -vf "fps=%F,scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2,tile=5x5" -frames:v 1 -q:v 5 %s 2>&1',
+        escapeshellcmd($ffmpegPath),
+        $fps,
+        escapeshellarg($videoPath),
+        escapeshellarg($spritePath)
+    );
+
+    exec($command, $output, $returnCode);
+
+    if ($returnCode === 0 && file_exists($spritePath)) {
+        error_log('FrameTrail: Scrub sprite generated: '.$spritePath);
+        return ['success' => true, 'path' => $spritePath];
+    }
+
+    $errorMsg = 'Scrub sprite generation failed: ' . implode("\n", $output);
+    error_log('FrameTrail: ' . $errorMsg);
+    return ['error' => $errorMsg];
 }
 
 /**
