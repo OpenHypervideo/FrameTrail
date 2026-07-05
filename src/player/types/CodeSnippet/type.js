@@ -327,20 +327,16 @@ FrameTrail.defineType(
                                 var parentWidth = e.target.parentElement.offsetWidth;
                                 var elWidth     = e.target.offsetWidth;
 
-                                var _gridlines = document.querySelectorAll(FrameTrail.getState('target') + ' .gridline');
-                                var closestGridline = FrameTrail.module('ViewVideo').closestToOffset(
-                                    _gridlines,
-                                    { left: x, top: 0 }
-                                );
-                                var snapTolerance = 10;
+                                var ViewVideo = FrameTrail.module('ViewVideo');
+                                var snapTargets = ViewVideo.getTimelineSnapTargets(e.target.parentElement, e.target);
+                                var snapTolerance = 8;
+                                var snappedLeft = ViewVideo.closestSnapTarget(x, snapTargets, snapTolerance);
 
-                                if (closestGridline) {
-                                    _gridlines.forEach(function(gl) { gl.style.backgroundColor = '#ff9900'; });
-                                    var glLeft = closestGridline.getBoundingClientRect().left - closestGridline.parentElement.getBoundingClientRect().left;
-                                    if (x - snapTolerance < glLeft && x + snapTolerance > glLeft) {
-                                        x = glLeft;
-                                        closestGridline.style.backgroundColor = '#00ff00';
-                                    }
+                                if (snappedLeft !== null) {
+                                    x = snappedLeft;
+                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, x);
+                                } else {
+                                    ViewVideo.hideTimelineSnapIndicator();
                                 }
 
                                 x = Math.max(0, Math.min(parentWidth - elWidth, x));
@@ -364,6 +360,8 @@ FrameTrail.defineType(
                                 }
 
                                 e.target.classList.remove('ui-draggable-dragging');
+
+                                FrameTrail.module('ViewVideo').hideTimelineSnapIndicator();
 
                                 var x           = parseFloat(e.target.dataset.ftX);
                                 var parentWidth = e.target.parentElement.offsetWidth;

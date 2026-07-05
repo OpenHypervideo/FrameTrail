@@ -363,20 +363,20 @@ FrameTrail.defineType(
                                 var parentWidth = e.target.parentElement.offsetWidth;
                                 var elWidth     = e.target.offsetWidth;
 
-                                var _gridlines = Array.from(document.querySelectorAll(FrameTrail.getState('target') + ' .gridline'));
-                                var closestGridline = FrameTrail.module('ViewVideo').closestToOffset(
-                                    _gridlines,
-                                    { left: x, top: 0 }
-                                );
-                                var snapTolerance = 10;
+                                var ViewVideo = FrameTrail.module('ViewVideo');
+                                var snapTargets = ViewVideo.getTimelineSnapTargets(e.target.parentElement, e.target);
+                                var snapTolerance = 8;
+                                var snappedLeft  = ViewVideo.closestSnapTarget(x, snapTargets, snapTolerance);
+                                var snappedRight = ViewVideo.closestSnapTarget(x + elWidth, snapTargets, snapTolerance);
 
-                                if (closestGridline) {
-                                    _gridlines.forEach(function(gl) { gl.style.backgroundColor = '#ff9900'; });
-                                    var glLeft = closestGridline.getBoundingClientRect().left - closestGridline.parentElement.getBoundingClientRect().left;
-                                    if (x - snapTolerance < glLeft && x + snapTolerance > glLeft) {
-                                        x = glLeft;
-                                        closestGridline.style.backgroundColor = '#00ff00';
-                                    }
+                                if (snappedLeft !== null && (snappedRight === null || Math.abs(snappedLeft - x) <= Math.abs(snappedRight - x - elWidth))) {
+                                    x = snappedLeft;
+                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, x);
+                                } else if (snappedRight !== null) {
+                                    x = snappedRight - elWidth;
+                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, x + elWidth);
+                                } else {
+                                    ViewVideo.hideTimelineSnapIndicator();
                                 }
 
                                 x = Math.max(0, Math.min(parentWidth - elWidth, x));
@@ -404,6 +404,8 @@ FrameTrail.defineType(
                                 }
 
                                 e.target.classList.remove('ui-draggable-dragging');
+
+                                FrameTrail.module('ViewVideo').hideTimelineSnapIndicator();
 
                                 var x           = parseFloat(e.target.dataset.ftX);
                                 var parentWidth = e.target.parentElement.offsetWidth;
@@ -552,29 +554,26 @@ FrameTrail.defineType(
                                 var newWidth   = parseFloat(e.target.dataset.ftWidth) + e.deltaRect.width;
                                 var parentWidth = e.target.parentElement.offsetWidth;
 
-                                var checkLeft = endHandleGrabbed ? (newLeft + newWidth) : newLeft;
-                                var _gridlines2 = Array.from(document.querySelectorAll(FrameTrail.getState('target') + ' .gridline'));
-                                var closestGridline = FrameTrail.module('ViewVideo').closestToOffset(
-                                    _gridlines2,
-                                    { left: checkLeft, top: 0 }
-                                );
-                                var snapTolerance = 10;
+                                var ViewVideo = FrameTrail.module('ViewVideo');
+                                var snapTargets = ViewVideo.getTimelineSnapTargets(e.target.parentElement, e.target);
+                                var snapTolerance = 8;
 
-                                if (closestGridline) {
-                                    _gridlines2.forEach(function(gl) { gl.style.backgroundColor = '#ff9900'; });
-                                    var glLeft = closestGridline.getBoundingClientRect().left - closestGridline.parentElement.getBoundingClientRect().left;
-                                    if (!endHandleGrabbed &&
-                                        newLeft - snapTolerance < glLeft &&
-                                        newLeft + snapTolerance > glLeft) {
-                                        var diff = newLeft - glLeft;
-                                        newWidth += diff;
-                                        newLeft   = glLeft;
-                                        closestGridline.style.backgroundColor = '#00ff00';
-                                    } else if (endHandleGrabbed &&
-                                               newLeft + newWidth - snapTolerance < glLeft &&
-                                               newLeft + newWidth + snapTolerance > glLeft) {
-                                        newWidth = glLeft - newLeft;
-                                        closestGridline.style.backgroundColor = '#00ff00';
+                                if (endHandleGrabbed) {
+                                    var snappedRight = ViewVideo.closestSnapTarget(newLeft + newWidth, snapTargets, snapTolerance);
+                                    if (snappedRight !== null) {
+                                        newWidth = snappedRight - newLeft;
+                                        ViewVideo.showTimelineSnapIndicator(e.target.parentElement, snappedRight);
+                                    } else {
+                                        ViewVideo.hideTimelineSnapIndicator();
+                                    }
+                                } else {
+                                    var snappedLeft = ViewVideo.closestSnapTarget(newLeft, snapTargets, snapTolerance);
+                                    if (snappedLeft !== null) {
+                                        newWidth += newLeft - snappedLeft;
+                                        newLeft   = snappedLeft;
+                                        ViewVideo.showTimelineSnapIndicator(e.target.parentElement, newLeft);
+                                    } else {
+                                        ViewVideo.hideTimelineSnapIndicator();
                                     }
                                 }
 
@@ -611,6 +610,8 @@ FrameTrail.defineType(
                                 if (!self.permanentFocusState) {
                                     FrameTrail.module('AnnotationsController').annotationInFocus = null;
                                 }
+
+                                FrameTrail.module('ViewVideo').hideTimelineSnapIndicator();
 
                                 var finalLeft   = parseFloat(e.target.dataset.ftLeft);
                                 var finalWidth  = parseFloat(e.target.dataset.ftWidth);

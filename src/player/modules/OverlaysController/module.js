@@ -742,6 +742,205 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
     };
 
 
+    var _canvasSnapLineVertical   = null,
+        _canvasSnapLineHorizontal = null;
+
+    /**
+     * I collect the snap target positions for canvas dragging/resizing:
+     * the overlay container's edges and center, plus the edges of all other
+     * currently visible overlay elements. Positions are px values relative
+     * to the overlay container.
+     *
+     * @method getCanvasSnapTargets
+     * @param {HTMLElement} excludeElement
+     * @return {} vertical/horizontal target arrays
+     */
+    function getCanvasSnapTargets(excludeElement) {
+
+        var container  = ViewVideo.OverlayContainer,
+            vertical   = [0, container.offsetWidth / 2, container.offsetWidth],
+            horizontal = [0, container.offsetHeight / 2, container.offsetHeight];
+
+        for (var idx in overlays) {
+            var el = overlays[idx].overlayElement;
+            if (!el || el === excludeElement) { continue; }
+            if (!el.classList.contains('active')) { continue; }
+            vertical.push(el.offsetLeft, el.offsetLeft + el.offsetWidth);
+            horizontal.push(el.offsetTop, el.offsetTop + el.offsetHeight);
+        }
+
+        return { vertical: vertical, horizontal: horizontal };
+
+    };
+
+
+    function showCanvasSnapLine(axis, position) {
+
+        var container = ViewVideo.OverlayContainer,
+            line;
+
+        if (axis === 'vertical') {
+            if (!_canvasSnapLineVertical) {
+                _canvasSnapLineVertical = document.createElement('div');
+                _canvasSnapLineVertical.className = 'canvasSnapLine vertical';
+            }
+            line = _canvasSnapLineVertical;
+            line.style.left = position + 'px';
+        } else {
+            if (!_canvasSnapLineHorizontal) {
+                _canvasSnapLineHorizontal = document.createElement('div');
+                _canvasSnapLineHorizontal.className = 'canvasSnapLine horizontal';
+            }
+            line = _canvasSnapLineHorizontal;
+            line.style.top = position + 'px';
+        }
+
+        if (line.parentElement !== container) {
+            container.appendChild(line);
+        }
+
+    };
+
+
+    function hideCanvasSnapLine(axis) {
+
+        var line = (axis === 'vertical') ? _canvasSnapLineVertical : _canvasSnapLineHorizontal;
+        if (line && line.parentElement) {
+            line.remove();
+        }
+
+    };
+
+
+    /**
+     * I remove both canvas snap lines from the DOM (if present).
+     * @method clearCanvasSnapLines
+     */
+    function clearCanvasSnapLines() {
+
+        hideCanvasSnapLine('vertical');
+        hideCanvasSnapLine('horizontal');
+
+    };
+
+
+    /**
+     * I snap a dragged overlay element to canvas targets (edges, center, other overlays).
+     * I show/hide ephemeral snap lines and return the adjusted position.
+     *
+     * @method snapCanvasDrag
+     * @param {HTMLElement} element
+     * @param {Number} x
+     * @param {Number} y
+     * @return {} adjusted x/y
+     */
+    function snapCanvasDrag(element, x, y) {
+
+        var ViewVideoModule = FrameTrail.module('ViewVideo'),
+            targets   = getCanvasSnapTargets(element),
+            tolerance = 8,
+            width     = element.offsetWidth,
+            height    = element.offsetHeight;
+
+        var bestX = null;
+        [{ value: x, offset: 0 }, { value: x + width / 2, offset: width / 2 }, { value: x + width, offset: width }].forEach(function(candidate) {
+            var snapped = ViewVideoModule.closestSnapTarget(candidate.value, targets.vertical, tolerance);
+            if (snapped !== null) {
+                var distance = Math.abs(snapped - candidate.value);
+                if (!bestX || distance < bestX.distance) {
+                    bestX = { snapped: snapped, distance: distance, offset: candidate.offset };
+                }
+            }
+        });
+        if (bestX) {
+            x = bestX.snapped - bestX.offset;
+            showCanvasSnapLine('vertical', bestX.snapped);
+        } else {
+            hideCanvasSnapLine('vertical');
+        }
+
+        var bestY = null;
+        [{ value: y, offset: 0 }, { value: y + height / 2, offset: height / 2 }, { value: y + height, offset: height }].forEach(function(candidate) {
+            var snapped = ViewVideoModule.closestSnapTarget(candidate.value, targets.horizontal, tolerance);
+            if (snapped !== null) {
+                var distance = Math.abs(snapped - candidate.value);
+                if (!bestY || distance < bestY.distance) {
+                    bestY = { snapped: snapped, distance: distance, offset: candidate.offset };
+                }
+            }
+        });
+        if (bestY) {
+            y = bestY.snapped - bestY.offset;
+            showCanvasSnapLine('horizontal', bestY.snapped);
+        } else {
+            hideCanvasSnapLine('horizontal');
+        }
+
+        return { x: x, y: y };
+
+    };
+
+
+    /**
+     * I snap the moving edges of a resized overlay element to canvas targets.
+     * I show/hide ephemeral snap lines and return the adjusted rect.
+     *
+     * @method snapCanvasResize
+     * @param {HTMLElement} element
+     * @param {} rect (left/top/width/height in px)
+     * @param {} edges (interact.js edges object)
+     * @return {} adjusted rect
+     */
+    function snapCanvasResize(element, rect, edges) {
+
+        var ViewVideoModule = FrameTrail.module('ViewVideo'),
+            targets   = getCanvasSnapTargets(element),
+            tolerance = 8,
+            snapped;
+
+        if (edges.left) {
+            snapped = ViewVideoModule.closestSnapTarget(rect.left, targets.vertical, tolerance);
+            if (snapped !== null) {
+                rect.width += rect.left - snapped;
+                rect.left = snapped;
+                showCanvasSnapLine('vertical', snapped);
+            } else {
+                hideCanvasSnapLine('vertical');
+            }
+        } else if (edges.right) {
+            snapped = ViewVideoModule.closestSnapTarget(rect.left + rect.width, targets.vertical, tolerance);
+            if (snapped !== null) {
+                rect.width = snapped - rect.left;
+                showCanvasSnapLine('vertical', snapped);
+            } else {
+                hideCanvasSnapLine('vertical');
+            }
+        }
+
+        if (edges.top) {
+            snapped = ViewVideoModule.closestSnapTarget(rect.top, targets.horizontal, tolerance);
+            if (snapped !== null) {
+                rect.height += rect.top - snapped;
+                rect.top = snapped;
+                showCanvasSnapLine('horizontal', snapped);
+            } else {
+                hideCanvasSnapLine('horizontal');
+            }
+        } else if (edges.bottom) {
+            snapped = ViewVideoModule.closestSnapTarget(rect.top + rect.height, targets.horizontal, tolerance);
+            if (snapped !== null) {
+                rect.height = snapped - rect.top;
+                showCanvasSnapLine('horizontal', snapped);
+            } else {
+                hideCanvasSnapLine('horizontal');
+            }
+        }
+
+        return rect;
+
+    };
+
+
     /**
      * I prepare the "edit options" area, when the overlay editing mode is started.
      * I fill the space with a list of thumbnails representing all resources, which can then be dragged onto the overlay container.
@@ -880,6 +1079,10 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
         deleteOverlay:          deleteOverlay,
         arrangeOverlay:         arrangeOverlay,
+
+        snapCanvasDrag:         snapCanvasDrag,
+        snapCanvasResize:       snapCanvasResize,
+        clearCanvasSnapLines:   clearCanvasSnapLines,
 
         renderPropertiesControls: renderPropertiesControls,
 

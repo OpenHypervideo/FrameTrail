@@ -1599,6 +1599,109 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         return el;
     };
 
+
+    /**
+     * I return the closest value from an array of snap target positions,
+     * or null when no target is within the given tolerance.
+     *
+     * @method closestSnapTarget
+     * @param {Number} value
+     * @param {Array} targets
+     * @param {Number} tolerance
+     * @return Number or null
+     */
+    function closestSnapTarget(value, targets, tolerance) {
+
+        var best = null,
+            bestDistance = tolerance + 1;
+
+        for (var i = 0; i < targets.length; i++) {
+            var distance = Math.abs(targets[i] - value);
+            if (distance < bestDistance) {
+                bestDistance = distance;
+                best = targets[i];
+            }
+        }
+
+        return (best !== null && bestDistance <= tolerance) ? best : null;
+
+    };
+
+
+    /**
+     * I collect the snap target positions for timeline dragging/resizing:
+     * the start and end edges of all timeline elements (in all three timelines)
+     * plus the playhead position. All positions are px values relative to the
+     * left edge of the given reference parent (the dragged element's container).
+     *
+     * @method getTimelineSnapTargets
+     * @param {HTMLElement} referenceParent
+     * @param {HTMLElement} excludeElement
+     * @return Array
+     */
+    function getTimelineSnapTargets(referenceParent, excludeElement) {
+
+        var refLeft = referenceParent.getBoundingClientRect().left,
+            targets = [];
+
+        [OverlayTimeline, AnnotationTimeline, CodeSnippetTimeline].forEach(function(timeline) {
+            if (!timeline) { return; }
+            timeline.querySelectorAll('.timelineElement').forEach(function(el) {
+                if (el === excludeElement) { return; }
+                var rect = el.getBoundingClientRect();
+                targets.push(rect.left - refLeft, rect.right - refLeft);
+            });
+        });
+
+        var sliderHandle = PlayerProgress.querySelector('.ui-slider-handle');
+        if (sliderHandle) {
+            var handleRect = sliderHandle.getBoundingClientRect();
+            targets.push(handleRect.left + (handleRect.width / 2) - refLeft);
+        }
+
+        return targets;
+
+    };
+
+
+    var _timelineSnapIndicator = null;
+
+    /**
+     * I show an ephemeral vertical snap indicator line at the given px position
+     * inside the given timeline container. See also hideTimelineSnapIndicator().
+     *
+     * @method showTimelineSnapIndicator
+     * @param {HTMLElement} container
+     * @param {Number} x
+     */
+    function showTimelineSnapIndicator(container, x) {
+
+        if (!_timelineSnapIndicator) {
+            _timelineSnapIndicator = document.createElement('div');
+            _timelineSnapIndicator.className = 'timelineSnapIndicator';
+        }
+
+        if (_timelineSnapIndicator.parentElement !== container) {
+            container.appendChild(_timelineSnapIndicator);
+        }
+
+        _timelineSnapIndicator.style.left = x + 'px';
+
+    };
+
+
+    /**
+     * I remove the timeline snap indicator from the DOM (if present).
+     * @method hideTimelineSnapIndicator
+     */
+    function hideTimelineSnapIndicator() {
+
+        if (_timelineSnapIndicator && _timelineSnapIndicator.parentElement) {
+            _timelineSnapIndicator.remove();
+        }
+
+    };
+
     /**
      *  Toggle (Enter / Exit) native Fullscreen State
      *
@@ -1742,6 +1845,10 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         slidePositionUp:         slidePositionUp,
         slidePositionDown:       slidePositionDown,
         closestToOffset:         closestToOffset,
+        closestSnapTarget:       closestSnapTarget,
+        getTimelineSnapTargets:  getTimelineSnapTargets,
+        showTimelineSnapIndicator: showTimelineSnapIndicator,
+        hideTimelineSnapIndicator: hideTimelineSnapIndicator,
 
         /**
          * I display a (formated time) string in an area of the progress bar.
