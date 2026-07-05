@@ -97,6 +97,12 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '                        <span class="icon-th-large-1"></span>'
                         + '                        <div class="layoutAreasPanel"></div>'
                         + '                    </div>'
+                        + '                    <div class="chapterButton playerControl" style="display:none">'
+                        + '                        <span class="icon-list-bullet"></span>'
+                        + '                        <div class="chapterSelectContainer">'
+                        + '                            <div class="chapterSelectList"></div>'
+                        + '                        </div>'
+                        + '                    </div>'
                         + '                    <div class="captionsButton playerControl">'
                         + '                        <span class="icon-captions-off"></span>'
                         + '                        <div class="captionSelectContainer">'
@@ -478,9 +484,38 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         domElement.querySelectorAll('.areaLeftContainer, .areaRightContainer').forEach(function(el) { el.style.opacity = '1'; });
     }
 
+    var chapterButton = Controls.querySelector('.chapterButton');
+    var chapterContainer = chapterButton.querySelector('.chapterSelectContainer');
+
+    chapterButton.addEventListener('click', function(evt) {
+        if (evt.target.closest('.chapterSelectContainer')) { return; }
+        evt.stopPropagation();
+
+        Controls.querySelectorAll('.rightControlPanel .active:not([data-config]):not(.chapterButton):not(.chapterSelectContainer):not(.annotationSetButton)').forEach(function(el) { el.classList.remove('active'); });
+        layoutAreasPanel.classList.remove('active');
+
+        if ( !chapterContainer.classList.contains('active') ) {
+            closeCaptionPanel();
+            chapterContainer.classList.add('active');
+            VideoContainer.style.opacity = '0.3';
+            domElement.querySelectorAll('.areaLeftContainer, .areaRightContainer').forEach(function(el) { el.style.opacity = '0.3'; });
+            addOutsideClickHandler();
+        } else {
+            closeChapterPanel();
+        }
+
+    });
+
+    function closeChapterPanel() {
+        chapterContainer.classList.remove('active');
+        VideoContainer.style.opacity = '1';
+        domElement.querySelectorAll('.areaLeftContainer, .areaRightContainer').forEach(function(el) { el.style.opacity = '1'; });
+    }
+
     function closeAllPanels() {
         layoutAreasPanel.classList.remove('active');
         closeCaptionPanel();
+        closeChapterPanel();
     }
 
     function addOutsideClickHandler() {
@@ -1901,6 +1936,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
          * @type HTMLElement
          */
         get PlayerProgress()    { return PlayerProgress },
+        get ChapterButton()     { return chapterButton },
+        get ChapterSelectList() { return chapterContainer.querySelector('.chapterSelectList') },
         /**
          * I contain the play button element.
          * @attribute PlayButton

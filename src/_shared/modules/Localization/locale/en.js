@@ -307,6 +307,8 @@ window.FrameTrail_L10n['en'] = {
     "SettingsButtonLabel": "Button Label",
     "SettingsButtonTextColor": "Text Color",
     "SettingsCaptureUserActions": "Capture User Actions",
+    "SettingsChapters": "Chapters",
+    "SettingsChapterTitle": "Chapter title",
     "SettingsChooseVideo": "Choose Video Source",
     "SettingsCodeSnippetAdd": "Select Code Snippet",
     "SettingsCodeSnippetCustom": "Custom Code Snippet",

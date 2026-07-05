@@ -842,6 +842,58 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         ViewVideo.adjustLayout();
         ViewVideo.adjustHypervideo();
 
+        updateChapterDisplay();
+
+    };
+
+
+    /**
+     * I render the chapter markers on the progress bar and fill the chapter
+     * navigation menu. I hide the chapter button when there are no chapters.
+     *
+     * @method updateChapterDisplay
+     */
+    function updateChapterDisplay() {
+
+        var HypervideoModel = FrameTrail.module('HypervideoModel'),
+            chapters = HypervideoModel.chapters || [],
+            progressEl = ViewVideo.PlayerProgress,
+            chapterButton = ViewVideo.ChapterButton,
+            chapterList = ViewVideo.ChapterSelectList;
+
+        progressEl.querySelectorAll('.chapterMarker').forEach(function(el) { el.remove(); });
+        chapterList.innerHTML = '';
+
+        if (!chapters.length) {
+            chapterButton.style.display = 'none';
+            return;
+        }
+
+        chapterButton.style.display = '';
+
+        chapters.forEach(function(chapter) {
+
+            var positionLeft = 100 * ((chapter.start - HypervideoModel.offsetIn) / HypervideoModel.duration);
+            if (positionLeft < 0 || positionLeft > 100) { return; }
+
+            var marker = document.createElement('div');
+            marker.className = 'chapterMarker';
+            marker.style.left = positionLeft + '%';
+            marker.setAttribute('title', chapter.title);
+            progressEl.appendChild(marker);
+
+            var entry = document.createElement('div');
+            entry.className = 'chapterSelect';
+            entry.innerHTML = '<span class="chapterSelectTime"></span><span class="chapterSelectTitle"></span>';
+            entry.querySelector('.chapterSelectTime').textContent = formatTime(chapter.start);
+            entry.querySelector('.chapterSelectTitle').textContent = chapter.title;
+            entry.addEventListener('click', function() {
+                setCurrentTime(chapter.start);
+            });
+            chapterList.appendChild(entry);
+
+        });
+
     };
 
     /**
@@ -1556,6 +1608,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         playbackStalled: playbackStalled,
 
         updateDescriptions: updateDescriptions,
+        updateChapterDisplay: updateChapterDisplay,
         formatTime:         formatTime,
         clearIntervals:     clearIntervals,
 

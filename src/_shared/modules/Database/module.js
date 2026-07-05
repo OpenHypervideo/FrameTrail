@@ -543,6 +543,7 @@
                             "mainAnnotation": null,
                             "annotationfiles": null,
                             "subtitles": hypervideoData.subtitles,
+                "chapters": hypervideoData.chapters || [],
                             "clips": hypervideoData.clips,
                             "hypervideoData": hypervideoData
                         };
@@ -623,6 +624,7 @@
                                 "mainAnnotation": annotationsIndex.mainAnnotation,
                                 "annotationfiles": annotationsIndex.annotationfiles,
                                 "subtitles": hypervideoData.subtitles,
+                "chapters": hypervideoData.chapters || [],
                                 "clips": hypervideoData.clips,
                                 "hypervideoData": hypervideoData
                             };
@@ -690,6 +692,7 @@
                 "mainAnnotation": null,
                 "annotationfiles": null,
                 "subtitles": hypervideoData.subtitles,
+                "chapters": hypervideoData.chapters || [],
                 "clips": hypervideoData.clips,
                 "hypervideoData": hypervideoData
             };
@@ -751,6 +754,7 @@
                                 "mainAnnotation": annotationsIndex.mainAnnotation || null,
                                 "annotationfiles": annotationsIndex.annotationfiles || null,
                                 "subtitles": hypervideoData.subtitles,
+                "chapters": hypervideoData.chapters || [],
                                 "clips": hypervideoData.clips,
                                 "hypervideoData": hypervideoData
                             };
@@ -1605,6 +1609,7 @@
                 }
                 return contents;
             })(),
+            "chapters": hypervideos[thisHypervideoID].chapters || [],
             "subtitles": hypervideos[thisHypervideoID].subtitles
         });
 

@@ -29,6 +29,7 @@
         created                 = 0,
         lastchanged             = 0,
         posterFrame             = null,
+        chapters                = [],
 
         subtitleFiles           = [],
         subtitles               = [],
@@ -83,6 +84,7 @@
         created        = hypervideo.created;
         lastchanged    = hypervideo.lastchanged;
         posterFrame    = hypervideo.posterFrame || null;
+        chapters       = hypervideo.chapters || [];
         // Read in config of Hypervideo
         for (var key in hypervideo.config) {
 
@@ -1604,6 +1606,14 @@
          */
         get posterFrame()            { return posterFrame              },
         set posterFrame(aString)     { return posterFrame = aString    },
+
+        /**
+         * The hypervideo's chapters (array of { start, title } objects).
+         * @attribute chapters
+         * @type Array
+         */
+        get chapters()               { return chapters                 },
+        set chapters(anArray)        { return chapters = anArray       },
 
         /**
          * Get or set the hypervideo descritption
