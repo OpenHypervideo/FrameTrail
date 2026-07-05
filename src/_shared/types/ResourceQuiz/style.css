@@ -102,8 +102,7 @@
     background-color: #739600;
 }
 
-.editPropertiesContainer .quizEditorContainer input.settingsJumpForwardInput,
-.editPropertiesContainer .quizEditorContainer input.settingsJumpBackwardInput {
+.editPropertiesContainer .quizEditorContainer input.outcomeJumpInput {
     width: 34px !important;
     padding: 0px 2px;
     border-width: 1px;
@@ -113,15 +112,62 @@
     vertical-align: baseline;
 }
 
-.editPropertiesContainer .quizEditorContainer input.settingsCorrectShowTextInput, 
-.editPropertiesContainer .quizEditorContainer input.settingsWrongShowTextInput {
+.editPropertiesContainer .quizEditorContainer input.outcomeShowTextInput {
     margin-left: 40px;
     width: calc(100% - 40px);
     margin-bottom: 8px;
     display: none;
 }
 
-.editPropertiesContainer .quizEditorContainer input.settingsCorrectShowTextInput.active, 
-.editPropertiesContainer .quizEditorContainer input.settingsWrongShowTextInput.active {
+.editPropertiesContainer .quizEditorContainer input.outcomeShowTextInput.active {
     display: block;
+}
+
+/* Question Type Specific Player Elements */
+
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer .quizSelectableAnswer.selected {
+    border-color: var(--primary-fg-color);
+    font-weight: bold;
+}
+
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer .quizSubmitButton {
+    flex: 0 0 auto;
+    background-color: var(--primary-fg-color);
+    color: var(--primary-bg-color);
+}
+
+.resourceDetail[data-type="quiz"] .quizFreeTextInput {
+    width: 100%;
+    flex: 1;
+    margin-top: 10px;
+    box-sizing: border-box;
+    resize: none;
+    font-size: 20px;
+    padding: 6px;
+}
+
+.resourceDetail[data-type="quiz"] .quizRatingRow {
+    display: flex;
+    flex-direction: row;
+    gap: 6px;
+    flex: 1;
+    margin-top: 10px;
+}
+
+.resourceDetail[data-type="quiz"] .quizRatingRow .quizRatingButton {
+    margin-top: 0;
+    width: auto;
+    flex: 1;
+}
+
+.resourceDetail[data-type="quiz"] .quizRatingRow .quizRatingButton.selected {
+    background-color: var(--primary-fg-color);
+    color: var(--primary-bg-color);
+    font-weight: bold;
+}
+
+.resourceDetail[data-type="quiz"] .quizAnsweredNote {
+    margin-top: 8px;
+    text-align: center;
+    opacity: 0.85;
 }

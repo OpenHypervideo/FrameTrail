@@ -452,6 +452,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                                 "name": labels['ResourceTypeQuiz'], "type": $dragged.dataset.type,
                                 "start": startTime, "end": endTime,
                                 "attributes": {
+                                    "questionType": "multipleChoice",
                                     "question": labels['SettingsQuizDefaultQuestion'],
                                     "answers": [
                                         { 'text': labels['SettingsQuizDefaultAnswer1'], 'correct': false },
