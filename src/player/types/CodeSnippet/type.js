@@ -464,7 +464,7 @@ FrameTrail.defineType(
                         snippet = snippetElement.value;
 
                     var CM6 = window.FrameTrailCM6;
-                    var editorHeight = EditPropertiesContainer.offsetHeight - 70;
+                    var editorHeight = EditPropertiesContainer.offsetHeight - 110;
                     var cm6Wrapper = document.createElement('div');
                     cm6Wrapper.className = 'cm6-wrapper';
                     cm6Wrapper.style.height = editorHeight + 'px';
@@ -505,6 +505,12 @@ FrameTrail.defineType(
 
                     this.codeEditorInstance = codeEditor;
                     this.cm6Wrapper = cm6Wrapper;
+
+                    cm6Wrapper.insertAdjacentElement('beforebegin',
+                        FrameTrail.module('CodeSnippetsController').renderActionPresetPicker(function() {
+                            return self.codeEditorInstance;
+                        })
+                    );
 
 
                     this.timelineElement.classList.add('highlighted');

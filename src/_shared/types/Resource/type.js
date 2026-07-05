@@ -1025,11 +1025,11 @@ FrameTrail.defineType(
 
                             var cm6Wrapper = document.createElement('div');
                             cm6Wrapper.className = 'cm6-wrapper';
-                            cm6Wrapper.style.height = 'calc(100% - 40px)';
+                            cm6Wrapper.style.height = 'calc(100% - 80px)';
                             textarea.insertAdjacentElement('afterend', cm6Wrapper);
                             textarea.style.display = 'none';
 
-                            new CM6.EditorView({
+                            var overlayEventEditor = new CM6.EditorView({
                                 state: CM6.EditorState.create({
                                     doc: textarea.value,
                                     extensions: [
@@ -1093,6 +1093,14 @@ FrameTrail.defineType(
                                 }),
                                 parent: cm6Wrapper
                             });
+                            cm6Wrapper._cm6view = overlayEventEditor;
+
+                            var CodeSnippetsController = FrameTrail.module('CodeSnippetsController');
+                            if (CodeSnippetsController) {
+                                cm6Wrapper.insertAdjacentElement('beforebegin', CodeSnippetsController.renderActionPresetPicker(function() {
+                                    return cm6Wrapper._cm6view;
+                                }));
+                            }
                         })(codeTextareas[i]);
                     }
 

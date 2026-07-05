@@ -191,6 +191,61 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
      * @method initEditOptions
      * @private
      */
+
+    /**
+     * I create a no-code "action preset" picker: a select element which inserts
+     * ready-made JavaScript for common actions into a CodeMirror 6 editor.
+     *
+     * @method renderActionPresetPicker
+     * @param {Function} getEditorView Function returning the target CM6 EditorView
+     * @return HTMLElement
+     */
+    function renderActionPresetPicker(getEditorView) {
+
+        var presets = [
+            { label: labels['ActionPresetPause'],            code: 'hypervideo.pause();' },
+            { label: labels['ActionPresetPlay'],             code: 'hypervideo.play();' },
+            { label: labels['ActionPresetJumpToTime'],       code: 'hypervideo.currentTime = 10; // ' + labels['ActionPresetJumpToTimeHint'] },
+            { label: labels['ActionPresetJumpToHypervideo'], code: "window.location.hash = 'hypervideo=HYPERVIDEO_ID'; // " + labels['ActionPresetJumpToHypervideoHint'] },
+            { label: labels['ActionPresetShowMessage'],      code: "window.alert('" + labels['ActionPresetShowMessageDefault'] + "');" }
+        ];
+
+        var wrapper = document.createElement('div');
+        wrapper.className = 'custom-select actionPresetPicker';
+
+        var select = document.createElement('select');
+        var optionsHTML = '<option value="" disabled selected style="display:none;">'+ labels['ActionPresetInsert'] +'</option>';
+        for (var i = 0; i < presets.length; i++) {
+            optionsHTML += '<option value="'+ i +'">'+ presets[i].label +'</option>';
+        }
+        select.innerHTML = optionsHTML;
+
+        select.addEventListener('change', function() {
+            var preset = presets[parseInt(this.value, 10)];
+            this.value = '';
+            if (!preset) { return; }
+
+            var editorView = getEditorView();
+            if (!editorView) { return; }
+
+            var doc = editorView.state.doc,
+                insert = preset.code + '\n';
+
+            if (doc.length > 0 && doc.sliceString(doc.length - 1) !== '\n') {
+                insert = '\n' + insert;
+            }
+
+            editorView.dispatch({ changes: { from: doc.length, insert: insert } });
+            editorView.focus();
+        });
+
+        wrapper.appendChild(select);
+
+        return wrapper;
+
+    };
+
+
     function initEditOptions() {
 
         ViewVideo.EditingOptions.innerHTML = '';
@@ -257,8 +312,12 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
             var btn = evt.target.closest('.executeEventCode');
             if (!btn) { return; }
             var textarea = btn.parentElement.querySelector('textarea');
+            var cmWrapper = btn.parentElement.querySelector('.cm6-wrapper');
+            var code = (cmWrapper && cmWrapper._cm6view)
+                        ? cmWrapper._cm6view.state.doc.toString()
+                        : (textarea ? textarea.value : '');
             try {
-                var testRun = new Function('FrameTrail', 'hypervideo', textarea.value);
+                var testRun = new Function('FrameTrail', 'hypervideo', code);
                 testRun(FrameTrail, FrameTrail.module('HypervideoController'));
             } catch (exception) {
                 alert(labels['MessageCodeContainsErrors'] +': '+ exception.message);
@@ -322,7 +381,7 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
             (function(textarea) {
                 var cm6Wrapper = document.createElement('div');
                 cm6Wrapper.className = 'cm6-wrapper';
-                cm6Wrapper.style.height = '100%';
+                cm6Wrapper.style.height = 'calc(100% - 40px)';
                 textarea.insertAdjacentElement('afterend', cm6Wrapper);
                 textarea.style.display = 'none';
                 var codeEditor = new CM6.EditorView({
@@ -351,6 +410,10 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
                     parent: cm6Wrapper
                 });
                 cm6Wrapper._cm6view = codeEditor;
+
+                cm6Wrapper.insertAdjacentElement('beforebegin', renderActionPresetPicker(function() {
+                    return cm6Wrapper._cm6view;
+                }));
             })(codeTextareas[i]);
         }
 
@@ -748,6 +811,7 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
         updateStatesOfCodeSnippets:   updateStatesOfCodeSnippets,
         stackTimelineView:          stackTimelineView,
         deleteCodeSnippet:            deleteCodeSnippet,
+        renderActionPresetPicker:     renderActionPresetPicker,
 
         /**
          * I hold the currently opened codeSnippet (or null, when there is no opened snippet).

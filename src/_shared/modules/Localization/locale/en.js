@@ -7,6 +7,15 @@
  */
 
 window.FrameTrail_L10n['en'] = {
+    "ActionPresetInsert": "Insert action …",
+    "ActionPresetJumpToHypervideo": "Jump to Hypervideo",
+    "ActionPresetJumpToHypervideoHint": "replace HYPERVIDEO_ID with the target hypervideo ID",
+    "ActionPresetJumpToTime": "Jump to Time",
+    "ActionPresetJumpToTimeHint": "target time in seconds",
+    "ActionPresetPause": "Pause Video",
+    "ActionPresetPlay": "Play Video",
+    "ActionPresetShowMessage": "Show Message",
+    "ActionPresetShowMessageDefault": "Your message",
     "AlignBottom": "Align Bottom",
     "AlignCenter": "Align Center",
     "AlignLeft": "Align Left",
