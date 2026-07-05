@@ -418,6 +418,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 ondragleave:      function(e) { e.target.classList.remove('droppableHover'); var _sh = ViewVideo.PlayerProgress.querySelector('.ui-slider-handle'); if (_sh) _sh.classList.remove('highlight'); },
                 ondrop: function(e) {
                     var $dragged        = e.relatedTarget,
+                        presetName      = $dragged.dataset.preset,
                         resourceID      = $dragged.getAttribute('data-resourceID'),
                         videoDuration   = FrameTrail.module('HypervideoModel').duration,
                         startTime       = FrameTrail.module('HypervideoController').currentTime,
@@ -432,7 +433,9 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                         overlayPositionTop  = 100 * (tmpOffsetTop  / ViewVideo.OverlayContainer.offsetHeight),
                         newOverlay;
 
-                        if ($dragged.dataset.type == 'text') {
+                        if (presetName) {
+                            newOverlay = createPresetOverlay(presetName, startTime, endTime, overlayPositionTop, overlayPositionLeft);
+                        } else if ($dragged.dataset.type == 'text') {
                             newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
                                 "name": labels['ResourceCustomTextHTML'], "type": $dragged.dataset.type,
                                 "start": startTime, "end": endTime, "attributes": { "text": "" },
@@ -487,32 +490,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     stackTimelineView();
                     FrameTrail.module('TimelineController').refreshMinimap();
 
-                    // Register undo command for adding overlay
-                    (function(overlayData) {
-                        var findOverlay = function() {
-                            var overlays = FrameTrail.module('HypervideoModel').overlays;
-                            for (var i = 0; i < overlays.length; i++) {
-                                if (overlays[i].data.created === overlayData.created) { return overlays[i]; }
-                            }
-                            return null;
-                        };
-                        FrameTrail.module('UndoManager').register({
-                            category: 'overlays',
-                            description: labels['SidebarOverlays'] + ' ' + labels['GenericAdd'],
-                            undo: function() {
-                                var overlay = findOverlay();
-                                if (overlay) { deleteOverlay(overlay, true); }
-                            },
-                            redo: function() {
-                                var restoredOverlay = FrameTrail.module('HypervideoModel').newOverlay(overlayData, true);
-                                restoredOverlay.renderInDOM();
-                                restoredOverlay.startEditing();
-                                updateStatesOfOverlays(FrameTrail.module('HypervideoController').currentTime);
-                                stackTimelineView();
-                                FrameTrail.module('TimelineController').refreshMinimap();
-                            }
-                        });
-                    })(JSON.parse(JSON.stringify(newOverlay.data)));
+                    registerAddUndo(newOverlay);
 
                     var _sh = ViewVideo.PlayerProgress.querySelector('.ui-slider-handle'); if (_sh) _sh.classList.remove('highlight');
                 }
@@ -526,6 +504,152 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
     };
 
+
+
+    /**
+     * I register an undo command for a newly added overlay.
+     *
+     * @method registerAddUndo
+     * @param {Overlay} overlay
+     * @private
+     */
+    function registerAddUndo(overlay) {
+
+        (function(overlayData) {
+            var findOverlay = function() {
+                var overlays = FrameTrail.module('HypervideoModel').overlays;
+                for (var i = 0; i < overlays.length; i++) {
+                    if (overlays[i].data.created === overlayData.created) { return overlays[i]; }
+                }
+                return null;
+            };
+            FrameTrail.module('UndoManager').register({
+                category: 'overlays',
+                description: labels['SidebarOverlays'] + ' ' + labels['GenericAdd'],
+                undo: function() {
+                    var overlay = findOverlay();
+                    if (overlay) { deleteOverlay(overlay, true); }
+                },
+                redo: function() {
+                    var restoredOverlay = FrameTrail.module('HypervideoModel').newOverlay(overlayData, true);
+                    restoredOverlay.renderInDOM();
+                    restoredOverlay.startEditing();
+                    updateStatesOfOverlays(FrameTrail.module('HypervideoController').currentTime);
+                    stackTimelineView();
+                    FrameTrail.module('TimelineController').refreshMinimap();
+                }
+            });
+        })(JSON.parse(JSON.stringify(overlay.data)));
+
+    };
+
+
+    /**
+     * I create the overlays for a built-in preset and return the primary new overlay.
+     * Presets composed of several overlays create and render their secondary
+     * overlays (incl. undo registration) themselves.
+     *
+     * @method createPresetOverlay
+     * @param {String} presetName
+     * @param {Number} startTime
+     * @param {Number} endTime
+     * @param {Number} top
+     * @param {Number} left
+     * @return Overlay
+     * @private
+     */
+    function createPresetOverlay(presetName, startTime, endTime, top, left) {
+
+        var HypervideoModel = FrameTrail.module('HypervideoModel'),
+            newOverlay = null;
+
+        var createSecondary = function(protoData) {
+            var secondaryOverlay = HypervideoModel.newOverlay(protoData);
+            secondaryOverlay.renderInDOM();
+            secondaryOverlay.startEditing();
+            registerAddUndo(secondaryOverlay);
+            return secondaryOverlay;
+        };
+
+        switch (presetName) {
+
+            case 'infoCard':
+                newOverlay = HypervideoModel.newOverlay({
+                    "name": labels['PresetInfoCard'], "type": "text",
+                    "start": startTime, "end": endTime,
+                    "attributes": {
+                        "text": '<div style="background: rgba(0,0,0,0.75); color: #ffffff; padding: 1em; height: 100%; box-sizing: border-box; border-radius: 6px;">'
+                              + '<h3 style="margin: 0 0 0.5em 0;">' + labels['PresetInfoCardTitle'] + '</h3>'
+                              + '<p style="margin: 0;">' + labels['PresetInfoCardText'] + '</p>'
+                              + '</div>'
+                    },
+                    "position": { "top": top, "left": left, "width": 30, "height": 30 }
+                });
+                break;
+
+            case 'captionBar':
+                newOverlay = HypervideoModel.newOverlay({
+                    "name": labels['PresetCaptionBar'], "type": "text",
+                    "start": startTime, "end": endTime,
+                    "attributes": {
+                        "text": '<div style="background: rgba(0,0,0,0.75); color: #ffffff; padding: 0.4em 1em; height: 100%; box-sizing: border-box; display: flex; align-items: center;">'
+                              + labels['PresetCaptionBarText']
+                              + '</div>'
+                    },
+                    "position": { "top": 84, "left": 5, "width": 90, "height": 12 }
+                });
+                break;
+
+            case 'ctaButton':
+                newOverlay = HypervideoModel.newOverlay({
+                    "name": labels['PresetCTAButton'], "type": "button",
+                    "start": startTime, "end": endTime,
+                    "attributes": { "label": labels['PresetCTALabel'], "action": "openUrl", "actionTarget": "", "buttonColor": "#0096ff", "textColor": "#ffffff", "borderRadius": 20 },
+                    "position": { "top": 78, "left": 30, "width": 40, "height": 14 }
+                });
+                break;
+
+            case 'choiceButtons':
+                newOverlay = HypervideoModel.newOverlay({
+                    "name": labels['PresetChoiceOptionA'], "type": "button",
+                    "start": startTime, "end": endTime,
+                    "attributes": { "label": labels['PresetChoiceOptionA'], "action": "jumpToTime", "actionTarget": "", "buttonColor": "#0096ff", "textColor": "#ffffff", "borderRadius": 4 },
+                    "position": { "top": 40, "left": 12, "width": 32, "height": 14 }
+                });
+                newOverlay.data.events.onStart = "FrameTrail.module('HypervideoController').pause();";
+                createSecondary({
+                    "name": labels['PresetChoiceOptionB'], "type": "button",
+                    "start": startTime, "end": endTime,
+                    "attributes": { "label": labels['PresetChoiceOptionB'], "action": "jumpToTime", "actionTarget": "", "buttonColor": "#0096ff", "textColor": "#ffffff", "borderRadius": 4 },
+                    "position": { "top": 40, "left": 56, "width": 32, "height": 14 }
+                });
+                break;
+
+            case 'endScreen':
+                var duration = HypervideoModel.duration,
+                    endStart = Math.max(0, duration - 5);
+                newOverlay = HypervideoModel.newOverlay({
+                    "name": labels['PresetEndScreen'], "type": "text",
+                    "start": endStart, "end": duration,
+                    "attributes": {
+                        "text": '<div style="background: rgba(0,0,0,0.85); color: #ffffff; height: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 1.6em; text-align: center;">'
+                              + labels['PresetEndScreenTitle']
+                              + '</div>'
+                    },
+                    "position": { "top": 0, "left": 0, "width": 100, "height": 100 }
+                });
+                createSecondary({
+                    "name": labels['PresetReplay'], "type": "button",
+                    "start": endStart, "end": duration,
+                    "attributes": { "label": labels['PresetReplay'], "action": "customJS", "actionTarget": "hypervideo.currentTime = 0; hypervideo.play();", "buttonColor": "#0096ff", "textColor": "#ffffff", "borderRadius": 20 },
+                    "position": { "top": 62, "left": 38, "width": 24, "height": 13 }
+                });
+                break;
+        }
+
+        return newOverlay;
+
+    };
 
 
     /**
@@ -974,9 +1098,13 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                             +  '        <li>'
                             +  '            <a href="#CustomOverlay">'+ labels['ResourceAddCustomOverlay'] +'</a>'
                             +  '        </li>'
+                            +  '        <li>'
+                            +  '            <a href="#OverlayPresets">'+ labels['GenericPresets'] +'</a>'
+                            +  '        </li>'
                             +  '    </ul>'
                             +  '    <div id="ResourceList"></div>'
                             +  '    <div id="CustomOverlay"></div>'
+                            +  '    <div id="OverlayPresets"></div>'
                             +  '</div>';
         var overlayEditingOptions = _oeWrapper.firstElementChild;
         FTTabs(overlayEditingOptions, { heightStyle: 'fill' }); // Phase 2 bridge
@@ -1070,6 +1198,29 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         });
 
         overlayEditingOptions.querySelector('#CustomOverlay').append(textElement, htmlElement, quizElement, hotspotElement, buttonThumbElement);
+
+        /* Append built-in presets to 'Presets' tab */
+        var presetDefinitions = [
+            { preset: 'infoCard',      icon: 'icon-info',          label: labels['PresetInfoCard'] },
+            { preset: 'captionBar',    icon: 'icon-comment',       label: labels['PresetCaptionBar'] },
+            { preset: 'ctaButton',     icon: 'icon-mouse-pointer', label: labels['PresetCTAButton'] },
+            { preset: 'choiceButtons', icon: 'icon-flow-branch',   label: labels['PresetChoiceButtons'] },
+            { preset: 'endScreen',     icon: 'icon-to-end',        label: labels['PresetEndScreen'] }
+        ];
+
+        var presetPanel = overlayEditingOptions.querySelector('#OverlayPresets');
+        presetDefinitions.forEach(function(definition) {
+            var _pw = document.createElement('div');
+            _pw.innerHTML = '<div class="resourceThumb" data-preset="'+ definition.preset +'">'
+                    + '    <div class="resourceOverlay">'
+                    + '        <div class="resourceIcon"><span class="'+ definition.icon +'"></span></div>'
+                    + '    </div>'
+                    + '    <div class="resourceTitle">'+ definition.label +'</div>'
+                    + '</div>';
+            var presetThumb = _pw.firstElementChild;
+            interact(presetThumb).draggable(thumbDraggableOpts);
+            presetPanel.appendChild(presetThumb);
+        });
 
     };
 
