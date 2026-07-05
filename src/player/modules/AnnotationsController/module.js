@@ -262,6 +262,16 @@
 
         openedAnnotation = annotation;
 
+        if (annotation) {
+            FrameTrail.triggerEvent('annotationOpened', {
+                name: annotation.data.name,
+                type: annotation.data.type,
+                start: annotation.data.start,
+                end: annotation.data.end,
+                creator: annotation.data.creator
+            });
+        }
+
 
         for (var idx in annotations) {
 

@@ -182,6 +182,18 @@
             // dataPath and server are stored in state. RouteNavigation.resolveDataURL()
             // and resolveServerURL() use them when building fetch URLs (see RouteNavigation module).
 
+            // Register event handlers passed via the events init option
+            // (e.g. { events: { onPlay: fn, onUserAction: fn } } or { events: { play: fn } })
+            if (options.events) {
+                for (var eventHandlerName in options.events) {
+                    if (typeof options.events[eventHandlerName] !== 'function') { continue; }
+                    var eventType = (eventHandlerName.indexOf('on') === 0 && eventHandlerName.length > 2)
+                        ? eventHandlerName.charAt(2).toLowerCase() + eventHandlerName.slice(3)
+                        : eventHandlerName;
+                    addEventListener(eventType, options.events[eventHandlerName]);
+                }
+            }
+
             if (appName) {
                 _initModule(appName);
             } else {
@@ -234,6 +246,9 @@
             onEnded:            function (handler) { addEventListener('ended', handler) },
             onTimelineEvent:    function (handler) { addEventListener('timelineEvent', handler) },
             onUserAction:       function (handler) { addEventListener('userAction', handler) },
+            onOverlayClick:     function (handler) { addEventListener('overlayClick', handler) },
+            onQuizAnswered:     function (handler) { addEventListener('quizAnswered', handler) },
+            onAnnotationOpened: function (handler) { addEventListener('annotationOpened', handler) },
             on: addEventListener,
             off: removeEventListener,
             addEventListener: addEventListener,

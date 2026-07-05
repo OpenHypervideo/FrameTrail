@@ -212,6 +212,14 @@ FrameTrail.defineType(
 
                     this.overlayElement.addEventListener('click', function(evt) {
                         var self = _self;
+                        if (FrameTrail.getState('editMode') != 'overlays') {
+                            FrameTrail.triggerEvent('overlayClick', {
+                                name: self.data.name,
+                                type: self.data.type,
+                                start: self.data.start,
+                                end: self.data.end
+                            });
+                        }
                         if (self.data.events.onClick && FrameTrail.getState('editMode') != 'overlays') {
                             try {
                                 var clickEvent = new Function('FrameTrail', 'hypervideo', self.data.events.onClick);
