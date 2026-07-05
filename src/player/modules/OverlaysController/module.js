@@ -651,6 +651,98 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
 
     /**
+     * I change the stacking order of the given overlay relative to all other overlays
+     * by rewriting the zIndex attribute (overlay.data.attributes.zIndex) of all overlays.
+     *
+     * Possible actions: 'front', 'forward', 'backward', 'back'.
+     *
+     * @method arrangeOverlay
+     * @param {Overlay} overlay
+     * @param {String} action
+     */
+    function arrangeOverlay(overlay, action) {
+
+        var beforeState = overlays.map(function(o) {
+            return { id: o.data.created, zIndex: o.data.attributes.zIndex };
+        });
+
+        // Normalize: assign contiguous zIndex values (0..n-1) based on the current
+        // effective stacking order (explicit zIndex, falling back to creation order)
+        var sorted = overlays.slice().sort(function(a, b) {
+            var za = (a.data.attributes.zIndex != null) ? a.data.attributes.zIndex : overlays.indexOf(a),
+                zb = (b.data.attributes.zIndex != null) ? b.data.attributes.zIndex : overlays.indexOf(b);
+            return (za - zb) || (overlays.indexOf(a) - overlays.indexOf(b));
+        });
+        sorted.forEach(function(o, i) { o.data.attributes.zIndex = i; });
+
+        var idx = sorted.indexOf(overlay);
+
+        switch (action) {
+            case 'forward':
+                if (idx < sorted.length - 1) {
+                    sorted[idx + 1].data.attributes.zIndex = idx;
+                    overlay.data.attributes.zIndex = idx + 1;
+                }
+                break;
+            case 'backward':
+                if (idx > 0) {
+                    sorted[idx - 1].data.attributes.zIndex = idx;
+                    overlay.data.attributes.zIndex = idx - 1;
+                }
+                break;
+            case 'front':
+                for (var i = idx + 1; i < sorted.length; i++) {
+                    sorted[i].data.attributes.zIndex = i - 1;
+                }
+                overlay.data.attributes.zIndex = sorted.length - 1;
+                break;
+            case 'back':
+                for (var j = 0; j < idx; j++) {
+                    sorted[j].data.attributes.zIndex = j + 1;
+                }
+                overlay.data.attributes.zIndex = 0;
+                break;
+        }
+
+        for (var k = 0; k < overlays.length; k++) {
+            overlays[k].updateOverlayElement();
+        }
+
+        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+
+        var afterState = overlays.map(function(o) {
+            return { id: o.data.created, zIndex: o.data.attributes.zIndex };
+        });
+
+        var applyState = function(state) {
+            var allOverlays = FrameTrail.module('HypervideoModel').overlays;
+            state.forEach(function(entry) {
+                for (var i = 0; i < allOverlays.length; i++) {
+                    if (allOverlays[i].data.created === entry.id) {
+                        if (entry.zIndex != null) {
+                            allOverlays[i].data.attributes.zIndex = entry.zIndex;
+                        } else {
+                            delete allOverlays[i].data.attributes.zIndex;
+                        }
+                        allOverlays[i].updateOverlayElement();
+                        break;
+                    }
+                }
+            });
+            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+        };
+
+        FrameTrail.module('UndoManager').register({
+            category: 'overlays',
+            description: labels['SidebarOverlays'] + ' ' + labels['SettingsArrange'],
+            undo: function() { applyState(beforeState); },
+            redo: function() { applyState(afterState); }
+        });
+
+    };
+
+
+    /**
      * I prepare the "edit options" area, when the overlay editing mode is started.
      * I fill the space with a list of thumbnails representing all resources, which can then be dragged onto the overlay container.
      *
@@ -787,6 +879,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         muteMedia:              muteMedia,
 
         deleteOverlay:          deleteOverlay,
+        arrangeOverlay:         arrangeOverlay,
 
         renderPropertiesControls: renderPropertiesControls,
 

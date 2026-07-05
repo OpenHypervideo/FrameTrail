@@ -287,6 +287,62 @@ FrameTrail.defineType(
                                             + '                    <input type="range" class="animationDurationRange" min="100" max="1000" step="50" value="'+ (overlay.data.attributes.animationDuration || 300) +'">'
                                             + '                </div>'
                                             + '            </div>'
+                                            + '            <hr>'
+                                            + '            <div class="layoutRow">'
+                                            + '                <div class="column-6">'
+                                            + '                    <label>'+ this.labels['SettingsArrange'] +'</label>'
+                                            + '                    <div class="arrangeButtons">'
+                                            + '                        <button class="arrangeButton" data-arrange="back" data-tooltip-bottom-right="'+ this.labels['ArrangeSendToBack'] +'"><span class="icon-angle-double-down"></span></button>'
+                                            + '                        <button class="arrangeButton" data-arrange="backward" data-tooltip-bottom-right="'+ this.labels['ArrangeSendBackward'] +'"><span class="icon-angle-down"></span></button>'
+                                            + '                        <button class="arrangeButton" data-arrange="forward" data-tooltip-bottom-right="'+ this.labels['ArrangeBringForward'] +'"><span class="icon-angle-up"></span></button>'
+                                            + '                        <button class="arrangeButton" data-arrange="front" data-tooltip-bottom-right="'+ this.labels['ArrangeBringToFront'] +'"><span class="icon-angle-double-up"></span></button>'
+                                            + '                    </div>'
+                                            + '                </div>'
+                                            + '                <div class="column-6">'
+                                            + '                    <div class="checkboxRow">'
+                                            + '                        <label class="switch">'
+                                            + '                            <input class="showCloseButtonCheckbox" type="checkbox" autocomplete="off" '+ (overlay.data.attributes.showCloseButton ? 'checked' : '') +'>'
+                                            + '                            <span class="slider round"></span>'
+                                            + '                        </label>'
+                                            + '                        <label>'+ this.labels['SettingsShowCloseButton'] +'</label>'
+                                            + '                    </div>'
+                                            + '                    <div class="checkboxRow">'
+                                            + '                        <label class="switch">'
+                                            + '                            <input class="allowCloseCheckbox" type="checkbox" autocomplete="off" '+ ((overlay.data.attributes.allowClose !== false) ? 'checked' : '') +'>'
+                                            + '                            <span class="slider round"></span>'
+                                            + '                        </label>'
+                                            + '                        <label>'+ this.labels['SettingsAllowClose'] +'</label>'
+                                            + '                    </div>'
+                                            + '                </div>'
+                                            + '            </div>'
+                                            + '            <hr>'
+                                            + '            <div class="layoutRow">'
+                                            + '                <div class="column-3">'
+                                            + '                    <div class="checkboxRow">'
+                                            + '                        <label class="switch">'
+                                            + '                            <input class="hoverStyleCheckbox" type="checkbox" autocomplete="off" '+ (overlay.data.attributes.hoverStyle ? 'checked' : '') +'>'
+                                            + '                            <span class="slider round"></span>'
+                                            + '                        </label>'
+                                            + '                        <label>'+ this.labels['SettingsHoverEffect'] +'</label>'
+                                            + '                    </div>'
+                                            + '                </div>'
+                                            + '                <div class="column-3 hoverStyleControl">'
+                                            + '                    <label>'+ this.labels['SettingsOpacity'] +'</label>'
+                                            + '                    <input type="range" class="hoverOpacityRange" min="0" max="1" step="0.01" value="'+ ((overlay.data.attributes.hoverStyle && overlay.data.attributes.hoverStyle.opacity != null) ? overlay.data.attributes.hoverStyle.opacity : 0.85) +'">'
+                                            + '                </div>'
+                                            + '                <div class="column-2 hoverStyleControl">'
+                                            + '                    <label>'+ this.labels['SettingsHoverScale'] +'</label>'
+                                            + '                    <input type="range" class="hoverScaleRange" min="0.8" max="1.5" step="0.05" value="'+ ((overlay.data.attributes.hoverStyle && overlay.data.attributes.hoverStyle.scale != null) ? overlay.data.attributes.hoverStyle.scale : 1.05) +'">'
+                                            + '                </div>'
+                                            + '                <div class="column-2 hoverStyleControl">'
+                                            + '                    <label>'+ this.labels['SettingsHoverBorder'] +'</label>'
+                                            + '                    <input type="color" class="hoverBorderColor" value="'+ ((overlay.data.attributes.hoverStyle && overlay.data.attributes.hoverStyle.borderColor) || '#ffffff') +'">'
+                                            + '                </div>'
+                                            + '                <div class="column-2 hoverStyleControl">'
+                                            + '                    <label>'+ this.labels['SettingsHoverBackground'] +'</label>'
+                                            + '                    <input type="color" class="hoverBackgroundColor" value="'+ ((overlay.data.attributes.hoverStyle && overlay.data.attributes.hoverStyle.backgroundColor) || '#000000') +'">'
+                                            + '                </div>'
+                                            + '            </div>'
                                             + '        </div>'
                                             + '        <div id="ActionOnReady">'
                                             + '            <textarea class="onReadyAction codeTextarea" data-eventname="onReady">' + (overlay.data.events.onReady ? overlay.data.events.onReady : '') + '</textarea>'
@@ -737,17 +793,154 @@ FrameTrail.defineType(
                         durationBeforeChange = newDuration;
                     });
 
-                    var _arrangeTop = controlsContainer.querySelector('.arrangeTop');
-                    if (_arrangeTop) { _arrangeTop.addEventListener('click', function() {
-                        // Move to top
-                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                    }); }
+                    // --- Arrange (Stacking Order) Buttons ---
+                    controlsContainer.querySelectorAll('.arrangeButton').forEach(function(btn) {
+                        btn.addEventListener('click', function() {
+                            FrameTrail.module('OverlaysController').arrangeOverlay(overlay, btn.dataset.arrange);
+                        });
+                    });
 
-                    var _arrangeBottom = controlsContainer.querySelector('.arrangeBottom');
-                    if (_arrangeBottom) { _arrangeBottom.addEventListener('click', function() {
-                        // Move to bottom
+                    // --- Close Button Toggles ---
+                    var bindCloseFlagCheckbox = function(checkbox, attributeName, labelKey) {
+                        checkbox.addEventListener('change', function() {
+                            var oldVal = overlay.data.attributes[attributeName],
+                                newVal = this.checked;
+
+                            overlay.data.attributes[attributeName] = newVal;
+                            overlay.updateCloseButton();
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+
+                            (function(overlayId, capturedOldVal, capturedNewVal, labels) {
+                                var findOverlay = function() {
+                                    var overlays = FrameTrail.module('HypervideoModel').overlays;
+                                    for (var i = 0; i < overlays.length; i++) {
+                                        if (overlays[i].data.created === overlayId) return overlays[i];
+                                    }
+                                    return null;
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: 'overlays',
+                                    description: labels['SidebarOverlays'] + ' ' + labels[labelKey],
+                                    undo: function() {
+                                        var o = findOverlay();
+                                        if (!o) return;
+                                        if (capturedOldVal === undefined) {
+                                            delete o.data.attributes[attributeName];
+                                        } else {
+                                            o.data.attributes[attributeName] = capturedOldVal;
+                                        }
+                                        o.updateCloseButton();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                    },
+                                    redo: function() {
+                                        var o = findOverlay();
+                                        if (!o) return;
+                                        o.data.attributes[attributeName] = capturedNewVal;
+                                        o.updateCloseButton();
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                    }
+                                });
+                            })(overlay.data.created, oldVal, newVal, self.labels);
+                        });
+                    };
+
+                    bindCloseFlagCheckbox(controlsContainer.querySelector('.showCloseButtonCheckbox'), 'showCloseButton', 'SettingsShowCloseButton');
+                    bindCloseFlagCheckbox(controlsContainer.querySelector('.allowCloseCheckbox'), 'allowClose', 'SettingsAllowClose');
+
+                    // --- Hover Effect Controls ---
+                    var hoverControls = controlsContainer.querySelectorAll('.hoverStyleControl');
+                    var setHoverControlsVisible = function(visible) {
+                        hoverControls.forEach(function(c) { c.style.display = visible ? '' : 'none'; });
+                    };
+                    setHoverControlsVisible(!!overlay.data.attributes.hoverStyle);
+
+                    var registerHoverUndo = function(oldHoverStyle, newHoverStyle) {
+                        (function(overlayId, capturedOld, capturedNew, labels) {
+                            var findOverlay = function() {
+                                var overlays = FrameTrail.module('HypervideoModel').overlays;
+                                for (var i = 0; i < overlays.length; i++) {
+                                    if (overlays[i].data.created === overlayId) return overlays[i];
+                                }
+                                return null;
+                            };
+                            FrameTrail.module('UndoManager').register({
+                                category: 'overlays',
+                                description: labels['SidebarOverlays'] + ' ' + labels['SettingsHoverEffect'],
+                                undo: function() {
+                                    var o = findOverlay();
+                                    if (!o) return;
+                                    if (capturedOld) {
+                                        o.data.attributes.hoverStyle = JSON.parse(JSON.stringify(capturedOld));
+                                    } else {
+                                        delete o.data.attributes.hoverStyle;
+                                    }
+                                    o.updateHoverStyle();
+                                    FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                },
+                                redo: function() {
+                                    var o = findOverlay();
+                                    if (!o) return;
+                                    if (capturedNew) {
+                                        o.data.attributes.hoverStyle = JSON.parse(JSON.stringify(capturedNew));
+                                    } else {
+                                        delete o.data.attributes.hoverStyle;
+                                    }
+                                    o.updateHoverStyle();
+                                    FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                }
+                            });
+                        })(overlay.data.created,
+                           oldHoverStyle ? JSON.parse(JSON.stringify(oldHoverStyle)) : null,
+                           newHoverStyle ? JSON.parse(JSON.stringify(newHoverStyle)) : null,
+                           self.labels);
+                    };
+
+                    controlsContainer.querySelector('.hoverStyleCheckbox').addEventListener('change', function() {
+                        var oldHoverStyle = overlay.data.attributes.hoverStyle || null;
+                        if (this.checked) {
+                            overlay.data.attributes.hoverStyle = {
+                                opacity: parseFloat(controlsContainer.querySelector('.hoverOpacityRange').value),
+                                scale: parseFloat(controlsContainer.querySelector('.hoverScaleRange').value),
+                                borderColor: '',
+                                backgroundColor: ''
+                            };
+                        } else {
+                            delete overlay.data.attributes.hoverStyle;
+                        }
+                        setHoverControlsVisible(this.checked);
+                        overlay.updateHoverStyle();
                         FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                    }); }
+                        registerHoverUndo(oldHoverStyle, overlay.data.attributes.hoverStyle || null);
+                    });
+
+                    var bindHoverControl = function(selector, propertyName, parseValue) {
+                        var el = controlsContainer.querySelector(selector);
+                        var hoverBeforeChange = null;
+                        el.addEventListener('focus', function() {
+                            hoverBeforeChange = overlay.data.attributes.hoverStyle
+                                ? JSON.parse(JSON.stringify(overlay.data.attributes.hoverStyle))
+                                : null;
+                        });
+                        el.addEventListener('input', function() {
+                            if (!overlay.data.attributes.hoverStyle) return;
+                            overlay.data.attributes.hoverStyle[propertyName] = parseValue(this.value);
+                            overlay.updateHoverStyle();
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        });
+                        el.addEventListener('change', function() {
+                            if (!overlay.data.attributes.hoverStyle) return;
+                            overlay.data.attributes.hoverStyle[propertyName] = parseValue(this.value);
+                            overlay.updateHoverStyle();
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                            registerHoverUndo(hoverBeforeChange, overlay.data.attributes.hoverStyle);
+                            hoverBeforeChange = JSON.parse(JSON.stringify(overlay.data.attributes.hoverStyle));
+                        });
+                    };
+
+                    bindHoverControl('.hoverOpacityRange', 'opacity', parseFloat);
+                    bindHoverControl('.hoverScaleRange', 'scale', parseFloat);
+                    bindHoverControl('.hoverBorderColor', 'borderColor', String);
+                    bindHoverControl('.hoverBackgroundColor', 'backgroundColor', String);
 
                     controlsContainer.querySelector('.deleteOverlay').addEventListener('click', function(){
 

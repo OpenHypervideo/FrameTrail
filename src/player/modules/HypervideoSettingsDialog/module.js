@@ -271,6 +271,13 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                                 showUploadButton: true,
                                 isEditMode: true
                             })
+                        + '    <hr>'
+                        + '    <div class="posterFrameSection">'
+                        + '        <label>'+ labels['SettingsPosterFrame'] +'</label>'
+                        + '        <div class="message active">'+ labels['MessagePosterFrame'] +'</div>'
+                        + '        <div class="posterFrameList"></div>'
+                        + '        <input type="hidden" name="posterFrame" value="'+ (hypervideo.posterFrame || '') +'">'
+                        + '    </div>'
                         + '    <div class="message error"></div>'
                         + '</form>';
         var EditHypervideoForm = _efw.firstElementChild;
@@ -315,6 +322,47 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 }
             });
         })();
+
+        // Poster frame image list
+        (function() {
+            var posterList = EditHypervideoForm.querySelector('.posterFrameList');
+
+            FrameTrail.module('ResourceManager').renderList(posterList, true, 'type', 'contains', ['image']);
+
+            if (hypervideo.posterFrame) {
+                var checkPosterLoaded = setInterval(function() {
+                    if (!posterList.querySelector('.loadingScreen')) {
+                        clearInterval(checkPosterLoaded);
+                        posterList.querySelectorAll('.resourceThumb').forEach(function(thumb) {
+                            var res = database.resources[thumb.dataset.resourceid];
+                            if (res && res.src === hypervideo.posterFrame) {
+                                thumb.classList.add('selected');
+                            }
+                        });
+                    }
+                }, 100);
+            }
+        })();
+
+        // Handle poster frame selection (click a selected thumb again to clear)
+        EditHypervideoForm.addEventListener('click', function(evt) {
+            if (evt.target.closest('.resourceEditButton')) return;
+            var _thumb = evt.target.closest('.posterFrameList .resourceThumb');
+            if (!_thumb) return;
+
+            var posterInput = EditHypervideoForm.querySelector('input[name="posterFrame"]');
+            var wasSelected = _thumb.classList.contains('selected');
+
+            EditHypervideoForm.querySelectorAll('.posterFrameList .resourceThumb').forEach(function(el) { el.classList.remove('selected'); });
+
+            if (wasSelected) {
+                posterInput.value = '';
+            } else {
+                var resource = database.resources[_thumb.dataset.resourceid];
+                _thumb.classList.add('selected');
+                posterInput.value = resource ? resource.src : '';
+            }
+        });
 
         // Handle upload new video resource button
         EditHypervideoForm.querySelector('.uploadNewVideoResource').addEventListener('click', function() {
@@ -418,7 +466,12 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             var DatabaseEntry = FrameTrail.module('Database').hypervideos[thisID];
 
             DatabaseEntry.name = EditHypervideoForm.querySelector('input[name="name"]').value;
-            
+
+            var posterInput = EditHypervideoForm.querySelector('input[name="posterFrame"]');
+            if (posterInput) {
+                DatabaseEntry.posterFrame = posterInput.value || null;
+            }
+
             if (DatabaseEntry.config) {
                 for (var configKey in DatabaseEntry.config) {
                     if (configKey === 'layoutArea' || configKey === 'theme' || configKey === 'captionsVisible' || configKey === 'autohideControls') { continue; }
@@ -533,6 +586,17 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                         var name = EditHypervideoForm.querySelector('input[name="name"]').value;
 
                         FrameTrail.module('HypervideoModel').hypervideoName = name;
+
+                        var newPosterFrame = EditHypervideoForm.querySelector('input[name="posterFrame"]').value || null;
+                        FrameTrail.module('HypervideoModel').posterFrame = newPosterFrame;
+                        var videoEl = FrameTrail.module('ViewVideo').Video;
+                        if (videoEl) {
+                            if (newPosterFrame) {
+                                videoEl.setAttribute('poster', FrameTrail.module('RouteNavigation').getResourceURL(newPosterFrame));
+                            } else {
+                                videoEl.removeAttribute('poster');
+                            }
+                        }
 
                         FrameTrail.module('HypervideoController').updateDescriptions();
 

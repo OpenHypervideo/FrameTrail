@@ -32,6 +32,10 @@ FrameTrail.defineType(
                     data.events = {};
                 }
 
+                if ( !data.attributes || Array.isArray(data.attributes) ) {
+                    data.attributes = {};
+                }
+
 
                 this.data = data;
 
@@ -99,6 +103,14 @@ FrameTrail.defineType(
                  * @type Boolean
                  */
                 permanentFocusState:    false,
+
+                /**
+                 * I store whether the viewer has dismissed me via my close button.
+                 * I am reset when I become inactive (the current time leaves my range) or when editing starts.
+                 * @attribute closedByUser
+                 * @type Boolean
+                 */
+                closedByUser:           false,
 
                 /**
                  * I hold the timelineElement (a plain HTMLElement), which indicates my start and end time.
@@ -186,6 +198,18 @@ FrameTrail.defineType(
                     }
 
                     var _self = this;
+
+                    this.closeButton = document.createElement('div');
+                    this.closeButton.className = 'overlayCloseButton';
+                    this.closeButton.innerHTML = '<span class="icon-cancel"></span>';
+                    this.closeButton.addEventListener('click', function(evt) {
+                        evt.stopPropagation();
+                        _self.closeByUser();
+                    });
+                    this.overlayElement.appendChild(this.closeButton);
+                    this.updateCloseButton();
+                    this.updateHoverStyle();
+
                     this.overlayElement.addEventListener('click', function(evt) {
                         var self = _self;
                         if (self.data.events.onClick && FrameTrail.getState('editMode') != 'overlays') {
@@ -320,6 +344,7 @@ FrameTrail.defineType(
                     this.overlayElement.style.left   = this.data.position.left   + '%';
                     this.overlayElement.style.width  = this.data.position.width  + '%';
                     this.overlayElement.style.height = this.data.position.height + '%';
+                    this.overlayElement.style.zIndex = (this.data.attributes.zIndex != null) ? this.data.attributes.zIndex : '';
 
                     var _rdChild = this.overlayElement.querySelector('.resourceDetail');
                     if (_rdChild) {
@@ -408,6 +433,69 @@ FrameTrail.defineType(
                     } else {
                         this.mediaElement.setAttribute('controls', 'controls');
                         delete this.mediaElement;
+                    }
+
+                },
+
+                /**
+                 * I show or hide my close button according to my
+                 * data.attributes.showCloseButton and data.attributes.allowClose flags.
+                 * @method updateCloseButton
+                 */
+                updateCloseButton: function () {
+
+                    if (!this.closeButton) { return; }
+
+                    var visible = this.data.attributes.showCloseButton
+                                  && this.data.attributes.allowClose !== false;
+
+                    this.closeButton.style.display = visible ? '' : 'none';
+
+                },
+
+                /**
+                 * I apply my hover style (data.attributes.hoverStyle) to the overlayElement
+                 * as CSS custom properties. The actual :hover behavior is defined in my stylesheet.
+                 * @method updateHoverStyle
+                 */
+                updateHoverStyle: function () {
+
+                    var hoverStyle = this.data.attributes.hoverStyle,
+                        el = this.overlayElement;
+
+                    if (hoverStyle) {
+                        el.classList.add('hasHoverStyle');
+                        el.style.setProperty('--overlay-hover-opacity', (hoverStyle.opacity != null) ? hoverStyle.opacity : 1);
+                        el.style.setProperty('--overlay-hover-scale', (hoverStyle.scale != null) ? hoverStyle.scale : 1);
+                        el.style.setProperty('--overlay-hover-outline', hoverStyle.borderColor ? '2px solid ' + hoverStyle.borderColor : 'none');
+                        el.style.setProperty('--overlay-hover-bg', hoverStyle.backgroundColor || 'transparent');
+                    } else {
+                        el.classList.remove('hasHoverStyle');
+                        el.style.removeProperty('--overlay-hover-opacity');
+                        el.style.removeProperty('--overlay-hover-scale');
+                        el.style.removeProperty('--overlay-hover-outline');
+                        el.style.removeProperty('--overlay-hover-bg');
+                    }
+
+                },
+
+                /**
+                 * I am called when the viewer clicks my close button.
+                 * I hide my overlayElement until I become inactive again.
+                 * I do nothing when data.attributes.allowClose is false.
+                 * @method closeByUser
+                 */
+                closeByUser: function () {
+
+                    if (this.data.attributes.allowClose === false) { return; }
+
+                    this.closedByUser = true;
+                    this.clearAnimationClasses();
+                    this.overlayElement.style.opacity = '';
+                    this.overlayElement.classList.add('closedByUser');
+
+                    if (this.syncedMedia) {
+                        FrameTrail.module('OverlaysController').removeSyncedMedia(this);
                     }
 
                 },
@@ -580,6 +668,9 @@ FrameTrail.defineType(
 
                     this.activeState = false;
 
+                    this.closedByUser = false;
+                    this.overlayElement.classList.remove('closedByUser');
+
                 },
 
 
@@ -655,6 +746,9 @@ FrameTrail.defineType(
 
                     var self = this,
                         OverlaysController = FrameTrail.module('OverlaysController');
+
+                    this.closedByUser = false;
+                    this.overlayElement.classList.remove('closedByUser');
 
                     window.setTimeout(function() {
                         self.makeTimelineElementDraggable();

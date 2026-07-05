@@ -28,6 +28,7 @@
         creatorId               = '',
         created                 = 0,
         lastchanged             = 0,
+        posterFrame             = null,
 
         subtitleFiles           = [],
         subtitles               = [],
@@ -81,6 +82,7 @@
         creatorId      = hypervideo.creatorId;
         created        = hypervideo.created;
         lastchanged    = hypervideo.lastchanged;
+        posterFrame    = hypervideo.posterFrame || null;
         // Read in config of Hypervideo
         for (var key in hypervideo.config) {
 
@@ -446,7 +448,7 @@
                     "startOffset":          0,
                     "endOffset":            0,
                     "resourceId":           protoData.resourceId,
-                    "attributes":           resourceDatabase[protoData.resourceId].attributes,
+                    "attributes":           JSON.parse(JSON.stringify(resourceDatabase[protoData.resourceId].attributes || {})),
                     "position": {
                         "top":      protoData.position.top,
                         "left":     protoData.position.left,
@@ -593,7 +595,7 @@
                     "start":                protoData.start,
                     "end":                  protoData.end,
                     "resourceId":           protoData.resourceId,
-                    "attributes":           resourceDatabase[protoData.resourceId].attributes,
+                    "attributes":           JSON.parse(JSON.stringify(resourceDatabase[protoData.resourceId].attributes || {})),
                     "tags":                 [],
                     "source": {
                         frametrail: true,
@@ -1594,6 +1596,14 @@
          */
         get hypervideoName()         { return hypervideoName           },
         set hypervideoName(aString)  { return hypervideoName = aString },
+
+        /**
+         * The hypervideo's poster frame (image src shown before playback starts), or null.
+         * @attribute posterFrame
+         * @type String or null
+         */
+        get posterFrame()            { return posterFrame              },
+        set posterFrame(aString)     { return posterFrame = aString    },
 
         /**
          * Get or set the hypervideo descritption

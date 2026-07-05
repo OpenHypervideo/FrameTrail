@@ -166,6 +166,12 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
             });
 
+            if (HypervideoModel.posterFrame) {
+                videoElement.setAttribute('poster', RouteNavigation.getResourceURL(HypervideoModel.posterFrame));
+            } else {
+                videoElement.removeAttribute('poster');
+            }
+
             videoElement.setAttribute('preload', 'metadata');
             videoElement.load();
 
