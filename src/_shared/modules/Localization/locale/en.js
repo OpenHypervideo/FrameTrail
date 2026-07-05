@@ -7,6 +7,12 @@
  */
 
 window.FrameTrail_L10n['en'] = {
+    "AlignBottom": "Align Bottom",
+    "AlignCenter": "Align Center",
+    "AlignLeft": "Align Left",
+    "AlignMiddle": "Align Middle",
+    "AlignRight": "Align Right",
+    "AlignTop": "Align Top",
     "AnimationFade": "Fade",
     "AnimationNone": "None (instant)",
     "AnimationSlideDown": "Slide from Top",
@@ -261,6 +267,7 @@ window.FrameTrail_L10n['en'] = {
     "SettingsActions": "Actions",
     "SettingsActionsIfRight": "If answer is correct",
     "SettingsActionsIfWrong": "If answer is wrong",
+    "SettingsAlign": "Align",
     "SettingsAllowClose": "Allow Closing",
     "SettingsAllowCollaboration": "Allow collaboration",
     "SettingsAllowUploads": "Allow uploads",

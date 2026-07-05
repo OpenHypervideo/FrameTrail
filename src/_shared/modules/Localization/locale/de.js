@@ -7,6 +7,12 @@
  */
 
 window.FrameTrail_L10n['de'] = {
+    "AlignBottom": "Unten ausrichten",
+    "AlignCenter": "Horizontal zentrieren",
+    "AlignLeft": "Links ausrichten",
+    "AlignMiddle": "Vertikal zentrieren",
+    "AlignRight": "Rechts ausrichten",
+    "AlignTop": "Oben ausrichten",
     "AnimationFade": "Einblenden",
     "AnimationNone": "Keine (sofort)",
     "AnimationSlideDown": "Von oben einschieben",
@@ -261,6 +267,7 @@ window.FrameTrail_L10n['de'] = {
     "SettingsActions": "Aktionen",
     "SettingsActionsIfRight": "Bei korrekter Antwort",
     "SettingsActionsIfWrong": "Bei falscher Antwort",
+    "SettingsAlign": "Ausrichten",
     "SettingsAllowClose": "Schließen erlauben",
     "SettingsAllowCollaboration": "Zusammenarbeit erlauben",
     "SettingsAllowUploads": "Uploads erlauben",

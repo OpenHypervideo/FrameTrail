@@ -289,7 +289,7 @@ FrameTrail.defineType(
                                             + '            </div>'
                                             + '            <hr>'
                                             + '            <div class="layoutRow">'
-                                            + '                <div class="column-6">'
+                                            + '                <div class="column-4">'
                                             + '                    <label>'+ this.labels['SettingsArrange'] +'</label>'
                                             + '                    <div class="arrangeButtons">'
                                             + '                        <button class="arrangeButton" data-arrange="back" data-tooltip-bottom-right="'+ this.labels['ArrangeSendToBack'] +'"><span class="icon-angle-double-down"></span></button>'
@@ -298,7 +298,18 @@ FrameTrail.defineType(
                                             + '                        <button class="arrangeButton" data-arrange="front" data-tooltip-bottom-right="'+ this.labels['ArrangeBringToFront'] +'"><span class="icon-angle-double-up"></span></button>'
                                             + '                    </div>'
                                             + '                </div>'
-                                            + '                <div class="column-6">'
+                                            + '                <div class="column-4">'
+                                            + '                    <label>'+ this.labels['SettingsAlign'] +'</label>'
+                                            + '                    <div class="alignButtons">'
+                                            + '                        <button class="alignButton" data-align="left" data-tooltip-bottom-right="'+ this.labels['AlignLeft'] +'"><span class="icon-align-left"></span></button>'
+                                            + '                        <button class="alignButton" data-align="centerH" data-tooltip-bottom-right="'+ this.labels['AlignCenter'] +'"><span class="icon-align-center"></span></button>'
+                                            + '                        <button class="alignButton" data-align="right" data-tooltip-bottom-right="'+ this.labels['AlignRight'] +'"><span class="icon-align-right"></span></button>'
+                                            + '                        <button class="alignButton" data-align="top" data-tooltip-bottom-right="'+ this.labels['AlignTop'] +'"><span class="icon-align-left" style="display:inline-block; transform:rotate(90deg)"></span></button>'
+                                            + '                        <button class="alignButton" data-align="middleV" data-tooltip-bottom-right="'+ this.labels['AlignMiddle'] +'"><span class="icon-align-center" style="display:inline-block; transform:rotate(90deg)"></span></button>'
+                                            + '                        <button class="alignButton" data-align="bottom" data-tooltip-bottom-right="'+ this.labels['AlignBottom'] +'"><span class="icon-align-right" style="display:inline-block; transform:rotate(90deg)"></span></button>'
+                                            + '                    </div>'
+                                            + '                </div>'
+                                            + '                <div class="column-4">'
                                             + '                    <div class="checkboxRow">'
                                             + '                        <label class="switch">'
                                             + '                            <input class="showCloseButtonCheckbox" type="checkbox" autocomplete="off" '+ (overlay.data.attributes.showCloseButton ? 'checked' : '') +'>'
@@ -797,6 +808,60 @@ FrameTrail.defineType(
                     controlsContainer.querySelectorAll('.arrangeButton').forEach(function(btn) {
                         btn.addEventListener('click', function() {
                             FrameTrail.module('OverlaysController').arrangeOverlay(overlay, btn.dataset.arrange);
+                        });
+                    });
+
+                    // --- Align Buttons ---
+                    controlsContainer.querySelectorAll('.alignButton').forEach(function(btn) {
+                        btn.addEventListener('click', function() {
+
+                            var position = overlay.data.position,
+                                oldPos = JSON.parse(JSON.stringify(position));
+
+                            switch (btn.dataset.align) {
+                                case 'left':    position.left = 0;                           break;
+                                case 'centerH': position.left = (100 - position.width) / 2;  break;
+                                case 'right':   position.left = 100 - position.width;        break;
+                                case 'top':     position.top  = 0;                           break;
+                                case 'middleV': position.top  = (100 - position.height) / 2; break;
+                                case 'bottom':  position.top  = 100 - position.height;       break;
+                            }
+
+                            overlay.updateOverlayElement();
+                            overlay.scaleOverlayElement();
+
+                            controlsContainer.querySelector('.positionTop').value  = position.top;
+                            controlsContainer.querySelector('.positionLeft').value = position.left;
+
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+
+                            (function(overlayId, capturedOldPos, capturedNewPos, labels) {
+                                var findOverlay = function() {
+                                    var overlays = FrameTrail.module('HypervideoModel').overlays;
+                                    for (var i = 0; i < overlays.length; i++) {
+                                        if (overlays[i].data.created === overlayId) return overlays[i];
+                                    }
+                                    return null;
+                                };
+                                var applyPos = function(pos) {
+                                    var o = findOverlay();
+                                    if (!o) return;
+                                    o.data.position.top    = pos.top;
+                                    o.data.position.left   = pos.left;
+                                    o.data.position.width  = pos.width;
+                                    o.data.position.height = pos.height;
+                                    o.updateOverlayElement();
+                                    o.scaleOverlayElement();
+                                    FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                };
+                                FrameTrail.module('UndoManager').register({
+                                    category: 'overlays',
+                                    description: labels['SidebarOverlays'] + ' ' + labels['SettingsAlign'],
+                                    undo: function() { applyPos(capturedOldPos); },
+                                    redo: function() { applyPos(capturedNewPos); }
+                                });
+                            })(overlay.data.created, oldPos, JSON.parse(JSON.stringify(position)), self.labels);
+
                         });
                     });
 
