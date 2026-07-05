@@ -467,6 +467,13 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                                 "attributes": { "color": "#0096ff", "linkUrl": "", "borderWidth": 5, "shape": "circle", "borderRadius": 10 },
                                 "position": { "top": overlayPositionTop, "left": overlayPositionLeft, "width": 20, "height": 30 }
                             });
+                        } else if ($dragged.dataset.type == 'button') {
+                            newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
+                                "name": labels['ResourceTypeButton'], "type": $dragged.dataset.type,
+                                "start": startTime, "end": endTime,
+                                "attributes": { "label": labels['ResourceTypeButton'], "action": "", "actionTarget": "", "buttonColor": "#0096ff", "textColor": "#ffffff", "borderRadius": 4 },
+                                "position": { "top": overlayPositionTop, "left": overlayPositionLeft, "width": 20, "height": 12 }
+                            });
                         } else {
                             newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
                                 "start": startTime, "end": endTime, "resourceId": resourceID,
@@ -1018,6 +1025,15 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 + '</div>';
         var hotspotElement = _hw.firstElementChild;
 
+        var _bw = document.createElement('div');
+        _bw.innerHTML = '<div class="resourceThumb" data-type="button">'
+                + '    <div class="resourceOverlay">'
+                + '        <div class="resourceIcon"><span class="icon-mouse-pointer"></div>'
+                + '    </div>'
+                + '    <div class="resourceTitle">'+ labels['ResourceTypeButton'] +'</div>'
+                + '</div>';
+        var buttonThumbElement = _bw.firstElementChild;
+
         var thumbDraggableOpts = {
             listeners: {
                 start: function(e) {
@@ -1049,11 +1065,11 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 }
             }
         };
-        [textElement, htmlElement, quizElement, hotspotElement].forEach(function(el) {
+        [textElement, htmlElement, quizElement, hotspotElement, buttonThumbElement].forEach(function(el) {
             interact(el).draggable(thumbDraggableOpts);
         });
 
-        overlayEditingOptions.querySelector('#CustomOverlay').append(textElement, htmlElement, quizElement, hotspotElement);
+        overlayEditingOptions.querySelector('#CustomOverlay').append(textElement, htmlElement, quizElement, hotspotElement, buttonThumbElement);
 
     };
 

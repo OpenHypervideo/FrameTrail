@@ -1,0 +1,28 @@
+.resourceDetail[data-type="button"] {
+    background: transparent !important;
+}
+
+.resourceDetail[data-type="button"] .resourceContent {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.overlayActionButton {
+    border: none;
+    cursor: pointer;
+    padding: 0.5em 1.2em;
+    font-family: inherit;
+    font-size: 16px;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: filter 0.15s ease;
+}
+
+.overlayActionButton:hover {
+    filter: brightness(1.15);
+}

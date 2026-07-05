@@ -35,6 +35,179 @@ FrameTrail.defineType(
             prototype: {
 
                 /**
+                 * I execute the shared overlay action model used by hotspot- and button-like
+                 * overlay types. The action is described by two attribute fields:
+                 * action ('openUrl' | 'jumpToTime' | 'jumpToHypervideo' | 'customJS') and actionTarget.
+                 * For backwards compatibility, a linkUrl attribute (hotspots) is treated as 'openUrl'.
+                 *
+                 * @method executeOverlayAction
+                 * @param {Object} attributes
+                 */
+                executeOverlayAction: function(attributes) {
+
+                    var action = attributes.action,
+                        target = attributes.actionTarget;
+
+                    if (!action && attributes.linkUrl) {
+                        action = 'openUrl';
+                        target = attributes.linkUrl;
+                    }
+
+                    switch (action) {
+                        case 'openUrl':
+                            if (!target) { break; }
+                            if (target.indexOf('#') === 0) {
+                                window.location.hash = target.replace(/^#/, '');
+                            } else {
+                                window.open(target, '_blank');
+                            }
+                            break;
+                        case 'jumpToTime':
+                            FrameTrail.module('HypervideoController').currentTime = parseFloat(target) || 0;
+                            break;
+                        case 'jumpToHypervideo':
+                            if (target) {
+                                window.location.hash = 'hypervideo=' + target;
+                            }
+                            break;
+                        case 'customJS':
+                            if (!target) { break; }
+                            try {
+                                var actionFunction = new Function('FrameTrail', 'hypervideo', target);
+                                actionFunction(FrameTrail, FrameTrail.module('HypervideoController'));
+                            } catch (exception) {
+                                console.warn(this.labels['MessageEventHandlerContainsErrors'] + ': ' + exception.message);
+                            }
+                            break;
+                    }
+
+                },
+
+                /**
+                 * I render shared editor controls for the overlay action model
+                 * (attributes.action + attributes.actionTarget) used by button- and hotspot-like types.
+                 *
+                 * @method renderActionControls
+                 * @param {Object} overlayOrAnnotation
+                 * @return HTMLElement
+                 */
+                renderActionControls: function(overlayOrAnnotation) {
+
+                    var self = this,
+                        attributes = overlayOrAnnotation.data.attributes,
+                        category = overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations';
+
+                    var _acw = document.createElement('div');
+                    _acw.innerHTML = '<div class="layoutRow actionControlsRow">'
+                        + '    <div class="column-5">'
+                        + '        <label>'+ this.labels['SettingsAction'] +'</label>'
+                        + '        <div class="custom-select">'
+                        + '        <select class="actionSelect">'
+                        + '            <option value="">'+ this.labels['GenericNone'] +'</option>'
+                        + '            <option value="openUrl">'+ this.labels['ActionOpenUrl'] +'</option>'
+                        + '            <option value="jumpToTime">'+ this.labels['ActionPresetJumpToTime'] +'</option>'
+                        + '            <option value="jumpToHypervideo">'+ this.labels['ActionPresetJumpToHypervideo'] +'</option>'
+                        + '            <option value="customJS">'+ this.labels['ActionCustomJS'] +'</option>'
+                        + '        </select>'
+                        + '        </div>'
+                        + '    </div>'
+                        + '    <div class="column-7 actionTargetColumn">'
+                        + '        <label>'+ this.labels['SettingsActionTarget'] +'</label>'
+                        + '        <input type="text" class="actionTargetInput">'
+                        + '    </div>'
+                        + '</div>';
+                    var container = _acw.firstElementChild;
+
+                    var actionSelect = container.querySelector('.actionSelect'),
+                        targetInput  = container.querySelector('.actionTargetInput'),
+                        targetColumn = container.querySelector('.actionTargetColumn');
+
+                    actionSelect.value = attributes.action || '';
+                    targetInput.value  = (attributes.actionTarget != null) ? attributes.actionTarget : '';
+
+                    var pickerButton = document.createElement('button');
+                    pickerButton.type = 'button';
+                    pickerButton.className = 'button btn btn-sm hypervideoPickerButton';
+                    pickerButton.innerHTML = '<span class="icon-hypervideo"></span>';
+                    pickerButton.title = this.labels['SettingsHotspotPickHypervideo'];
+                    targetColumn.appendChild(pickerButton);
+
+                    var updateTargetVisibility = function() {
+                        targetColumn.style.display = (actionSelect.value === '') ? 'none' : '';
+                        pickerButton.style.display = (actionSelect.value === 'jumpToHypervideo') ? '' : 'none';
+                    };
+                    updateTargetVisibility();
+
+                    var registerActionUndo = function(oldValues, newValues) {
+                        (function(elementId, cat, capturedOld, capturedNew, labels) {
+                            var findElement = function() {
+                                var arr = (cat === 'overlays')
+                                    ? FrameTrail.module('HypervideoModel').overlays
+                                    : FrameTrail.module('HypervideoModel').annotations;
+                                for (var i = 0; i < arr.length; i++) {
+                                    if (arr[i].data.created === elementId) return arr[i];
+                                }
+                                return null;
+                            };
+                            var applyValues = function(values) {
+                                var el = findElement();
+                                if (!el) return;
+                                el.data.attributes.action = values.action;
+                                el.data.attributes.actionTarget = values.actionTarget;
+                                FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                            };
+                            FrameTrail.module('UndoManager').register({
+                                category: cat,
+                                description: labels['SettingsAction'],
+                                undo: function() { applyValues(capturedOld); },
+                                redo: function() { applyValues(capturedNew); }
+                            });
+                        })(overlayOrAnnotation.data.created, category, Object.assign({}, oldValues), Object.assign({}, newValues), self.labels);
+                    };
+
+                    actionSelect.addEventListener('change', function() {
+                        var oldValues = { action: attributes.action, actionTarget: attributes.actionTarget };
+                        attributes.action = this.value;
+                        updateTargetVisibility();
+                        FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                        registerActionUndo(oldValues, { action: attributes.action, actionTarget: attributes.actionTarget });
+                    });
+
+                    var targetBeforeEdit = null;
+                    targetInput.addEventListener('focus', function() {
+                        targetBeforeEdit = { action: attributes.action, actionTarget: attributes.actionTarget };
+                    });
+                    targetInput.addEventListener('input', function() {
+                        attributes.actionTarget = this.value;
+                        FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                    });
+                    targetInput.addEventListener('blur', function() {
+                        if (targetBeforeEdit && targetBeforeEdit.actionTarget !== attributes.actionTarget) {
+                            registerActionUndo(targetBeforeEdit, { action: attributes.action, actionTarget: attributes.actionTarget });
+                        }
+                        targetBeforeEdit = null;
+                    });
+
+                    pickerButton.addEventListener('click', function(evt) {
+                        evt.preventDefault();
+                        evt.stopPropagation();
+                        if (!FrameTrail.module('HypervideoPicker')) {
+                            FrameTrail.initModule('HypervideoPicker');
+                        }
+                        FrameTrail.module('HypervideoPicker').openPicker(function(hypervideoID) {
+                            var oldValues = { action: attributes.action, actionTarget: attributes.actionTarget };
+                            attributes.actionTarget = hypervideoID;
+                            targetInput.value = hypervideoID;
+                            FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                            registerActionUndo(oldValues, { action: attributes.action, actionTarget: attributes.actionTarget });
+                        });
+                    });
+
+                    return container;
+
+                },
+
+                /**
                  * I create a preview dialog, call the .renderContent method of a given resource
                  * (e.g. {{#crossLink "ResourceImage/renderContent:method"}}ResourceImage/renderContent{{/crossLink}})
                  * and append the returned element to the dialog.

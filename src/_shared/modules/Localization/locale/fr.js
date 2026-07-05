@@ -7,6 +7,8 @@
  */
 
 window.FrameTrail_L10n['fr'] = {
+    "ActionCustomJS": "JavaScript personnalisé",
+    "ActionOpenUrl": "Ouvrir une URL",
     "ActionPresetInsert": "Insérer une action …",
     "ActionPresetJumpToHypervideo": "Aller à l'Hypervideo",
     "ActionPresetJumpToHypervideoHint": "remplacer HYPERVIDEO_ID par l'ID de l'Hypervideo cible",
@@ -242,6 +244,7 @@ window.FrameTrail_L10n['fr'] = {
     "ResourceOpenInNewTab": "Ouvrir dans un nouvel onglet",
     "ResourcePasteURL": "Coller l'URL",
     "ResourcePlayFromHere": "Jouer à partir d'ici",
+    "ResourceTypeButton": "Bouton",
     "ResourceTypeAudio": "Audio",
     "ResourceTypeImage": "Image",
     "ResourceTypeLocation": "Carte",
@@ -273,9 +276,11 @@ window.FrameTrail_L10n['fr'] = {
     "SelectDataFolder": "Sélectionner le dossier de données",
     "SelectDataFolderDescription": "Pour charger votre projet, veuillez sélectionner le dossier _data qui contient vos données FrameTrail (config.json, hypervideos, ressources, etc.).",
     "SelectFolder": "Sélectionner un dossier",
+    "SettingsAction": "Action",
     "SettingsActions": "Actions",
     "SettingsActionsIfRight": "Si la réponse est correcte",
     "SettingsActionsIfWrong": "Si la réponse est incorrecte",
+    "SettingsActionTarget": "Cible",
     "SettingsAlign": "Aligner",
     "SettingsAllowClose": "Autoriser la fermeture",
     "SettingsAllowCollaboration": "Autoriser la collaboration",
@@ -284,6 +289,9 @@ window.FrameTrail_L10n['fr'] = {
     "SettingsAnimationIn": "Animation d'entrée",
     "SettingsAnimationOut": "Animation de sortie",
     "SettingsArrange": "Disposition",
+    "SettingsButtonColor": "Couleur du bouton",
+    "SettingsButtonLabel": "Libellé du bouton",
+    "SettingsButtonTextColor": "Couleur du texte",
     "SettingsCaptureUserActions": "Enregistrer les actions utilisateur",
     "SettingsChooseVideo": "Choisir la source de la vidéo",
     "SettingsCodeSnippetAdd": "Sélectionner un extrait de code",

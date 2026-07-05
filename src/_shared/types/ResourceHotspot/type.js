@@ -129,13 +129,13 @@ FrameTrail.defineType(
                         });
                     }
                     
-                    // Prevent navigation when link is empty (href="#")
-                    if (!linkUrl) {
-                        hotspotElement.addEventListener('click', function(e) {
-                            e.preventDefault();
-                            e.stopPropagation();
-                        });
-                    }
+                    // Route all clicks through the shared overlay action model
+                    // (falls back to linkUrl as 'openUrl' for existing hotspot data)
+                    hotspotElement.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        if (FrameTrail.getState('editMode') === 'overlays') { return; }
+                        self.executeOverlayAction(self.resourceData.attributes || {});
+                    });
 
                     resourceDetail.appendChild(this.buildResourceOptions({
                         licenseType: this.resourceData.licenseType,
