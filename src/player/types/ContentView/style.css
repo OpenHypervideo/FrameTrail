@@ -879,3 +879,20 @@
 :is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicTimelineBar:first-child {
     opacity: 0.5;
 }
+
+/* Transcript Search */
+
+.layoutArea .contentViewContainer .contentViewContents .transcriptSearchInput {
+    width: calc(100% - 16px);
+    box-sizing: border-box;
+    margin: 6px 8px 0 8px;
+}
+
+.layoutArea .contentViewContainer .contentViewContents .transcriptContainer.searching span {
+    opacity: 0.35;
+}
+
+.layoutArea .contentViewContainer .contentViewContents .transcriptContainer.searching span.searchMatch {
+    opacity: 1;
+    background-color: rgba(255, 153, 0, 0.4);
+}

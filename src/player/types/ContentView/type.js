@@ -127,6 +127,7 @@ FrameTrail.defineType(
                     contentViewData.collectionFilter.text  = contentViewData.collectionFilter.text  || "";
                     contentViewData.collectionFilter.users = contentViewData.collectionFilter.users || [];
                 contentViewData.transcriptSource       = contentViewData.transcriptSource || "";
+                contentViewData.showTranscriptSearch   = contentViewData.showTranscriptSearch || false;
                 contentViewData.contentSize            = contentViewData.contentSize || "small";
                 contentViewData.onClickContentItem     = contentViewData.onClickContentItem || "";
                 contentViewData.initClosed             = contentViewData.initClosed || false;
@@ -301,6 +302,32 @@ FrameTrail.defineType(
                             var _cvContents2 = self.contentViewContainer.querySelector('.contentViewContents');
                             _cvContents2.innerHTML = '';
                             _cvContents2.appendChild(transcriptContainer);
+
+                            if (self.contentViewData.showTranscriptSearch) {
+                                var transcriptSearchInput = document.createElement('input');
+                                transcriptSearchInput.type = 'text';
+                                transcriptSearchInput.className = 'transcriptSearchInput';
+                                transcriptSearchInput.placeholder = self.labels['TranscriptSearchPlaceholder'];
+                                _cvContents2.insertBefore(transcriptSearchInput, transcriptContainer);
+
+                                transcriptSearchInput.addEventListener('input', function() {
+                                    var query = this.value.trim().toLowerCase(),
+                                        firstMatch = null;
+                                    transcriptContainer.classList.toggle('searching', query.length > 0);
+                                    transcriptContainer.querySelectorAll('span').forEach(function(el) {
+                                        if (!query) {
+                                            el.classList.remove('searchMatch');
+                                            return;
+                                        }
+                                        var isMatch = el.textContent.toLowerCase().indexOf(query) >= 0;
+                                        el.classList.toggle('searchMatch', isMatch);
+                                        if (isMatch && !firstMatch) { firstMatch = el; }
+                                    });
+                                    if (firstMatch) {
+                                        firstMatch.scrollIntoView({ block: 'nearest' });
+                                    }
+                                });
+                            }
 
                             var subtitles = FrameTrail.module('Database').subtitles[self.contentViewData.transcriptSource];
                             if ( subtitles ) {
@@ -695,10 +722,10 @@ FrameTrail.defineType(
                                     if ( startTime-0.5 <= currentTime && endTime-0.5 >= currentTime ) {
                                         if ( !el.classList.contains('active') ) {
                                             el.classList.add('active');
-                                            scrollActiveElement(
-                                                self.contentViewContainer.querySelector('.transcriptContainer'),
-                                                'span.active'
-                                            );
+                                            var _tcContainer = self.contentViewContainer.querySelector('.transcriptContainer');
+                                            if ( !_tcContainer.classList.contains('searching') ) {
+                                                scrollActiveElement(_tcContainer, 'span.active');
+                                            }
                                         }
                                     } else if ( el.classList.contains('active') ) {
                                         el.classList.remove('active');
@@ -1921,6 +1948,13 @@ FrameTrail.defineType(
                                     +'        <div class="message active">'+ self.labels['MessageHintNewTranscriptsUpload'] +'</div>'
                                     +'        <div class="existingTranscripts"></div>'
                                     +'        <input type="hidden" class="contentViewData" data-property="transcriptSource" data-value="'+ contentViewData.transcriptSource +'" value="'+ contentViewData.transcriptSource +'">'
+                                    +'        <div class="checkboxRow">'
+                                    +'            <label class="switch">'
+                                    +'                <input type="checkbox" class="contentViewData" data-property="showTranscriptSearch" autocomplete="off" '+ (contentViewData.showTranscriptSearch ? 'checked' : '') +'>'
+                                    +'                <span class="slider round"></span>'
+                                    +'            </label>'
+                                    +'            <label>'+ self.labels['SettingsTranscriptSearch'] +'</label>'
+                                    +'        </div>'
                                     +'    </div>'
                                     +'    <div class="typeSpecific '+ (contentViewData.type == 'Timelines' ? 'active' : '') +'" data-type="Timelines">'
                                     +'    </div>';
