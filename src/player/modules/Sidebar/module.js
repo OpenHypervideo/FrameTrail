@@ -52,6 +52,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '                <button class="editMode" data-editmode="layout"><span class="icon-website"></span><span class="editModeLabel">'+ labels['SidebarLayout'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="overlays"><span class="icon-object-ungroup"></span><span class="editModeLabel">'+ labels['SidebarOverlays'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="codesnippets"><span class="icon-code"></span><span class="editModeLabel">'+ labels['SidebarCustomCode'] +'</span></button>'
+                   + '                <button class="editMode" data-editmode="chapters"><span class="icon-list-bullet"></span><span class="editModeLabel">'+ labels['SidebarChapters'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="annotations"><span class="icon-annotations"></span><span class="editModeLabel">'+ labels['SidebarMyAnnotations'] +'<span class="icon-user"></span></button>'
                    + '            </div>'
                    + '        </div>'
@@ -1014,6 +1015,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 videoContainerControls.querySelector('.editMode[data-editmode="layout"]').classList.add('disabled');
                 videoContainerControls.querySelector('.editMode[data-editmode="overlays"]').classList.add('disabled');
                 videoContainerControls.querySelector('.editMode[data-editmode="codesnippets"]').classList.add('disabled');
+                videoContainerControls.querySelector('.editMode[data-editmode="chapters"]').classList.add('disabled');
             }
         }
 

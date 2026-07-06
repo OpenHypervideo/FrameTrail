@@ -278,12 +278,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                         + '        <div class="posterFrameList"></div>'
                         + '        <input type="hidden" name="posterFrame" value="'+ (hypervideo.posterFrame || '') +'">'
                         + '    </div>'
-                        + '    <hr>'
-                        + '    <div class="chaptersSection">'
-                        + '        <label>'+ labels['SettingsChapters'] +'</label>'
-                        + '        <div class="chaptersList"></div>'
-                        + '        <button type="button" class="chapterAddButton">'+ labels['GenericAdd'] +' <span class="icon-plus"></span></button>'
-                        + '    </div>'
                         + '    <div class="message error"></div>'
                         + '</form>';
         var EditHypervideoForm = _efw.firstElementChild;
@@ -348,30 +342,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                     }
                 }, 100);
             }
-        })();
-
-        // Chapters editor
-        (function() {
-            var chaptersList = EditHypervideoForm.querySelector('.chaptersList');
-
-            var addChapterRow = function(chapter) {
-                var _crw = document.createElement('div');
-                _crw.innerHTML = '<div class="chapterRow" style="display: flex; align-items: center; gap: 6px; margin-bottom: 4px;">'
-                    + '    <input type="time" class="chapterStartInput" step="1" value="'+ formBuilder.secondsToTimeString(chapter ? chapter.start : 0) +'">'
-                    + '    <input type="text" class="chapterTitleInput" style="flex: 1;" placeholder="'+ labels['SettingsChapterTitle'] +'">'
-                    + '    <button type="button" class="chapterDeleteButton"><span class="icon-cancel"></span></button>'
-                    + '</div>';
-                var row = _crw.firstElementChild;
-                row.querySelector('.chapterTitleInput').value = (chapter && chapter.title) ? chapter.title : '';
-                row.querySelector('.chapterDeleteButton').addEventListener('click', function() { row.remove(); });
-                chaptersList.appendChild(row);
-            };
-
-            (hypervideo.chapters || []).forEach(addChapterRow);
-
-            EditHypervideoForm.querySelector('.chapterAddButton').addEventListener('click', function() {
-                addChapterRow(null);
-            });
         })();
 
         // Handle poster frame selection (click a selected thumb again to clear)
@@ -502,18 +472,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 DatabaseEntry.posterFrame = posterInput.value || null;
             }
 
-            var newChapters = [];
-            EditHypervideoForm.querySelectorAll('.chaptersSection .chapterRow').forEach(function(row) {
-                var titleValue = row.querySelector('.chapterTitleInput').value;
-                if (!titleValue) { return; }
-                newChapters.push({
-                    "start": formBuilder.timeStringToSeconds(row.querySelector('.chapterStartInput').value),
-                    "title": titleValue
-                });
-            });
-            newChapters.sort(function(a, b) { return a.start - b.start; });
-            DatabaseEntry.chapters = newChapters;
-
             if (DatabaseEntry.config) {
                 for (var configKey in DatabaseEntry.config) {
                     if (configKey === 'layoutArea' || configKey === 'theme' || configKey === 'captionsVisible' || configKey === 'autohideControls') { continue; }
@@ -639,9 +597,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                                 videoEl.removeAttribute('poster');
                             }
                         }
-
-                        FrameTrail.module('HypervideoModel').chapters = FrameTrail.module('Database').hypervideos[thisID].chapters || [];
-                        FrameTrail.module('HypervideoController').updateChapterDisplay();
 
                         FrameTrail.module('HypervideoController').updateDescriptions();
 

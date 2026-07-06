@@ -81,7 +81,7 @@
 /* Autohide: overlay controls on top of the video so no empty space remains.
    Active in player mode and preview mode, but not in real edit modes.
    Classes are set on the target element (.frametrail-body), not body. */
-.autohideControls .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]) .playerContainer .controls {
+.autohideControls .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]) .playerContainer .controls {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -90,7 +90,7 @@
     transition: visibility 0.4s, opacity 0.4s;
 }
 
-.autohideControls .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]) .playerContainer .playerProgress {
+.autohideControls .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]) .playerContainer .playerProgress {
     position: absolute;
     bottom: 40px;
     left: 0;
@@ -110,8 +110,8 @@
     transition: visibility 0.4s, opacity 0.4s;
 }
 
-.userinactive .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]) .playerContainer .controls,
-.userinactive .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]) .playerContainer .playerProgress {
+.userinactive .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]) .playerContainer .controls,
+.userinactive .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]) .playerContainer .playerProgress {
     display: block;
     visibility: hidden;
     opacity: 0;
@@ -878,7 +878,7 @@
     display: flex;
 }
 
-.editActive[data-edit-mode="overlays"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="codesnippets"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="annotations"] .hypervideoContainer .infoAreaRight {
+.editActive[data-edit-mode="overlays"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="codesnippets"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="annotations"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="chapters"] .hypervideoContainer .infoAreaRight {
     flex: 0 0 580px;
 }
 

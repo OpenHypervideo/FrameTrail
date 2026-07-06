@@ -66,10 +66,11 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
         var ViewVideo = FrameTrail.module('ViewVideo');
         duration = FrameTrail.module('HypervideoModel').duration;
 
-        // Register all three timelines
+        // Register all timelines
         registerTimeline(ViewVideo.OverlayTimeline);
         registerTimeline(ViewVideo.AnnotationTimeline);
         registerTimeline(ViewVideo.CodeSnippetTimeline);
+        registerTimeline(ViewVideo.ChapterTimeline);
 
         // Create shared controls container
         controlsContainer = document.createElement('div');
@@ -933,6 +934,8 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
                 );
             case 'codesnippets':
                 return HypervideoModel.codeSnippets || [];
+            case 'chapters':
+                return HypervideoModel.chapters || [];
             default:
                 // Non-edit mode: only overlays are visible (timelines are hidden)
                 return HypervideoModel.overlays || [];

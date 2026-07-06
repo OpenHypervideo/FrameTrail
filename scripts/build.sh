@@ -87,6 +87,7 @@ CSS_FILES=(
     "player/modules/Titlebar/style.css"
     "player/modules/ViewOverview/style.css"
     "player/modules/ViewVideo/style.css"
+    "player/modules/ChaptersController/style.css"
     "player/modules/ViewLayout/style.css"
     "player/modules/HypervideoSettingsDialog/style.css"
     "player/modules/AdminSettingsDialog/style.css"
@@ -152,6 +153,7 @@ JS_FILES=(
     "_shared/types/ResourceSpotify/type.js"
     "player/types/Subtitle/type.js"
     "player/types/CodeSnippet/type.js"
+    "player/types/Chapter/type.js"
     "player/types/ContentView/type.js"
 
     # Dialog and tabs helpers (must come before modules that use them)
@@ -191,6 +193,7 @@ JS_FILES=(
     "player/modules/SubtitlesController/module.js"
     "player/modules/Titlebar/module.js"
     "player/modules/CodeSnippetsController/module.js"
+    "player/modules/ChaptersController/module.js"
     "player/modules/TimelineController/module.js"
     "player/modules/ViewOverview/module.js"
     "player/modules/ViewVideo/module.js"

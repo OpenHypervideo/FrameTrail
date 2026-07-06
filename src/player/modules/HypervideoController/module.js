@@ -27,6 +27,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         AnnotationsController  = FrameTrail.initModule('AnnotationsController'),
         OverlaysController     = FrameTrail.initModule('OverlaysController'),
         CodeSnippetsController = FrameTrail.initModule('CodeSnippetsController'),
+        ChaptersController     = FrameTrail.initModule('ChaptersController'),
         SubtitlesController    = FrameTrail.initModule('SubtitlesController'),
         ViewLayout             = FrameTrail.initModule('ViewLayout'),
 
@@ -189,6 +190,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
                     OverlaysController.initController();
                     CodeSnippetsController.initController();
+                    ChaptersController.initController();
                     SubtitlesController.initController();
 
                     initPlayButton();
@@ -276,6 +278,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
                     OverlaysController.initController();
                     CodeSnippetsController.initController();
+                    ChaptersController.initController();
                     SubtitlesController.initController();
 
                     initPlayButton();
@@ -580,6 +583,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
                 OverlaysController.initController();
                 CodeSnippetsController.initController();
+                ChaptersController.initController();
                 SubtitlesController.initController();
 
                 initPlayButton();
@@ -640,6 +644,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
                 OverlaysController.initController();
                 CodeSnippetsController.initController();
+                ChaptersController.initController();
                 SubtitlesController.initController();
 
                 initPlayButton();
@@ -908,7 +913,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 var chapterElement = scrubPreviewElement.querySelector('.scrubPreviewChapter');
                 var chapterIndex = getChapterIndexAtTime(HypervideoModel.offsetIn + previewTime);
                 if (chapterIndex >= 0) {
-                    chapterElement.textContent = HypervideoModel.chapters[chapterIndex].title;
+                    chapterElement.textContent = HypervideoModel.chapters[chapterIndex].data.title;
                     chapterElement.classList.add('active');
                 } else {
                     chapterElement.textContent = '';
@@ -959,7 +964,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         chapters.forEach(function(chapter) {
 
-            var positionLeft = 100 * ((chapter.start - HypervideoModel.offsetIn) / HypervideoModel.duration);
+            var positionLeft = 100 * ((chapter.data.start - HypervideoModel.offsetIn) / HypervideoModel.duration);
 
             // Only draw a progress-bar marker when the chapter falls within the
             // visible range; the navigation entry is always added regardless.
@@ -967,17 +972,17 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 var marker = document.createElement('div');
                 marker.className = 'chapterMarker';
                 marker.style.left = positionLeft + '%';
-                marker.setAttribute('title', chapter.title);
+                marker.setAttribute('title', chapter.data.title);
                 progressEl.appendChild(marker);
             }
 
             var entry = document.createElement('div');
             entry.className = 'chapterSelect';
             entry.innerHTML = '<span class="chapterSelectTime"></span><span class="chapterSelectTitle"></span>';
-            entry.querySelector('.chapterSelectTime').textContent = formatTime(chapter.start);
-            entry.querySelector('.chapterSelectTitle').textContent = chapter.title;
+            entry.querySelector('.chapterSelectTime').textContent = formatTime(chapter.data.start);
+            entry.querySelector('.chapterSelectTitle').textContent = chapter.data.title;
             entry.addEventListener('click', function() {
-                setCurrentTime(chapter.start);
+                setCurrentTime(chapter.data.start);
             });
             chapterList.appendChild(entry);
 
@@ -1005,8 +1010,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             bestStart = -Infinity;
 
         for (var i = 0; i < chapters.length; i++) {
-            if (chapters[i].start <= absoluteTime && chapters[i].start >= bestStart) {
-                bestStart = chapters[i].start;
+            if (chapters[i].data.start <= absoluteTime && chapters[i].data.start >= bestStart) {
+                bestStart = chapters[i].data.start;
                 bestIndex = i;
             }
         }

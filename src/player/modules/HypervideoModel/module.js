@@ -48,6 +48,7 @@
         unsavedEvents           = false,
         unsavedCustomCSS        = false,
         unsavedAnnotations      = false,
+        unsavedChapters         = false,
         unsavedLayout           = false;
 
 
@@ -84,7 +85,6 @@
         created        = hypervideo.created;
         lastchanged    = hypervideo.lastchanged;
         posterFrame    = hypervideo.posterFrame || null;
-        chapters       = hypervideo.chapters || [];
         // Read in config of Hypervideo
         for (var key in hypervideo.config) {
 
@@ -153,6 +153,7 @@
 
         initModelOfOverlays(database);
         initModelOfCodeSnippets(database);
+        initModelOfChapters(database);
         initModelOfAnnotations(database);
         initModelOfSubtitles(database);
 
@@ -225,6 +226,34 @@
 
         customCSS = database.codeSnippets.customCSS;
 
+
+    };
+
+    /**
+     * I create the {{#crossLink "Chapter"}}Chapter{{/crossLink}} objects from the data in the {{#crossLink "Database"}}Database{{/crossLink}} and store them
+     * in my {{#crossLink "HypervideoModel/chapters:attribute"}}chapters{{/crossLink}} attribute.
+     *
+     * The plain chapter data objects ({ start, title }) remain owned by the Database (database.chapters),
+     * which is the live array serialized into hypervideo.json. Each Chapter object wraps one of those
+     * data objects by reference, so edits made through the model are reflected on save.
+     *
+     * @method initModelOfChapters
+     * @param {Database} database
+     * @private
+     */
+    function initModelOfChapters(database) {
+
+        chapters = [];
+
+        var chaptersData = database.chapters || [];
+
+        for (var idx in chaptersData) {
+
+            chapters.push(
+                FrameTrail.newObject('Chapter', chaptersData[idx])
+            );
+
+        }
 
     };
 
@@ -360,6 +389,29 @@
             action: 'CodeSnippetDelete',
             codesnippet: codesnippetData
         });
+
+    };
+
+    /**
+     * I remove a chapter from the model and from the database.
+     *
+     * I am called from {{#crossLink "ChaptersController/deleteChapter:method"}}ChaptersController/deleteChapter{{/crossLink}}.
+     *
+     * @method removeChapter
+     * @param {Chapter} chapter
+     */
+    function removeChapter(chapter) {
+
+        var idx,
+            database = FrameTrail.module('Database');
+
+        idx = chapters.indexOf(chapter);
+        if (idx !== -1) { chapters.splice(idx, 1); }
+
+        idx = database.chapters.indexOf(chapter.data);
+        if (idx !== -1) { database.chapters.splice(idx, 1); }
+
+        newUnsavedChange('chapters');
 
     };
 
@@ -523,6 +575,37 @@
             });
 
             return newCodeSnippetObj;
+
+    };
+
+
+    /**
+     * I create a new {{#crossLink "Chapter"}}chapter{{/crossLink}}.
+     *
+     * I am called from {{#crossLink "ChaptersController/addChapterAtPlayhead:method"}}ChaptersController{{/crossLink}}.
+     *
+     * The new plain data object ({ start, title }) is pushed into the Database's live chapters
+     * array (serialized into hypervideo.json) and wrapped in a Chapter object stored in the model.
+     *
+     * @method newChapter
+     * @param {} protoData - { start, title }
+     * @return Chapter
+     */
+    function newChapter(protoData) {
+
+        var newData = {
+                "start": protoData.start,
+                "title": protoData.title || ''
+            };
+
+        FrameTrail.module('Database').chapters.push(newData);
+
+        var newChapterObj = FrameTrail.newObject('Chapter', newData);
+        chapters.push(newChapterObj);
+
+        newUnsavedChange('chapters');
+
+        return newChapterObj;
 
     };
 
@@ -924,6 +1007,10 @@
 
             unsavedAnnotations = true;
 
+        } else if (category === 'chapters') {
+
+            unsavedChapters = true;
+
         } else if (category === 'layout') {
 
             unsavedLayout = true;
@@ -973,7 +1060,7 @@
                 FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateSaving']);
 
                 if ( unsavedOverlays || unsavedCodeSnippets
-                    || unsavedEvents || unsavedCustomCSS || unsavedLayout) {
+                    || unsavedEvents || unsavedCustomCSS || unsavedChapters || unsavedLayout) {
                     saveRequests.push(function(){
                         FrameTrail.module('Database').saveHypervideo(databaseCallback);
                     });
@@ -1024,6 +1111,7 @@
             unsavedEvents       = false;
             unsavedCustomCSS    = false;
             unsavedAnnotations  = false;
+            unsavedChapters     = false;
             unsavedLayout       = false;
             FrameTrail.changeState('unsavedChanges', false);
 
@@ -1609,12 +1697,12 @@
         set posterFrame(aString)     { return posterFrame = aString    },
 
         /**
-         * The hypervideo's chapters (array of { start, title } objects).
+         * The hypervideo's chapters (array of {{#crossLink "Chapter"}}Chapter{{/crossLink}} objects,
+         * each wrapping a { start, title } data object owned by the Database).
          * @attribute chapters
          * @type Array
          */
         get chapters()               { return chapters                 },
-        set chapters(anArray)        { return chapters = anArray       },
 
         /**
          * Get or set the hypervideo descritption
@@ -1696,6 +1784,9 @@
 
         removeCodeSnippet:      removeCodeSnippet,
         newCodeSnippet:         newCodeSnippet,
+
+        removeChapter:          removeChapter,
+        newChapter:             newChapter,
 
         removeAnnotation:       removeAnnotation,
         newAnnotation:          newAnnotation,

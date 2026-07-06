@@ -69,6 +69,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '                </div>'
                         + '            </div>'
                         + '            <div class="codeSnippetTimeline timeline"></div>'
+                        + '            <div class="chapterTimeline timeline"></div>'
                         + '            <div class="overlayTimeline timeline"></div>'
                         + '            <div class="playerProgress" role="slider" aria-valuemin="0" aria-valuenow="0">'
                         + '                <div class="ui-slider-range"></div>'
@@ -152,6 +153,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         OverlayContainer            = domElement.querySelector('.overlayContainer'),
 
         CodeSnippetTimeline         = domElement.querySelector('.codeSnippetTimeline'),
+
+        ChapterTimeline             = domElement.querySelector('.chapterTimeline'),
 
         Controls                    = domElement.querySelector('.controls'),
         SharingWidget               = domElement.querySelector('.sharingWidget'),
@@ -1062,6 +1065,9 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             case 'codesnippets':
                 enterCodeSnippetMode();
                 break;
+            case 'chapters':
+                enterChapterMode();
+                break;
             case 'annotations':
                 enterAnnotationMode();
                 break;
@@ -1224,6 +1230,17 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         CodeSnippetTimeline.classList.add('editable');
 
         EditPropertiesContainer.setAttribute('data-editmode', 'codesnippets');
+    }
+
+    /**
+     * I am called when the app enters the editMode "chapters"
+     * @method enterChapterMode
+     */
+    function enterChapterMode() {
+        initEditMode();
+        ChapterTimeline.classList.add('editable');
+
+        EditPropertiesContainer.setAttribute('data-editmode', 'chapters');
     }
 
     /**
@@ -2063,6 +2080,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
          * @type HTMLElement
          */
         get CodeSnippetTimeline()  { return CodeSnippetTimeline  },
+        get ChapterTimeline()      { return ChapterTimeline      },
 
         /**
          * I contain the AreaTopDetails element.

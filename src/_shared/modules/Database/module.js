@@ -2053,6 +2053,13 @@
         get codeSnippets()         { return codeSnippets },
 
         /**
+         * I return the currently loaded hypervideo's chapters array (the live data array
+         * that convertToDatabaseFormat serializes into hypervideo.json).
+         * @attribute chapters
+         */
+        get chapters()             { return hypervideos[hypervideoID].chapters },
+
+        /**
          * I store the annotation data (from all json files from the server's _data/hypervideos/<ID>/annotationfiles/).
          *
          * I am a map of keys (userIDs) to an array of all annotations from that user.
