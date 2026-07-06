@@ -1372,10 +1372,10 @@ function generateScrubSprite($videoPath) {
     $spritePath = preg_replace('/\.[^.]+$/', '', $videoPath) . '_scrub.jpg';
 
     $command = sprintf(
-        '%s -y -i %s -vf "fps=%F,scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2,tile=5x5" -frames:v 1 -q:v 5 %s 2>&1',
+        '%s -y -i %s -vf "fps=%F,scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2,tile=5x5" -frames:v 1 -update 1 -q:v 5 %s 2>&1',
         escapeshellcmd($ffmpegPath),
-        $fps,
         escapeshellarg($videoPath),
+        $fps,
         escapeshellarg($spritePath)
     );
 
