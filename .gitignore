@@ -15,6 +15,7 @@ pids
 *.pid
 *.seed
 .idea/
+.claude/
 
 # Video files
 *.m4v
