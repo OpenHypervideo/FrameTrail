@@ -48,11 +48,15 @@ FrameTrail.defineType(
 
                     var self = this;
 
-                    var color = (this.resourceData.attributes && this.resourceData.attributes.color) ? this.resourceData.attributes.color : '#0096ff';
-                    var linkUrl = (this.resourceData.attributes && this.resourceData.attributes.linkUrl) ? this.resourceData.attributes.linkUrl : '';
-                    var borderWidth = (this.resourceData.attributes && this.resourceData.attributes.borderWidth !== undefined) ? this.resourceData.attributes.borderWidth : 5;
-                    var shape = (this.resourceData.attributes && this.resourceData.attributes.shape) ? this.resourceData.attributes.shape : 'circle';
-                    var borderRadius = (this.resourceData.attributes && this.resourceData.attributes.borderRadius !== undefined) ? this.resourceData.attributes.borderRadius : 10;
+                    var attrs = this.resourceData.attributes || {};
+                    var color = attrs.color ? attrs.color : '#0096ff';
+                    var linkUrl = attrs.linkUrl ? attrs.linkUrl : '';
+                    var borderWidth = (attrs.borderWidth !== undefined) ? attrs.borderWidth : 5;
+                    var shape = attrs.shape ? attrs.shape : 'circle';
+                    var borderRadius = (attrs.borderRadius !== undefined) ? attrs.borderRadius : 10;
+                    var text = attrs.text ? attrs.text : '';
+                    var textColor = attrs.textColor ? attrs.textColor : '#ffffff';
+                    var backgroundColor = attrs.backgroundColor ? attrs.backgroundColor : '';
 
                     // Calculate border-radius value based on shape (0% to 50%)
                     var borderRadiusValue;
@@ -74,13 +78,22 @@ FrameTrail.defineType(
                         elementAttrs += ' target="_blank"';
                     }
 
+                    // A filled background makes the hotspot read as a button; the pulse ring is
+                    // then hidden so it looks like a solid call-to-action rather than a marker.
+                    var pulseDisplay = backgroundColor ? 'none' : '';
+                    var labelStyle = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); '
+                                   + 'width:90%; text-align:center; pointer-events:none; overflow:hidden; '
+                                   + 'text-overflow:ellipsis; color:' + textColor + ';';
+
                     var _rdw = document.createElement('div');
                     _rdw.innerHTML = '<div class="resourceDetail" data-type="hotspot">'
                                         +  '    <div class="resourceContent">'
                                         +  '        <div class="hotspot-container">'
                                         +  '            <div class="hotspot-square-wrapper">'
-                                        +  '                <a class="hotspot-element"' + elementAttrs + ' style="border-radius: ' + borderRadiusValue + '; border-color: ' + color + '; text-decoration: none; display: block;"></a>'
-                                        +  '                <div class="hotspot-pulse" style="border-color: ' + color + '; border-radius: ' + borderRadiusValue + ';"></div>'
+                                        +  '                <a class="hotspot-element"' + elementAttrs + ' style="border-radius: ' + borderRadiusValue + '; border-color: ' + color + '; text-decoration: none; display: block;">'
+                                        +  '                    <span class="hotspot-label" style="' + labelStyle + '"></span>'
+                                        +  '                </a>'
+                                        +  '                <div class="hotspot-pulse" style="border-color: ' + color + '; border-radius: ' + borderRadiusValue + '; display: ' + pulseDisplay + ';"></div>'
                                         +  '            </div>'
                                         +  '        </div>'
                                         +  '    </div>'
@@ -88,6 +101,7 @@ FrameTrail.defineType(
                     var resourceDetail = _rdw.firstElementChild;
 
                     var hotspotElement = resourceDetail.querySelector('.hotspot-element');
+                    resourceDetail.querySelector('.hotspot-label').textContent = text;
                     
                     // Helper function to convert hex color to rgba
                     var hexToRgba = function(hex, alpha) {
@@ -113,20 +127,18 @@ FrameTrail.defineType(
                     
                     // Set initial border width
                     calculateBorderWidth(hotspotElement, borderWidth);
-                    hotspotElement.style.backgroundColor = 'transparent';
+                    hotspotElement.style.backgroundColor = backgroundColor || 'transparent';
                     hotspotElement.style.borderStyle = 'solid';
                     hotspotElement.style.borderColor = color;
-                    
-                    // Add hover effect: make background semi-transparent
-                    if (borderWidth > 0) {
+
+                    // Add hover effect: make background semi-transparent (only for marker-style
+                    // hotspots with a visible border and no solid fill)
+                    if (borderWidth > 0 && !backgroundColor) {
                         var hoverColor = hexToRgba(color, 0.3);
-                        hotspotElement.addEventListener('mouseenter', function() {
-                            this.style.backgroundColor = hoverColor;
-                        });
-                        
-                        hotspotElement.addEventListener('mouseleave', function() {
-                            this.style.backgroundColor = 'transparent';
-                        });
+                        hotspotElement._enterFn = function() { this.style.backgroundColor = hoverColor; };
+                        hotspotElement._leaveFn = function() { this.style.backgroundColor = 'transparent'; };
+                        hotspotElement.addEventListener('mouseenter', hotspotElement._enterFn);
+                        hotspotElement.addEventListener('mouseleave', hotspotElement._leaveFn);
                     }
                     
                     // Route all clicks through the shared overlay action model
@@ -246,6 +258,15 @@ FrameTrail.defineType(
                     if (currentAttributes.borderRadius === undefined) {
                         currentAttributes.borderRadius = 10;
                     }
+                    if (currentAttributes.text === undefined) {
+                        currentAttributes.text = '';
+                    }
+                    if (!currentAttributes.textColor) {
+                        currentAttributes.textColor = '#ffffff';
+                    }
+                    if (currentAttributes.backgroundColor === undefined) {
+                        currentAttributes.backgroundColor = '';
+                    }
 
                     var hotspotEditorContainer = document.createElement('div');
                     hotspotEditorContainer.className = 'hotspotEditorContainer';
@@ -280,6 +301,7 @@ FrameTrail.defineType(
 
                     // Helper function to apply shape, border-radius, and border-width changes
                     var applyShapeChanges = function(overlayOrAnnotation, shape, borderRadius, borderWidth, color) {
+                        var bg = overlayOrAnnotation.data.attributes.backgroundColor || '';
                         var borderRadiusValue;
                         if (shape === 'circle') {
                             borderRadiusValue = '50%';
@@ -314,20 +336,21 @@ FrameTrail.defineType(
                             hotspotElement.style.borderRadius = borderRadiusValue;
                             hotspotElement.style.borderWidth = actualBorderWidth + 'px';
                             hotspotElement.style.borderColor = color;
-                            hotspotElement.style.backgroundColor = 'transparent';
+                            hotspotElement.style.backgroundColor = bg || 'transparent';
                             hotspotPulse.style.borderRadius = borderRadiusValue;
                             hotspotPulse.style.borderColor = color;
-                            
-                            // Update hover handlers
+                            hotspotPulse.style.display = bg ? 'none' : '';
+
+                            // Update hover handlers (a solid fill overrides the marker hover)
                             if (hotspotElement._enterFn) { hotspotElement.removeEventListener('mouseenter', hotspotElement._enterFn); hotspotElement._enterFn = null; }
                             if (hotspotElement._leaveFn) { hotspotElement.removeEventListener('mouseleave', hotspotElement._leaveFn); hotspotElement._leaveFn = null; }
-                            if (borderWidth > 0) {
+                            if (borderWidth > 0 && !bg) {
                                 hotspotElement._enterFn = function() { this.style.backgroundColor = hoverColor; };
                                 hotspotElement._leaveFn = function() { this.style.backgroundColor = 'transparent'; };
                                 hotspotElement.addEventListener('mouseenter', hotspotElement._enterFn);
                                 hotspotElement.addEventListener('mouseleave', hotspotElement._leaveFn);
                             }
-                            
+
                             FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
                         } else {
                             // Update annotation elements in dom
@@ -341,13 +364,14 @@ FrameTrail.defineType(
                                 hotspotElement.style.borderRadius = borderRadiusValue;
                                 hotspotElement.style.borderWidth = actualBorderWidth + 'px';
                                 hotspotElement.style.borderColor = color;
-                                hotspotElement.style.backgroundColor = 'transparent';
+                                hotspotElement.style.backgroundColor = bg || 'transparent';
                                 hotspotPulse.style.borderRadius = borderRadiusValue;
                                 hotspotPulse.style.borderColor = color;
-                                
+                                hotspotPulse.style.display = bg ? 'none' : '';
+
                                 if (hotspotElement._enterFn) { hotspotElement.removeEventListener('mouseenter', hotspotElement._enterFn); hotspotElement._enterFn = null; }
                                 if (hotspotElement._leaveFn) { hotspotElement.removeEventListener('mouseleave', hotspotElement._leaveFn); hotspotElement._leaveFn = null; }
-                                if (borderWidth > 0) {
+                                if (borderWidth > 0 && !bg) {
                                     hotspotElement._enterFn = function() { this.style.backgroundColor = hoverColor; };
                                     hotspotElement._leaveFn = function() { this.style.backgroundColor = 'transparent'; };
                                     hotspotElement.addEventListener('mouseenter', hotspotElement._enterFn);
@@ -459,9 +483,9 @@ FrameTrail.defineType(
                             hotspotElement.style.borderColor = newColor;
                             hotspotPulse.style.borderColor = newColor;
                             
-                            // Update hover color if border width > 0
+                            // Update hover color if border width > 0 (skip when a solid fill is set)
                             var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
-                            if (borderWidth > 0) {
+                            if (borderWidth > 0 && !overlayOrAnnotation.data.attributes.backgroundColor) {
                                 var hoverColor = hexToRgba(newColor, 0.3);
                                 if (hotspotElement._enterFn) { hotspotElement.removeEventListener('mouseenter', hotspotElement._enterFn); hotspotElement._enterFn = null; }
                                 if (hotspotElement._leaveFn) { hotspotElement.removeEventListener('mouseleave', hotspotElement._leaveFn); hotspotElement._leaveFn = null; }
@@ -470,7 +494,7 @@ FrameTrail.defineType(
                                 hotspotElement.addEventListener('mouseenter', hotspotElement._enterFn);
                                 hotspotElement.addEventListener('mouseleave', hotspotElement._leaveFn);
                             }
-                            
+
                             if (trackChange) {
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
                             }
@@ -482,9 +506,9 @@ FrameTrail.defineType(
                                 hotspotElement.style.borderColor = newColor;
                                 hotspotPulse.style.borderColor = newColor;
                                 
-                                // Update hover color if border width > 0
+                                // Update hover color if border width > 0 (skip when a solid fill is set)
                                 var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
-                                if (borderWidth > 0) {
+                                if (borderWidth > 0 && !overlayOrAnnotation.data.attributes.backgroundColor) {
                                     var hoverColor = hexToRgba(newColor, 0.3);
                                     if (hotspotElement._enterFn) { hotspotElement.removeEventListener('mouseenter', hotspotElement._enterFn); hotspotElement._enterFn = null; }
                                     if (hotspotElement._leaveFn) { hotspotElement.removeEventListener('mouseleave', hotspotElement._leaveFn); hotspotElement._leaveFn = null; }
@@ -749,154 +773,181 @@ FrameTrail.defineType(
                     layoutRow.append(shapeColumn, colorColumn, borderWidthColumn, borderRadiusColumn);
                     hotspotEditorContainer.appendChild(layoutRow);
 
-                    // Link URL input row with picker and delete buttons
-                    hotspotEditorContainer.insertAdjacentHTML('beforeend', '<hr><label>'+ this.labels['SettingsHotspotLink'] +'</label>');
-                    
-                    // Helper function to update link URL and trigger change
-                    // Always uses <a> tag, just updates href attribute (same as renderContent)
-                    var updateLinkUrl = function(newUrl) {
-                        overlayOrAnnotation.data.attributes.linkUrl = newUrl;
-                        linkInput.value = newUrl;
-                        
-                        // Use '#' if empty, same as renderContent
-                        var href = newUrl || '#';
+                    // --- Optional text / text color / background color ---
+                    hotspotEditorContainer.insertAdjacentHTML('beforeend', '<hr>');
 
-                        if (overlayOrAnnotation.overlayElement) {
-                            var hotspotElement = overlayOrAnnotation.overlayElement.querySelector('.hotspot-element');
-                            hotspotElement.setAttribute('href', href);
-                            if (newUrl && (newUrl.startsWith('http://') || newUrl.startsWith('https://'))) {
-                                hotspotElement.setAttribute('target', '_blank');
-                            } else {
-                                hotspotElement.removeAttribute('target');
-                            }
-                            // Prevent navigation when link is empty (same as renderContent)
-                            if (hotspotElement._clickFn) { hotspotElement.removeEventListener('click', hotspotElement._clickFn); hotspotElement._clickFn = null; }
-                            if (!newUrl) {
-                                hotspotElement._clickFn = function(e) { e.preventDefault(); e.stopPropagation(); };
-                                hotspotElement.addEventListener('click', hotspotElement._clickFn);
-                            }
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                        } else {
-                            // Update annotation elements in dom
-                            overlayOrAnnotation.contentViewDetailElements.forEach(function(el) {
-                                var hotspotElement = el.querySelector('.hotspot-element');
-                                hotspotElement.setAttribute('href', href);
-                                if (newUrl && (newUrl.startsWith('http://') || newUrl.startsWith('https://'))) {
-                                    hotspotElement.setAttribute('target', '_blank');
-                                } else {
-                                    hotspotElement.removeAttribute('target');
-                                }
-                                // Prevent navigation when link is empty (same as renderContent)
-                                if (hotspotElement._clickFn) { hotspotElement.removeEventListener('click', hotspotElement._clickFn); hotspotElement._clickFn = null; }
-                                if (!newUrl) {
-                                    hotspotElement._clickFn = function(e) { e.preventDefault(); e.stopPropagation(); };
-                                    hotspotElement.addEventListener('click', hotspotElement._clickFn);
-                                }
-                            });
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
-                        }
+                    // Checkerboard fill used to signal a transparent background (both on the
+                    // "make transparent" reset button and behind the faded color picker).
+                    var checkerboard = 'background-image:'
+                        + 'linear-gradient(45deg,#bbb 25%,transparent 25%),'
+                        + 'linear-gradient(-45deg,#bbb 25%,transparent 25%),'
+                        + 'linear-gradient(45deg,transparent 75%,#bbb 75%),'
+                        + 'linear-gradient(-45deg,transparent 75%,#bbb 75%);'
+                        + 'background-size:8px 8px;background-position:0 0,0 4px,4px -4px,-4px 0;background-color:#fff;';
+
+                    var _txw = document.createElement('div');
+                    _txw.innerHTML = '<div class="layoutRow">'
+                        + '    <div class="column-6">'
+                        + '        <label>'+ this.labels['SettingsHotspotText'] +'</label>'
+                        + '        <input type="text" class="hotspotPropText">'
+                        + '    </div>'
+                        + '    <div class="column-3">'
+                        + '        <label>'+ this.labels['SettingsHotspotTextColor'] +'</label>'
+                        + '        <input type="color" class="hotspotPropTextColor" value="'+ (currentAttributes.textColor || '#ffffff') +'">'
+                        + '    </div>'
+                        + '    <div class="column-3">'
+                        + '        <label>'+ this.labels['SettingsHotspotBackground'] +'</label>'
+                        + '        <div class="innerSizeWrapper">'
+                        + '            <span class="hotspotBgSwatchWrap" style="'+ checkerboard +' display:inline-flex; border-radius:3px; overflow:hidden; width: calc(100% - 50px);">'
+                        + '                <input type="color" class="hotspotPropBackground" value="'+ (currentAttributes.backgroundColor || '#0096ff') +'">'
+                        + '            </span>'
+                        + '            <button type="button" class="hotspotBackgroundClear" title="'+ this.labels['GenericTransparent'] +'" style="'+ checkerboard +' width:26px; height:26px; padding:0; border:1px solid var(--primary-bg-color); border-radius:3px; cursor:pointer;"></button>'
+                        + '        </div>'
+                        + '    </div>'
+                        + '</div>';
+                    hotspotEditorContainer.appendChild(_txw.firstElementChild);
+
+                    var textInput       = hotspotEditorContainer.querySelector('.hotspotPropText'),
+                        textColorInput  = hotspotEditorContainer.querySelector('.hotspotPropTextColor'),
+                        backgroundInput = hotspotEditorContainer.querySelector('.hotspotPropBackground'),
+                        backgroundClear = hotspotEditorContainer.querySelector('.hotspotBackgroundClear');
+
+                    // The color picker sits over a checkerboard; when no background is set we fade
+                    // the picker so the checkerboard shows through (reads as "transparent").
+                    var syncBackgroundSwatch = function() {
+                        var bg = overlayOrAnnotation.data.attributes.backgroundColor;
+                        backgroundInput.style.opacity = bg ? '1' : '0.25';
+                        if (bg) { backgroundInput.value = bg; }
                     };
-                    
-                    // Create row container for link input with buttons
-                    var linkInputRow = document.createElement('div');
-                    linkInputRow.className = 'linkInputRow';
-                    
-                    // Text input (stretches to fill remaining width)
-                    var linkInput = document.createElement('input');
-                    linkInput.type = 'text';
-                    linkInput.className = 'linkInput';
-                    linkInput.placeholder = 'https://example.com';
-                    linkInput.value = currentAttributes.linkUrl;
-                    
-                    var linkBeforeEdit = '';
-                    linkInput.addEventListener('focus', function() {
-                        linkBeforeEdit = overlayOrAnnotation.data.attributes.linkUrl || '';
-                    });
-                    
-                    linkInput.addEventListener('blur', function() {
-                        var newLink = overlayOrAnnotation.data.attributes.linkUrl || '';
-                        if (linkBeforeEdit !== newLink) {
-                            var isOverlay = !!overlayOrAnnotation.overlayElement;
-                            var category = isOverlay ? 'overlays' : 'annotations';
-                            var elementId = overlayOrAnnotation.data.created;
-                            
-                            (function(id, oldLink, newLnk, cat, labels, updateFn) {
-                                var findElement = function() {
-                                    var arr = cat === 'overlays' ? 
-                                        FrameTrail.module('HypervideoModel').overlays : 
-                                        FrameTrail.module('HypervideoModel').annotations;
-                                    for (var i = 0; i < arr.length; i++) {
-                                        if (arr[i].data.created === id) {
-                                            return arr[i];
-                                        }
-                                    }
-                                    return null;
-                                };
-                                FrameTrail.module('UndoManager').register({
-                                    category: cat,
-                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Link',
-                                    undo: function() {
-                                        var el = findElement();
-                                        if (!el) return;
-                                        updateFn(oldLink);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                    },
-                                    redo: function() {
-                                        var el = findElement();
-                                        if (!el) return;
-                                        updateFn(newLnk);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                    }
-                                });
-                            })(elementId, linkBeforeEdit, newLink, category, self.labels, updateLinkUrl);
-                        }
-                    });
-                    
-                    linkInput.addEventListener('keyup', function(evt) {
-                        if (!evt.metaKey && evt.key != 'Meta') {
-                            var newUrl = this.value;
-                            updateLinkUrl(newUrl);
-                        }
-                    });
-                    
-                    // Delete button (icon only)
-                    var _dbw = document.createElement('div');
-                    _dbw.innerHTML = '<button type="button" class="button btn btn-sm linkDeleteButton" title="'+ this.labels['GenericDelete'] +'"><span class="icon-cancel"></span></button>';
-                    var deleteButton = _dbw.firstElementChild;
-                    deleteButton.addEventListener('click', function(evt) {
-                        evt.preventDefault();
-                        evt.stopPropagation();
-                        updateLinkUrl('');
-                    });
-                    
-                    // Picker button (variable size depending on language)
-                    var _pbw = document.createElement('div');
-                    _pbw.innerHTML = '<button type="button" class="button btn btn-sm hypervideoPickerButton" title="'+ this.labels['SettingsHotspotPickHypervideo'] +'"><span class="icon-hypervideo" style="margin-right: 8px;"></span>'+ this.labels['SettingsHotspotPickHypervideo'] +'</button>';
-                    var pickerButton = _pbw.firstElementChild;
-                    
-                    pickerButton.addEventListener('click', function(evt) {
-                        evt.preventDefault();
-                        evt.stopPropagation();
-                        
-                        // Initialize HypervideoPicker module if not already loaded
-                        if (!FrameTrail.module('HypervideoPicker')) {
-                            FrameTrail.initModule('HypervideoPicker');
-                        }
-                        
-                        // Open picker dialog
-                        FrameTrail.module('HypervideoPicker').openPicker(function(hypervideoID) {
-                            // Insert hypervideo link into input field
-                            var hypervideoLink = '#hypervideo=' + hypervideoID;
-                            updateLinkUrl(hypervideoLink);
+
+                    textInput.value = currentAttributes.text || '';
+                    syncBackgroundSwatch();
+
+                    // Apply the current text/textColor/backgroundColor to all rendered hotspot elements.
+                    var applyTextStyles = function() {
+                        var a = overlayOrAnnotation.data.attributes,
+                            cat = overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations',
+                            els = overlayOrAnnotation.overlayElement
+                                ? [overlayOrAnnotation.overlayElement]
+                                : (overlayOrAnnotation.contentViewDetailElements || []);
+                        els.forEach(function(el) {
+                            var labelEl   = el.querySelector('.hotspot-label'),
+                                hotspotEl = el.querySelector('.hotspot-element'),
+                                pulseEl   = el.querySelector('.hotspot-pulse');
+                            if (labelEl) {
+                                labelEl.textContent = a.text || '';
+                                labelEl.style.color = a.textColor || '#ffffff';
+                            }
+                            if (hotspotEl) {
+                                hotspotEl.style.backgroundColor = a.backgroundColor || 'transparent';
+                                // A solid fill overrides the marker hover behaviour.
+                                if (a.backgroundColor) {
+                                    if (hotspotEl._enterFn) { hotspotEl.removeEventListener('mouseenter', hotspotEl._enterFn); hotspotEl._enterFn = null; }
+                                    if (hotspotEl._leaveFn) { hotspotEl.removeEventListener('mouseleave', hotspotEl._leaveFn); hotspotEl._leaveFn = null; }
+                                }
+                            }
+                            if (pulseEl) {
+                                pulseEl.style.display = a.backgroundColor ? 'none' : '';
+                            }
                         });
+                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
+                    };
+
+                    // Snapshot/undo for the text controls.
+                    var textSnapshot = function() {
+                        var a = overlayOrAnnotation.data.attributes;
+                        return { text: a.text, textColor: a.textColor, backgroundColor: a.backgroundColor };
+                    };
+                    var registerTextUndo = function(oldValues, newValues) {
+                        var cat = overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations',
+                            elementId = overlayOrAnnotation.data.created;
+                        (function(id, category, capturedOld, capturedNew, labels) {
+                            var findElement = function() {
+                                var arr = category === 'overlays'
+                                    ? FrameTrail.module('HypervideoModel').overlays
+                                    : FrameTrail.module('HypervideoModel').annotations;
+                                for (var i = 0; i < arr.length; i++) {
+                                    if (arr[i].data.created === id) return arr[i];
+                                }
+                                return null;
+                            };
+                            var applyValues = function(values) {
+                                var el = findElement();
+                                if (!el) return;
+                                el.data.attributes.text = values.text;
+                                el.data.attributes.textColor = values.textColor;
+                                el.data.attributes.backgroundColor = values.backgroundColor;
+                                applyTextStyles();
+                                if (textInput.isConnected) {
+                                    textInput.value = values.text || '';
+                                    textColorInput.value = values.textColor || '#ffffff';
+                                    if (values.backgroundColor) { backgroundInput.value = values.backgroundColor; }
+                                    syncBackgroundSwatch();
+                                }
+                            };
+                            FrameTrail.module('UndoManager').register({
+                                category: category,
+                                description: labels['SettingsHotspotText'],
+                                undo: function() { applyValues(capturedOld); },
+                                redo: function() { applyValues(capturedNew); }
+                            });
+                        })(elementId, cat, Object.assign({}, oldValues), Object.assign({}, newValues), self.labels);
+                    };
+
+                    var textBefore = null;
+                    textInput.addEventListener('focus', function() { textBefore = textSnapshot(); });
+                    textInput.addEventListener('input', function() {
+                        overlayOrAnnotation.data.attributes.text = this.value;
+                        applyTextStyles();
                     });
-                    
-                    // Append elements in order: input, delete button, picker button (from left to right)
-                    linkInputRow.appendChild(linkInput);
-                    linkInputRow.appendChild(deleteButton);
-                    linkInputRow.appendChild(pickerButton);
-                    
-                    hotspotEditorContainer.appendChild(linkInputRow);
+                    textInput.addEventListener('blur', function() {
+                        if (textBefore && textBefore.text !== overlayOrAnnotation.data.attributes.text) {
+                            registerTextUndo(textBefore, textSnapshot());
+                        }
+                        textBefore = null;
+                    });
+
+                    var textColorBefore = null;
+                    textColorInput.addEventListener('focus', function() { textColorBefore = textSnapshot(); });
+                    textColorInput.addEventListener('input', function() {
+                        overlayOrAnnotation.data.attributes.textColor = this.value;
+                        applyTextStyles();
+                    });
+                    textColorInput.addEventListener('change', function() {
+                        if (textColorBefore && textColorBefore.textColor !== overlayOrAnnotation.data.attributes.textColor) {
+                            registerTextUndo(textColorBefore, textSnapshot());
+                        }
+                        textColorBefore = textSnapshot();
+                    });
+
+                    var backgroundBefore = null;
+                    backgroundInput.addEventListener('focus', function() { backgroundBefore = textSnapshot(); });
+                    backgroundInput.addEventListener('input', function() {
+                        overlayOrAnnotation.data.attributes.backgroundColor = this.value;
+                        applyTextStyles();
+                        syncBackgroundSwatch();
+                    });
+                    backgroundInput.addEventListener('change', function() {
+                        if (backgroundBefore && backgroundBefore.backgroundColor !== overlayOrAnnotation.data.attributes.backgroundColor) {
+                            registerTextUndo(backgroundBefore, textSnapshot());
+                        }
+                        backgroundBefore = textSnapshot();
+                    });
+
+                    backgroundClear.addEventListener('click', function(evt) {
+                        evt.preventDefault();
+                        evt.stopPropagation();
+                        if (!overlayOrAnnotation.data.attributes.backgroundColor) { return; }
+                        var before = textSnapshot();
+                        overlayOrAnnotation.data.attributes.backgroundColor = '';
+                        applyTextStyles();
+                        syncBackgroundSwatch();
+                        registerTextUndo(before, textSnapshot());
+                    });
+
+                    // --- Action (shared model: open URL / jump to time / jump to hypervideo) ---
+                    hotspotEditorContainer.insertAdjacentHTML('beforeend', '<hr>');
+                    hotspotEditorContainer.appendChild(this.renderActionControls(overlayOrAnnotation));
 
                     return hotspotEditorContainer;
 

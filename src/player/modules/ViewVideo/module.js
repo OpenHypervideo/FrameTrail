@@ -618,6 +618,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         toggleViewMode(FrameTrail.getState('viewMode'));
 
+        attachSnapSuppressionListeners();
+
         toggleConfig_captionsVisible(FrameTrail.getState('hv_config_captionsVisible'));
 
         FrameTrail.changeState('hv_config_overlaysVisible', true);
@@ -1636,8 +1638,30 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
 
     /**
+     * While the Alt/Option key is held, all snapping (timeline and canvas) is
+     * suppressed, so the user can position/resize freely without snapping. The
+     * flag is kept up to date by the key listeners attached in
+     * attachSnapSuppressionListeners(), which run once.
+     */
+    var _snapSuppressed = false,
+        _snapKeyListenersAttached = false;
+
+    function attachSnapSuppressionListeners() {
+
+        if (_snapKeyListenersAttached) { return; }
+        _snapKeyListenersAttached = true;
+
+        document.addEventListener('keydown', function(evt) { _snapSuppressed = evt.altKey; }, true);
+        document.addEventListener('keyup',   function(evt) { _snapSuppressed = evt.altKey; }, true);
+        window.addEventListener('blur',      function() { _snapSuppressed = false; });
+
+    };
+
+
+    /**
      * I return the closest value from an array of snap target positions,
-     * or null when no target is within the given tolerance.
+     * or null when no target is within the given tolerance. I return null
+     * unconditionally while snapping is suppressed (Alt/Option held down).
      *
      * @method closestSnapTarget
      * @param {Number} value
@@ -1646,6 +1670,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
      * @return Number or null
      */
     function closestSnapTarget(value, targets, tolerance) {
+
+        if (_snapSuppressed) { return null; }
 
         var best = null,
             bestDistance = tolerance + 1;
@@ -1665,9 +1691,15 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
     /**
      * I collect the snap target positions for timeline dragging/resizing:
-     * the start and end edges of all timeline elements (in all three timelines)
-     * plus the playhead position. All positions are px values relative to the
-     * left edge of the given reference parent (the dragged element's container).
+     * the start and end edges of the other timeline elements in the *same*
+     * timeline as the dragged element. I do NOT snap across the three timelines
+     * (that snapped to elements the user could not see and felt random), and I
+     * deliberately do NOT include the playhead: the drag handlers move the
+     * playhead to the dragged element's own start on every frame, so snapping to
+     * it made the element snap to itself and crawl along in tolerance-sized steps.
+     * Off-screen targets (outside the visible timeline width) are dropped. All
+     * positions are px values relative to the left edge of the given reference
+     * parent (the dragged element's container).
      *
      * @method getTimelineSnapTargets
      * @param {HTMLElement} referenceParent
@@ -1676,25 +1708,73 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
      */
     function getTimelineSnapTargets(referenceParent, excludeElement) {
 
-        var refLeft = referenceParent.getBoundingClientRect().left,
+        var refRect = referenceParent.getBoundingClientRect(),
+            refLeft = refRect.left,
+            visibleWidth = referenceParent.clientWidth || refRect.width,
             targets = [];
 
-        [OverlayTimeline, AnnotationTimeline, CodeSnippetTimeline].forEach(function(timeline) {
-            if (!timeline) { return; }
-            timeline.querySelectorAll('.timelineElement').forEach(function(el) {
-                if (el === excludeElement) { return; }
-                var rect = el.getBoundingClientRect();
-                targets.push(rect.left - refLeft, rect.right - refLeft);
-            });
+        var inView = function(x) { return x >= -1 && x <= visibleWidth + 1; };
+
+        referenceParent.querySelectorAll('.timelineElement').forEach(function(el) {
+            if (el === excludeElement) { return; }
+            var rect = el.getBoundingClientRect(),
+                left = rect.left - refLeft,
+                right = rect.right - refLeft;
+            if (inView(left))  { targets.push(left); }
+            if (inView(right)) { targets.push(right); }
         });
 
-        var sliderHandle = PlayerProgress.querySelector('.ui-slider-handle');
-        if (sliderHandle) {
-            var handleRect = sliderHandle.getBoundingClientRect();
-            targets.push(handleRect.left + (handleRect.width / 2) - refLeft);
+        return targets;
+
+    };
+
+
+    /**
+     * I compute the snap-adjusted rect for a timeline element occupying
+     * [left, left+width] (px, relative to referenceParent), considering which
+     * edges are eligible (both edges for a drag, one edge for a resize). I return
+     * { left, width, indicator }, where indicator is the px position of the snap
+     * guide line (or null when nothing is within tolerance).
+     *
+     * This is used in a *snap-on-release* fashion: the drag/resize move handlers
+     * call me only to show the guide line and never pin the element (so movement
+     * stays free and never gets stuck in a chain of nearby snap targets), and the
+     * end handlers call me to snap the final drop position. While the Alt/Option
+     * key is held, closestSnapTarget returns null, so nothing snaps.
+     *
+     * @method computeTimelineSnap
+     * @param {HTMLElement} referenceParent
+     * @param {HTMLElement} excludeElement
+     * @param {Number} left
+     * @param {Number} width
+     * @param {Number} tolerance
+     * @param {Object} edges  { left: Boolean, right: Boolean }
+     * @return {Object} { left, width, indicator }
+     */
+    function computeTimelineSnap(referenceParent, excludeElement, left, width, tolerance, edges) {
+
+        var targets = getTimelineSnapTargets(referenceParent, excludeElement);
+        edges = edges || { left: true, right: true };
+
+        var sLeft  = edges.left  ? closestSnapTarget(left, targets, tolerance) : null,
+            sRight = edges.right ? closestSnapTarget(left + width, targets, tolerance) : null;
+
+        if (edges.left && edges.right) {
+            // Drag: the whole element moves, width stays — snap whichever edge is closer.
+            if (sLeft !== null && (sRight === null || Math.abs(sLeft - left) <= Math.abs(sRight - (left + width)))) {
+                return { left: sLeft, width: width, indicator: sLeft };
+            } else if (sRight !== null) {
+                return { left: sRight - width, width: width, indicator: sRight };
+            }
+        } else if (edges.left && sLeft !== null) {
+            // Resize left edge: left moves, right edge stays.
+            return { left: sLeft, width: width + (left - sLeft), indicator: sLeft };
+        } else if (edges.right && sRight !== null) {
+            // Resize right edge: right edge moves, left stays.
+            return { left: left, width: sRight - left, indicator: sRight };
         }
 
-        return targets;
+        return { left: left, width: width, indicator: null };
 
     };
 
@@ -1882,6 +1962,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         closestToOffset:         closestToOffset,
         closestSnapTarget:       closestSnapTarget,
         getTimelineSnapTargets:  getTimelineSnapTargets,
+        computeTimelineSnap:     computeTimelineSnap,
         showTimelineSnapIndicator: showTimelineSnapIndicator,
         hideTimelineSnapIndicator: hideTimelineSnapIndicator,
 

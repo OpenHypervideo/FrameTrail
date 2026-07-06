@@ -411,7 +411,7 @@
             if (protoData.created) {
                 // Restoring from saved data - use as-is
                 newData = JSON.parse(JSON.stringify(protoData));
-            } else if ( protoData.type == 'text' || protoData.type == 'html' || protoData.type == 'quiz' || protoData.type == 'hotspot' || protoData.type == 'button' ) {
+            } else if ( protoData.type == 'text' || protoData.type == 'html' || protoData.type == 'quiz' || protoData.type == 'hotspot' ) {
                 newData = {
                     "name":         protoData.name,
                     "creator":      FrameTrail.getState('username'),
@@ -430,7 +430,8 @@
                     }
                 }
                 if ( protoData.type == 'quiz' || protoData.type == 'hotspot' ) {
-                    newData.events = {
+                    // Presets may pass explicit events; otherwise default to pausing on start.
+                    newData.events = protoData.events || {
                         "onStart": "FrameTrail.module('HypervideoController').pause();"
                     };
                 }

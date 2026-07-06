@@ -323,23 +323,18 @@ FrameTrail.defineType(
 
                                 var rawX = parseFloat(e.target.dataset.ftRawX) + e.dx;
                                 e.target.dataset.ftRawX = rawX;
-                                var x           = rawX;
                                 var parentWidth = e.target.parentElement.offsetWidth;
                                 var elWidth     = e.target.offsetWidth;
+                                // Follow the pointer 1:1 — no live snapping (snap only on release).
+                                var x = Math.max(0, Math.min(parentWidth - elWidth, rawX));
 
                                 var ViewVideo = FrameTrail.module('ViewVideo');
-                                var snapTargets = ViewVideo.getTimelineSnapTargets(e.target.parentElement, e.target);
-                                var snapTolerance = 8;
-                                var snappedLeft = ViewVideo.closestSnapTarget(x, snapTargets, snapTolerance);
-
-                                if (snappedLeft !== null) {
-                                    x = snappedLeft;
-                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, x);
+                                var snap = ViewVideo.computeTimelineSnap(e.target.parentElement, e.target, x, elWidth, 5, { left: true, right: false });
+                                if (snap.indicator !== null) {
+                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, snap.indicator);
                                 } else {
                                     ViewVideo.hideTimelineSnapIndicator();
                                 }
-
-                                x = Math.max(0, Math.min(parentWidth - elWidth, x));
 
                                 e.target.style.left  = x + 'px';
                                 e.target.dataset.ftX = x;
@@ -361,10 +356,17 @@ FrameTrail.defineType(
 
                                 e.target.classList.remove('ui-draggable-dragging');
 
-                                FrameTrail.module('ViewVideo').hideTimelineSnapIndicator();
+                                var ViewVideo   = FrameTrail.module('ViewVideo');
+                                ViewVideo.hideTimelineSnapIndicator();
 
-                                var x           = parseFloat(e.target.dataset.ftX);
                                 var parentWidth = e.target.parentElement.offsetWidth;
+                                var elWidth     = e.target.offsetWidth;
+                                var x           = parseFloat(e.target.dataset.ftX);
+
+                                // Snap-on-release: snap the final drop position (if near a target).
+                                var snap = ViewVideo.computeTimelineSnap(e.target.parentElement, e.target, x, elWidth, 5, { left: true, right: false });
+                                x = Math.max(0, Math.min(parentWidth - elWidth, snap.left));
+                                e.target.style.left = x + 'px';
 
                                 var HypervideoModel = FrameTrail.module('HypervideoModel'),
                                     videoDuration = HypervideoModel.duration,

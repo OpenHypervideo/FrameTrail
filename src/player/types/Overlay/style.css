@@ -256,37 +256,6 @@
     background-color: transparent;
 }
 
-/* Close Button */
-
-.overlayContainer .overlayElement .overlayCloseButton {
-    position: absolute;
-    top: 2px;
-    right: 2px;
-    z-index: 10;
-    width: 22px;
-    height: 22px;
-    line-height: 22px;
-    text-align: center;
-    cursor: pointer;
-    color: #fff;
-    background-color: rgba(0, 0, 0, 0.5);
-    border-radius: 50%;
-    opacity: 0.7;
-}
-
-.overlayContainer .overlayElement .overlayCloseButton:hover {
-    opacity: 1;
-}
-
-.mainContainer.editActive .overlayContainer .overlayElement .overlayCloseButton {
-    display: none !important;
-}
-
-.overlayContainer .overlayElement.closedByUser {
-    visibility: hidden !important;
-    pointer-events: none !important;
-}
-
 .overlayContainer .overlayElement img {
     -webkit-transform: translate3d(0,0,0);
     -moz-transform: translate3d(0,0,0);

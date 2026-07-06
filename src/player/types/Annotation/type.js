@@ -359,27 +359,18 @@ FrameTrail.defineType(
 
                                 var rawX = parseFloat(e.target.dataset.ftRawX) + e.dx;
                                 e.target.dataset.ftRawX = rawX;
-                                var x           = rawX;
                                 var parentWidth = e.target.parentElement.offsetWidth;
                                 var elWidth     = e.target.offsetWidth;
+                                // Follow the pointer 1:1 — no live snapping (snap only on release).
+                                var x = Math.max(0, Math.min(parentWidth - elWidth, rawX));
 
                                 var ViewVideo = FrameTrail.module('ViewVideo');
-                                var snapTargets = ViewVideo.getTimelineSnapTargets(e.target.parentElement, e.target);
-                                var snapTolerance = 8;
-                                var snappedLeft  = ViewVideo.closestSnapTarget(x, snapTargets, snapTolerance);
-                                var snappedRight = ViewVideo.closestSnapTarget(x + elWidth, snapTargets, snapTolerance);
-
-                                if (snappedLeft !== null && (snappedRight === null || Math.abs(snappedLeft - x) <= Math.abs(snappedRight - x - elWidth))) {
-                                    x = snappedLeft;
-                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, x);
-                                } else if (snappedRight !== null) {
-                                    x = snappedRight - elWidth;
-                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, x + elWidth);
+                                var snap = ViewVideo.computeTimelineSnap(e.target.parentElement, e.target, x, elWidth, 5, { left: true, right: true });
+                                if (snap.indicator !== null) {
+                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, snap.indicator);
                                 } else {
                                     ViewVideo.hideTimelineSnapIndicator();
                                 }
-
-                                x = Math.max(0, Math.min(parentWidth - elWidth, x));
 
                                 e.target.style.left  = x + 'px';
                                 e.target.dataset.ftX = x;
@@ -405,11 +396,17 @@ FrameTrail.defineType(
 
                                 e.target.classList.remove('ui-draggable-dragging');
 
-                                FrameTrail.module('ViewVideo').hideTimelineSnapIndicator();
+                                var ViewVideo   = FrameTrail.module('ViewVideo');
+                                ViewVideo.hideTimelineSnapIndicator();
 
-                                var x           = parseFloat(e.target.dataset.ftX);
                                 var parentWidth = e.target.parentElement.offsetWidth;
                                 var elWidth     = e.target.offsetWidth;
+                                var x           = parseFloat(e.target.dataset.ftX);
+
+                                // Snap-on-release: snap the final drop position (if near a target).
+                                var snap = ViewVideo.computeTimelineSnap(e.target.parentElement, e.target, x, elWidth, 5, { left: true, right: true });
+                                x = Math.max(0, Math.min(parentWidth - elWidth, snap.left));
+                                e.target.style.left = x + 'px';
 
                                 var HypervideoModel = FrameTrail.module('HypervideoModel'),
                                     videoDuration = HypervideoModel.duration,
@@ -554,33 +551,19 @@ FrameTrail.defineType(
                                 var newWidth   = parseFloat(e.target.dataset.ftWidth) + e.deltaRect.width;
                                 var parentWidth = e.target.parentElement.offsetWidth;
 
-                                var ViewVideo = FrameTrail.module('ViewVideo');
-                                var snapTargets = ViewVideo.getTimelineSnapTargets(e.target.parentElement, e.target);
-                                var snapTolerance = 8;
-
-                                if (endHandleGrabbed) {
-                                    var snappedRight = ViewVideo.closestSnapTarget(newLeft + newWidth, snapTargets, snapTolerance);
-                                    if (snappedRight !== null) {
-                                        newWidth = snappedRight - newLeft;
-                                        ViewVideo.showTimelineSnapIndicator(e.target.parentElement, snappedRight);
-                                    } else {
-                                        ViewVideo.hideTimelineSnapIndicator();
-                                    }
-                                } else {
-                                    var snappedLeft = ViewVideo.closestSnapTarget(newLeft, snapTargets, snapTolerance);
-                                    if (snappedLeft !== null) {
-                                        newWidth += newLeft - snappedLeft;
-                                        newLeft   = snappedLeft;
-                                        ViewVideo.showTimelineSnapIndicator(e.target.parentElement, newLeft);
-                                    } else {
-                                        ViewVideo.hideTimelineSnapIndicator();
-                                    }
-                                }
-
-                                // Clamp to parent
+                                // Clamp to parent — follow the pointer 1:1, no live snapping.
                                 if (newLeft < 0)                      { newWidth += newLeft; newLeft = 0; }
                                 if (newLeft + newWidth > parentWidth) { newWidth = parentWidth - newLeft; }
                                 if (newWidth < 2)                     { newWidth = 2; }
+
+                                var ViewVideo = FrameTrail.module('ViewVideo');
+                                var snap = ViewVideo.computeTimelineSnap(e.target.parentElement, e.target, newLeft, newWidth, 5,
+                                    endHandleGrabbed ? { left: false, right: true } : { left: true, right: false });
+                                if (snap.indicator !== null) {
+                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, snap.indicator);
+                                } else {
+                                    ViewVideo.hideTimelineSnapIndicator();
+                                }
 
                                 e.target.style.left      = newLeft + 'px';
                                 e.target.style.width     = newWidth + 'px';
@@ -611,11 +594,23 @@ FrameTrail.defineType(
                                     FrameTrail.module('AnnotationsController').annotationInFocus = null;
                                 }
 
-                                FrameTrail.module('ViewVideo').hideTimelineSnapIndicator();
+                                var ViewVideo   = FrameTrail.module('ViewVideo');
+                                ViewVideo.hideTimelineSnapIndicator();
 
+                                var parentWidth = e.target.parentElement.offsetWidth;
                                 var finalLeft   = parseFloat(e.target.dataset.ftLeft);
                                 var finalWidth  = parseFloat(e.target.dataset.ftWidth);
-                                var parentWidth = e.target.parentElement.offsetWidth;
+
+                                // Snap-on-release: snap the moving edge to a nearby target, then re-clamp.
+                                var snap = ViewVideo.computeTimelineSnap(e.target.parentElement, e.target, finalLeft, finalWidth, 5,
+                                    endHandleGrabbed ? { left: false, right: true } : { left: true, right: false });
+                                finalLeft  = snap.left;
+                                finalWidth = snap.width;
+                                if (finalLeft < 0)                      { finalWidth += finalLeft; finalLeft = 0; }
+                                if (finalLeft + finalWidth > parentWidth) { finalWidth = parentWidth - finalLeft; }
+                                if (finalWidth < 2)                     { finalWidth = 2; }
+                                e.target.style.left  = finalLeft + 'px';
+                                e.target.style.width = finalWidth + 'px';
 
                                 var HypervideoModel = FrameTrail.module('HypervideoModel'),
                                     videoDuration = HypervideoModel.duration,

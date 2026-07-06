@@ -105,14 +105,6 @@ FrameTrail.defineType(
                 permanentFocusState:    false,
 
                 /**
-                 * I store whether the viewer has dismissed me via my close button.
-                 * I am reset when I become inactive (the current time leaves my range) or when editing starts.
-                 * @attribute closedByUser
-                 * @type Boolean
-                 */
-                closedByUser:           false,
-
-                /**
                  * I hold the timelineElement (a plain HTMLElement), which indicates my start and end time.
                  * @attribute timelineElement
                  * @type HTMLElement
@@ -199,15 +191,6 @@ FrameTrail.defineType(
 
                     var _self = this;
 
-                    this.closeButton = document.createElement('div');
-                    this.closeButton.className = 'overlayCloseButton';
-                    this.closeButton.innerHTML = '<span class="icon-cancel"></span>';
-                    this.closeButton.addEventListener('click', function(evt) {
-                        evt.stopPropagation();
-                        _self.closeByUser();
-                    });
-                    this.overlayElement.appendChild(this.closeButton);
-                    this.updateCloseButton();
                     this.updateHoverStyle();
 
                     this.overlayElement.addEventListener('click', function(evt) {
@@ -446,22 +429,6 @@ FrameTrail.defineType(
                 },
 
                 /**
-                 * I show or hide my close button according to my
-                 * data.attributes.showCloseButton and data.attributes.allowClose flags.
-                 * @method updateCloseButton
-                 */
-                updateCloseButton: function () {
-
-                    if (!this.closeButton) { return; }
-
-                    var visible = this.data.attributes.showCloseButton
-                                  && this.data.attributes.allowClose !== false;
-
-                    this.closeButton.style.display = visible ? '' : 'none';
-
-                },
-
-                /**
                  * I apply my hover style (data.attributes.hoverStyle) to the overlayElement
                  * as CSS custom properties. The actual :hover behavior is defined in my stylesheet.
                  * @method updateHoverStyle
@@ -483,27 +450,6 @@ FrameTrail.defineType(
                         el.style.removeProperty('--overlay-hover-scale');
                         el.style.removeProperty('--overlay-hover-outline');
                         el.style.removeProperty('--overlay-hover-bg');
-                    }
-
-                },
-
-                /**
-                 * I am called when the viewer clicks my close button.
-                 * I hide my overlayElement until I become inactive again.
-                 * I do nothing when data.attributes.allowClose is false.
-                 * @method closeByUser
-                 */
-                closeByUser: function () {
-
-                    if (this.data.attributes.allowClose === false) { return; }
-
-                    this.closedByUser = true;
-                    this.clearAnimationClasses();
-                    this.overlayElement.style.opacity = '';
-                    this.overlayElement.classList.add('closedByUser');
-
-                    if (this.syncedMedia) {
-                        FrameTrail.module('OverlaysController').removeSyncedMedia(this);
                     }
 
                 },
@@ -676,9 +622,6 @@ FrameTrail.defineType(
 
                     this.activeState = false;
 
-                    this.closedByUser = false;
-                    this.overlayElement.classList.remove('closedByUser');
-
                 },
 
 
@@ -754,9 +697,6 @@ FrameTrail.defineType(
 
                     var self = this,
                         OverlaysController = FrameTrail.module('OverlaysController');
-
-                    this.closedByUser = false;
-                    this.overlayElement.classList.remove('closedByUser');
 
                     window.setTimeout(function() {
                         self.makeTimelineElementDraggable();
@@ -855,27 +795,18 @@ FrameTrail.defineType(
 
                                 var rawX = parseFloat(e.target.dataset.ftRawX) + e.dx;
                                 e.target.dataset.ftRawX = rawX;
-                                var x           = rawX;
                                 var parentWidth = e.target.parentElement.offsetWidth;
                                 var elWidth     = e.target.offsetWidth;
+                                // Follow the pointer 1:1 — no live snapping (snap only on release).
+                                var x = Math.max(0, Math.min(parentWidth - elWidth, rawX));
 
                                 var ViewVideo = FrameTrail.module('ViewVideo');
-                                var snapTargets = ViewVideo.getTimelineSnapTargets(e.target.parentElement, e.target);
-                                var snapTolerance = 8;
-                                var snappedLeft  = ViewVideo.closestSnapTarget(x, snapTargets, snapTolerance);
-                                var snappedRight = ViewVideo.closestSnapTarget(x + elWidth, snapTargets, snapTolerance);
-
-                                if (snappedLeft !== null && (snappedRight === null || Math.abs(snappedLeft - x) <= Math.abs(snappedRight - x - elWidth))) {
-                                    x = snappedLeft;
-                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, x);
-                                } else if (snappedRight !== null) {
-                                    x = snappedRight - elWidth;
-                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, x + elWidth);
+                                var snap = ViewVideo.computeTimelineSnap(e.target.parentElement, e.target, x, elWidth, 5, { left: true, right: true });
+                                if (snap.indicator !== null) {
+                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, snap.indicator);
                                 } else {
                                     ViewVideo.hideTimelineSnapIndicator();
                                 }
-
-                                x = Math.max(0, Math.min(parentWidth - elWidth, x));
 
                                 e.target.style.left  = x + 'px';
                                 e.target.dataset.ftX = x;
@@ -901,11 +832,17 @@ FrameTrail.defineType(
 
                                 e.target.classList.remove('ui-draggable-dragging');
 
-                                FrameTrail.module('ViewVideo').hideTimelineSnapIndicator();
+                                var ViewVideo   = FrameTrail.module('ViewVideo');
+                                ViewVideo.hideTimelineSnapIndicator();
 
-                                var x           = parseFloat(e.target.dataset.ftX);
                                 var parentWidth = e.target.parentElement.offsetWidth;
                                 var elWidth     = e.target.offsetWidth;
+                                var x           = parseFloat(e.target.dataset.ftX);
+
+                                // Snap-on-release: snap the final drop position (if near a target).
+                                var snap = ViewVideo.computeTimelineSnap(e.target.parentElement, e.target, x, elWidth, 5, { left: true, right: true });
+                                x = Math.max(0, Math.min(parentWidth - elWidth, snap.left));
+                                e.target.style.left = x + 'px';
 
                                 var HypervideoModel = FrameTrail.module('HypervideoModel'),
                                     videoDuration = HypervideoModel.duration,
@@ -1024,33 +961,19 @@ FrameTrail.defineType(
                                 var newWidth   = parseFloat(e.target.dataset.ftWidth) + e.deltaRect.width;
                                 var parentWidth = e.target.parentElement.offsetWidth;
 
-                                var ViewVideo = FrameTrail.module('ViewVideo');
-                                var snapTargets = ViewVideo.getTimelineSnapTargets(e.target.parentElement, e.target);
-                                var snapTolerance = 8;
-
-                                if (endHandleGrabbed) {
-                                    var snappedRight = ViewVideo.closestSnapTarget(newLeft + newWidth, snapTargets, snapTolerance);
-                                    if (snappedRight !== null) {
-                                        newWidth = snappedRight - newLeft;
-                                        ViewVideo.showTimelineSnapIndicator(e.target.parentElement, snappedRight);
-                                    } else {
-                                        ViewVideo.hideTimelineSnapIndicator();
-                                    }
-                                } else {
-                                    var snappedLeft = ViewVideo.closestSnapTarget(newLeft, snapTargets, snapTolerance);
-                                    if (snappedLeft !== null) {
-                                        newWidth += newLeft - snappedLeft;
-                                        newLeft   = snappedLeft;
-                                        ViewVideo.showTimelineSnapIndicator(e.target.parentElement, newLeft);
-                                    } else {
-                                        ViewVideo.hideTimelineSnapIndicator();
-                                    }
-                                }
-
-                                // Clamp to parent
+                                // Clamp to parent — follow the pointer 1:1, no live snapping.
                                 if (newLeft < 0)                      { newWidth += newLeft; newLeft = 0; }
                                 if (newLeft + newWidth > parentWidth) { newWidth = parentWidth - newLeft; }
                                 if (newWidth < 2)                     { newWidth = 2; }
+
+                                var ViewVideo = FrameTrail.module('ViewVideo');
+                                var snap = ViewVideo.computeTimelineSnap(e.target.parentElement, e.target, newLeft, newWidth, 5,
+                                    endHandleGrabbed ? { left: false, right: true } : { left: true, right: false });
+                                if (snap.indicator !== null) {
+                                    ViewVideo.showTimelineSnapIndicator(e.target.parentElement, snap.indicator);
+                                } else {
+                                    ViewVideo.hideTimelineSnapIndicator();
+                                }
 
                                 e.target.style.left      = newLeft + 'px';
                                 e.target.style.width     = newWidth + 'px';
@@ -1083,11 +1006,23 @@ FrameTrail.defineType(
                                     FrameTrail.module('OverlaysController').overlayInFocus = null;
                                 }
 
-                                FrameTrail.module('ViewVideo').hideTimelineSnapIndicator();
+                                var ViewVideo   = FrameTrail.module('ViewVideo');
+                                ViewVideo.hideTimelineSnapIndicator();
 
+                                var parentWidth = e.target.parentElement.offsetWidth;
                                 var finalLeft   = parseFloat(e.target.dataset.ftLeft);
                                 var finalWidth  = parseFloat(e.target.dataset.ftWidth);
-                                var parentWidth = e.target.parentElement.offsetWidth;
+
+                                // Snap-on-release: snap the moving edge to a nearby target, then re-clamp.
+                                var snap = ViewVideo.computeTimelineSnap(e.target.parentElement, e.target, finalLeft, finalWidth, 5,
+                                    endHandleGrabbed ? { left: false, right: true } : { left: true, right: false });
+                                finalLeft  = snap.left;
+                                finalWidth = snap.width;
+                                if (finalLeft < 0)                      { finalWidth += finalLeft; finalLeft = 0; }
+                                if (finalLeft + finalWidth > parentWidth) { finalWidth = parentWidth - finalLeft; }
+                                if (finalWidth < 2)                     { finalWidth = 2; }
+                                e.target.style.left  = finalLeft + 'px';
+                                e.target.style.width = finalWidth + 'px';
 
                                 var HypervideoModel = FrameTrail.module('HypervideoModel'),
                                     videoDuration = HypervideoModel.duration,
@@ -1202,12 +1137,11 @@ FrameTrail.defineType(
                                 var maxX = parent.offsetWidth  - e.target.offsetWidth;
                                 var maxY = parent.offsetHeight - e.target.offsetHeight;
 
-                                var snappedPosition = FrameTrail.module('OverlaysController').snapCanvasDrag(e.target, x, y);
-                                x = snappedPosition.x;
-                                y = snappedPosition.y;
-
                                 x = Math.max(0, Math.min(maxX, x));
                                 y = Math.max(0, Math.min(maxY, y));
+
+                                // Follow the pointer 1:1; only show the snap guide lines (snap on release).
+                                FrameTrail.module('OverlaysController').snapCanvasDrag(e.target, x, y);
 
                                 e.target.style.left  = x + 'px';
                                 e.target.style.top   = y + 'px';
@@ -1229,11 +1163,18 @@ FrameTrail.defineType(
                                     FrameTrail.module('OverlaysController').overlayInFocus = null;
                                 }
 
-                                FrameTrail.module('OverlaysController').clearCanvasSnapLines();
-
                                 var x = parseFloat(e.target.dataset.ftX);
                                 var y = parseFloat(e.target.dataset.ftY);
                                 var parent = e.target.parentElement;
+
+                                // Snap-on-release: snap the final drop position (if near a guide).
+                                var snapped = FrameTrail.module('OverlaysController').snapCanvasDrag(e.target, x, y);
+                                x = Math.max(0, Math.min(parent.offsetWidth  - e.target.offsetWidth,  snapped.x));
+                                y = Math.max(0, Math.min(parent.offsetHeight - e.target.offsetHeight, snapped.y));
+                                e.target.style.left = x + 'px';
+                                e.target.style.top  = y + 'px';
+
+                                FrameTrail.module('OverlaysController').clearCanvasSnapLines();
 
                                 var newPosition = {
                                     top:    y / parent.offsetHeight * 100,
@@ -1316,7 +1257,8 @@ FrameTrail.defineType(
                 makeOverlayElementResizeable: function () {
 
                     var self = this,
-                        oldPosition;
+                        oldPosition,
+                        resizeEdges;
 
                     var el = this.overlayElement;
                     this.overlayElement.classList.add('ui-resizable');
@@ -1343,6 +1285,8 @@ FrameTrail.defineType(
                                 if (!self.permanentFocusState) {
                                     FrameTrail.module('OverlaysController').overlayInFocus = self;
                                 }
+
+                                resizeEdges = e.edges;
 
                                 // Capture old position for undo
                                 oldPosition = {
@@ -1372,7 +1316,7 @@ FrameTrail.defineType(
                                 var newHeight = parseFloat(e.target.dataset.ftHeight) + e.deltaRect.height;
                                 var parent    = e.target.parentElement;
 
-                                // Clamp to parent
+                                // Clamp to parent — follow the pointer 1:1, no live snapping.
                                 if (newLeft < 0)                        { newWidth  += newLeft;  newLeft = 0; }
                                 if (newTop  < 0)                        { newHeight += newTop;   newTop  = 0; }
                                 if (newLeft + newWidth  > parent.offsetWidth)  { newWidth  = parent.offsetWidth  - newLeft; }
@@ -1380,15 +1324,12 @@ FrameTrail.defineType(
                                 if (newWidth  < 5) { newWidth  = 5; }
                                 if (newHeight < 5) { newHeight = 5; }
 
-                                var snappedRect = FrameTrail.module('OverlaysController').snapCanvasResize(
+                                // Only show the snap guide lines; snap the actual rect on release.
+                                FrameTrail.module('OverlaysController').snapCanvasResize(
                                     e.target,
                                     { left: newLeft, top: newTop, width: newWidth, height: newHeight },
                                     e.edges
                                 );
-                                newLeft   = snappedRect.left;
-                                newTop    = snappedRect.top;
-                                newWidth  = snappedRect.width;
-                                newHeight = snappedRect.height;
 
                                 e.target.style.left   = newLeft   + 'px';
                                 e.target.style.top    = newTop    + 'px';
@@ -1416,13 +1357,34 @@ FrameTrail.defineType(
                                     FrameTrail.module('OverlaysController').overlayInFocus = null;
                                 }
 
-                                FrameTrail.module('OverlaysController').clearCanvasSnapLines();
-
+                                var parent      = e.target.parentElement;
                                 var finalLeft   = parseFloat(e.target.dataset.ftLeft);
                                 var finalTop    = parseFloat(e.target.dataset.ftTop);
                                 var finalWidth  = parseFloat(e.target.dataset.ftWidth);
                                 var finalHeight = parseFloat(e.target.dataset.ftHeight);
-                                var parent      = e.target.parentElement;
+
+                                // Snap-on-release: snap the moving edges, then re-clamp to parent + min size.
+                                var snappedRect = FrameTrail.module('OverlaysController').snapCanvasResize(
+                                    e.target,
+                                    { left: finalLeft, top: finalTop, width: finalWidth, height: finalHeight },
+                                    resizeEdges || e.edges || {}
+                                );
+                                finalLeft   = snappedRect.left;
+                                finalTop    = snappedRect.top;
+                                finalWidth  = snappedRect.width;
+                                finalHeight = snappedRect.height;
+                                if (finalLeft < 0)                        { finalWidth  += finalLeft;  finalLeft = 0; }
+                                if (finalTop  < 0)                        { finalHeight += finalTop;   finalTop  = 0; }
+                                if (finalLeft + finalWidth  > parent.offsetWidth)  { finalWidth  = parent.offsetWidth  - finalLeft; }
+                                if (finalTop  + finalHeight > parent.offsetHeight) { finalHeight = parent.offsetHeight - finalTop;  }
+                                if (finalWidth  < 5) { finalWidth  = 5; }
+                                if (finalHeight < 5) { finalHeight = 5; }
+                                e.target.style.left   = finalLeft   + 'px';
+                                e.target.style.top    = finalTop    + 'px';
+                                e.target.style.width  = finalWidth  + 'px';
+                                e.target.style.height = finalHeight + 'px';
+
+                                FrameTrail.module('OverlaysController').clearCanvasSnapLines();
 
                                 var newPosition = {
                                     top:    finalTop    / parent.offsetHeight * 100,

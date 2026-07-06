@@ -35,10 +35,12 @@ FrameTrail.defineType(
             prototype: {
 
                 /**
-                 * I execute the shared overlay action model used by hotspot- and button-like
-                 * overlay types. The action is described by two attribute fields:
-                 * action ('openUrl' | 'jumpToTime' | 'jumpToHypervideo' | 'customJS') and actionTarget.
-                 * For backwards compatibility, a linkUrl attribute (hotspots) is treated as 'openUrl'.
+                 * I execute the shared overlay action model used by hotspot-like overlay types.
+                 * The action is described by attribute fields: action ('openUrl' | 'jumpToTime' |
+                 * 'jumpToHypervideo') plus actionTarget (and, for jumpToHypervideo, an optional
+                 * actionTargetTime in seconds). For backwards compatibility, a linkUrl attribute
+                 * (older hotspots) is treated as 'openUrl'. Custom JavaScript is NOT part of this
+                 * model — use the overlay's onClick event handler for that.
                  *
                  * @method executeOverlayAction
                  * @param {Object} attributes
@@ -67,16 +69,12 @@ FrameTrail.defineType(
                             break;
                         case 'jumpToHypervideo':
                             if (target) {
-                                window.location.hash = 'hypervideo=' + target;
-                            }
-                            break;
-                        case 'customJS':
-                            if (!target) { break; }
-                            try {
-                                var actionFunction = new Function('FrameTrail', 'hypervideo', target);
-                                actionFunction(FrameTrail, FrameTrail.module('HypervideoController'));
-                            } catch (exception) {
-                                console.warn(this.labels['MessageEventHandlerContainsErrors'] + ': ' + exception.message);
+                                var hash = 'hypervideo=' + target,
+                                    jumpTime = parseFloat(attributes.actionTargetTime);
+                                if (!isNaN(jumpTime) && jumpTime > 0) {
+                                    hash += '&t=' + jumpTime;
+                                }
+                                window.location.hash = hash;
                             }
                             break;
                     }
@@ -85,7 +83,12 @@ FrameTrail.defineType(
 
                 /**
                  * I render shared editor controls for the overlay action model
-                 * (attributes.action + attributes.actionTarget) used by button- and hotspot-like types.
+                 * (attributes.action + attributes.actionTarget + attributes.actionTargetTime),
+                 * used by hotspot-like types. The target control adapts to the chosen action:
+                 * a URL text field for "Open URL", a time field for "Jump to time", and a
+                 * hypervideo thumb + picker (+ optional time) for "Jump to hypervideo".
+                 * "Custom JavaScript" is intentionally not an option — the onClick event handler
+                 * with the code editor covers that.
                  *
                  * @method renderActionControls
                  * @param {Object} overlayOrAnnotation
@@ -97,6 +100,24 @@ FrameTrail.defineType(
                         attributes = overlayOrAnnotation.data.attributes,
                         category = overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations';
 
+                    // Seconds <-> HH:MM:SS helpers for the <input type="time" step="1"> controls.
+                    var secondsToClock = function(value) {
+                        var sec = parseFloat(value);
+                        if (isNaN(sec) || sec < 0) { return ''; }
+                        sec = Math.floor(sec);
+                        var h = Math.floor(sec / 3600),
+                            m = Math.floor((sec % 3600) / 60),
+                            s = sec % 60,
+                            pad = function(n) { return (n < 10 ? '0' : '') + n; };
+                        return pad(h) + ':' + pad(m) + ':' + pad(s);
+                    };
+                    var clockToSeconds = function(clock) {
+                        if (!clock) { return ''; }
+                        var parts = clock.split(':').map(function(p) { return parseInt(p, 10) || 0; });
+                        while (parts.length < 3) { parts.unshift(0); }
+                        return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
+                    };
+
                     var _acw = document.createElement('div');
                     _acw.innerHTML = '<div class="layoutRow actionControlsRow">'
                         + '    <div class="column-5">'
@@ -107,36 +128,29 @@ FrameTrail.defineType(
                         + '            <option value="openUrl">'+ this.labels['ActionOpenUrl'] +'</option>'
                         + '            <option value="jumpToTime">'+ this.labels['ActionPresetJumpToTime'] +'</option>'
                         + '            <option value="jumpToHypervideo">'+ this.labels['ActionPresetJumpToHypervideo'] +'</option>'
-                        + '            <option value="customJS">'+ this.labels['ActionCustomJS'] +'</option>'
                         + '        </select>'
                         + '        </div>'
                         + '    </div>'
                         + '    <div class="column-7 actionTargetColumn">'
                         + '        <label>'+ this.labels['SettingsActionTarget'] +'</label>'
-                        + '        <input type="text" class="actionTargetInput">'
+                        + '        <div class="actionTargetContent"></div>'
                         + '    </div>'
                         + '</div>';
                     var container = _acw.firstElementChild;
 
-                    var actionSelect = container.querySelector('.actionSelect'),
-                        targetInput  = container.querySelector('.actionTargetInput'),
-                        targetColumn = container.querySelector('.actionTargetColumn');
+                    var actionSelect  = container.querySelector('.actionSelect'),
+                        targetColumn  = container.querySelector('.actionTargetColumn'),
+                        targetContent = container.querySelector('.actionTargetContent');
 
                     actionSelect.value = attributes.action || '';
-                    targetInput.value  = (attributes.actionTarget != null) ? attributes.actionTarget : '';
 
-                    var pickerButton = document.createElement('button');
-                    pickerButton.type = 'button';
-                    pickerButton.className = 'button btn btn-sm hypervideoPickerButton';
-                    pickerButton.innerHTML = '<span class="icon-hypervideo"></span>';
-                    pickerButton.title = this.labels['SettingsHotspotPickHypervideo'];
-                    targetColumn.appendChild(pickerButton);
-
-                    var updateTargetVisibility = function() {
-                        targetColumn.style.display = (actionSelect.value === '') ? 'none' : '';
-                        pickerButton.style.display = (actionSelect.value === 'jumpToHypervideo') ? '' : 'none';
+                    var snapshot = function() {
+                        return {
+                            action: attributes.action,
+                            actionTarget: attributes.actionTarget,
+                            actionTargetTime: attributes.actionTargetTime
+                        };
                     };
-                    updateTargetVisibility();
 
                     var registerActionUndo = function(oldValues, newValues) {
                         (function(elementId, cat, capturedOld, capturedNew, labels) {
@@ -154,6 +168,11 @@ FrameTrail.defineType(
                                 if (!el) return;
                                 el.data.attributes.action = values.action;
                                 el.data.attributes.actionTarget = values.actionTarget;
+                                el.data.attributes.actionTargetTime = values.actionTargetTime;
+                                if (container.isConnected) {
+                                    actionSelect.value = values.action || '';
+                                    renderTargetContent();
+                                }
                                 FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
                             };
                             FrameTrail.module('UndoManager').register({
@@ -165,43 +184,132 @@ FrameTrail.defineType(
                         })(overlayOrAnnotation.data.created, category, Object.assign({}, oldValues), Object.assign({}, newValues), self.labels);
                     };
 
+                    // (Re)builds the target control(s) for the currently selected action.
+                    var renderTargetContent = function() {
+
+                        targetContent.innerHTML = '';
+                        targetColumn.style.display = (actionSelect.value === '') ? 'none' : '';
+
+                        if (actionSelect.value === 'openUrl') {
+
+                            var urlInput = document.createElement('input');
+                            urlInput.type = 'text';
+                            urlInput.className = 'actionTargetInput';
+                            urlInput.placeholder = 'https://example.com';
+                            urlInput.value = (attributes.actionTarget != null) ? attributes.actionTarget : '';
+
+                            var urlBefore = null;
+                            urlInput.addEventListener('focus', function() { urlBefore = snapshot(); });
+                            urlInput.addEventListener('input', function() {
+                                attributes.actionTarget = this.value;
+                                FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                            });
+                            urlInput.addEventListener('blur', function() {
+                                if (urlBefore && urlBefore.actionTarget !== attributes.actionTarget) {
+                                    registerActionUndo(urlBefore, snapshot());
+                                }
+                                urlBefore = null;
+                            });
+                            targetContent.appendChild(urlInput);
+
+                        } else if (actionSelect.value === 'jumpToTime') {
+
+                            var timeInput = document.createElement('input');
+                            timeInput.type = 'time';
+                            timeInput.step = '1';
+                            timeInput.className = 'actionTargetInput';
+                            timeInput.value = secondsToClock(attributes.actionTarget);
+
+                            var timeBefore = null;
+                            timeInput.addEventListener('focus', function() { timeBefore = snapshot(); });
+                            timeInput.addEventListener('change', function() {
+                                attributes.actionTarget = clockToSeconds(this.value);
+                                FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                                if (timeBefore && timeBefore.actionTarget !== attributes.actionTarget) {
+                                    registerActionUndo(timeBefore, snapshot());
+                                }
+                                timeBefore = snapshot();
+                            });
+                            targetContent.appendChild(timeInput);
+
+                        } else if (actionSelect.value === 'jumpToHypervideo') {
+
+                            var _hvw = document.createElement('div');
+                            _hvw.innerHTML = '<div class="actionHypervideoTarget" style="display:flex; align-items:center; gap:8px;">'
+                                + '    <div class="actionHypervideoThumb" style="width:80px; height:45px; flex-shrink:0; background-color:#000; background-size:cover; background-position:center; border-radius:3px;"></div>'
+                                + '    <div class="actionHypervideoName" style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>'
+                                + '    <button type="button" class="button btn btn-sm hypervideoPickerButton" style="flex-shrink:0;"><span class="icon-hypervideo"></span></button>'
+                                + '</div>'
+                                + '<div style="margin-top:6px;">'
+                                + '    <label>'+ self.labels['SettingsActionTargetTime'] +'</label>'
+                                + '    <input type="time" step="1" class="actionTargetTimeInput">'
+                                + '</div>';
+                            while (_hvw.firstElementChild) { targetContent.appendChild(_hvw.firstElementChild); }
+
+                            var thumbEl  = targetContent.querySelector('.actionHypervideoThumb'),
+                                nameEl   = targetContent.querySelector('.actionHypervideoName'),
+                                picker   = targetContent.querySelector('.hypervideoPickerButton'),
+                                jumpTime = targetContent.querySelector('.actionTargetTimeInput');
+
+                            var refreshHypervideoPreview = function() {
+                                var id = attributes.actionTarget,
+                                    hypervideos = FrameTrail.module('Database').hypervideos,
+                                    hv = (id && hypervideos) ? hypervideos[id] : null;
+                                if (hv) {
+                                    thumbEl.style.backgroundImage = hv.thumb
+                                        ? 'url("' + FrameTrail.module('RouteNavigation').getResourceURL(hv.thumb) + '")'
+                                        : '';
+                                    nameEl.textContent = hv.name || id;
+                                } else {
+                                    thumbEl.style.backgroundImage = '';
+                                    nameEl.textContent = self.labels['SettingsHotspotPickHypervideo'];
+                                }
+                            };
+                            refreshHypervideoPreview();
+
+                            jumpTime.value = secondsToClock(attributes.actionTargetTime);
+                            var jumpBefore = null;
+                            jumpTime.addEventListener('focus', function() { jumpBefore = snapshot(); });
+                            jumpTime.addEventListener('change', function() {
+                                attributes.actionTargetTime = clockToSeconds(this.value);
+                                FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                                if (jumpBefore && jumpBefore.actionTargetTime !== attributes.actionTargetTime) {
+                                    registerActionUndo(jumpBefore, snapshot());
+                                }
+                                jumpBefore = snapshot();
+                            });
+
+                            picker.addEventListener('click', function(evt) {
+                                evt.preventDefault();
+                                evt.stopPropagation();
+                                if (!FrameTrail.module('HypervideoPicker')) {
+                                    FrameTrail.initModule('HypervideoPicker');
+                                }
+                                FrameTrail.module('HypervideoPicker').openPicker(function(hypervideoID) {
+                                    var before = snapshot();
+                                    attributes.actionTarget = hypervideoID;
+                                    refreshHypervideoPreview();
+                                    FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                                    registerActionUndo(before, snapshot());
+                                });
+                            });
+
+                        }
+
+                    };
+
                     actionSelect.addEventListener('change', function() {
-                        var oldValues = { action: attributes.action, actionTarget: attributes.actionTarget };
+                        var before = snapshot();
                         attributes.action = this.value;
-                        updateTargetVisibility();
+                        // Clear a stale target when switching action kinds.
+                        attributes.actionTarget = '';
+                        attributes.actionTargetTime = '';
+                        renderTargetContent();
                         FrameTrail.module('HypervideoModel').newUnsavedChange(category);
-                        registerActionUndo(oldValues, { action: attributes.action, actionTarget: attributes.actionTarget });
+                        registerActionUndo(before, snapshot());
                     });
 
-                    var targetBeforeEdit = null;
-                    targetInput.addEventListener('focus', function() {
-                        targetBeforeEdit = { action: attributes.action, actionTarget: attributes.actionTarget };
-                    });
-                    targetInput.addEventListener('input', function() {
-                        attributes.actionTarget = this.value;
-                        FrameTrail.module('HypervideoModel').newUnsavedChange(category);
-                    });
-                    targetInput.addEventListener('blur', function() {
-                        if (targetBeforeEdit && targetBeforeEdit.actionTarget !== attributes.actionTarget) {
-                            registerActionUndo(targetBeforeEdit, { action: attributes.action, actionTarget: attributes.actionTarget });
-                        }
-                        targetBeforeEdit = null;
-                    });
-
-                    pickerButton.addEventListener('click', function(evt) {
-                        evt.preventDefault();
-                        evt.stopPropagation();
-                        if (!FrameTrail.module('HypervideoPicker')) {
-                            FrameTrail.initModule('HypervideoPicker');
-                        }
-                        FrameTrail.module('HypervideoPicker').openPicker(function(hypervideoID) {
-                            var oldValues = { action: attributes.action, actionTarget: attributes.actionTarget };
-                            attributes.actionTarget = hypervideoID;
-                            targetInput.value = hypervideoID;
-                            FrameTrail.module('HypervideoModel').newUnsavedChange(category);
-                            registerActionUndo(oldValues, { action: attributes.action, actionTarget: attributes.actionTarget });
-                        });
-                    });
+                    renderTargetContent();
 
                     return container;
 
@@ -465,13 +573,13 @@ FrameTrail.defineType(
                                             + '                <div class="column-4">'
                                             + '                    <label>'+ this.labels['SettingsArrange'] +'</label>'
                                             + '                    <div class="arrangeButtons">'
-                                            + '                        <button class="arrangeButton" data-arrange="back" data-tooltip-bottom-right="'+ this.labels['ArrangeSendToBack'] +'"><span class="icon-angle-double-down"></span></button>'
-                                            + '                        <button class="arrangeButton" data-arrange="backward" data-tooltip-bottom-right="'+ this.labels['ArrangeSendBackward'] +'"><span class="icon-angle-down"></span></button>'
+                                            + '                        <button class="arrangeButton" data-arrange="back" data-tooltip-bottom-left="'+ this.labels['ArrangeSendToBack'] +'"><span class="icon-angle-double-down"></span></button>'
+                                            + '                        <button class="arrangeButton" data-arrange="backward" data-tooltip-bottom-left="'+ this.labels['ArrangeSendBackward'] +'"><span class="icon-angle-down"></span></button>'
                                             + '                        <button class="arrangeButton" data-arrange="forward" data-tooltip-bottom-right="'+ this.labels['ArrangeBringForward'] +'"><span class="icon-angle-up"></span></button>'
                                             + '                        <button class="arrangeButton" data-arrange="front" data-tooltip-bottom-right="'+ this.labels['ArrangeBringToFront'] +'"><span class="icon-angle-double-up"></span></button>'
                                             + '                    </div>'
                                             + '                </div>'
-                                            + '                <div class="column-4">'
+                                            + '                <div class="column-8">'
                                             + '                    <label>'+ this.labels['SettingsAlign'] +'</label>'
                                             + '                    <div class="alignButtons">'
                                             + '                        <button class="alignButton" data-align="left" data-tooltip-bottom-right="'+ this.labels['AlignLeft'] +'"><span class="icon-align-left"></span></button>'
@@ -480,22 +588,6 @@ FrameTrail.defineType(
                                             + '                        <button class="alignButton" data-align="top" data-tooltip-bottom-right="'+ this.labels['AlignTop'] +'"><span class="icon-align-left" style="display:inline-block; transform:rotate(90deg)"></span></button>'
                                             + '                        <button class="alignButton" data-align="middleV" data-tooltip-bottom-right="'+ this.labels['AlignMiddle'] +'"><span class="icon-align-center" style="display:inline-block; transform:rotate(90deg)"></span></button>'
                                             + '                        <button class="alignButton" data-align="bottom" data-tooltip-bottom-right="'+ this.labels['AlignBottom'] +'"><span class="icon-align-right" style="display:inline-block; transform:rotate(90deg)"></span></button>'
-                                            + '                    </div>'
-                                            + '                </div>'
-                                            + '                <div class="column-4">'
-                                            + '                    <div class="checkboxRow">'
-                                            + '                        <label class="switch">'
-                                            + '                            <input class="showCloseButtonCheckbox" type="checkbox" autocomplete="off" '+ (overlay.data.attributes.showCloseButton ? 'checked' : '') +'>'
-                                            + '                            <span class="slider round"></span>'
-                                            + '                        </label>'
-                                            + '                        <label>'+ this.labels['SettingsShowCloseButton'] +'</label>'
-                                            + '                    </div>'
-                                            + '                    <div class="checkboxRow">'
-                                            + '                        <label class="switch">'
-                                            + '                            <input class="allowCloseCheckbox" type="checkbox" autocomplete="off" '+ ((overlay.data.attributes.allowClose !== false) ? 'checked' : '') +'>'
-                                            + '                            <span class="slider round"></span>'
-                                            + '                        </label>'
-                                            + '                        <label>'+ this.labels['SettingsAllowClose'] +'</label>'
                                             + '                    </div>'
                                             + '                </div>'
                                             + '            </div>'
@@ -1037,53 +1129,6 @@ FrameTrail.defineType(
 
                         });
                     });
-
-                    // --- Close Button Toggles ---
-                    var bindCloseFlagCheckbox = function(checkbox, attributeName, labelKey) {
-                        checkbox.addEventListener('change', function() {
-                            var oldVal = overlay.data.attributes[attributeName],
-                                newVal = this.checked;
-
-                            overlay.data.attributes[attributeName] = newVal;
-                            overlay.updateCloseButton();
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-
-                            (function(overlayId, capturedOldVal, capturedNewVal, labels) {
-                                var findOverlay = function() {
-                                    var overlays = FrameTrail.module('HypervideoModel').overlays;
-                                    for (var i = 0; i < overlays.length; i++) {
-                                        if (overlays[i].data.created === overlayId) return overlays[i];
-                                    }
-                                    return null;
-                                };
-                                FrameTrail.module('UndoManager').register({
-                                    category: 'overlays',
-                                    description: labels['SidebarOverlays'] + ' ' + labels[labelKey],
-                                    undo: function() {
-                                        var o = findOverlay();
-                                        if (!o) return;
-                                        if (capturedOldVal === undefined) {
-                                            delete o.data.attributes[attributeName];
-                                        } else {
-                                            o.data.attributes[attributeName] = capturedOldVal;
-                                        }
-                                        o.updateCloseButton();
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                    },
-                                    redo: function() {
-                                        var o = findOverlay();
-                                        if (!o) return;
-                                        o.data.attributes[attributeName] = capturedNewVal;
-                                        o.updateCloseButton();
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                    }
-                                });
-                            })(overlay.data.created, oldVal, newVal, self.labels);
-                        });
-                    };
-
-                    bindCloseFlagCheckbox(controlsContainer.querySelector('.showCloseButtonCheckbox'), 'showCloseButton', 'SettingsShowCloseButton');
-                    bindCloseFlagCheckbox(controlsContainer.querySelector('.allowCloseCheckbox'), 'allowClose', 'SettingsAllowClose');
 
                     // --- Hover Effect Controls ---
                     var hoverControls = controlsContainer.querySelectorAll('.hoverStyleControl');
