@@ -888,7 +888,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             scrubPreviewElement = document.createElement('div');
             scrubPreviewElement.className = 'scrubPreview';
             scrubPreviewElement.style.backgroundImage = 'url("' + spriteUrl + '")';
-            scrubPreviewElement.innerHTML = '<div class="scrubPreviewTime"></div>';
+            scrubPreviewElement.innerHTML = '<div class="scrubPreviewChapter"></div><div class="scrubPreviewTime"></div>';
             progressEl.appendChild(scrubPreviewElement);
 
             var updatePreview = function(evt) {
@@ -901,8 +901,20 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                     (-(tileIndex % TILE_COLUMNS) * TILE_WIDTH) + 'px ' +
                     (-Math.floor(tileIndex / TILE_COLUMNS) * TILE_HEIGHT) + 'px';
                 scrubPreviewElement.style.left = Math.max(TILE_WIDTH / 2, Math.min(rect.width - TILE_WIDTH / 2, evt.clientX - rect.left)) + 'px';
-                scrubPreviewElement.querySelector('.scrubPreviewTime').textContent =
-                    formatTime(ratio * FrameTrail.module('HypervideoModel').duration);
+
+                var previewTime = ratio * HypervideoModel.duration;
+                scrubPreviewElement.querySelector('.scrubPreviewTime').textContent = formatTime(previewTime);
+
+                var chapterElement = scrubPreviewElement.querySelector('.scrubPreviewChapter');
+                var chapterIndex = getChapterIndexAtTime(HypervideoModel.offsetIn + previewTime);
+                if (chapterIndex >= 0) {
+                    chapterElement.textContent = HypervideoModel.chapters[chapterIndex].title;
+                    chapterElement.classList.add('active');
+                } else {
+                    chapterElement.textContent = '';
+                    chapterElement.classList.remove('active');
+                }
+
                 scrubPreviewElement.classList.add('active');
             };
 
@@ -948,13 +960,16 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         chapters.forEach(function(chapter) {
 
             var positionLeft = 100 * ((chapter.start - HypervideoModel.offsetIn) / HypervideoModel.duration);
-            if (positionLeft < 0 || positionLeft > 100) { return; }
 
-            var marker = document.createElement('div');
-            marker.className = 'chapterMarker';
-            marker.style.left = positionLeft + '%';
-            marker.setAttribute('title', chapter.title);
-            progressEl.appendChild(marker);
+            // Only draw a progress-bar marker when the chapter falls within the
+            // visible range; the navigation entry is always added regardless.
+            if (positionLeft >= 0 && positionLeft <= 100) {
+                var marker = document.createElement('div');
+                marker.className = 'chapterMarker';
+                marker.style.left = positionLeft + '%';
+                marker.setAttribute('title', chapter.title);
+                progressEl.appendChild(marker);
+            }
 
             var entry = document.createElement('div');
             entry.className = 'chapterSelect';
@@ -967,6 +982,61 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             chapterList.appendChild(entry);
 
         });
+
+        updateCurrentChapter();
+
+    };
+
+    /**
+     * I return the index (into HypervideoModel.chapters) of the chapter that
+     * contains the given absolute time, or -1 when the time lies before the
+     * first chapter (or when there are no chapters). I do not assume the
+     * chapters to be sorted.
+     *
+     * @method getChapterIndexAtTime
+     * @private
+     * @param {Number} absoluteTime  Time in seconds (absolute, i.e. including offsetIn)
+     * @return {Number}
+     */
+    function getChapterIndexAtTime(absoluteTime) {
+
+        var chapters = FrameTrail.module('HypervideoModel').chapters || [],
+            bestIndex = -1,
+            bestStart = -Infinity;
+
+        for (var i = 0; i < chapters.length; i++) {
+            if (chapters[i].start <= absoluteTime && chapters[i].start >= bestStart) {
+                bestStart = chapters[i].start;
+                bestIndex = i;
+            }
+        }
+
+        return bestIndex;
+
+    };
+
+    /**
+     * I highlight the chapter navigation entry which corresponds to the current
+     * playback time. The list entries are rendered in the same order as the
+     * chapters array (see updateChapterDisplay), so their child index maps
+     * directly to the chapter index.
+     *
+     * @method updateCurrentChapter
+     * @private
+     */
+    function updateCurrentChapter() {
+
+        var chapterList = ViewVideo.ChapterSelectList;
+        if (!chapterList) { return; }
+
+        var entries = chapterList.children;
+        if (!entries.length) { return; }
+
+        var currentIndex = getChapterIndexAtTime(currentTime);
+
+        for (var i = 0; i < entries.length; i++) {
+            entries[i].classList.toggle('current', i === currentIndex);
+        }
 
     };
 
@@ -1106,6 +1176,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         //AnnotationsController.updateStatesOfAnnotations(currentTime);
         ViewLayout.updateTimedStateOfContentViews(currentTime);
         SubtitlesController.updateStatesOfSubtitles(currentTime);
+        updateCurrentChapter();
 
     };
 
@@ -1156,6 +1227,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         //AnnotationsController.updateStatesOfAnnotations(currentTime);
         ViewLayout.updateTimedStateOfContentViews(currentTime);
         SubtitlesController.updateStatesOfSubtitles(currentTime);
+        updateCurrentChapter();
 
     };
 

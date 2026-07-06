@@ -159,7 +159,6 @@
     width: 2px;
     background: var(--primary-fg-color);
     outline: none;
-    opacity: .8;
 }
 
 .playerContainer .playerProgress .ui-slider-handle.small {
@@ -192,6 +191,7 @@
     background: var(--primary-fg-color);
     transition-property: transform;
     transition-duration: 300ms;
+    z-index: 6;
 }
 
 .playerContainer .playerProgress .ui-slider-handle:hover .ui-slider-handle-circle, .playerContainer .playerProgress .ui-slider-handle:hover {
@@ -555,7 +555,7 @@
     min-height: 10px;
     position: absolute;
     right: 4px;
-    bottom: 43px;
+    bottom: 46px;
     width: 90px;
     cursor: default;
 }
@@ -619,6 +619,28 @@
     border-radius: 2px;
 }
 
+.playerProgress .scrubPreview .scrubPreviewChapter {
+    display: none;
+    position: absolute;
+    bottom: 100%;
+    margin-bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: 220px;
+    padding: 2px 6px;
+    font-size: 11px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: #fff;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 2px;
+}
+
+.playerProgress .scrubPreview .scrubPreviewChapter.active {
+    display: block;
+}
+
 /* Chapters Button & Panel */
 
 .playerContainer .controls .playerControl.chapterButton .chapterSelectContainer {
@@ -633,9 +655,9 @@
     max-height: 260px;
     overflow-y: auto;
     position: absolute;
-    right: 4px;
-    bottom: 43px;
-    width: 220px;
+    left: 4px;
+    bottom: 46px;
+    max-width: 400px;
     cursor: default;
 }
 
@@ -644,19 +666,28 @@
 }
 
 .playerContainer .controls .playerControl.chapterButton .chapterSelectContainer .chapterSelect {
-    padding: 3px 5px;
+    padding: 3px 6px;
     background: var(--semi-transparent-fg-color);
-    border-bottom: 2px solid var(--primary-bg-color);
     color: var(--primary-fg-color);
     font-weight: 100;
     opacity: 0.85;
     cursor: pointer;
     text-align: left;
     transition: opacity 150ms, background-color 150ms;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .playerContainer .controls .playerControl.chapterButton .chapterSelectContainer .chapterSelect:hover {
     opacity: 1;
+}
+
+.playerContainer .controls .playerControl.chapterButton .chapterSelectContainer .chapterSelect.current {
+    opacity: 1;
+    border-left: 3px solid var(--primary-fg-color);
+    padding-left: 3px;
+    background: var(--semi-transparent-fg-highlight-color);
 }
 
 .playerContainer .controls .playerControl.chapterButton .chapterSelectContainer .chapterSelect .chapterSelectTime {
@@ -686,7 +717,7 @@
     box-shadow: 0 0 3px 2px #000;
     position: absolute;
     right: 4px;
-    bottom: 43px;
+    bottom: 46px;
     width: 180px;
     cursor: default;
 }
