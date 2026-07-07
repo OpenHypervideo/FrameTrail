@@ -32,8 +32,8 @@
 
 .playerContainer .chapterTimeline.editable .timelineElement.chapterBlock {
     position: absolute;
-    top: 4px;
-    bottom: 4px;
+    top: 10px;
+    bottom: 10px;
     height: auto;
     margin: 0;
     box-sizing: border-box;
@@ -98,11 +98,6 @@
    Chapter list editor (in the EditingOptions panel)
    =========================================== */
 
-.editingOptions .chaptersEditor {
-    padding: 8px;
-    box-sizing: border-box;
-}
-
 .editingOptions .chaptersEditor .chaptersAddButton {
     margin: 8px 0;
 }
@@ -121,8 +116,9 @@
     border-radius: 3px;
 }
 
-.editingOptions .chaptersEditor .chapterRow.highlighted {
-    background-color: var(--semi-transparent-fg-color);
+.editingOptions .chaptersEditor .chapterRow.highlighted input, 
+.editingOptions .chaptersEditor .chapterRow.highlighted button {
+    border-width: 2px;
 }
 
 .editingOptions .chaptersEditor .chapterRow .chapterStartInput {
