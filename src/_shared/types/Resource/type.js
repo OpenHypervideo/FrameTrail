@@ -118,6 +118,18 @@ FrameTrail.defineType(
                         return (parts[0] * 3600) + (parts[1] * 60) + parts[2];
                     };
 
+                    // Prepend https:// when the user typed a bare domain, but leave in-page
+                    // hashes, protocol-relative URLs and anything with an explicit scheme
+                    // (http://, https://, mailto:, tel:, …) untouched.
+                    var normalizeUrl = function(value) {
+                        var val = (value || '').trim();
+                        if (!val) { return ''; }
+                        if (val.charAt(0) === '#' || val.indexOf('//') === 0 || /^[a-z][a-z0-9+.-]*:/i.test(val)) {
+                            return val;
+                        }
+                        return 'https://' + val;
+                    };
+
                     var _acw = document.createElement('div');
                     _acw.innerHTML = '<div class="layoutRow actionControlsRow">'
                         + '    <div class="column-5">'
@@ -132,7 +144,7 @@ FrameTrail.defineType(
                         + '        </div>'
                         + '    </div>'
                         + '    <div class="column-7 actionTargetColumn">'
-                        + '        <label>'+ this.labels['SettingsActionTarget'] +'</label>'
+                        + '        <label class="actionTargetLabel">'+ this.labels['SettingsActionTarget'] +'</label>'
                         + '        <div class="actionTargetContent"></div>'
                         + '    </div>'
                         + '</div>';
@@ -140,6 +152,7 @@ FrameTrail.defineType(
 
                     var actionSelect  = container.querySelector('.actionSelect'),
                         targetColumn  = container.querySelector('.actionTargetColumn'),
+                        targetLabel   = container.querySelector('.actionTargetLabel'),
                         targetContent = container.querySelector('.actionTargetContent');
 
                     actionSelect.value = attributes.action || '';
@@ -190,6 +203,14 @@ FrameTrail.defineType(
                         targetContent.innerHTML = '';
                         targetColumn.style.display = (actionSelect.value === '') ? 'none' : '';
 
+                        // The Target heading adapts to the chosen action.
+                        var targetLabels = {
+                            openUrl:          self.labels['GenericUrl'],
+                            jumpToTime:       self.labels['GenericTime'],
+                            jumpToHypervideo: self.labels['GenericHypervideo']
+                        };
+                        targetLabel.textContent = targetLabels[actionSelect.value] || self.labels['SettingsActionTarget'];
+
                         if (actionSelect.value === 'openUrl') {
 
                             var urlInput = document.createElement('input');
@@ -205,6 +226,12 @@ FrameTrail.defineType(
                                 FrameTrail.module('HypervideoModel').newUnsavedChange(category);
                             });
                             urlInput.addEventListener('blur', function() {
+                                var normalized = normalizeUrl(this.value);
+                                if (normalized !== this.value) {
+                                    this.value = normalized;
+                                    attributes.actionTarget = normalized;
+                                    FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                                }
                                 if (urlBefore && urlBefore.actionTarget !== attributes.actionTarget) {
                                     registerActionUndo(urlBefore, snapshot());
                                 }
@@ -218,10 +245,16 @@ FrameTrail.defineType(
                             timeInput.type = 'time';
                             timeInput.step = '1';
                             timeInput.className = 'actionTargetInput';
-                            timeInput.value = secondsToClock(attributes.actionTarget);
+                            timeInput.value = secondsToClock(attributes.actionTarget) || '00:00:00';
 
                             var timeBefore = null;
                             timeInput.addEventListener('focus', function() { timeBefore = snapshot(); });
+                            // Live-persist on input so the value survives even if the editor is
+                            // torn down (e.g. switching to Preview) before "change" would fire.
+                            timeInput.addEventListener('input', function() {
+                                attributes.actionTarget = clockToSeconds(this.value);
+                                FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                            });
                             timeInput.addEventListener('change', function() {
                                 attributes.actionTarget = clockToSeconds(this.value);
                                 FrameTrail.module('HypervideoModel').newUnsavedChange(category);
@@ -236,12 +269,13 @@ FrameTrail.defineType(
 
                             var _hvw = document.createElement('div');
                             _hvw.innerHTML = '<div class="actionHypervideoTarget" style="display:flex; align-items:center; gap:8px;">'
-                                + '    <div class="actionHypervideoThumb" style="width:80px; height:45px; flex-shrink:0; background-color:#000; background-size:cover; background-position:center; border-radius:3px;"></div>'
-                                + '    <div class="actionHypervideoName" style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>'
-                                + '    <button type="button" class="button btn btn-sm hypervideoPickerButton" style="flex-shrink:0;"><span class="icon-hypervideo"></span></button>'
+                                + '    <div class="hypervideoThumb actionHypervideoThumb" style="width:130px; height:85px; margin:0; float:none; flex-shrink:0; background-color:#e9e9e9;">'
+                                + '        <div class="hypervideoTitle actionHypervideoName"></div>'
+                                + '    </div>'
+                                + '    <button type="button" class="button btn btn-sm hypervideoPickerButton" style="flex-shrink:0;"><span class="icon-hypervideo"></span> '+ self.labels['SettingsHotspotPickHypervideo'] +'</button>'
                                 + '</div>'
                                 + '<div style="margin-top:6px;">'
-                                + '    <label>'+ self.labels['SettingsActionTargetTime'] +'</label>'
+                                + '    <label>'+ self.labels['ActionPresetJumpToTime'] +' ('+ self.labels['GenericOptional'] +')</label>'
                                 + '    <input type="time" step="1" class="actionTargetTimeInput">'
                                 + '</div>';
                             while (_hvw.firstElementChild) { targetContent.appendChild(_hvw.firstElementChild); }
@@ -259,17 +293,28 @@ FrameTrail.defineType(
                                     thumbEl.style.backgroundImage = hv.thumb
                                         ? 'url("' + FrameTrail.module('RouteNavigation').getResourceURL(hv.thumb) + '")'
                                         : '';
+                                    thumbEl.style.backgroundColor = '';
                                     nameEl.textContent = hv.name || id;
+                                    nameEl.style.display = '';
                                 } else {
+                                    // No hypervideo selected yet: neutral placeholder tile, no title
+                                    // (the picker button already reads "Pick Hypervideo").
                                     thumbEl.style.backgroundImage = '';
-                                    nameEl.textContent = self.labels['SettingsHotspotPickHypervideo'];
+                                    thumbEl.style.backgroundColor = '#e9e9e9';
+                                    nameEl.textContent = '';
+                                    nameEl.style.display = 'none';
                                 }
                             };
                             refreshHypervideoPreview();
 
-                            jumpTime.value = secondsToClock(attributes.actionTargetTime);
+                            jumpTime.value = secondsToClock(attributes.actionTargetTime) || '00:00:00';
                             var jumpBefore = null;
                             jumpTime.addEventListener('focus', function() { jumpBefore = snapshot(); });
+                            // Live-persist on input (see jumpToTime above).
+                            jumpTime.addEventListener('input', function() {
+                                attributes.actionTargetTime = clockToSeconds(this.value);
+                                FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                            });
                             jumpTime.addEventListener('change', function() {
                                 attributes.actionTargetTime = clockToSeconds(this.value);
                                 FrameTrail.module('HypervideoModel').newUnsavedChange(category);
@@ -301,9 +346,18 @@ FrameTrail.defineType(
                     actionSelect.addEventListener('change', function() {
                         var before = snapshot();
                         attributes.action = this.value;
-                        // Clear a stale target when switching action kinds.
-                        attributes.actionTarget = '';
-                        attributes.actionTargetTime = '';
+                        // Reset the target when switching action kinds, seeding sensible defaults
+                        // so the time-based actions always start at 00:00:00 rather than empty.
+                        if (this.value === 'jumpToTime') {
+                            attributes.actionTarget = 0;
+                            attributes.actionTargetTime = '';
+                        } else if (this.value === 'jumpToHypervideo') {
+                            attributes.actionTarget = '';
+                            attributes.actionTargetTime = 0;
+                        } else {
+                            attributes.actionTarget = '';
+                            attributes.actionTargetTime = '';
+                        }
                         renderTargetContent();
                         FrameTrail.module('HypervideoModel').newUnsavedChange(category);
                         registerActionUndo(before, snapshot());
@@ -499,11 +553,11 @@ FrameTrail.defineType(
                     var _dcw = document.createElement('div');
                     _dcw.innerHTML = '<div class="timeControls">'
                                             + '    <div class="propertiesTypeIcon" data-type="' + overlay.data.type + '"><span class="icon-doc-inv"></span></div>'
-                                            + '    <button class="deleteOverlay"><span class="icon-trash"></span></button>'
                                             + '    <label for="TimeStart">'+ this.labels['SettingsTimeStart'] +'</label>'
                                             + '    <input id="TimeStart" type="number" min="0" step="0.1" value="' + overlay.data.start + '" data-tooltip-bottom-right="'+ this.labels['SettingsTimeStart'] +'">'
                                             + '    <label for="TimeEnd">'+ this.labels['SettingsTimeEnd'] +'</label>'
                                             + '    <input id="TimeEnd" type="number" min="0" step="0.1" value="' + overlay.data.end + '">'
+                                            + '    <button class="deleteOverlay"><span class="icon-trash"></span>'+ this.labels['GenericDelete'] +'</button>'
                                             + '</div>'
                                             + '<div class="positionControls">'
                                             + '    <label for="PositionHeight">'+ this.labels['SettingsPositionHeight'] +'</label>'
@@ -1405,11 +1459,11 @@ FrameTrail.defineType(
                     var _dtcw = document.createElement('div');
                     _dtcw.innerHTML = '<div class="timeControls">'
                                             + '    <div class="propertiesTypeIcon" data-type="' + annotation.data.type + '"><span class="icon-doc-inv"></span></div>'
-                                            + '    <button class="deleteAnnotation"><span class="icon-trash"></span></button>'
                                             + '    <label for="TimeStart">'+ this.labels['SettingsTimeStart'] +'</label>'
                                             + '    <input id="TimeStart" type="number" min="0" step="0.1" value="' + annotation.data.start + '">'
                                             + '    <label for="TimeEnd">'+ this.labels['SettingsTimeEnd'] +'</label>'
                                             + '    <input id="TimeEnd" type="number" min="0" step="0.1" value="' + annotation.data.end + '">'
+                                            + '    <button class="deleteAnnotation"><span class="icon-trash"></span>'+ this.labels['GenericDelete'] +'</button>'
                                             + '</div>';
                     var defaultControls = _dtcw.firstElementChild;
 

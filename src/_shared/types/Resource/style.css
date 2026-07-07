@@ -327,7 +327,7 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
 .editPropertiesContainer .timeControls {
     float: left;
     position: relative;
-    width: 230px;
+    width: 300px;
     margin-bottom: 14px;
 }
 
@@ -346,17 +346,25 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
 }
 
 .editPropertiesContainer label[for="TimeStart"] {
-    left: 71px;
+    left: 40px;
 }
 
 .editPropertiesContainer label[for="TimeEnd"] {
-    left: 130px;
+    left: 94px;
 }
 
 .editPropertiesContainer .timeControls .deleteOverlay, .editPropertiesContainer .timeControls .deleteAnnotation {
     padding: 1px 3px 0px 3px;
     margin-right: 6px;
-    float: left;
+    color: #e90000;
+    border-color: #e90000;
+    vertical-align: middle;
+    margin-left: 4px;
+}
+
+.editPropertiesContainer .timeControls .deleteOverlay:hover, .editPropertiesContainer .timeControls .deleteAnnotation:hover {
+    color: #ffffff;
+    background-color: #e90000;
 }
 
 .editPropertiesContainer .positionControls {
@@ -370,11 +378,11 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
 }
 
 .editPropertiesContainer label[for="PositionTop"] {
-    right: 186px;
+    right: 195px;
 }
 
 .editPropertiesContainer label[for="PositionLeft"] {
-    right: 132px;
+    right: 139px;
 }
 
 .editPropertiesContainer label[for="PositionWidth"] {
@@ -605,13 +613,18 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
 /* ===================================================== */
 
 .editPropertiesContainer .ui-tabs textarea,
-.editPropertiesContainer .ui-tabs input[type="text"],
+.editPropertiesContainer .ui-tabs input[type="text"], 
 .editPropertiesContainer .ui-tabs label:not(.switch) {
     box-sizing: border-box;
     width: 100%;
     margin-top: 0px;
     margin-right: 0px;
     /*visibility: hidden;*/
+}
+
+.editPropertiesContainer .ui-tabs input[type="time"] {
+    box-sizing: border-box;
+    margin-top: 0px;
 }
 
 .editPropertiesContainer .ui-tabs label:not(.switch) {

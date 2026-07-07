@@ -120,6 +120,7 @@ a.hotspot-element {
 
 .hotspotEditorContainer input[type="number"] {
     width: calc(100% - 30px);
+    padding: 4px 0 4px 6px;
     margin: 0px;
 }
 

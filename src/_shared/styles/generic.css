@@ -171,6 +171,10 @@ button.pressed, input[type="submit"].pressed, input[type="button"].pressed, .but
     border-color: var(--secondary-bg-color);
 }
 
+button .icon-hypervideo {
+    margin-right: 6px;
+}
+
 input[type="text"], input[type="password"], textarea, input[type="number"], input[type="time"], input[type="email"] {
     font-family: TitilliumWeb,"Helvetica Neue",Helvetica,Arial,sans-serif;
     font-size: 14px;
@@ -201,6 +205,10 @@ input[type="range"] {
     border-radius: 3px;
     margin: 7px 0px;
     display: block;
+}
+
+input[type="radio"] {
+    margin: 2px 2px 4px 2px
 }
 
 input[readonly], textarea[readonly] {
@@ -340,6 +348,14 @@ details[open] > summary {
     margin: 0;
     aspect-ratio: 16 / 9;
     grid-column: span 3;
+}
+
+.hypervideoPickerDialog .hypervideoPickerList .hypervideoThumb:hover {
+    border-color: var(--primary-bg-color);
+}
+
+.hypervideoPickerDialog .hypervideoPickerList .hypervideoThumb.activeHypervideo {
+    opacity: .8;
 }
 
 .checkboxRow {
