@@ -444,6 +444,10 @@ switch($_REQUEST["a"]) {
 
             if (!file_put_contents($conf["dir"]["data"]."/config.json", json_encode($tmpConf,$conf["settings"]["json_flags"]))) {
                 $errorCnt++;
+            } else {
+                // Activate the .htaccess privacy gate if the wizard set the
+                // instance private (alwaysForceLogin), otherwise leave it off.
+                ftSyncPrivacyRules();
             }
         }
 
@@ -534,7 +538,23 @@ switch($_REQUEST["a"]) {
      #########################################*/
 
     case "dataExport":
-        // No auth check — intentionally public; excludes users.json
+        // Public by default (excludes users.json). When the instance is private
+        // (config.alwaysForceLogin), require a valid session — otherwise this is
+        // a trivial bypass of the _data read gate.
+        $exportConfigFile = $conf["dir"]["data"] . "/config.json";
+        $exportPrivate = false;
+        if (file_exists($exportConfigFile)) {
+            $exportCfg = json_decode(file_get_contents($exportConfigFile), true);
+            $exportPrivate = isset($exportCfg["alwaysForceLogin"]) && $exportCfg["alwaysForceLogin"] === true;
+        }
+        if ($exportPrivate) {
+            include_once("user.php");
+            if ($err = requireLogin()) {
+                http_response_code(403);
+                echo json_encode($err, $conf["settings"]["json_flags"]);
+                exit;
+            }
+        }
         if (!class_exists('ZipArchive')) {
             $return["status"] = "error";
             $return["code"]   = 500;

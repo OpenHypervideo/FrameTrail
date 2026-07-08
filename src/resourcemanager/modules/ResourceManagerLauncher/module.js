@@ -84,6 +84,30 @@
 
     function continueLoadingRM() {
 
+        // Initialize UserManagement early so we can determine — via the server's
+        // userCheckLogin — whether this is a private instance BEFORE loading the
+        // (gated) config/_data. On a private server instance the user must
+        // authenticate first; the session cookie then unlocks the _data reads.
+        FrameTrail.initModule('UserManagement');
+
+        FrameTrail.module('UserManagement').isLoggedIn(function(loggedIn) {
+
+            if (FrameTrail.getState('storageMode') === 'server'
+                    && FrameTrail.module('UserManagement').isForceLogin()
+                    && !loggedIn) {
+                FrameTrail.module('UserManagement').ensureAuthenticated(function() {
+                    loadConfigAndInitRM();
+                }, function() {}, true);
+            } else {
+                loadConfigAndInitRM();
+            }
+
+        });
+
+    }
+
+    function loadConfigAndInitRM() {
+
         FrameTrail.module('Database').loadConfigData(function() {
 
             // Resource manager always uses classic theme (no per-project theming)
@@ -96,11 +120,13 @@
 
             // Initialize UI-building modules AFTER language is set so their
             // HTML is generated with the correct locale from the start.
-            FrameTrail.initModule('UserManagement');
             FrameTrail.initModule('ResourceManager');
             FrameTrail.initModule('ViewResources');
 
-            if (FrameTrail.module('Database').config.alwaysForceLogin) {
+            // Non-server modes may still set alwaysForceLogin (e.g. local folder):
+            // require identification before showing the manager. In server mode
+            // we have already authenticated above, so this is a no-op there.
+            if (FrameTrail.module('Database').config.alwaysForceLogin && !FrameTrail.getState('loggedIn')) {
                 FrameTrail.module('UserManagement').ensureAuthenticated(function() {
                     initResourceManager();
                 }, function() {}, true);

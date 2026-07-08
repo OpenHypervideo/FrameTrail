@@ -372,8 +372,25 @@ Runtime config is in `_data/config.json`:
 - `userNeedsConfirmation` — Require admin approval for new accounts
 - `allowUploads` — Enable file uploads
 - `allowCollaboration` — Allow multiple users to annotate
-- `alwaysForceLogin` — Require login to view content
+- `alwaysForceLogin` — Make the instance **private**: require a valid login to view any content (see below)
 - `defaultTheme` — Default color theme
+
+#### Private instances (`alwaysForceLogin`)
+
+When `alwaysForceLogin` is `true`, FrameTrail turns the instance into a real access-controlled deployment (server mode only):
+
+- Every file under `_data/**` is served through a session gate (`_server/serve.php`) instead of statically, so unauthenticated requests get `403`. Authenticated media requests keep full HTTP `Range` support for seeking. Uploaded media, JSON, subtitles, etc. are all covered; `users.json` is never served.
+- The guest ("Edit as Guest") bypass is disabled — a real account is required to view or edit.
+- The `dataExport` ZIP endpoint requires a valid session.
+- The client authenticates first, then loads data.
+
+How activation works:
+
+- The gate is enabled by a delimited `# BEGIN/END FrameTrail Private` rewrite block that FrameTrail writes into the app-root `.htaccess`. FrameTrail regenerates this block whenever **its own PHP** writes `config.json` (setup wizard, or any admin settings save). The app-root `.htaccess` must therefore be **writable** by the web server.
+- **Apache only.** `.htaccess` is ignored by nginx. On nginx + PHP-FPM (e.g. Plesk), add an equivalent rule that routes `_data/**` to `_server/serve.php` when the instance is private (and continue to deny `users.json`).
+- If `config.json` is written by an external process (not through FrameTrail's PHP), that process must add/remove the same `# BEGIN/END FrameTrail Private` block itself — otherwise the gate will not activate.
+
+When `alwaysForceLogin` is `false`, no rewrite block is present and `_data/**` is served statically (no PHP overhead).
 
 ### File Permissions
 

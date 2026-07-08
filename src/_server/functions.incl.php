@@ -59,6 +59,82 @@ function sanitize($string, $force_lowercase = true, $anal = true)
         $clean;
 }
 
+/**
+ * Synchronise the "FrameTrail Private" rewrite block in the app-root .htaccess
+ * with the current config.alwaysForceLogin setting.
+ *
+ * When the instance is private, a delimited rewrite block is inserted that
+ * routes all _data/** requests through serve.php (which enforces a login).
+ * When public, the block is removed so _data/** is served statically (fast).
+ *
+ * The block is delimited by BEGIN/END markers so it can be replaced or stripped
+ * idempotently without disturbing the rest of the .htaccess (mime types, the
+ * users.json deny rule, php_value settings, etc.).
+ *
+ * Only relevant on Apache (.htaccess is ignored by nginx). Requires the
+ * app-root .htaccess (sibling of _server/ and _data/) to be writable.
+ *
+ * @return bool True on success or when no change was needed; false if the
+ *              target .htaccess could not be written.
+ */
+function ftSyncPrivacyRules() {
+    global $conf;
+
+    $configFile = $conf["dir"]["data"] . "/config.json";
+    if (!file_exists($configFile)) {
+        return false;
+    }
+    $cfg = json_decode(file_get_contents($configFile), true);
+    $isPrivate = isset($cfg["alwaysForceLogin"]) && $cfg["alwaysForceLogin"] === true;
+
+    // App-root .htaccess (parent of _server/).
+    $htaccessPath = dirname(__DIR__) . "/.htaccess";
+
+    $beginMarker = "# BEGIN FrameTrail Private";
+    $endMarker   = "# END FrameTrail Private";
+
+    $block = <<<'HTACCESS'
+# BEGIN FrameTrail Private
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^_data/(.*)$ _server/serve.php?file=$1 [L,QSA]
+</IfModule>
+# END FrameTrail Private
+HTACCESS;
+
+    $current  = file_exists($htaccessPath) ? file_get_contents($htaccessPath) : "";
+    $hasBlock = strpos($current, $beginMarker) !== false;
+
+    // Already in the desired state — nothing to do.
+    if (!$isPrivate && !$hasBlock) {
+        return true;
+    }
+
+    // Remove any existing block (plus surrounding blank lines).
+    $pattern  = '/\R*' . preg_quote($beginMarker, '/') . '.*?' . preg_quote($endMarker, '/') . '\R*/s';
+    $stripped = preg_replace($pattern, "\n", $current);
+    $stripped = rtrim($stripped);
+
+    if ($isPrivate) {
+        $newContent = ($stripped === "" ? "" : $stripped . "\n\n") . $block . "\n";
+    } else {
+        $newContent = $stripped . "\n";
+    }
+
+    if ($newContent === $current) {
+        return true;
+    }
+
+    if (file_exists($htaccessPath) && !is_writable($htaccessPath)) {
+        return false;
+    }
+    if (!file_exists($htaccessPath) && !is_writable(dirname($htaccessPath))) {
+        return false;
+    }
+
+    return file_put_contents($htaccessPath, $newContent) !== false;
+}
+
 function rrmdir($dir) {
     if (is_dir($dir)) {
         $objects = scandir($dir);

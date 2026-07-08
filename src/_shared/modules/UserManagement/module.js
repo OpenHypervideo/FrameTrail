@@ -26,6 +26,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         userSessionLifetime     = 0,
         userSessionTimeout      = null,
         isGuestMode             = false,
+        forceLoginRequired      = false,
         userDialogCtrl          = null,
 
         userBoxCallback         = null,
@@ -522,6 +523,33 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
     document.querySelector(FrameTrail.getState('target')).append(loginBox);
 
 
+    /**
+     * I report whether this is a private server instance (config.alwaysForceLogin),
+     * which requires a real login to view content and disables the guest bypass.
+     *
+     * Uses the `forceLogin` flag reported by the server's userCheckLogin (available
+     * before Database.config is loaded), and also the loaded config as a fallback.
+     * Only meaningful in server mode.
+     *
+     * @method isPrivateInstance
+     * @return {Boolean}
+     * @private
+     */
+    function isPrivateInstance() {
+        if (FrameTrail.getState('storageMode') !== 'server') {
+            return false;
+        }
+        if (forceLoginRequired) {
+            return true;
+        }
+        try {
+            var cfg = FrameTrail.module('Database').config;
+            if (cfg && cfg.alwaysForceLogin) {
+                return true;
+            }
+        } catch (e) {}
+        return false;
+    }
 
 
     /**
@@ -606,6 +634,12 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
         _serverPost(new URLSearchParams({ a: 'userCheckLogin' }))
         .then(function(response) {
+
+            // Whether this instance requires login to view content (server-gated).
+            // Captured before Database.config is loaded so the boot flow can decide
+            // to authenticate before loading gated _data.
+            forceLoginRequired = !!response.forceLogin;
+
             switch(response.code){
 
                 case 0:
@@ -690,6 +724,12 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
      * @private
      */
     function loginAsGuest(name) {
+
+        // A private server instance (alwaysForceLogin) must not be viewable or
+        // editable as a guest — a real account is required.
+        if (isPrivateInstance()) {
+            return;
+        }
 
         isGuestMode = true;
         userID   = 'guest_' + Date.now();
@@ -908,7 +948,16 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         } else {
             loginBox.querySelector('.loginTabButton').style.display = '';
             loginBox.querySelector('.createAccountTabButton').style.display = '';
-            loginBox.querySelectorAll('.loginBoxOrDivider').forEach(function(el) { el.style.display = ''; });
+            var _dividers = loginBox.querySelectorAll('.loginBoxOrDivider');
+            if (isPrivateInstance()) {
+                // Private instance: no guest bypass — login or create account only.
+                // Hide the Edit-as-Guest tab and the divider that precedes it (the last one).
+                loginBox.querySelector('.editAsGuestTabButton').style.display = 'none';
+                _dividers.forEach(function(el, i) { el.style.display = (i === _dividers.length - 1) ? 'none' : ''; });
+            } else {
+                loginBox.querySelector('.editAsGuestTabButton').style.display = '';
+                _dividers.forEach(function(el) { el.style.display = ''; });
+            }
             // Reset to login tab when showing in server mode
             loginBox.querySelector('.loginTabButton').click();
         }
@@ -1029,6 +1078,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         ensureAuthenticated:    ensureAuthenticated,
         logout:                 logout,
         isGuestMode:            function() { return isGuestMode; },
+        isForceLogin:           function() { return forceLoginRequired; },
 
         /**
          * The current userID or an empty String.

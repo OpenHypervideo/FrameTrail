@@ -1039,6 +1039,10 @@ function updateConfigFile($configstring) {
     $jsonsrc = json_encode($src,$conf["settings"]["json_flags"]);
     $file->writeClose($jsonsrc);
 
+    // Keep the app-root .htaccess privacy gate in sync with the saved
+    // config.alwaysForceLogin value (adds/removes the serve.php rewrite).
+    ftSyncPrivacyRules();
+
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Config successfully saved.";

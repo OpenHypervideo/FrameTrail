@@ -165,6 +165,22 @@
 
     function continueLoading() {
 
+        // Private server instance (config.alwaysForceLogin): the _data files are
+        // gated behind a valid session, so we must authenticate BEFORE loading
+        // any data. The privacy flag comes from the server's userCheckLogin
+        // response (available before Database.config is loaded). After a
+        // successful login the session cookie is set and continueLoading() reruns
+        // — this time loggedIn is true, so it proceeds to load.
+        if (FrameTrail.getState('storageMode') === 'server'
+                && FrameTrail.module('UserManagement').isForceLogin()
+                && !FrameTrail.getState('loggedIn')) {
+            FrameTrail.module('InterfaceModal').hideMessage();
+            FrameTrail.module('UserManagement').ensureAuthenticated(function() {
+                continueLoading();
+            }, function() {}, true);
+            return;
+        }
+
         if (FrameTrail.module('RouteNavigation').hypervideoID) {
 
             FrameTrail.module('Database').loadData(

@@ -271,6 +271,17 @@ function userCheckLogin($userRole = false) {
         $return["code"] = 0;
         $return["string"] = "User not logged in";
     }
+
+    // Expose whether this instance requires login to view content. The client
+    // reads this to decide whether to authenticate before loading _data (which
+    // is gated over HTTP when private). Read from the filesystem — never gated.
+    $return["forceLogin"] = false;
+    $cfgFile = $conf["dir"]["data"]."/config.json";
+    if (file_exists($cfgFile)) {
+        $cfg = json_decode(file_get_contents($cfgFile), true);
+        $return["forceLogin"] = (isset($cfg["alwaysForceLogin"]) && $cfg["alwaysForceLogin"] === true);
+    }
+
     return $return;
 }
 
