@@ -445,7 +445,7 @@ switch($_REQUEST["a"]) {
             if (!file_put_contents($conf["dir"]["data"]."/config.json", json_encode($tmpConf,$conf["settings"]["json_flags"]))) {
                 $errorCnt++;
             } else {
-                // Activate the .htaccess privacy gate if the wizard set the
+                // Write the _data/.htaccess privacy gate if the wizard set the
                 // instance private (alwaysForceLogin), otherwise leave it off.
                 ftSyncPrivacyRules();
             }

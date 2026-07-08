@@ -386,11 +386,12 @@ When `alwaysForceLogin` is `true`, FrameTrail turns the instance into a real acc
 
 How activation works:
 
-- The gate is enabled by a delimited `# BEGIN/END FrameTrail Private` rewrite block that FrameTrail writes into the app-root `.htaccess`. FrameTrail regenerates this block whenever **its own PHP** writes `config.json` (setup wizard, or any admin settings save). The app-root `.htaccess` must therefore be **writable** by the web server.
-- **Apache only.** `.htaccess` is ignored by nginx. On nginx + PHP-FPM (e.g. Plesk), add an equivalent rule that routes `_data/**` to `_server/serve.php` when the instance is private (and continue to deny `users.json`).
-- If `config.json` is written by an external process (not through FrameTrail's PHP), that process must add/remove the same `# BEGIN/END FrameTrail Private` block itself — otherwise the gate will not activate.
+- The gate is a small **`_data/.htaccess`** file (a per-directory Apache rewrite that routes `_data/**` to `_server/serve.php`). FrameTrail **writes** this file when the instance is private and **deletes** it when public, so all instance-specific state stays inside the (portable) `_data/` directory and the shared app-root `.htaccess` is never modified. FrameTrail regenerates it whenever **its own PHP** writes `config.json` (setup wizard, or any admin settings save). `_data/` must be **writable** by the web server (it already is — FrameTrail writes `config.json` there).
+- The rewrite target inside `_data/.htaccess` is a root-relative URL that encodes the app's base path (so sub-directory installs work). If you copy `_data/` to an install served under a **different** URL base, regenerate the file (any config save does this) so the target path stays correct.
+- **Apache only.** `.htaccess` is ignored by nginx. nginx has no per-directory config, so on nginx + PHP-FPM (e.g. Plesk) add a server/`location` rule that routes `_data/**` to `_server/serve.php` (and continue to deny `users.json`). `serve.php` reads `config.alwaysForceLogin` per request and serves public content without a session, so a single always-on `location` rule is safe for both public and private instances there.
+- If `config.json` is written by an external process (not through FrameTrail's PHP), that process must create/delete `_data/.htaccess` itself with the correct base path — otherwise the gate will not activate. When turning **private**, create `_data/.htaccess` **before** (or together with) setting `alwaysForceLogin=true` to avoid a brief window where private content is still served statically.
 
-When `alwaysForceLogin` is `false`, no rewrite block is present and `_data/**` is served statically (no PHP overhead).
+When `alwaysForceLogin` is `false`, `_data/.htaccess` is absent and `_data/**` is served statically (no PHP overhead).
 
 ### File Permissions
 

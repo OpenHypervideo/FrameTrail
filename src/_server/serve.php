@@ -2,9 +2,9 @@
 /**
  * serve.php — request-time read gate for the _data directory.
  *
- * This endpoint is only reached on Apache+PHP installs when the app-root
- * .htaccess contains the "FrameTrail Private" rewrite block, which is added
- * whenever config.alwaysForceLogin is true (see ftSyncPrivacyRules() in
+ * This endpoint is only reached on Apache+PHP installs when the data directory
+ * contains a `_data/.htaccess` rewrite, which is written whenever
+ * config.alwaysForceLogin is true (see ftSyncPrivacyRules() in
  * functions.incl.php). It routes _data/** requests through PHP so they can be
  * gated behind a valid FrameTrail session.
  *
