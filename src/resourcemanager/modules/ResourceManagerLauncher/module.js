@@ -34,7 +34,10 @@
     // Set up Localization
     FrameTrail.initModule('Localization');
     var labels = FrameTrail.module('Localization').labels;
-    
+
+    // Set up Tooltips (top-layer via Popover API — escapes overflow clipping)
+    FrameTrail.initModule('Tooltip');
+
     // Set up the various data models
     FrameTrail.initModule('RouteNavigation');
     FrameTrail.initModule('StorageManager');

@@ -98,13 +98,9 @@
     display: none !important;
 }
 
-.layoutArea[data-size="small"] .collectionElement:hover .resourceTitle {
-    display: block;
-}
-
-.layoutArea[data-size="small"] .collectionElement.open .resourceTitle {
-    display: none !important;
-}
+/* The small-strip resource name is shown on hover as a top-layer tooltip
+   (data-tooltip-top, handled by the Tooltip module) so it is not clipped by
+   .contentViewScroll's overflow. The inline .resourceTitle therefore stays hidden. */
 
 /* Content View Item Sizes */
 

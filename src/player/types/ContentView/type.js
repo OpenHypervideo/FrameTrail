@@ -420,7 +420,24 @@ FrameTrail.defineType(
                     if ( self.contentViewData.contentSize == 'large' ) {
                         collectionElement.appendChild(contentItem.resourceItem.renderContent());
                     } else {
-                        collectionElement.appendChild(contentItem.resourceItem.renderThumb());
+                        var thumbElement = contentItem.resourceItem.renderThumb();
+
+                        // In the small horizontal top/bottom strips the inline .resourceTitle is
+                        // hidden and would be clipped by .contentViewScroll's overflow if revealed
+                        // on hover. Show the name as a top-layer tooltip instead (handled by the
+                        // Tooltip module), which escapes clipping. (Medium/large show the title inline.)
+                        if ( self.contentViewData.contentSize == 'small' && (self.whichArea == 'top' || self.whichArea == 'bottom') ) {
+                            var titleEl = thumbElement.querySelector('.resourceTitle');
+                            var tooltipText = (titleEl && titleEl.textContent)
+                                            || (contentItem.resourceItem.resourceData && contentItem.resourceItem.resourceData.name)
+                                            || '';
+                            if (tooltipText) {
+                                thumbElement.setAttribute('data-tooltip-top', tooltipText);
+                                thumbElement.setAttribute('data-tooltip-variant', 'resourceTitle');
+                            }
+                        }
+
+                        collectionElement.appendChild(thumbElement);
                     }
 
                     self.appendElementAtIndex(self.contentViewContainer.querySelector('.contentViewContents'), collectionElement, appendAtIndex);

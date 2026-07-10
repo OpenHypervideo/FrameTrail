@@ -123,6 +123,9 @@ JS_FILES=(
     "_shared/modules/Localization/locale/fr.js"
     "_shared/modules/Localization/module.js"
 
+    # Tooltip (top-layer via Popover API; used across player + resource manager)
+    "_shared/modules/Tooltip/module.js"
+
     # Types (parent types before children — Resource before ResourceImage etc.)
     "player/types/Annotation/type.js"
     "player/types/Hypervideo/type.js"
