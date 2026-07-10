@@ -1026,8 +1026,24 @@ FrameTrail.defineType(
                     // slideButton, keyboard) or after 8 s of inactivity.
                     (function() {
                         var swipeOverlay = detailsContainerElement.querySelector('.swipeOverlay');
+
+                        // The overlay only makes sense on touch-primary devices,
+                        // where it catches horizontal swipes over cross-origin
+                        // iframes / <video controls>. On devices with a mouse it
+                        // would just sit on top of the content and block
+                        // hover/mouseover and scrolling (desktop users navigate
+                        // via the visible slideButtons or the arrow keys instead).
+                        // So on non-touch-primary devices we make it transparent
+                        // to input and skip wiring up any handlers.
+                        var isTouchPrimary = window.matchMedia
+                            && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+                        if (!isTouchPrimary) {
+                            swipeOverlay.style.pointerEvents = 'none';
+                            return;
+                        }
+
                         var startX = 0, startY = 0, startTime = 0;
-                        var swiping = false, decided = false, didSwipe = false;
+                        var swiping = false, decided = false;
                         var THRESHOLD = 40;
                         var ANGLE_LIMIT = 30;
                         var TAP_THRESHOLD = 10;
@@ -1069,13 +1085,6 @@ FrameTrail.defineType(
                         // While overlay is dismissed, extend the timer on new
                         // touches so it doesn't reactivate mid-interaction.
                         detailsContainerElement.addEventListener('touchstart', function() {
-                            if (swipeOverlay.style.pointerEvents === 'none') {
-                                clearTimeout(reactivateTimer);
-                                reactivateTimer = setTimeout(reactivateOverlay, REACTIVATE_DELAY);
-                            }
-                        }, true);
-                        detailsContainerElement.addEventListener('pointerdown', function(e) {
-                            if (e.pointerType === 'touch') return;
                             if (swipeOverlay.style.pointerEvents === 'none') {
                                 clearTimeout(reactivateTimer);
                                 reactivateTimer = setTimeout(reactivateOverlay, REACTIVATE_DELAY);
@@ -1137,54 +1146,6 @@ FrameTrail.defineType(
                         swipeOverlay.addEventListener('touchcancel', function() {
                             swiping = false;
                             decided = false;
-                        });
-
-                        // --- Pointer events (mouse / pen, not touch) ---
-
-                        swipeOverlay.addEventListener('pointerdown', function(e) {
-                            if (e.pointerType === 'touch') return;
-                            if (e.button !== 0) return;
-                            startX = e.clientX;
-                            startY = e.clientY;
-                            swiping = true;
-                            decided = false;
-                            didSwipe = false;
-                        });
-
-                        swipeOverlay.addEventListener('pointermove', function(e) {
-                            if (e.pointerType === 'touch') return;
-                            if (!swiping || decided) return;
-                            var dx = e.clientX - startX;
-                            var dy = e.clientY - startY;
-                            var dist = Math.sqrt(dx * dx + dy * dy);
-                            if (dist < THRESHOLD) return;
-
-                            decided = true;
-                            var angle = Math.abs(Math.atan2(dy, dx) * 180 / Math.PI);
-                            if (angle > ANGLE_LIMIT && angle < (180 - ANGLE_LIMIT)) {
-                                swiping = false;
-                                return;
-                            }
-
-                            swiping = false;
-                            didSwipe = true;
-                            navigate(dx);
-                        });
-
-                        swipeOverlay.addEventListener('pointerup', function(e) {
-                            if (e.pointerType !== 'touch') { swiping = false; decided = false; }
-                        });
-                        swipeOverlay.addEventListener('pointercancel', function(e) {
-                            if (e.pointerType !== 'touch') { swiping = false; decided = false; }
-                        });
-
-                        // Mouse click: dismiss overlay + forward click to content
-                        swipeOverlay.addEventListener('click', function(e) {
-                            if (didSwipe) { didSwipe = false; return; }
-                            var cx = e.clientX, cy = e.clientY;
-                            dismissOverlay();
-                            var target = document.elementFromPoint(cx, cy);
-                            if (target && target !== swipeOverlay) target.click();
                         });
                     })();
 
