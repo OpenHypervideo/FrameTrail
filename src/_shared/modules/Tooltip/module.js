@@ -122,9 +122,12 @@ FrameTrail.defineModule('Tooltip', function(FrameTrail){
         tooltipElement.textContent = data.text;
         tooltipElement.setAttribute('data-placement', data.placement);
 
-        // Optional appearance variant (e.g. "resourceTitle" for the ContentView strip),
-        // so those tooltips keep their former look instead of the app UI-hint style.
-        var variant = host.getAttribute('data-tooltip-variant');
+        // Optional appearance variant (e.g. "resourceTitle" for content-level labels such
+        // as the ContentView strip and .resourceButtons), so those tooltips keep their
+        // former look instead of the app UI-hint style. The variant may be set on the host
+        // itself or on any ancestor (e.g. the .resourceButtons container).
+        var variantEl = host.closest('[data-tooltip-variant]'),
+            variant = variantEl ? variantEl.getAttribute('data-tooltip-variant') : null;
         if (variant) {
             tooltipElement.setAttribute('data-variant', variant);
         } else {

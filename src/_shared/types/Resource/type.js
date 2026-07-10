@@ -1866,6 +1866,9 @@ FrameTrail.defineType(
 
                     var buttonsDiv = document.createElement('div');
                     buttonsDiv.className = 'resourceButtons';
+                    // Content-level action buttons: style their tooltips like the resource
+                    // titles, not like the app UI-hint tooltips (see Tooltip module).
+                    buttonsDiv.setAttribute('data-tooltip-variant', 'resourceTitle');
 
                     if (opts.openInNewTabUrl) {
                         var openLink = document.createElement('a');

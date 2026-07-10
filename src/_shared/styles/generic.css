@@ -832,8 +832,19 @@ input:checked + .slider:before {
     padding: 1px 4px 0 4px;
     box-sizing: border-box;
 }
-.ftTooltip[data-variant="resourceTitle"][data-placement="top"]::after {
+/* recolor the arrow to match, for whichever placement the tooltip uses */
+.ftTooltip[data-variant="resourceTitle"][data-placement="top"]::after,
+.ftTooltip[data-variant="resourceTitle"][data-placement^="above"]::after {
     border-top-color: var(--primary-bg-color);
+}
+.ftTooltip[data-variant="resourceTitle"][data-placement^="below"]::after {
+    border-bottom-color: var(--primary-bg-color);
+}
+.ftTooltip[data-variant="resourceTitle"][data-placement="right"]::after {
+    border-right-color: var(--primary-bg-color);
+}
+.ftTooltip[data-variant="resourceTitle"][data-placement="left"]::after {
+    border-left-color: var(--primary-bg-color);
 }
 
 
