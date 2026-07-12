@@ -861,6 +861,13 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
      * _server/files.php) and, when present, show frame previews while hovering
      * or dragging the progress bar. Without a sprite nothing changes.
      *
+     * The video clip may carry a `scrubSprite` override (HypervideoModel.scrubSprite):
+     * a string URL is used directly; `false`/`null` disables the preview. When
+     * unset I fall back to the naming convention, but only probe when the derived
+     * sprite URL is same-origin as the page — server-generated sprites only ever
+     * live next to same-origin (uploaded) videos, so probing an externally hosted
+     * video would just fire a guaranteed cross-origin 404.
+     *
      * @method initScrubPreview
      * @private
      */
@@ -881,9 +888,29 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             TILE_WIDTH   = 160,
             TILE_HEIGHT  = 90;
 
-        var spriteUrl = FrameTrail.module('RouteNavigation').getResourceURL(
-            HypervideoModel.sourcePath.replace(/\.[^.\/]+$/, '') + '_scrub.jpg'
-        );
+        var scrubOverride = HypervideoModel.scrubSprite,
+            spriteUrl;
+
+        if (typeof scrubOverride === 'string' && scrubOverride.length) {
+            // Explicit sprite URL set on the clip — use it as-is.
+            spriteUrl = FrameTrail.module('RouteNavigation').getResourceURL(scrubOverride);
+        } else if (scrubOverride === false || scrubOverride === null) {
+            // Explicitly disabled for this clip.
+            return;
+        } else {
+            // Auto-probe by naming convention, but only when same-origin.
+            spriteUrl = FrameTrail.module('RouteNavigation').getResourceURL(
+                HypervideoModel.sourcePath.replace(/\.[^.\/]+$/, '') + '_scrub.jpg'
+            );
+
+            var spriteOrigin;
+            try {
+                spriteOrigin = new URL(spriteUrl, window.location.href).origin;
+            } catch (e) {
+                spriteOrigin = null;
+            }
+            if (spriteOrigin !== window.location.origin) { return; }
+        }
 
         var probeImage = new Image();
         probeImage.onload = function() {

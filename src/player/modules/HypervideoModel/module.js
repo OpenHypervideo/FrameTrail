@@ -19,6 +19,7 @@
         duration                = 0,
         durationFull            = 0,
         sourcePath              = '',
+        scrubSprite             = undefined,
         offsetIn                = 0,
         offsetOut               = null,
 
@@ -111,6 +112,12 @@
 
         offsetIn  = (videoData.in) ? parseFloat(videoData.in) : 0;
         offsetOut = (videoData.out) ? parseFloat(videoData.out) : null;
+
+        // Manual scrub preview override (on the video clip):
+        //   string  → use this URL as the scrub sprite
+        //   false   → disable the scrub preview entirely
+        //   unset   → auto-probe {videoBasename}_scrub.jpg (same-origin only)
+        scrubSprite = ('scrubSprite' in videoData) ? videoData.scrubSprite : undefined;
 
         // Set video source and type or NullVideo
         if (videoData.src && videoData.src.length > 3) {
@@ -1558,6 +1565,17 @@
          * @type {}
          */
         get sourcePath()        { return sourcePath     },
+
+
+        /**
+         * I contain the manual scrub-sprite override set on the video clip.
+         * A string URL is used as-is; `false`/`null` disables the scrub
+         * preview; `undefined` means "auto-probe by naming convention".
+         * @attribute scrubSprite
+         * @readOnly
+         * @type {String|Boolean|null|undefined}
+         */
+        get scrubSprite()       { return scrubSprite   },
 
         /**
          * The hypervideo's creator name
