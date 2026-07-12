@@ -460,7 +460,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                                         { 'text': labels['SettingsQuizDefaultAnswer3'], 'correct': false }
                                     ],
                                     "onCorrectAnswer": { "jumpForward": false, "resumePlayback": true,  "showText": false },
-                                    "onWrongAnswer":   { "jumpBackward": false, "resumePlayback": false, "showText": false }
+                                    "onWrongAnswer":   { "jumpBackward": 10, "resumePlayback": true, "showText": false }
                                 },
                                 "position": { "top": overlayPositionTop, "left": overlayPositionLeft, "width": 30, "height": 30 }
                             });
@@ -555,7 +555,8 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
     function createPresetOverlay(presetName, startTime, endTime, top, left) {
 
         var HypervideoModel = FrameTrail.module('HypervideoModel'),
-            newOverlay = null;
+            duration        = HypervideoModel.duration,
+            newOverlay      = null;
 
         var createSecondary = function(protoData) {
             var secondaryOverlay = HypervideoModel.newOverlay(protoData);
@@ -565,44 +566,43 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             return secondaryOverlay;
         };
 
+        // newOverlay() only auto-adds the pausing onStart handler when no events
+        // object is passed at all, so presets which need a click handler have to
+        // spell the pause out again.
+        var pauseCode = "FrameTrail.module('HypervideoController').pause();";
+
+        var buttonAttributes = function(text) {
+            return {
+                "text": text, "action": "", "actionTarget": "",
+                "color": "#0096ff", "textColor": "#ffffff", "backgroundColor": "#0096ff",
+                "borderWidth": 0, "shape": "rounded", "borderRadius": 20
+            };
+        };
+
+        // attributes.text is stored HTML-escaped (see ResourceText.renderContent and
+        // its Quill init, which both decode via innerHTML -> textContent). Raw markup
+        // would be flattened to plain text the moment the overlay is edited.
+        var escapeHtml = function(html) {
+            var escapeHelper = document.createElement('div');
+            escapeHelper.appendChild(document.createTextNode(html));
+            return escapeHelper.innerHTML;
+        };
+
+        // Only markup Quill is configured for survives an edit round-trip: align on
+        // the paragraph, colour and size on an inline span (26px is in the size
+        // whitelist). A styled wrapper div would be stripped.
+        var cardAttributes = function(text) {
+            return {
+                "text": escapeHtml(
+                      '<p style="text-align: center;">'
+                    + '<span style="color: rgb(255, 255, 255); font-size: 26px;">' + text + '</span>'
+                    + '</p>'
+                ),
+                "animationIn": "fade", "animationOut": "fade", "animationDuration": 300
+            };
+        };
+
         switch (presetName) {
-
-            case 'infoCard':
-                newOverlay = HypervideoModel.newOverlay({
-                    "name": labels['PresetInfoCard'], "type": "text",
-                    "start": startTime, "end": endTime,
-                    "attributes": {
-                        "text": '<div style="background: rgba(0,0,0,0.75); color: #ffffff; padding: 1em; height: 100%; box-sizing: border-box; border-radius: 6px;">'
-                              + '<h3 style="margin: 0 0 0.5em 0;">' + labels['PresetInfoCardTitle'] + '</h3>'
-                              + '<p style="margin: 0;">' + labels['PresetInfoCardText'] + '</p>'
-                              + '</div>'
-                    },
-                    "position": { "top": top, "left": left, "width": 30, "height": 30 }
-                });
-                break;
-
-            case 'captionBar':
-                newOverlay = HypervideoModel.newOverlay({
-                    "name": labels['PresetCaptionBar'], "type": "text",
-                    "start": startTime, "end": endTime,
-                    "attributes": {
-                        "text": '<div style="background: rgba(0,0,0,0.75); color: #ffffff; padding: 0.4em 1em; height: 100%; box-sizing: border-box; display: flex; align-items: center;">'
-                              + labels['PresetCaptionBarText']
-                              + '</div>'
-                    },
-                    "position": { "top": 84, "left": 5, "width": 90, "height": 12 }
-                });
-                break;
-
-            case 'ctaButton':
-                newOverlay = HypervideoModel.newOverlay({
-                    "name": labels['PresetCTAButton'], "type": "hotspot",
-                    "start": startTime, "end": endTime,
-                    "attributes": { "text": labels['PresetCTALabel'], "action": "openUrl", "actionTarget": "", "color": "#0096ff", "textColor": "#ffffff", "backgroundColor": "#0096ff", "borderWidth": 0, "shape": "rounded", "borderRadius": 20 },
-                    "events": {},
-                    "position": { "top": 78, "left": 30, "width": 40, "height": 14 }
-                });
-                break;
 
             case 'choiceButtons':
                 newOverlay = HypervideoModel.newOverlay({
@@ -621,25 +621,23 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 });
                 break;
 
-            case 'endScreen':
-                var duration = HypervideoModel.duration,
-                    endStart = Math.max(0, duration - 5);
+            case 'pauseContinue':
+                // Kept short on purpose: the card pauses playback when it starts, so
+                // once the viewer continues it should fade out again quickly instead
+                // of hanging over the resumed video.
+                var cardEnd = Math.min(startTime + 2, duration);
                 newOverlay = HypervideoModel.newOverlay({
-                    "name": labels['PresetEndScreen'], "type": "text",
-                    "start": endStart, "end": duration,
-                    "attributes": {
-                        "text": '<div style="background: rgba(0,0,0,0.85); color: #ffffff; height: 100%; box-sizing: border-box; display: flex; align-items: center; justify-content: center; font-size: 1.6em; text-align: center;">'
-                              + labels['PresetEndScreenTitle']
-                              + '</div>'
-                    },
-                    "position": { "top": 0, "left": 0, "width": 100, "height": 100 }
+                    "name": labels['PresetPauseContinue'], "type": "text",
+                    "start": startTime, "end": cardEnd,
+                    "attributes": cardAttributes(labels['PresetPauseCardText']),
+                    "position": { "top": 20, "left": 20, "width": 60, "height": 40 }
                 });
                 createSecondary({
-                    "name": labels['PresetReplay'], "type": "hotspot",
-                    "start": endStart, "end": duration,
-                    "attributes": { "text": labels['PresetReplay'], "action": "", "actionTarget": "", "color": "#0096ff", "textColor": "#ffffff", "backgroundColor": "#0096ff", "borderWidth": 0, "shape": "rounded", "borderRadius": 20 },
-                    "events": { "onClick": "hypervideo.currentTime = 0; hypervideo.play();" },
-                    "position": { "top": 62, "left": 38, "width": 24, "height": 13 }
+                    "name": labels['PresetContinue'], "type": "hotspot",
+                    "start": startTime, "end": cardEnd,
+                    "attributes": buttonAttributes(labels['PresetContinue']),
+                    "events": { "onStart": pauseCode, "onClick": "hypervideo.play();" },
+                    "position": { "top": 64, "left": 38, "width": 24, "height": 13 }
                 });
                 break;
         }
@@ -1189,11 +1187,8 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
         /* Append built-in presets to 'Presets' tab */
         var presetDefinitions = [
-            { preset: 'infoCard',      icon: 'icon-info',          label: labels['PresetInfoCard'] },
-            { preset: 'captionBar',    icon: 'icon-comment',       label: labels['PresetCaptionBar'] },
-            { preset: 'ctaButton',     icon: 'icon-mouse-pointer', label: labels['PresetCTAButton'] },
-            { preset: 'choiceButtons', icon: 'icon-flow-branch',   label: labels['PresetChoiceButtons'] },
-            { preset: 'endScreen',     icon: 'icon-to-end',        label: labels['PresetEndScreen'] }
+            { preset: 'pauseContinue', icon: 'icon-pause-circle-o', label: labels['PresetPauseContinue'] },
+            { preset: 'choiceButtons', icon: 'icon-flow-branch',    label: labels['PresetChoiceButtons'] }
         ];
 
         var presetPanel = overlayEditingOptions.querySelector('#OverlayPresets');

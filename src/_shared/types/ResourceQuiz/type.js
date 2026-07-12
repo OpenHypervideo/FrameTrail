@@ -476,7 +476,7 @@ FrameTrail.defineType(
                             attributes.onCorrectAnswer = { 'jumpForward': false, 'resumePlayback': true, 'showText': false };
                         }
                         if (!attributes.onWrongAnswer) {
-                            attributes.onWrongAnswer = { 'jumpBackward': false, 'resumePlayback': false, 'showText': false };
+                            attributes.onWrongAnswer = { 'jumpBackward': 10, 'resumePlayback': true, 'showText': false };
                         }
                     } else {
                         if (!attributes.onAnswered) {
