@@ -218,6 +218,53 @@
                 FrameTrail.module('HypervideoModel').leaveEditMode();
             },
 
+            saveAs: function(){
+                if (FrameTrail.module('HypervideoModel')) {
+                    FrameTrail.module('HypervideoModel').saveAs();
+                }
+            },
+
+            export: function(options){
+
+                options = options || {};
+
+                if (!FrameTrail.module('HypervideoModel')) {
+                    return Promise.reject(new Error('No hypervideo loaded'));
+                }
+
+                var format          = options.format || 'html',
+                    downloadAdapter = FrameTrail.module('StorageManager').getDownloadAdapter(),
+                    hypervideoID    = options.hypervideoID || FrameTrail.module('RouteNavigation').hypervideoID;
+
+                downloadAdapter._frameTrailInstance = FrameTrail;
+
+                if (format === 'html') {
+                    var resolvedDataURL = FrameTrail.module('RouteNavigation').resolveDataURL(''),
+                        dataPath        = new URL(resolvedDataURL, window.location.href).href;
+                    downloadAdapter._generateStandaloneHTML(hypervideoID, dataPath);
+                    return Promise.resolve();
+                }
+
+                if (format === 'json') {
+                    downloadAdapter._performDownload(hypervideoID);
+                    return Promise.resolve();
+                }
+
+                if (format === 'zip') {
+                    if (!options.includeMedia) {
+                        downloadAdapter._performZipDownload({ allHv: true, resources: true, config: true });
+                        return Promise.resolve();
+                    }
+                    if (!FrameTrail.module('StorageManager').canSaveToServer()) {
+                        return Promise.reject(new Error('Media files can only be exported in server mode by a logged-in user'));
+                    }
+                    return _exportServerZip();
+                }
+
+                return Promise.reject(new Error('Unknown export format: ' + format));
+
+            },
+
             destroy: function () {
                 var thisInstanceIndex = instances.indexOf(publicInstanceAPI),
                     thisDOMElement = document.querySelector(state.target);
@@ -284,6 +331,42 @@
         }
 
         instances.push(publicInstanceAPI);
+
+
+        /**
+         * Only the PHP endpoint can bundle the uploaded media files, so this path cannot
+         * run client-side. On a private instance (config.alwaysForceLogin) it answers 403
+         * unless a valid session cookie is sent, hence the explicit status check — an
+         * <a download> click would silently save the error body as a .zip.
+         */
+        function _exportServerZip() {
+
+            var serverUrl = FrameTrail.getState('server') || '_server/',
+                adapter   = FrameTrail.module('StorageManager').getAdapter(),
+                dpParam   = (adapter && adapter.dataPathAbsolute)
+                                ? '&dataPath=' + encodeURIComponent(adapter.dataPathAbsolute)
+                                : '';
+
+            return fetch(serverUrl + 'ajaxServer.php?a=dataExport' + dpParam, { credentials: 'same-origin' })
+                .then(function(response) {
+                    if (response.status === 403) {
+                        throw new Error('Data export denied: this instance is private (config.alwaysForceLogin) and requires a logged-in session');
+                    }
+                    if (!response.ok) {
+                        throw new Error('Data export failed with status ' + response.status);
+                    }
+                    return response.blob();
+                })
+                .then(function(blob) {
+                    var url = URL.createObjectURL(blob),
+                        a   = document.createElement('a');
+                    a.href     = url;
+                    a.download = 'frametrail-data-export.zip';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+
+        }
 
 
         function _initModule(name) {
