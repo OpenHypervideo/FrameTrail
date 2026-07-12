@@ -144,6 +144,8 @@ FrameTrail.defineType(
 
                 this.contentCollection = [];
 
+                this.contentGroups = [];
+
                 this.appendDOMElement();
 
                 this.updateContent();
@@ -153,6 +155,7 @@ FrameTrail.defineType(
                 whichArea: null,
                 contentViewData:    null,
                 contentCollection: null,
+                contentGroups: null,
                 _AREA_KEYS: { top: 'Top', bottom: 'Bottom', left: 'Left', right: 'Right' },
 
 
@@ -163,12 +166,126 @@ FrameTrail.defineType(
                     );
                 },
 
+                _isSameResource: function(itemA, itemB) {
+                    var a = itemA.data,
+                        b = itemB.data;
+                    if (a.type !== b.type) { return false; }
+                    var aRes = (a.resourceId == null || a.resourceId === '') ? null : a.resourceId,
+                        bRes = (b.resourceId == null || b.resourceId === '') ? null : b.resourceId;
+                    if (aRes != null || bRes != null) {
+                        return aRes === bRes;
+                    }
+                    var aSrc = (a.src == null) ? '' : a.src,
+                        bSrc = (b.src == null) ? '' : b.src,
+                        aUri = (a.uri == null) ? '' : a.uri,
+                        bUri = (b.uri == null) ? '' : b.uri;
+                    if (aSrc === '' && aUri === '') { return false; }
+                    return aSrc === bSrc && aUri === bUri;
+                },
+
+                // Consecutive annotations referencing the same resource collapse into
+                // one group, rendered as a single collection element. The collection
+                // is start-sorted, so a single pass suffices; any different annotation
+                // in between starts a new group.
+                _computeContentGroups: function() {
+                    var groups = [];
+                    for (var i = 0; i < this.contentCollection.length; i++) {
+                        var item = this.contentCollection[i],
+                            lastGroup = groups[groups.length - 1];
+                        if (lastGroup && this._isSameResource(lastGroup.items[lastGroup.items.length - 1], item)) {
+                            lastGroup.items.push(item);
+                        } else {
+                            groups.push({
+                                items: [item],
+                                representative: item,
+                                activeItems: []
+                            });
+                        }
+                    }
+                    return groups;
+                },
+
+                _groupsEqual: function(groupsA, groupsB) {
+                    if (groupsA.length !== groupsB.length) { return false; }
+                    for (var i = 0; i < groupsA.length; i++) {
+                        if (groupsA[i].items.length !== groupsB[i].items.length) { return false; }
+                        for (var j = 0; j < groupsA[i].items.length; j++) {
+                            if (groupsA[i].items[j] !== groupsB[i].items[j]) { return false; }
+                        }
+                    }
+                    return true;
+                },
+
+                getGroupOfContentItem: function(contentItem) {
+                    var groups = this.contentGroups || [];
+                    for (var i = 0; i < groups.length; i++) {
+                        if (groups[i].items.indexOf(contentItem) !== -1) {
+                            return groups[i];
+                        }
+                    }
+                    return null;
+                },
+
+                // Re-derive each group's active set from the constituents' state and
+                // sync the element class. Needed after (re)building elements, because
+                // ViewLayout only notifies on active/inactive transitions.
+                _refreshGroupActiveStates: function() {
+                    var self = this;
+                    (self.contentGroups || []).forEach(function(group) {
+                        group.activeItems = group.items.filter(function(item) {
+                            return item.activeStateInContentView(self);
+                        });
+                        var element = self.getContentViewElementFromContentItem(group.representative);
+                        if (element) {
+                            element.classList.toggle('active', group.activeItems.length > 0);
+                        }
+                    });
+                },
+
+                setContentItemActive: function(contentItem) {
+                    var group = this.getGroupOfContentItem(contentItem);
+                    if (!group) { return; }
+                    if (group.activeItems.indexOf(contentItem) === -1) {
+                        group.activeItems.push(contentItem);
+                    }
+                    var element = this.getContentViewElementFromContentItem(group.representative);
+                    if (!element) { return; }
+                    element.classList.add('active');
+
+                    if ( contentItem.data.type == 'location'
+                        && this.contentViewData.contentSize == 'large'
+                        && (this.whichArea == 'left' || this.whichArea == 'right') ) {
+                        var _resourceDetail = element.querySelector('.resourceDetail');
+                        if (_resourceDetail && _resourceDetail._leafletMap) {
+                            _resourceDetail._leafletMap.invalidateSize();
+                        }
+                    }
+                },
+
+                setContentItemInactive: function(contentItem) {
+                    var group = this.getGroupOfContentItem(contentItem);
+                    if (!group) { return; }
+                    var indexOfItem = group.activeItems.indexOf(contentItem);
+                    if (indexOfItem !== -1) {
+                        group.activeItems.splice(indexOfItem, 1);
+                    }
+                    // The element stays active as long as any constituent is active
+                    // (seamless handover between consecutive same-resource annotations)
+                    if (group.activeItems.length === 0) {
+                        var element = this.getContentViewElementFromContentItem(group.representative);
+                        if (element) {
+                            element.classList.remove('active');
+                        }
+                    }
+                },
+
                 _clearContentCollection: function() {
                     var self = this;
                     self.contentCollection.forEach(function(contentItem) {
                         self.removeContentCollectionElements(contentItem);
                     });
                     self.contentCollection = [];
+                    self.contentGroups = [];
                 },
 
                 updateContent: function(suppressViewSizeChange) {
@@ -205,40 +322,66 @@ FrameTrail.defineType(
                                 return;
                             }
 
-                            var old_contentCollection = self.contentCollection;
+                            var old_contentGroups = self.contentGroups || [];
 
                             self.contentCollection = self._getFilteredCollection();
 
-                            if ( (this.previousContentSize == 'large' && this.contentViewData.contentSize != 'large') ||
-                                 (this.previousContentSize != 'large' && this.contentViewData.contentSize == 'large') ) {
+                            var new_contentGroups = self._computeContentGroups();
 
-                                old_contentCollection.forEach(function (contentItem) {
-                                    self.removeContentCollectionElements(contentItem);
+                            var crossedLargeBoundary =
+                                (this.previousContentSize == 'large') != (this.contentViewData.contentSize == 'large');
+
+                            if ( crossedLargeBoundary || !self._groupsEqual(old_contentGroups, new_contentGroups) ) {
+
+                                // Remember the annotations of the currently open group,
+                                // so an open details view survives the rebuild
+                                var openElement = self.contentViewContainer.querySelector('.contentViewContents > .collectionElement.open'),
+                                    openItems = [];
+                                if (openElement) {
+                                    for (var g = 0; g < old_contentGroups.length; g++) {
+                                        if (self.getContentViewElementFromContentItem(old_contentGroups[g].representative) === openElement) {
+                                            openItems = old_contentGroups[g].items;
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                old_contentGroups.forEach(function(group) {
+                                    self.removeContentCollectionElements(group.representative);
                                 });
 
-                                self.contentCollection.forEach(function (contentItem) {
-                                    var indexOfItem = self.contentCollection.indexOf(contentItem);
-                                    self.appendContentCollectionElements(contentItem, indexOfItem);
+                                self.contentGroups = new_contentGroups;
+
+                                self.contentGroups.forEach(function(group, indexOfGroup) {
+                                    self.appendContentCollectionElements(group.representative, indexOfGroup);
                                 });
 
-                                this.previousContentSize = this.contentViewData.contentSize;
-
-                            } else {
-
-                                old_contentCollection.filter(function(contentItem) {
-                                    return 0 > self.contentCollection.indexOf(contentItem)
-                                }).forEach(function(contentItem) {
-                                    self.removeContentCollectionElements(contentItem);
-                                });
-
-                                self.contentCollection.filter(function(contentItem) {
-                                    return 0 > old_contentCollection.indexOf(contentItem)
-                                }).forEach(function (contentItem) {
-                                    var indexOfItem = self.contentCollection.indexOf(contentItem);
-                                    self.appendContentCollectionElements(contentItem, indexOfItem);
-                                });
+                                // Restore the open state on the re-rendered group
+                                var openGroup = null;
+                                for (var o = 0; o < openItems.length && !openGroup; o++) {
+                                    openGroup = self.getGroupOfContentItem(openItems[o]);
+                                }
+                                if (openGroup) {
+                                    var newOpenElement = self.getContentViewElementFromContentItem(openGroup.representative);
+                                    if (newOpenElement) {
+                                        newOpenElement.classList.add('open');
+                                        if (self.contentViewDetailsContainer) {
+                                            var _openIdx = Array.from(newOpenElement.parentElement.children).indexOf(newOpenElement),
+                                                _detailEls = self.contentViewDetailsContainer.querySelectorAll('.collectionElement');
+                                            if (_detailEls[_openIdx]) { _detailEls[_openIdx].classList.add('open'); }
+                                        }
+                                    }
+                                } else if (openElement && FrameTrail.module('ViewVideo')
+                                    && FrameTrail.module('ViewVideo').shownDetails == self.whichArea) {
+                                    FrameTrail.module('ViewVideo').shownDetails = null;
+                                }
 
                             }
+                            // else: groups unchanged, keep existing group objects and DOM
+
+                            this.previousContentSize = this.contentViewData.contentSize;
+
+                            self._refreshGroupActiveStates();
 
                             break;
 
@@ -1417,7 +1560,7 @@ FrameTrail.defineType(
                     }
 
                     var self = this,
-                        annotations      = self.contentCollection,
+                        contentGroups    = self.contentGroups || [],
                         videoDuration    = FrameTrail.module('HypervideoModel').duration,
                         offsetIn         = FrameTrail.module('HypervideoModel').offsetIn,
                         scrollContainer  = self.contentViewContainer.querySelector('.contentViewScroll'),
@@ -1437,14 +1580,23 @@ FrameTrail.defineType(
                     // --- Pre-read pass: collect element widths from DOM (single reflow) ---
 
                     var items = [];
-                    for (var i = 0; i < annotations.length; i++) {
-                        var el = self.getContentViewElementFromContentItem(annotations[i]);
+                    for (var i = 0; i < contentGroups.length; i++) {
+                        var contentGroup = contentGroups[i];
+                        var el = self.getContentViewElementFromContentItem(contentGroup.representative);
                         if (!el) { continue; }
+                        // A merged element spans from the first constituent's start to the
+                        // latest end (constituents may overlap/nest, so take the max)
+                        var groupEndTime = contentGroup.items[0].data.end;
+                        for (var j = 1; j < contentGroup.items.length; j++) {
+                            if (contentGroup.items[j].data.end > groupEndTime) {
+                                groupEndTime = contentGroup.items[j].data.end;
+                            }
+                        }
                         items.push({
                             el:        el,
                             width:     el.offsetWidth,
-                            startTime: annotations[i].data.start,
-                            endTime:   annotations[i].data.end
+                            startTime: contentGroup.items[0].data.start,
+                            endTime:   groupEndTime
                         });
                     }
 
@@ -1571,40 +1723,41 @@ FrameTrail.defineType(
 
                     if (!overflows) return;
 
-                    // Find active annotations
-                    var activeAnnotations = [];
-                    var activeAnnotationIndices = [];
+                    // Find active groups (a group is active while any constituent is)
+                    var activeGroups = [];
+                    var activeGroupIndices = [];
 
-                    for (var idx in self.contentCollection) {
-                        if ( self.contentCollection[idx].activeStateInContentView(self) ) {
-                            activeAnnotations.push(self.contentCollection[idx]);
-                            activeAnnotationIndices.push(idx);
+                    var _groups = self.contentGroups || [];
+                    for (var idx = 0; idx < _groups.length; idx++) {
+                        if ( _groups[idx].activeItems.length > 0 ) {
+                            activeGroups.push(_groups[idx]);
+                            activeGroupIndices.push(idx);
                         }
                     }
 
-                    if (activeAnnotations.length == 0) {
-                        self._lastActiveAnnotationIndices = [];
+                    if (activeGroups.length == 0) {
+                        self._lastActiveGroupIndices = [];
                         return;
                     }
 
                     // Detect whether the active set changed at all
-                    var prevActiveIndices = self._lastActiveAnnotationIndices || [];
-                    var activeSetChanged = activeAnnotationIndices.length !== prevActiveIndices.length
-                        || activeAnnotationIndices.some(function(idx, i) { return idx !== prevActiveIndices[i]; });
-                    self._lastActiveAnnotationIndices = activeAnnotationIndices;
+                    var prevActiveIndices = self._lastActiveGroupIndices || [];
+                    var activeSetChanged = activeGroupIndices.length !== prevActiveIndices.length
+                        || activeGroupIndices.some(function(idx, i) { return idx !== prevActiveIndices[i]; });
+                    self._lastActiveGroupIndices = activeGroupIndices;
 
                     // Only scroll when the active set changes
                     if (!activeSetChanged) return;
 
                     // Compute scroll target from active elements
-                    var firstEl = self.getContentViewElementFromContentItem(activeAnnotations[0]);
-                    var lastEl = self.getContentViewElementFromContentItem(activeAnnotations[activeAnnotations.length - 1]);
+                    var firstEl = self.getContentViewElementFromContentItem(activeGroups[0].representative);
+                    var lastEl = self.getContentViewElementFromContentItem(activeGroups[activeGroups.length - 1].representative);
                     if (!firstEl || !lastEl) return;
 
                     self._isProgrammaticScroll = true;
                     if (slideAxis == 'x') {
                         var containerWidth = FrameTrail.getState('viewSize')[0];
-                        if (containerWidth < 768 || activeAnnotations.length === 1) {
+                        if (containerWidth < 768 || activeGroups.length === 1) {
                             // Small container: center only the first active element
                             var elCenter = firstEl.offsetLeft + firstEl.offsetWidth / 2;
                             var scrollTarget = elCenter - scrollContainer.clientWidth / 2;

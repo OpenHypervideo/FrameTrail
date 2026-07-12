@@ -1134,21 +1134,12 @@ FrameTrail.defineType(
 
                 setActiveInContentView: function (contentView) {
 
-                    for (var i=0; i<this.contentViewElements.length; i++) {
-                        this.contentViewElements[i].classList.add('active');
-
-                        if ( this.data.type == 'location'
-                            && contentView.contentViewData.contentSize == 'large'
-                            && (contentView.whichArea == 'left' || contentView.whichArea == 'right') ) {
-
-                            var _resourceDetail = this.contentViewElements[i].querySelector('.resourceDetail');
-                            if (_resourceDetail && _resourceDetail._leafletMap) {
-                                _resourceDetail._leafletMap.invalidateSize();
-                            }
-                        }
+                    // The DOM class is managed per group by the ContentView, so that
+                    // consecutive same-resource annotations sharing one merged element
+                    // hand the active state over seamlessly
+                    if (typeof contentView.setContentItemActive === 'function') {
+                        contentView.setContentItemActive(this);
                     }
-                    //console.log(this, 'setActiveInContentView', contentView);
-
 
                     this._activeStateInContentView.push(contentView);
 
@@ -1158,10 +1149,9 @@ FrameTrail.defineType(
 
                 setInactiveInContentView: function (contentView) {
 
-                    for (var i=0; i<this.contentViewElements.length; i++) {
-                        this.contentViewElements[i].classList.remove('active');
+                    if (typeof contentView.setContentItemInactive === 'function') {
+                        contentView.setContentItemInactive(this);
                     }
-                    //console.log(this, 'setInactiveInContentView', contentView);
 
                     this._activeStateInContentView = this._activeStateInContentView.filter(function (each) {
                         return each !== contentView;
