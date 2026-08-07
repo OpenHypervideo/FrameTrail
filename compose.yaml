@@ -1,0 +1,16 @@
+services:
+  frametrail:
+    build:
+      context: .
+      # args:
+      #   WITH_FFMPEG: "true"   # adds ffmpeg for server-side transcoding (~500MB larger)
+    ports:
+      - "8080:80"
+    volumes:
+      # All app state (accounts, hypervideos, annotations, uploads) lives here —
+      # no database. Back this up / migrate between installs by copying it.
+      - frametrail_data:/var/www/html/_data
+    restart: unless-stopped
+
+volumes:
+  frametrail_data:
