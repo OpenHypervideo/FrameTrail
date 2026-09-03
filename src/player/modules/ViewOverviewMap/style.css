@@ -1,0 +1,162 @@
+/* The map replaces the grid entirely; only one of the two is ever populated. */
+.viewOverview.mapMode .overviewList {
+    display: none;
+}
+
+/* Viewport box. overflow:hidden is what produces the crop in 'cover' mode. */
+.overviewMap {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+/*
+ * The stage IS the background image's box: sized in px by layoutStage().
+ * It must carry no border and no padding — percentage offsets on the pins
+ * resolve against the padding box, so either would break the position lock.
+ */
+.overviewMapStage {
+    position: absolute;
+    border: 0;
+    padding: 0;
+    background-color: var(--primary-bg-color);
+}
+
+.overviewMap.noBackground .overviewMapStage {
+    outline: 2px dashed var(--secondary-fg-color);
+    outline-offset: -2px;
+}
+
+.overviewMapBackground {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    display: block;
+    /* Native image dragging would fight interact.js. */
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-drag: none;
+}
+
+.overviewMap:not(.noBackground) .overviewMapBackground {
+    display: block;
+}
+
+.overviewMap.noBackground .overviewMapBackground {
+    display: none;
+}
+
+/*
+ * Pins. left/top are percentages of the stage, i.e. normalized image
+ * coordinates; translate(-50%, -50%) makes that percentage the pin's centre,
+ * so resizing a pin never moves it off the feature it marks.
+ */
+.overviewMapMarker {
+    position: absolute;
+    transform: translate(-50%, -50%);
+    border-radius: 50%;
+    background-color: #333333;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid rgba(53, 57, 60, 0.7);
+    box-sizing: border-box;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition-property: border-color, box-shadow;
+    transition-duration: 200ms;
+    transition-timing-function: linear;
+}
+
+.overviewMapMarker:hover {
+    border-color: #f8f8f8;
+    z-index: 3;
+}
+
+.overviewMapMarker.activeHypervideo {
+    border-color: var(--primary-fg-color);
+    box-shadow: 0 0 0 3px var(--primary-fg-color), 0 2px 6px rgba(0, 0, 0, 0.4);
+    z-index: 2;
+}
+
+.overviewMapMarkerLabel {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 6px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: var(--primary-fg-color);
+    color: var(--primary-bg-color);
+    font-size: 12px;
+    white-space: nowrap;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 200ms linear;
+}
+
+.overviewMapMarker:hover .overviewMapMarkerLabel,
+.overviewMapMarker.activeHypervideo .overviewMapMarkerLabel {
+    opacity: 1;
+}
+
+/* Radial resize handle, shown only while the map is editable. */
+.overviewMapMarkerHandle {
+    position: absolute;
+    right: -7px;
+    bottom: -7px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--primary-fg-color);
+    border: 2px solid var(--primary-bg-color);
+    box-sizing: border-box;
+    cursor: nwse-resize;
+    display: none;
+    z-index: 4;
+}
+
+.overviewMap.editActive .overviewMapMarker.editable {
+    cursor: move;
+}
+
+/*
+ * Shown for every editable pin, not only the hovered one: a hover-gated handle
+ * is unreachable on touch, and makes it hard to see what is resizable.
+ */
+.overviewMap.editActive .overviewMapMarker.editable .overviewMapMarkerHandle {
+    display: block;
+}
+
+.overviewMapMarker.dragging {
+    opacity: 0.85;
+    z-index: 5;
+}
+
+/*
+ * The card lives in the viewport box, not the stage, so it is never clipped
+ * by the stage's overflow and never matches the [data-hypervideoid] lookups
+ * ViewOverview uses to find an animation anchor.
+ */
+.overviewMapPopup {
+    position: absolute;
+    display: none;
+    z-index: 10;
+}
+
+.overviewMapPopup.open {
+    display: block;
+}
+
+.overviewMapPopup .hypervideoThumb.mapCard {
+    float: none;
+    margin: 0;
+    width: 240px;
+    height: 144px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
+}

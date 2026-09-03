@@ -22,9 +22,104 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
         EmptyStateHint = domElement.querySelector('.emptyStateHint'),
 
         animationElement      = null,
-        lastSelectedThumb     = null;
+        lastSelectedThumb     = null,
+
+        MapModule             = null;
 
 
+
+
+    /**
+     * I tell whether this instance presents the overview as a map instead of
+     * the default grid. This is an instance-wide setting with no runtime
+     * toggle, so it is fixed for the lifetime of the page.
+     *
+     * @method isMapMode
+     * @return {Boolean}
+     */
+    function isMapMode() {
+
+        return ((FrameTrail.module('Database').config || {}).overviewMode === 'map');
+
+    }
+
+
+    /**
+     * I lazily initialize the ViewOverviewMap module.
+     *
+     * Initialization is wrapped, because initModule throws when the script is
+     * not loaded — a partial deploy or a stale HTML entry point should degrade
+     * to the grid rather than break the overview entirely.
+     *
+     * @method getMap
+     * @return {Object|null}
+     */
+    function getMap() {
+
+        if (MapModule) return MapModule;
+        if (!isMapMode()) return null;
+
+        try {
+            MapModule = FrameTrail.initModule('ViewOverviewMap');
+        } catch (exception) {
+            console.warn('FrameTrail: overviewMode is "map", but ViewOverviewMap is unavailable — falling back to the grid.', exception);
+            return null;
+        }
+
+        return MapModule;
+
+    }
+
+
+    /**
+     * I return the element that represents a hypervideo in whichever overview
+     * rendering is active: a grid thumb or a map pin.
+     *
+     * Both carry data-hypervideoid, and only one of the two containers is ever
+     * populated, so the selector can be class-agnostic.
+     *
+     * @method getElementForHypervideo
+     * @param {String} hypervideoID
+     * @return {HTMLElement|null}
+     */
+    function getElementForHypervideo(hypervideoID) {
+
+        if (!hypervideoID) return null;
+
+        return domElement.querySelector('[data-hypervideoid="' + hypervideoID + '"]');
+
+    }
+
+
+    /**
+     * I return the element currently marked as the active hypervideo.
+     *
+     * @method getActiveElement
+     * @return {HTMLElement|null}
+     */
+    function getActiveElement() {
+
+        return domElement.querySelector('[data-hypervideoid].activeHypervideo');
+
+    }
+
+
+    /**
+     * I move the active-hypervideo marking to a hypervideo.
+     *
+     * @method setActiveHypervideo
+     * @param {String} hypervideoID
+     */
+    function setActiveHypervideo(hypervideoID) {
+
+        domElement.querySelectorAll('[data-hypervideoid].activeHypervideo').forEach(function(el) {
+            el.classList.remove('activeHypervideo');
+        });
+
+        var element = getElementForHypervideo(hypervideoID);
+        if (element) element.classList.add('activeHypervideo');
+
+    }
 
 
     /**
@@ -37,6 +132,15 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
         var _t = FrameTrail.getState('target');
         var _targetEl = (typeof _t === 'string') ? document.querySelector(_t) : _t;
         _targetEl.querySelector('.mainContainer').append(domElement);
+
+        if (isMapMode()) {
+            var map = getMap();
+            if (map) {
+                domElement.classList.add('mapMode');
+                map.create(domElement);
+                map.setOpenHandler(openHypervideo);
+            }
+        }
 
         toggleViewMode(FrameTrail.getState('viewMode'));
         toggleEditMode(FrameTrail.getState('editMode'));
@@ -59,6 +163,19 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
             admin = FrameTrail.module('UserManagement').userRole === 'admin',
             editMode = FrameTrail.getState('editMode');
             userColor = FrameTrail.getState('userColor');
+
+        // In map mode the grid is never built. This branch has to come before
+        // the thumb clear below, which removes .hypervideoThumb elements rather
+        // than emptying the container.
+        var map = isMapMode() ? getMap() : null;
+        if (map) {
+            OverviewList.querySelectorAll('.hypervideoThumb').forEach(function(el) { el.remove(); });
+            map.renderMarkers();
+            map.toggleEditMode(editMode);
+            changeViewSize();
+            updateEmptyStateHint();
+            return;
+        }
 
         OverviewList.querySelectorAll('.hypervideoThumb').forEach(function(el) { el.remove(); });
 
@@ -132,19 +249,55 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                     evt.preventDefault();
                     evt.stopPropagation();
 
-                    var clickedThumb = this;
-                    var newHypervideoID = clickedThumb.dataset.hypervideoid,
-                        update = (FrameTrail.module('RouteNavigation').hypervideoID == undefined) ? false : true;
+                    openHypervideo(this.dataset.hypervideoid, this);
 
-                    // Store reference to clicked thumb for animation
-                    lastSelectedThumb = clickedThumb;
+                });
 
-                    //TODO: PUT IN SEPARATE FUNCTION
+                OverviewList.append(thumb);
+
+        }
+
+        if (editMode && FrameTrail.module('StorageManager').canSave()) {
+            var newHypervideoThumb = document.createElement('div');
+            newHypervideoThumb.className = 'hypervideoThumb newHypervideoThumb';
+            newHypervideoThumb.innerHTML = '<span class="icon-hypervideo-add"></span>'
+                                         + '<span class="newHypervideoLabel">' + labels['HypervideoNew'] + '</span>';
+            newHypervideoThumb.addEventListener('click', function() {
+                var _t = FrameTrail.getState('target');
+                var _targetEl = (typeof _t === 'string') ? document.querySelector(_t) : _t;
+                var btn = _targetEl.querySelector('.newHypervideoButton');
+                if (btn) btn.click();
+            });
+            OverviewList.append(newHypervideoThumb);
+        }
+
+        changeViewSize();
+        OverviewList.querySelectorAll('.hypervideoThumb').forEach(function(el) { el.style.transitionDuration = ''; });
+
+        updateEmptyStateHint();
+
+    }
+
+
+    /**
+     * I open a hypervideo from the overview.
+     *
+     * I am shared by grid thumbs and map pins: nothing in here depends on the
+     * shape of the source element, which is used only as the starting rect for
+     * the zoom animation.
+     *
+     * @method openHypervideo
+     * @param {String} newHypervideoID
+     * @param {HTMLElement} sourceElement The element the animation starts from
+     */
+    function openHypervideo(newHypervideoID, sourceElement) {
+
+                    var update = (FrameTrail.module('RouteNavigation').hypervideoID == undefined) ? false : true;
+
+                    // Store reference to source element for animation
+                    lastSelectedThumb = sourceElement;
 
                     if ( FrameTrail.module('RouteNavigation').hypervideoID == newHypervideoID ) {
-
-                        // Store the clicked thumb for animation in toggleViewMode
-                        lastSelectedThumb = clickedThumb;
 
                         // Just switch to video view - animation will happen in toggleViewMode
                         FrameTrail.changeState('viewMode', 'video');
@@ -183,9 +336,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
                                         confirmDialogCtrl.close();
 
-                                        OverviewList.querySelectorAll('.hypervideoThumb.activeHypervideo').forEach(function(el) { el.classList.remove('activeHypervideo'); });
-                                        var _newThumb = OverviewList.querySelector('.hypervideoThumb[data-hypervideoid="'+ newHypervideoID +'"]');
-                                        if (_newThumb) _newThumb.classList.add('activeHypervideo');
+                                        setActiveHypervideo(newHypervideoID);
 
                                         FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, true, update);
 
@@ -212,9 +363,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
                         } else {
 
-                            OverviewList.querySelectorAll('.hypervideoThumb.activeHypervideo').forEach(function(el) { el.classList.remove('activeHypervideo'); });
-                            var _newThumb = OverviewList.querySelector('.hypervideoThumb[data-hypervideoid="'+ newHypervideoID +'"]');
-                            if (_newThumb) _newThumb.classList.add('activeHypervideo');
+                            setActiveHypervideo(newHypervideoID);
 
                             if (window.FrameTrail.instances.length <= 1) {
                                 history.pushState({
@@ -240,37 +389,6 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
                     }
 
-
-                    //TODO END
-
-
-
-
-                });
-
-                OverviewList.append(thumb);
-
-        }
-
-        if (editMode && FrameTrail.module('StorageManager').canSave()) {
-            var newHypervideoThumb = document.createElement('div');
-            newHypervideoThumb.className = 'hypervideoThumb newHypervideoThumb';
-            newHypervideoThumb.innerHTML = '<span class="icon-hypervideo-add"></span>'
-                                         + '<span class="newHypervideoLabel">' + labels['HypervideoNew'] + '</span>';
-            newHypervideoThumb.addEventListener('click', function() {
-                var _t = FrameTrail.getState('target');
-                var _targetEl = (typeof _t === 'string') ? document.querySelector(_t) : _t;
-                var btn = _targetEl.querySelector('.newHypervideoButton');
-                if (btn) btn.click();
-            });
-            OverviewList.append(newHypervideoThumb);
-        }
-
-        changeViewSize();
-        OverviewList.querySelectorAll('.hypervideoThumb').forEach(function(el) { el.style.transitionDuration = ''; });
-
-        updateEmptyStateHint();
-
     }
 
 
@@ -286,8 +404,14 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
         var hasHypervideos = Object.keys(hypervideos).length > 0;
         var editMode = FrameTrail.getState('editMode');
 
+        var map = isMapMode() ? getMap() : null;
+
         if (!hasHypervideos && !editMode) {
             EmptyStateHint.querySelector('.emptyStateHintText').textContent = labels['OverviewEmptyHint'];
+            EmptyStateHint.classList.add('visible');
+        } else if (map && hasHypervideos && map.isEmpty()) {
+            // Hypervideos exist, but none of them are placed on the map.
+            EmptyStateHint.querySelector('.emptyStateHintText').textContent = labels['OverviewMapEmptyHint'];
             EmptyStateHint.classList.add('visible');
         } else {
             EmptyStateHint.classList.remove('visible');
@@ -321,7 +445,8 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
         if ( FrameTrail.getState('viewMode') != 'overview' ) return;
 
-
+        var map = isMapMode() ? getMap() : null;
+        if (map) map.layout();
 
     };
 
@@ -366,6 +491,12 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
         // Use pre-captured rect if provided, otherwise get it now
         var thumbRect = preCapturedRect || thumbElement.getBoundingClientRect();
 
+        // Map pins are circular. Tween the radius in px, not '50%': computed
+        // percentage radii do not interpolate against '0px'.
+        var startRadius = thumbElement.classList.contains('overviewMapMarker')
+                            ? (thumbRect.width / 2) + 'px'
+                            : '0px';
+
         // Calculate positions relative to mainContainer
         var startWidth = thumbRect.width;
         var startHeight = thumbRect.height;
@@ -399,6 +530,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
             overflow: 'hidden',
             backgroundColor: bgColor,
             border: '2px solid var(--primary-fg-color)',
+            borderRadius: startRadius,
             boxSizing: 'border-box',
             opacity: '1'
         });
@@ -414,6 +546,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 top: mainContainerRect.top + 'px',
                 width: endWidth + 'px',
                 height: endHeight + 'px',
+                borderRadius: '0px',
                 opacity: 1,
                 duration: 400,
                 ease: 'inOutQuad',
@@ -429,8 +562,8 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
         } else {
             // Web Animations API fallback
             var anim = animationElement.animate([
-                { left: thumbRect.left + 'px', top: thumbRect.top + 'px', width: startWidth + 'px', height: startHeight + 'px', opacity: '1' },
-                { left: mainContainerRect.left + 'px', top: mainContainerRect.top + 'px', width: endWidth + 'px', height: endHeight + 'px', opacity: '1' }
+                { left: thumbRect.left + 'px', top: thumbRect.top + 'px', width: startWidth + 'px', height: startHeight + 'px', borderRadius: startRadius, opacity: '1' },
+                { left: mainContainerRect.left + 'px', top: mainContainerRect.top + 'px', width: endWidth + 'px', height: endHeight + 'px', borderRadius: '0px', opacity: '1' }
             ], { duration: 400, easing: 'ease-in-out', fill: 'forwards' });
             anim.finished.then(function() {
                 if (animationElement) {
@@ -455,27 +588,34 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
         domElement.classList.add('active');
         changeViewSize();
 
+        var findRetries = 0;
+
         // Function to find thumb and perform animation
         function findThumbAndAnimate() {
-            // Find the thumb element (lowercase attribute set by renderThumb)
-            var thumbElement = OverviewList.querySelector('.hypervideoThumb[data-hypervideoid="' + hypervideoID + '"]');
+            // Find the element representing this hypervideo: a grid thumb or a map pin
+            var thumbElement = getElementForHypervideo(hypervideoID),
+                thumbRect    = thumbElement ? thumbElement.getBoundingClientRect() : null;
 
-            if (!thumbElement) {
-                // Thumb not found yet, try again after a short delay
+            var notReady = !thumbElement || thumbRect.width === 0 || thumbRect.height === 0;
+
+            if (notReady && findRetries++ < 40) {
+                // Not laid out yet, try again after a short delay
                 window.setTimeout(findThumbAndAnimate, 50);
                 return;
             }
 
-            // Get thumb position relative to viewport
-            var thumbRect = thumbElement.getBoundingClientRect();
-
-            // Check if thumb has valid dimensions and position (not 0x0 and not at 0,0)
-            if (thumbRect.width === 0 || thumbRect.height === 0 ||
-                (thumbRect.left === 0 && thumbRect.top === 0 && thumbRect.width < 100)) {
-                // Thumb not positioned yet, try again
-                window.setTimeout(findThumbAndAnimate, 50);
+            if (notReady) {
+                // No anchor to animate to. In map mode this is a legitimate
+                // state: hypervideos that are not placed on the map have no
+                // element at all. Skip the animation, but still run the
+                // callback so the Titlebar title is restored.
+                if (callback) callback();
                 return;
             }
+
+            var endRadius = thumbElement.classList.contains('overviewMapMarker')
+                                ? (thumbRect.width / 2) + 'px'
+                                : '0px';
 
             // Create animation element - use a simple scalable representation
             var computedStyle = capturedVideoContainer
@@ -504,6 +644,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 overflow: 'hidden',
                 backgroundColor: bgColor,
                 border: '2px solid var(--primary-fg-color)',
+                borderRadius: '0px',
                 transform: 'scale(1)',
                 boxSizing: 'border-box',
                 opacity: '1'
@@ -518,6 +659,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                     top: thumbRect.top + 'px',
                     width: thumbRect.width + 'px',
                     height: thumbRect.height + 'px',
+                    borderRadius: endRadius,
                     opacity: 1,
                     duration: 400,
                     ease: 'inOutQuad',
@@ -532,8 +674,8 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
             } else {
                 // Web Animations API fallback
                 var anim = animationElement.animate([
-                    { left: mainContainerRect.left + 'px', top: mainContainerRect.top + 'px', width: mainContainerRect.width + 'px', height: mainContainerRect.height + 'px', opacity: '1' },
-                    { left: thumbRect.left + 'px', top: thumbRect.top + 'px', width: thumbRect.width + 'px', height: thumbRect.height + 'px', opacity: '1' }
+                    { left: mainContainerRect.left + 'px', top: mainContainerRect.top + 'px', width: mainContainerRect.width + 'px', height: mainContainerRect.height + 'px', borderRadius: '0px', opacity: '1' },
+                    { left: thumbRect.left + 'px', top: thumbRect.top + 'px', width: thumbRect.width + 'px', height: thumbRect.height + 'px', borderRadius: endRadius, opacity: '1' }
                 ], { duration: 400, easing: 'ease-in-out', fill: 'forwards' });
                 anim.finished.then(function() {
                     if (animationElement) {
@@ -563,6 +705,8 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
      * @return
      */
     function toggleViewMode(viewMode, oldViewMode) {
+
+        if (MapModule) MapModule.closePopup();
 
         if (viewMode === 'overview') {
             // Animate from video view back to thumb position
@@ -616,13 +760,18 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                 // Use the last selected thumb if available (from click), otherwise find active thumb
                 var thumbToAnimate = lastSelectedThumb;
 
+                // A refreshList() between the click and this frame can leave
+                // lastSelectedThumb pointing at a detached node, which would
+                // measure 0x0.
+                if (thumbToAnimate && !thumbToAnimate.isConnected) thumbToAnimate = null;
+
                 if (!thumbToAnimate) {
-                    // Find the active hypervideo thumb
+                    // Find the element for the active hypervideo (grid thumb or map pin)
                     var currentHypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
                     if (currentHypervideoID) {
-                        thumbToAnimate = OverviewList.querySelector('.hypervideoThumb.activeHypervideo');
+                        thumbToAnimate = getActiveElement();
                         if (!thumbToAnimate) {
-                            thumbToAnimate = OverviewList.querySelector('.hypervideoThumb[data-hypervideoid="' + currentHypervideoID + '"]');
+                            thumbToAnimate = getElementForHypervideo(currentHypervideoID);
                         }
                     }
                 }
@@ -634,9 +783,8 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                     // Capture thumb position while overview is still visible
                     var thumbRect = thumbToAnimate.getBoundingClientRect();
 
-                    // Only animate if thumb has valid position (not at 0,0 with tiny size)
-                    if (thumbRect.width > 0 && thumbRect.height > 0 &&
-                        !(thumbRect.left === 0 && thumbRect.top === 0 && thumbRect.width < 100)) {
+                    // Only animate if the element has a valid position
+                    if (thumbRect.width > 0 && thumbRect.height > 0) {
 
                         // Hide overview during animation
                         domElement.classList.remove('active');
@@ -724,7 +872,16 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
         },
 
         create:      create,
-        refreshList: refreshList
+        refreshList: refreshList,
+
+        isMapMode:   isMapMode,
+
+        /**
+         * The lazily initialized ViewOverviewMap module, or null when this
+         * instance uses the grid. Sidebar goes through here rather than
+         * initializing the map module itself.
+         */
+        getMap:      getMap
 
     };
 

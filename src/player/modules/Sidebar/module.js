@@ -32,6 +32,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '                <div class="viewModeActionButtonContainer">'
                    + '                    <button class="newHypervideoButton" data-tooltip-bottom-left="'+ labels['HypervideoNew'] +'"><span class="icon-hypervideo-add"></span></button>'
                    + '                    <button class="exportButton" data-tooltip-bottom-left="'+ labels['GenericExport'] +'"><span class="icon-download"></span></button>'
+                   + '                    <button class="overviewMapAddButton" data-tooltip-bottom-left="'+ labels['OverviewMapAddHypervideo'] +'"><span class="icon-location"></span></button>'
+                   + '                    <button class="overviewMapSaveButton" data-tooltip-bottom-left="'+ labels['OverviewMapSave'] +'"><span class="icon-floppy"></span></button>'
                    + '                    <div style="clear: both;"></div>'
                    + '                </div>'
                    + '            </div>'
@@ -73,7 +75,10 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         ForkButton             = domElement.querySelector('.forkButton'),
         ExportButton           = domElement.querySelectorAll('.exportButton'),
         UndoButton             = domElement.querySelector('.undoButton'),
-        RedoButton             = domElement.querySelector('.redoButton');
+        RedoButton             = domElement.querySelector('.redoButton'),
+
+        MapAddButton           = domElement.querySelector('.overviewMapAddButton'),
+        MapSaveButton          = domElement.querySelector('.overviewMapSaveButton');
 
     var _resourcesItemHandler = null;
 
@@ -795,6 +800,65 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         FrameTrail.module('HypervideoModel').exportIt();
     }); });
 
+    MapAddButton.addEventListener('click', function() {
+        var map = FrameTrail.module('ViewOverview').getMap();
+        if (map) map.addHypervideo();
+    });
+
+    MapSaveButton.addEventListener('click', function() {
+        var map = FrameTrail.module('ViewOverview').getMap();
+        if (map) map.saveLayout();
+    });
+
+    // In map mode the "new hypervideo" flow navigates straight into the new
+    // hypervideo, so without this the map would never learn about it and the
+    // button would appear to do nothing (unplaced hypervideos are hidden).
+    NewHypervideoButton.forEach(function(btn) { btn.addEventListener('click', function() {
+        var ViewOverview = FrameTrail.module('ViewOverview');
+        if (!ViewOverview || !ViewOverview.isMapMode()) return;
+        var map = ViewOverview.getMap();
+        if (map) map.notePendingAutoPlace();
+    }); });
+
+
+    /**
+     * I show the map controls only for an admin who can actually re-arrange
+     * the map, and hide them entirely in grid mode.
+     *
+     * @method updateOverviewMapControls
+     */
+    function updateOverviewMapControls() {
+
+        var ViewOverview = FrameTrail.module('ViewOverview');
+
+        var show = !!ViewOverview
+                && ViewOverview.isMapMode()
+                && !!FrameTrail.getState('editMode')
+                && FrameTrail.module('UserManagement').userRole === 'admin'
+                && FrameTrail.module('StorageManager').canSave();
+
+        [MapAddButton, MapSaveButton].forEach(function(btn) {
+            if (btn) btn.style.display = show ? '' : 'none';
+        });
+
+    }
+
+
+    /**
+     * I highlight the map save button while the layout has unsaved changes.
+     *
+     * This is driven by ViewOverviewMap's own dirty flag rather than the
+     * global "unsavedChanges" state, which belongs to HypervideoModel.
+     *
+     * @method setOverviewMapDirty
+     * @param {Boolean} flag
+     */
+    function setOverviewMapDirty(flag) {
+
+        if (MapSaveButton) MapSaveButton.classList.toggle('unsavedChanges', !!flag);
+
+    }
+
     videoContainerControls.querySelectorAll('.editMode').forEach(function(btn) {
         btn.addEventListener('click', function(evt) {
             FrameTrail.changeState('editMode', this.dataset.editmode);
@@ -816,6 +880,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         toggleEditMode(FrameTrail.getState('editMode'));
 
         document.querySelector(FrameTrail.getState('target')).append(domElement);
+
+        updateOverviewMapControls();
 
         if ( FrameTrail.getState('embed') ) {
             //domElement.find('.viewmodeControls').hide();
@@ -932,6 +998,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             updateEditModeButtonPermissions();
         }
 
+        updateOverviewMapControls();
+
     };
 
     /**
@@ -988,6 +1056,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         }
 
         changeViewSize();
+
+        updateOverviewMapControls();
 
 
     }
@@ -1053,6 +1123,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         },
 
         newUnsavedChange: newUnsavedChange,
+
+        setOverviewMapDirty: setOverviewMapDirty,
 
         /**
          * I am the width of the sidebar's DOM element.

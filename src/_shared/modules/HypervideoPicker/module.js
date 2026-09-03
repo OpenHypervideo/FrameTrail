@@ -20,8 +20,15 @@ FrameTrail.defineModule('HypervideoPicker', function(FrameTrail){
      *
      * @method openPicker
      * @param {Function} callback Function called with hypervideoID when a hypervideo is selected
+     * @param {Object} options Optional. `exclude` is a list of hypervideo IDs
+     *                         to leave out of the list (e.g. ones already
+     *                         placed on the overview map).
      */
-    function openPicker(callback) {
+    function openPicker(callback, options) {
+
+        var exclude = (options && Array.isArray(options.exclude))
+                        ? options.exclude.map(String)
+                        : [];
 
         var hypervideos = FrameTrail.module('Database').hypervideos,
             admin = FrameTrail.module('UserManagement').userRole === 'admin',
@@ -39,6 +46,8 @@ FrameTrail.defineModule('HypervideoPicker', function(FrameTrail){
         // Render hypervideo thumbs
         for (var id in hypervideos) {
             var owner = hypervideos[id].creatorId === FrameTrail.module('UserManagement').userID;
+
+            if (exclude.indexOf(String(id)) !== -1) continue;
 
             // Show hypervideo if not hidden, or if user is owner/admin
             if (!hypervideos[id].hidden || owner || admin) {

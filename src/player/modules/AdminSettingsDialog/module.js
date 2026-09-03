@@ -14,6 +14,24 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
     var labels = FrameTrail.module('Localization').labels;
 
     /**
+     * I push freshly saved overview-map settings into a live map view.
+     *
+     * No-op when this instance shows the grid.
+     *
+     * @method refreshOverviewMap
+     */
+    function refreshOverviewMap() {
+
+        var ViewOverview = FrameTrail.module('ViewOverview');
+        if (!ViewOverview || !ViewOverview.getMap) return;
+
+        var map = ViewOverview.getMap();
+        if (map && map.reloadFromConfig) map.reloadFromConfig();
+
+    }
+
+
+    /**
      * I open the admin settings dialog.
      * @method open
      */
@@ -52,11 +70,15 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                         + '        <li>'
                         + '            <a href="#ChangeTheme">'+ labels['SettingsColorTheme'] +'</a>'
                         + '        </li>'
+                        + '        <li>'
+                        + '            <a href="#OverviewMap">'+ labels['SettingsOverviewMap'] +'</a>'
+                        + '        </li>'
                         + '    </ul>'
                         + '    <div id="Configuration"></div>'
                         + '    <div id="ChangeTheme"></div>'
                         + '    <div id="ChangeGlobalCSS"></div>'
                         + '    <div id="TagDefinitions"></div>'
+                        + '    <div id="OverviewMap"></div>'
                         + '</div>';
         var adminTabs = _atw.firstElementChild;
 
@@ -101,6 +123,16 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             +   '        <div class="message active">'+ labels['MessageUserTracesEndAction'] +'</div>'
                             +   '        <label for="userTracesEndAction">'+ labels['SettingsUserTracesEndAction'] +'</label>'
                             +   '        <input type="text" style="margin-top: 0px; margin-bottom: 2px;" name="userTracesEndAction" id="userTracesEndAction" placeholder="'+ labels['SettingsUserTracesEndAction'] +'" value="'+ (configData.userTracesEndAction || '') +'">'
+                            +   '    </div>'
+                            +   '    <div class="column-3">'
+                            +   '        <div class="message active">'+ labels['MessageOverviewMode'] +'</div>'
+                            +   '        <label for="overviewMode">'+ labels['SettingsOverviewMode'] +'</label>'
+                            +   '        <div class="custom-select">'
+                            +   '            <select name="overviewMode" id="overviewMode">'
+                            +   '                <option value="grid"'+ (configData.overviewMode !== 'map' ? ' selected' : '') +'>'+ labels['SettingsOverviewModeGrid'] +'</option>'
+                            +   '                <option value="map"'+ (configData.overviewMode === 'map' ? ' selected' : '') +'>'+ labels['SettingsOverviewModeMap'] +'</option>'
+                            +   '            </select>'
+                            +   '        </div>'
                             +   '    </div>'
                             +   '    <div class="column-3">'
                             +   '        <label for="defaultLanguage">'+ labels['GenericLanguage'] +'</label>'
@@ -541,6 +573,95 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
             });
         });
 
+        /* Overview Map UI */
+        var overviewMapData = database.config.overviewMap || {},
+            selectedMapBackground = overviewMapData.background || '',
+            selectedMapBackgroundColor = overviewMapData.backgroundColor || '',
+            selectedMapFit = (overviewMapData.fit === 'cover') ? 'cover' : 'contain';
+
+        var _omw = document.createElement('div');
+        _omw.innerHTML = '<div class="overviewMapSettings layoutRow">'
+                        + '    <div class="column-6">'
+                        + '        <label>'+ labels['SettingsOverviewMapBackground'] +'</label>'
+                        + '        <div class="message active">'+ labels['MessageOverviewMapNoBackground'] +'</div>'
+                        + '        <div class="posterFrameList overviewMapBackgroundList"></div>'
+                        + '    </div>'
+                        + '    <div class="column-6">'
+                        + '        <label for="overviewMapFit">'+ labels['SettingsOverviewMapFit'] +'</label>'
+                        + '        <div class="custom-select">'
+                        + '            <select id="overviewMapFit" class="overviewMapFitSelect">'
+                        + '                <option value="contain"'+ (selectedMapFit === 'contain' ? ' selected' : '') +'>'+ labels['SettingsOverviewMapFitContain'] +'</option>'
+                        + '                <option value="cover"'+ (selectedMapFit === 'cover' ? ' selected' : '') +'>'+ labels['SettingsOverviewMapFitCover'] +'</option>'
+                        + '            </select>'
+                        + '        </div>'
+                        + '        <div class="message active">'+ labels['MessageOverviewMapCrop'] +'</div>'
+                        + '        <label for="overviewMapBackgroundColor">'+ labels['SettingsOverviewMapBackgroundColor'] +'</label>'
+                        + '        <input type="color" id="overviewMapBackgroundColor" class="overviewMapBackgroundColor" value="'+ (selectedMapBackgroundColor || '#000000') +'">'
+                        + '        <div class="message active">'+ labels['MessageOverviewMap'] +'</div>'
+                        + '    </div>'
+                        + '</div>';
+        var overviewMapUI = _omw.firstElementChild;
+
+        adminTabs.querySelector('#OverviewMap').appendChild(overviewMapUI);
+
+        (function() {
+
+            var backgroundList = overviewMapUI.querySelector('.overviewMapBackgroundList');
+
+            FrameTrail.module('ResourceManager').renderList(backgroundList, true, 'type', 'contains', ['image']);
+
+            // The list renders asynchronously and fades in, so the current
+            // selection can only be marked once the loading screen is gone.
+            if (selectedMapBackground) {
+                var checkBackgroundLoaded = setInterval(function() {
+                    if (!backgroundList.querySelector('.loadingScreen')) {
+                        clearInterval(checkBackgroundLoaded);
+                        backgroundList.querySelectorAll('.resourceThumb').forEach(function(thumb) {
+                            var res = database.resources[thumb.dataset.resourceid];
+                            if (res && res.src === selectedMapBackground) {
+                                thumb.classList.add('selected');
+                            }
+                        });
+                    }
+                }, 100);
+            }
+
+            // Click a selected image again to clear the background.
+            overviewMapUI.addEventListener('click', function(evt) {
+                if (evt.target.closest('.resourceEditButton')) return;
+                var _thumb = evt.target.closest('.overviewMapBackgroundList .resourceThumb');
+                if (!_thumb) return;
+
+                var wasSelected = _thumb.classList.contains('selected');
+
+                backgroundList.querySelectorAll('.resourceThumb').forEach(function(el) { el.classList.remove('selected'); });
+
+                if (wasSelected) {
+                    selectedMapBackground = '';
+                } else {
+                    var resource = database.resources[_thumb.dataset.resourceid];
+                    _thumb.classList.add('selected');
+                    selectedMapBackground = resource ? resource.src : '';
+                }
+
+                configChanged = true;
+            });
+
+            // These are nested under config.overviewMap, and a color input is
+            // not one of the types the generic apply loop reads, so both are
+            // tracked by hand.
+            overviewMapUI.querySelector('.overviewMapFitSelect').addEventListener('change', function() {
+                selectedMapFit = this.value;
+                configChanged = true;
+            });
+
+            overviewMapUI.querySelector('.overviewMapBackgroundColor').addEventListener('change', function() {
+                selectedMapBackgroundColor = this.value;
+                configChanged = true;
+            });
+
+        })();
+
         /* Global CSS Editing UI */
         var cssText = document.head.querySelector('style.FrameTrailGlobalCustomCSS') ? document.head.querySelector('style.FrameTrailGlobalCustomCSS').innerHTML : '';
 
@@ -960,6 +1081,22 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                     }
                                 });
 
+                                // Apply overview map settings. These live nested
+                                // under config.overviewMap, and the color input is
+                                // not a type the generic loop above reads, so they
+                                // are written explicitly. The markers array is left
+                                // untouched — it is owned by ViewOverviewMap.
+                                var _mapData = database.config.overviewMap;
+                                if (!_mapData || typeof _mapData !== 'object') {
+                                    _mapData = database.config.overviewMap = {};
+                                }
+                                if (!Array.isArray(_mapData.markers)) {
+                                    _mapData.markers = [];
+                                }
+                                _mapData.background      = selectedMapBackground;
+                                _mapData.backgroundColor = selectedMapBackgroundColor;
+                                _mapData.fit             = selectedMapFit;
+
                                 // Apply global default theme
                                 database.config.defaultTheme = selectedThemeValue;
                                 // Only apply to current view if the hypervideo has no per-hypervideo theme
@@ -999,9 +1136,17 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                         if (globalCSSChanged) {
                                             document.head.querySelector('style.FrameTrailGlobalCustomCSS').innerHTML = initialCSS;
                                         }
+                                        // Repaint the map with the reverted values
+                                        refreshOverviewMap();
                                     } else {
                                         // Reload config to ensure consistency
-                                        FrameTrail.module('Database').loadConfigData(function(){}, function(){});
+                                        FrameTrail.module('Database').loadConfigData(function(){
+                                            // Background, colour and fit live in
+                                            // config.overviewMap, and nothing observes
+                                            // the config, so the map is told explicitly
+                                            // rather than waiting for a page reload.
+                                            refreshOverviewMap();
+                                        }, function(){});
                                     }
                                     adminDialogCtrl.close();
                                 }
@@ -1009,6 +1154,12 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
                             var languageChanged = configChanged &&
                                 (database.config.defaultLanguage || 'en') !== (initialConfig.defaultLanguage || 'en');
+
+                            // ViewOverview decides grid-vs-map once, in create().
+                            // There is no onChange handler for the config, so the
+                            // page has to be reloaded for the switch to take effect.
+                            var overviewModeChanged = configChanged &&
+                                (database.config.overviewMode || 'grid') !== (initialConfig.overviewMode || 'grid');
 
                             if (configChanged) {
                                 FrameTrail.module('Database').saveConfig(function(result) {
@@ -1020,6 +1171,13 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                     // If language changed, reload after the save is confirmed complete on disk
                                     if (languageChanged) {
                                         FrameTrail.module('Localization').setLanguage(database.config.defaultLanguage);
+                                        FrameTrail.module('InterfaceModal').hideMessage();
+                                        adminDialogCtrl.close();
+                                        window.location.reload();
+                                        return;
+                                    }
+                                    // Same for a grid/map switch
+                                    if (overviewModeChanged) {
                                         FrameTrail.module('InterfaceModal').hideMessage();
                                         adminDialogCtrl.close();
                                         window.location.reload();
