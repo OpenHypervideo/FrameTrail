@@ -70,30 +70,6 @@
     }
 }
 
-.annotationTimeline .timelineElement.ui-resizable .ui-resizable-handle.ui-resizable-ne {
-    top: -2px;
-    right: -2px;
-    cursor: ne-resize;
-}
-
-.annotationTimeline .timelineElement.ui-resizable .ui-resizable-handle.ui-resizable-nw {
-    top: -2px;
-    left: -2px;
-    cursor: nw-resize;
-}
-
-.annotationTimeline .timelineElement.ui-resizable .ui-resizable-handle.ui-resizable-se {
-    bottom: -2px;
-    right: -2px;
-    cursor: se-resize;
-}
-
-.annotationTimeline .timelineElement.ui-resizable .ui-resizable-handle.ui-resizable-sw {
-    bottom: -2px;
-    left: -2px;
-    cursor: sw-resize;
-}
-
 /* Compare Timeline Element */
 
 .timelinesContainer {

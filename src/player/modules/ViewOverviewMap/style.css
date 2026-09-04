@@ -105,18 +105,12 @@
     opacity: 1;
 }
 
-/* Radial resize handle, shown only while the map is editable. */
-.overviewMapMarkerHandle {
-    position: absolute;
-    right: -7px;
-    bottom: -7px;
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    background: var(--primary-fg-color);
-    border: 2px solid var(--primary-bg-color);
-    box-sizing: border-box;
-    cursor: nwse-resize;
+/*
+ * Corner resize handles. Appearance and placement come from generic.css, the
+ * same as the overlay canvas: they sit just outside the pin's bounding box, so
+ * they stay clear of the thumbnail and of the pin's own `move` cursor.
+ */
+.overviewMapMarker.ui-resizable .ui-resizable-handle {
     display: none;
     z-index: 4;
 }
@@ -129,8 +123,12 @@
  * Shown for every editable pin, not only the hovered one: a hover-gated handle
  * is unreachable on touch, and makes it hard to see what is resizable.
  */
-.overviewMap.editActive .overviewMapMarker.editable .overviewMapMarkerHandle {
+.overviewMap.editActive .overviewMapMarker.editable .ui-resizable-handle {
     display: block;
+}
+
+.overviewMapMarker.resizing {
+    z-index: 5;
 }
 
 .overviewMapMarker.dragging {

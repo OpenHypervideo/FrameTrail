@@ -574,6 +574,15 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         });
 
         /* Overview Map UI */
+        // Same checkerboard the hotspot editor uses behind its colour swatch,
+        // so "no colour set" reads as transparent rather than as black.
+        var mapCheckerboard = 'background-image:'
+                            + 'linear-gradient(45deg,#bbb 25%,transparent 25%),'
+                            + 'linear-gradient(-45deg,#bbb 25%,transparent 25%),'
+                            + 'linear-gradient(45deg,transparent 75%,#bbb 75%),'
+                            + 'linear-gradient(-45deg,transparent 75%,#bbb 75%);'
+                            + 'background-size:8px 8px;background-position:0 0,0 4px,4px -4px,-4px 0;background-color:#fff;';
+
         var overviewMapData = database.config.overviewMap || {},
             selectedMapBackground = overviewMapData.background || '',
             selectedMapBackgroundColor = overviewMapData.backgroundColor || '',
@@ -596,7 +605,12 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                         + '        </div>'
                         + '        <div class="message active">'+ labels['MessageOverviewMapCrop'] +'</div>'
                         + '        <label for="overviewMapBackgroundColor">'+ labels['SettingsOverviewMapBackgroundColor'] +'</label>'
-                        + '        <input type="color" id="overviewMapBackgroundColor" class="overviewMapBackgroundColor" value="'+ (selectedMapBackgroundColor || '#000000') +'">'
+                        + '        <div style="display:flex; align-items:center; gap:5px;">'
+                        + '            <span class="overviewMapBgSwatchWrap" style="'+ mapCheckerboard +' display:inline-flex; border-radius:3px; overflow:hidden; width: calc(100% - 50px);">'
+                        + '                <input type="color" id="overviewMapBackgroundColor" class="overviewMapBackgroundColor" value="'+ (selectedMapBackgroundColor || '#000000') +'">'
+                        + '            </span>'
+                        + '            <button type="button" class="overviewMapBackgroundClear" title="'+ labels['GenericTransparent'] +'" style="'+ mapCheckerboard +' width:26px; height:26px; padding:0; border:1px solid var(--primary-bg-color); border-radius:3px; cursor:pointer;"></button>'
+                        + '        </div>'
                         + '        <div class="message active">'+ labels['MessageOverviewMap'] +'</div>'
                         + '    </div>'
                         + '</div>';
@@ -655,8 +669,30 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                 configChanged = true;
             });
 
-            overviewMapUI.querySelector('.overviewMapBackgroundColor').addEventListener('change', function() {
+            var mapColorInput = overviewMapUI.querySelector('.overviewMapBackgroundColor'),
+                mapColorClear  = overviewMapUI.querySelector('.overviewMapBackgroundClear');
+
+            // The picker sits over a checkerboard; fading it when nothing is set
+            // lets the checkerboard show through, which reads as "no colour".
+            var syncMapColorSwatch = function() {
+                mapColorInput.style.opacity = selectedMapBackgroundColor ? '1' : '0.25';
+                if (selectedMapBackgroundColor) { mapColorInput.value = selectedMapBackgroundColor; }
+            };
+
+            syncMapColorSwatch();
+
+            mapColorInput.addEventListener('change', function() {
                 selectedMapBackgroundColor = this.value;
+                syncMapColorSwatch();
+                configChanged = true;
+            });
+
+            mapColorClear.addEventListener('click', function(evt) {
+                evt.preventDefault();
+                evt.stopPropagation();
+                if (!selectedMapBackgroundColor) return;
+                selectedMapBackgroundColor = '';
+                syncMapColorSwatch();
                 configChanged = true;
             });
 

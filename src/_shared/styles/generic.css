@@ -1227,3 +1227,77 @@ input:checked + .slider:before {
 .cm6-wrapper .cm-scroller {
     overflow: auto;
 }
+
+
+/* ------------------------------------------------------------------------
+ * Resize handles
+ *
+ * Every editing surface injects the same markup — a `.ui-resizable-handle`
+ * carrying a direction class — so the appearance lives here once instead of
+ * being restated per widget. See Overlay/type.js (canvas + timeline),
+ * Annotation/type.js (timeline) and ViewOverviewMap/module.js (map pins).
+ *
+ * Only the corner handles are styled here, because only the canvases inject
+ * them; timelines inject `e`/`w` handles and render those as edge bars, which
+ * they style themselves.
+ *
+ * Handles sit just outside the element's bounding box, so they stay clear of
+ * its content and of the element's own `move` cursor. Each context only has to
+ * decide when they are visible.
+ * --------------------------------------------------------------------- */
+
+.ui-resizable-handle {
+    position: absolute;
+    touch-action: none;
+}
+
+.ui-resizable-handle.ui-resizable-ne,
+.ui-resizable-handle.ui-resizable-nw,
+.ui-resizable-handle.ui-resizable-se,
+.ui-resizable-handle.ui-resizable-sw {
+    width: 8px;
+    height: 8px;
+    background-color: var(--primary-fg-color);
+    border: 3px solid var(--primary-bg-color);
+    border-radius: 50%;
+    box-sizing: content-box;
+}
+
+.ui-resizable-handle.ui-resizable-ne {
+    top: -8px;
+    right: -8px;
+    cursor: ne-resize;
+}
+
+.ui-resizable-handle.ui-resizable-nw {
+    top: -8px;
+    left: -8px;
+    cursor: nw-resize;
+}
+
+.ui-resizable-handle.ui-resizable-se {
+    bottom: -8px;
+    right: -8px;
+    cursor: se-resize;
+}
+
+.ui-resizable-handle.ui-resizable-sw {
+    bottom: -8px;
+    left: -8px;
+    cursor: sw-resize;
+}
+
+/* Bigger touch targets, re-centred on the same corners. */
+@media (pointer: coarse) {
+    .ui-resizable-handle.ui-resizable-ne,
+    .ui-resizable-handle.ui-resizable-nw,
+    .ui-resizable-handle.ui-resizable-se,
+    .ui-resizable-handle.ui-resizable-sw {
+        width: 20px;
+        height: 20px;
+    }
+    .ui-resizable-handle.ui-resizable-ne { top: -10px; right: -10px; }
+    .ui-resizable-handle.ui-resizable-nw { top: -10px; left: -10px; }
+    .ui-resizable-handle.ui-resizable-se { bottom: -10px; right: -10px; }
+    .ui-resizable-handle.ui-resizable-sw { bottom: -10px; left: -10px; }
+}

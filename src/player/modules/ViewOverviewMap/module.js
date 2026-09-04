@@ -429,8 +429,14 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         closePopup();
 
         Object.keys(MarkerElements).forEach(function(hypervideoID) {
-            try { interact(MarkerElements[hypervideoID]).unset(); } catch (ex) {}
-            MarkerElements[hypervideoID].remove();
+            var element = MarkerElements[hypervideoID];
+            // Each corner handle is its own interactable; unset them all before
+            // dropping the pin, matching Overlay/type.js:748.
+            element.querySelectorAll('.ui-resizable-handle').forEach(function(handle) {
+                try { interact(handle).unset(); } catch (ex) {}
+            });
+            try { interact(element).unset(); } catch (ex) {}
+            element.remove();
         });
         MarkerElements = {};
 
@@ -757,13 +763,20 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
     function makeMarkerEditable(marker, hypervideoID) {
 
         marker.classList.add('editable');
+        marker.classList.add('ui-resizable');
 
-        var handle = document.createElement('div');
-        handle.className = 'overviewMapMarkerHandle';
-        marker.append(handle);
+        // Same handle markup and class names the overlay editor uses, so the
+        // two canvases behave and read alike.
+        ['ne', 'se', 'sw', 'nw'].forEach(function(dir) {
+            if (marker.querySelector('.ui-resizable-' + dir)) return;
+            var handle = document.createElement('div');
+            handle.className = 'ui-resizable-handle ui-resizable-' + dir;
+            marker.appendChild(handle);
+            makeHandleResizable(handle, marker, hypervideoID);
+        });
 
         interact(marker).draggable({
-            ignoreFrom: '.overviewMapMarkerHandle',
+            ignoreFrom: '.ui-resizable-handle',
             listeners: {
                 start: function() {
                     closePopup();
@@ -791,13 +804,58 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             }
         });
 
-        // A single radial handle rather than interact's resizable(), which
-        // writes both width and left and would fight translate(-50%, -50%).
+    }
+
+
+    /**
+     * I make one corner handle resize its pin.
+     *
+     * Each corner drives the same radial calculation rather than interact's
+     * resizable(), which writes width *and* left/top and would fight the
+     * translate(-50%, -50%) that keeps a pin centred on its anchor. Measuring
+     * the pointer's distance from the centre instead grows the circle
+     * symmetrically from whichever corner is grabbed, so the pin never drifts
+     * off the feature it marks and stays perfectly round.
+     *
+     * The handles sit outside the pin's bounding box, so the grab point is
+     * further from the centre than the radius is. The offset between the two is
+     * captured on pointer-down and held for the drag, otherwise the pin would
+     * jump to the grab distance the moment a handle was touched.
+     *
+     * @method makeHandleResizable
+     * @param {HTMLElement} handle
+     * @param {HTMLElement} marker
+     * @param {String} hypervideoID
+     */
+    function makeHandleResizable(handle, marker, hypervideoID) {
+
+        var grabOffset = 0;
+
+        function pointerRadius(clientX, clientY) {
+
+            var data = getMarkerData(hypervideoID);
+            if (!data) return null;
+
+            var stageRect = MapStage.getBoundingClientRect(),
+                centerX   = stageRect.left + data.x * stageRect.width,
+                centerY   = stageRect.top  + data.y * stageRect.height;
+
+            return Math.sqrt(
+                Math.pow(clientX - centerX, 2) +
+                Math.pow(clientY - centerY, 2)
+            );
+
+        }
+
         interact(handle).draggable({
             listeners: {
                 start: function(evt) {
                     evt.stopPropagation();
                     closePopup();
+                    marker.classList.add('resizing');
+
+                    var radius = pointerRadius(evt.clientX, evt.clientY);
+                    grabOffset = (radius === null) ? 0 : radius - (marker.offsetWidth / 2);
                 },
                 move: function(evt) {
                     var data = getMarkerData(hypervideoID);
@@ -805,13 +863,11 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
                     marker._ftSuppressClick = true;
 
+                    var radius = pointerRadius(evt.clientX, evt.clientY);
+                    if (radius === null) return;
+
                     var stageRect = MapStage.getBoundingClientRect(),
-                        centerX   = stageRect.left + data.x * stageRect.width,
-                        centerY   = stageRect.top  + data.y * stageRect.height,
-                        diameter  = 2 * Math.sqrt(
-                            Math.pow(evt.clientX - centerX, 2) +
-                            Math.pow(evt.clientY - centerY, 2)
-                        );
+                        diameter  = 2 * (radius - grabOffset);
 
                     diameter = Math.max(MARKER_MIN_PX, Math.min(stageRect.width * 0.5, diameter));
 
@@ -821,9 +877,18 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
                     marker.style.height = diameter + 'px';
 
                     setDirty(true);
+                },
+                end: function() {
+                    marker.classList.remove('resizing');
                 }
             }
-        });
+        // interact.js writes an inline `cursor` on whatever it is dragging, and
+        // for a draggable that is always `move` — which would beat the
+        // directional cursors in generic.css on hover. The overlay canvas does
+        // not hit this because its corners use resizable(), whose cursor is
+        // directional. Turning interact's cursor handling off leaves the cursor
+        // entirely to CSS, where both surfaces already agree.
+        }).styleCursor(false);
 
     }
 
