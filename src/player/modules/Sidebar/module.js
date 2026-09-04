@@ -32,7 +32,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '                <div class="viewModeActionButtonContainer">'
                    + '                    <button class="newHypervideoButton" data-tooltip-bottom-left="'+ labels['HypervideoNew'] +'"><span class="icon-hypervideo-add"></span></button>'
                    + '                    <button class="exportButton" data-tooltip-bottom-left="'+ labels['GenericExport'] +'"><span class="icon-download"></span></button>'
-                   + '                    <button class="overviewMapAddButton" data-tooltip-bottom-left="'+ labels['OverviewMapAddHypervideo'] +'"><span class="icon-location"></span></button>'
+                   + '                    <button class="overviewMapAddButton" data-tooltip-bottom-left="'+ labels['OverviewMapAddHypervideo'] +'"><span class="icon-plus-squared"></span></button>'
                    + '                    <button class="overviewMapSaveButton" data-tooltip-bottom-left="'+ labels['OverviewMapSave'] +'"><span class="icon-floppy"></span></button>'
                    + '                    <div style="clear: both;"></div>'
                    + '                </div>'
