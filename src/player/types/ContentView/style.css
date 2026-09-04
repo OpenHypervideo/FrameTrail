@@ -263,22 +263,68 @@
     position: relative;
     width: 100%;
     height: 100%;
-    scrollbar-width: thin;
-    scrollbar-color: var(--semi-transparent-bg-color) transparent;
+    scrollbar-width: none;
 }
 
 .layoutArea .contentViewContainer .contentViewScroll::-webkit-scrollbar {
-    width: 4px;
+    display: none;
+}
+
+/* The native scrollbar is hidden above and replaced by .contentViewScrollbar, because
+   Firefox cannot draw one thinner than ~11px. Ours is 4px, so it fits in the inset
+   around the collection elements, and it fades in while the pointer is over the content
+   view or while scrolling. Its thumb is positioned in type.js (updateScrollbar). */
+.layoutArea .contentViewContainer .contentViewScrollbar {
+    position: absolute;
+    z-index: 5;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms;
+}
+
+.layoutArea .contentViewContainer .contentViewScrollbar.scrollable {
+    pointer-events: auto;
+}
+
+.layoutArea .contentViewContainer:hover .contentViewScrollbar.scrollable,
+.layoutArea .contentViewContainer .contentViewScrollbar.scrollable.scrolling {
+    opacity: 1;
+}
+
+.layoutArea .contentViewContainer .contentViewScrollbarThumb {
+    position: absolute;
+    background: var(--secondary-fg-color);
+    opacity: .5;
+    border-radius: 2px;
+    touch-action: none;
+}
+
+.layoutArea[data-area="areaTop"] .contentViewContainer .contentViewScrollbar,
+.layoutArea[data-area="areaBottom"] .contentViewContainer .contentViewScrollbar {
+    left: 0px;
+    right: 0px;
+    bottom: 0px;
     height: 4px;
 }
 
-.layoutArea .contentViewContainer .contentViewScroll::-webkit-scrollbar-track {
-    background: transparent;
+.layoutArea[data-area="areaTop"] .contentViewContainer .contentViewScrollbarThumb,
+.layoutArea[data-area="areaBottom"] .contentViewContainer .contentViewScrollbarThumb {
+    top: 0px;
+    height: 100%;
 }
 
-.layoutArea .contentViewContainer .contentViewScroll::-webkit-scrollbar-thumb {
-    background: var(--semi-transparent-bg-color);
-    border-radius: 2px;
+.layoutArea[data-area="areaLeft"] .contentViewContainer .contentViewScrollbar,
+.layoutArea[data-area="areaRight"] .contentViewContainer .contentViewScrollbar {
+    top: 0px;
+    right: 0px;
+    bottom: 0px;
+    width: 4px;
+}
+
+.layoutArea[data-area="areaLeft"] .contentViewContainer .contentViewScrollbarThumb,
+.layoutArea[data-area="areaRight"] .contentViewContainer .contentViewScrollbarThumb {
+    left: 0px;
+    width: 100%;
 }
 
 .layoutArea[data-area="areaTop"] .contentViewContainer .contentViewScroll,
@@ -299,6 +345,10 @@
     box-sizing: border-box;
 }
 
+/* Should a browser still draw a native scrollbar, it would take its space from the
+   scroll container's content box and thereby resize and shift all collection elements.
+   --scrollbar-size (set in type.js) holds the space it actually takes (0 wherever the
+   rules above hide it), so the contents can always keep their full size. */
 .layoutArea[data-area="areaTop"] .contentViewContainer .contentViewContents,
 .layoutArea[data-area="areaBottom"] .contentViewContainer .contentViewContents {
     display: flex;
@@ -307,6 +357,7 @@
     padding-left: 4px;
     width: max-content;
     min-width: 100%;
+    height: calc(100% + var(--scrollbar-size, 0px));
 }
 
 .layoutArea[data-area="areaTop"] .collectionElement,
@@ -331,6 +382,7 @@
 .layoutArea[data-area="areaLeft"] .contentViewContainer .contentViewContents,
 .layoutArea[data-area="areaRight"] .contentViewContainer .contentViewContents {
     padding-top: 4px;
+    width: calc(100% + var(--scrollbar-size, 0px));
 }
 
 .layoutArea .contentViewContainer .contentViewContents .transcriptContainer,

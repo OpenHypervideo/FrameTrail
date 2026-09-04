@@ -766,6 +766,19 @@ FrameTrail.defineType(
                     // Suppress programmatic scrolling during user-initiated scroll/touch
                     var scrollContainer = contentViewContainer.querySelector('.contentViewScroll');
                     if (scrollContainer) {
+
+                        // Keep the custom scrollbar and --scrollbar-size in sync: the observer
+                        // fires when the scroll container's content box changes and when the
+                        // contents grow or shrink, i.e. whenever the scroll state can change.
+                        this.scrollbarObserver = new ResizeObserver(function() {
+                            self.updateScrollbarCompensation();
+                            self.updateScrollbar();
+                        });
+                        this.scrollbarObserver.observe(scrollContainer);
+                        this.scrollbarObserver.observe(contentViewContainer.querySelector('.contentViewContents'));
+
+                        this.initScrollbar(contentViewContainer);
+
                         var userScrollTimeout;
                         scrollContainer.addEventListener('scroll', function() {
                             if (self._isProgrammaticScroll) return;
@@ -805,6 +818,11 @@ FrameTrail.defineType(
                     // remove contentView from layoutArea [this.whichArea]
                     //         this.myDetailView = $('<div>....</div>')
                     //         this.myContainerView = $('<div>....</div>')
+                    if (this.scrollbarObserver) {
+                        this.scrollbarObserver.disconnect();
+                        this.scrollbarObserver = null;
+                    }
+
                     this.contentViewContainer.remove();
                     this.contentViewTab.remove();
                     if (this.contentViewDetailsContainer) {
@@ -911,6 +929,166 @@ FrameTrail.defineType(
                 },
 
 
+                /**
+                 * A native scrollbar takes its space from the content box of the
+                 * .contentViewScroll element, which would shrink and shift all collection
+                 * elements the moment it appears. Ours is an overlay (see style.css), but for
+                 * browsers that draw a native one anyway I publish how much space it takes as
+                 * the CSS property --scrollbar-size, which the .contentViewContents compensate
+                 * for.
+                 *
+                 * @method updateScrollbarCompensation
+                 */
+                updateScrollbarCompensation: function() {
+
+                    var scrollContainer = this.contentViewContainer
+                                        && this.contentViewContainer.querySelector('.contentViewScroll');
+
+                    if (!scrollContainer) {
+                        return;
+                    }
+
+                    var scrollbarSize = (this.whichArea == 'top' || this.whichArea == 'bottom')
+                                        ? scrollContainer.offsetHeight - scrollContainer.clientHeight
+                                        : scrollContainer.offsetWidth - scrollContainer.clientWidth;
+
+                    if (scrollbarSize === this.scrollbarSize) {
+                        return;
+                    }
+
+                    this.scrollbarSize = scrollbarSize;
+                    scrollContainer.style.setProperty('--scrollbar-size', scrollbarSize + 'px');
+
+                },
+
+
+                /**
+                 * I keep the custom scrollbar (see style.css) in sync with the scroll state of
+                 * the .contentViewScroll element: I show it only when there is something to
+                 * scroll and size and position its thumb accordingly.
+                 *
+                 * @method updateScrollbar
+                 */
+                updateScrollbar: function() {
+
+                    var scrollContainer = this.contentViewContainer
+                                        && this.contentViewContainer.querySelector('.contentViewScroll'),
+                        scrollbar       = this.contentViewContainer
+                                        && this.contentViewContainer.querySelector('.contentViewScrollbar');
+
+                    if (!scrollContainer || !scrollbar) {
+                        return;
+                    }
+
+                    var thumb      = scrollbar.querySelector('.contentViewScrollbarThumb'),
+                        horizontal = (this.whichArea == 'top' || this.whichArea == 'bottom'),
+                        viewport   = horizontal ? scrollContainer.clientWidth : scrollContainer.clientHeight,
+                        total      = horizontal ? scrollContainer.scrollWidth : scrollContainer.scrollHeight;
+
+                    if ( total <= viewport + 1 ) {
+                        scrollbar.classList.remove('scrollable');
+                        return;
+                    }
+
+                    scrollbar.classList.add('scrollable');
+
+                    var thumbSize  = Math.min(viewport, Math.max(20, Math.round(viewport * viewport / total))),
+                        position   = horizontal ? scrollContainer.scrollLeft : scrollContainer.scrollTop,
+                        thumbStart = Math.round((viewport - thumbSize) * (position / (total - viewport)));
+
+                    thumb.style[ horizontal ? 'width' : 'height' ] = thumbSize + 'px';
+                    thumb.style[ horizontal ? 'left' : 'top' ] = thumbStart + 'px';
+
+                },
+
+
+                /**
+                 * I make the custom scrollbar work: it follows the scroll position, fades in
+                 * while scrolling, its thumb can be dragged and a click on the track jumps one
+                 * viewport in that direction.
+                 *
+                 * @method initScrollbar
+                 * @param {HTMLElement} contentViewContainer
+                 */
+                initScrollbar: function(contentViewContainer) {
+
+                    var self            = this,
+                        scrollContainer = contentViewContainer.querySelector('.contentViewScroll'),
+                        scrollbar       = contentViewContainer.querySelector('.contentViewScrollbar'),
+                        thumb           = scrollbar.querySelector('.contentViewScrollbarThumb'),
+                        horizontal      = (self.whichArea == 'top' || self.whichArea == 'bottom'),
+                        scrollProperty  = horizontal ? 'scrollLeft' : 'scrollTop',
+                        dragStart       = null,
+                        fadeTimeout;
+
+                    scrollContainer.addEventListener('scroll', function() {
+
+                        self.updateScrollbar();
+
+                        scrollbar.classList.add('scrolling');
+                        clearTimeout(fadeTimeout);
+                        fadeTimeout = setTimeout(function() {
+                            scrollbar.classList.remove('scrolling');
+                        }, 1000);
+
+                    }, { passive: true });
+
+                    thumb.addEventListener('pointerdown', function(evt) {
+
+                        var viewport  = horizontal ? scrollContainer.clientWidth : scrollContainer.clientHeight,
+                            total     = horizontal ? scrollContainer.scrollWidth : scrollContainer.scrollHeight,
+                            thumbSize = horizontal ? thumb.offsetWidth : thumb.offsetHeight;
+
+                        dragStart = {
+                            pointer:  horizontal ? evt.clientX : evt.clientY,
+                            position: scrollContainer[scrollProperty],
+                            // scrollable pixels one pixel of thumb movement stands for
+                            factor:   (total - viewport) / Math.max(1, viewport - thumbSize)
+                        };
+
+                        thumb.setPointerCapture(evt.pointerId);
+                        evt.preventDefault();
+
+                    });
+
+                    thumb.addEventListener('pointermove', function(evt) {
+
+                        if (!dragStart) {
+                            return;
+                        }
+
+                        var delta = (horizontal ? evt.clientX : evt.clientY) - dragStart.pointer;
+                        scrollContainer[scrollProperty] = dragStart.position + delta * dragStart.factor;
+
+                    });
+
+                    thumb.addEventListener('pointerup', function() {
+                        dragStart = null;
+                    });
+
+                    thumb.addEventListener('pointercancel', function() {
+                        dragStart = null;
+                    });
+
+                    scrollbar.addEventListener('pointerdown', function(evt) {
+
+                        if (evt.target == thumb) {
+                            return;
+                        }
+
+                        var scrollbarRect = scrollbar.getBoundingClientRect(),
+                            viewport      = horizontal ? scrollContainer.clientWidth : scrollContainer.clientHeight,
+                            clickPosition = horizontal ? evt.clientX - scrollbarRect.left
+                                                       : evt.clientY - scrollbarRect.top,
+                            thumbPosition = horizontal ? thumb.offsetLeft : thumb.offsetTop;
+
+                        scrollContainer[scrollProperty] += (clickPosition < thumbPosition) ? -viewport : viewport;
+
+                    });
+
+                },
+
+
                 updateLayout: function() {
 
                     var self = this;
@@ -945,6 +1123,10 @@ FrameTrail.defineType(
                     self.scaleDetailElements();
 
                     self.updateCollectionSlider();
+
+                    self.updateScrollbarCompensation();
+
+                    self.updateScrollbar();
 
                 },
 
@@ -1100,6 +1282,9 @@ FrameTrail.defineType(
                                  + ' data-type="'+ self.contentViewData.type +'">'
                                  + '    <div class="contentViewScroll">'
                                  + '        <div class="contentViewContents"></div>'
+                                 + '    </div>'
+                                 + '    <div class="contentViewScrollbar">'
+                                 + '        <div class="contentViewScrollbarThumb"></div>'
                                  + '    </div>'
                                  + '</div>';
                     var containerElement = _w.firstElementChild;
