@@ -59,26 +59,26 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         _atw.innerHTML = '<div class="adminSettingsTabs">'
                         + '    <ul>'
                         + '        <li>'
-                        + '            <a href="#Configuration">'+ labels['SettingsConfigurationOptions'] +'</a>'
+                        + '            <a href="#ChangeTheme">'+ labels['SettingsColorTheme'] +'</a>'
                         + '        </li>'
                         + '        <li>'
-                        + '            <a href="#TagDefinitions">'+ labels['SettingsManageTags'] +'</a>'
+                        + '            <a href="#OverviewPresentation">'+ labels['SettingsOverviewMode'] +'</a>'
                         + '        </li>'
                         + '        <li>'
                         + '            <a href="#ChangeGlobalCSS">'+ labels['SettingsGlobalCSS'] +'</a>'
                         + '        </li>'
                         + '        <li>'
-                        + '            <a href="#ChangeTheme">'+ labels['SettingsColorTheme'] +'</a>'
+                        + '            <a href="#TagDefinitions">'+ labels['SettingsManageTags'] +'</a>'
                         + '        </li>'
                         + '        <li>'
-                        + '            <a href="#OverviewMap">'+ labels['SettingsOverviewMap'] +'</a>'
+                        + '            <a href="#Configuration">'+ labels['SettingsConfigurationOptions'] +'</a>'
                         + '        </li>'
                         + '    </ul>'
-                        + '    <div id="Configuration"></div>'
                         + '    <div id="ChangeTheme"></div>'
+                        + '    <div id="OverviewPresentation"></div>'
                         + '    <div id="ChangeGlobalCSS"></div>'
                         + '    <div id="TagDefinitions"></div>'
-                        + '    <div id="OverviewMap"></div>'
+                        + '    <div id="Configuration"></div>'
                         + '</div>';
         var adminTabs = _atw.firstElementChild;
 
@@ -123,16 +123,6 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             +   '        <div class="message active">'+ labels['MessageUserTracesEndAction'] +'</div>'
                             +   '        <label for="userTracesEndAction">'+ labels['SettingsUserTracesEndAction'] +'</label>'
                             +   '        <input type="text" style="margin-top: 0px; margin-bottom: 2px;" name="userTracesEndAction" id="userTracesEndAction" placeholder="'+ labels['SettingsUserTracesEndAction'] +'" value="'+ (configData.userTracesEndAction || '') +'">'
-                            +   '    </div>'
-                            +   '    <div class="column-3">'
-                            +   '        <div class="message active">'+ labels['MessageOverviewMode'] +'</div>'
-                            +   '        <label for="overviewMode">'+ labels['SettingsOverviewMode'] +'</label>'
-                            +   '        <div class="custom-select">'
-                            +   '            <select name="overviewMode" id="overviewMode">'
-                            +   '                <option value="grid"'+ (configData.overviewMode !== 'map' ? ' selected' : '') +'>'+ labels['SettingsOverviewModeGrid'] +'</option>'
-                            +   '                <option value="map"'+ (configData.overviewMode === 'map' ? ' selected' : '') +'>'+ labels['SettingsOverviewModeMap'] +'</option>'
-                            +   '            </select>'
-                            +   '        </div>'
                             +   '    </div>'
                             +   '    <div class="column-3">'
                             +   '        <label for="defaultLanguage">'+ labels['GenericLanguage'] +'</label>'
@@ -573,7 +563,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
             });
         });
 
-        /* Overview Map UI */
+        /* Overview Presentation UI */
         // Same checkerboard the hotspot editor uses behind its colour swatch,
         // so "no colour set" reads as transparent rather than as black.
         var mapCheckerboard = 'background-image:'
@@ -584,51 +574,127 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             + 'background-size:8px 8px;background-position:0 0,0 4px,4px -4px,-4px 0;background-color:#fff;';
 
         var overviewMapData = database.config.overviewMap || {},
+            selectedOverviewMode = (database.config.overviewMode === 'map') ? 'map' : 'grid',
             selectedMapBackground = overviewMapData.background || '',
             selectedMapBackgroundColor = overviewMapData.backgroundColor || '',
             selectedMapFit = (overviewMapData.fit === 'cover') ? 'cover' : 'contain';
 
+        // Schematics for the two mode cards. Each mirrors the shape of the real
+        // thing: the grid shows rectangular thumbs with the title inside (see
+        // .hypervideoTitle), the map shows round markers with the title below
+        // (see .overviewMapMarkerLabel). The grid's last row is deliberately
+        // incomplete, so the list reads as continuing past the frame.
+        var gridSchematic = '<div class="schematicOverview schematicOverviewGrid">'
+                          + '    <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>'.repeat(5)
+                          + '</div>';
+
+        var mapMarkers = [
+                { left: 20, top: 26, size: 17 },
+                { left: 52, top: 18, size: 13 },
+                { left: 74, top: 45, size: 15 },
+                { left: 38, top: 60, size: 11 }
+            ],
+            mapSchematic = '<div class="schematicOverview schematicOverviewMap">'
+                         + mapMarkers.map(function(marker) {
+                               return '<div class="schematicOverviewMarker" style="left:'+ marker.left +'%; top:'+ marker.top +'%; width:'+ marker.size +'px;">'
+                                    + '<span class="schematicOverviewTitle"></span>'
+                                    + '</div>';
+                           }).join('')
+                         + '</div>';
+
         var _omw = document.createElement('div');
-        _omw.innerHTML = '<div class="overviewMapSettings layoutRow">'
-                        + '    <div class="column-6">'
-                        + '        <label>'+ labels['SettingsOverviewMapBackground'] +'</label>'
-                        + '        <div class="message active">'+ labels['MessageOverviewMapNoBackground'] +'</div>'
-                        + '        <div class="posterFrameList overviewMapBackgroundList"></div>'
+        _omw.innerHTML = '<div class="overviewPresentationSettings">'
+                        + '    <div class="layoutRow">'
+                        + '        <div class="column-12">'
+                        + '            <div class="message active">'+ labels['MessageOverviewMode'] +'</div>'
+                        + '            <div class="overviewModeSelect optionCards" data-property="overviewMode" data-value="'+ selectedOverviewMode +'">'
+                        + '                <div '+ (selectedOverviewMode === 'grid' ? 'class="active"' : '') +' data-value="grid">'
+                        + '                    <div class="optionCardThumb">'+ gridSchematic +'</div>'
+                        + '                    <span>'+ labels['SettingsOverviewModeGrid'] +'</span>'
+                        + '                </div>'
+                        + '                <div '+ (selectedOverviewMode === 'map' ? 'class="active"' : '') +' data-value="map">'
+                        + '                    <div class="optionCardThumb">'+ mapSchematic +'</div>'
+                        + '                    <span>'+ labels['SettingsOverviewModeMap'] +'</span>'
+                        + '                </div>'
+                        + '            </div>'
+                        + '        </div>'
                         + '    </div>'
-                        + '    <div class="column-6">'
-                        + '        <label for="overviewMapFit">'+ labels['SettingsOverviewMapFit'] +'</label>'
-                        + '        <div class="custom-select">'
-                        + '            <select id="overviewMapFit" class="overviewMapFitSelect">'
-                        + '                <option value="contain"'+ (selectedMapFit === 'contain' ? ' selected' : '') +'>'+ labels['SettingsOverviewMapFitContain'] +'</option>'
-                        + '                <option value="cover"'+ (selectedMapFit === 'cover' ? ' selected' : '') +'>'+ labels['SettingsOverviewMapFitCover'] +'</option>'
-                        + '            </select>'
+                        + '    <div class="overviewMapSettings layoutRow">'
+                        + '        <div class="column-6">'
+                        + '            <label>'+ labels['SettingsOverviewMapBackground'] +'</label>'
+                        + '            <div class="message active">'+ labels['MessageOverviewMapNoBackground'] +'</div>'
+                        + '            <div class="posterFrameList overviewMapBackgroundList"></div>'
                         + '        </div>'
-                        + '        <div class="message active">'+ labels['MessageOverviewMapCrop'] +'</div>'
-                        + '        <label for="overviewMapBackgroundColor">'+ labels['SettingsOverviewMapBackgroundColor'] +'</label>'
-                        + '        <div style="display:flex; align-items:center; gap:5px;">'
-                        + '            <span class="overviewMapBgSwatchWrap" style="'+ mapCheckerboard +' display:inline-flex; border-radius:3px; overflow:hidden; width: calc(100% - 50px);">'
-                        + '                <input type="color" id="overviewMapBackgroundColor" class="overviewMapBackgroundColor" value="'+ (selectedMapBackgroundColor || '#000000') +'">'
-                        + '            </span>'
-                        + '            <button type="button" class="overviewMapBackgroundClear" title="'+ labels['GenericTransparent'] +'" style="'+ mapCheckerboard +' width:26px; height:26px; padding:0; border:1px solid var(--primary-bg-color); border-radius:3px; cursor:pointer;"></button>'
+                        + '        <div class="column-6">'
+                        + '            <label for="overviewMapFit">'+ labels['SettingsOverviewMapFit'] +'</label>'
+                        + '            <div class="custom-select">'
+                        + '                <select id="overviewMapFit" class="overviewMapFitSelect">'
+                        + '                    <option value="contain"'+ (selectedMapFit === 'contain' ? ' selected' : '') +'>'+ labels['SettingsOverviewMapFitContain'] +'</option>'
+                        + '                    <option value="cover"'+ (selectedMapFit === 'cover' ? ' selected' : '') +'>'+ labels['SettingsOverviewMapFitCover'] +'</option>'
+                        + '                </select>'
+                        + '            </div>'
+                        + '            <div class="message active">'+ labels['MessageOverviewMapCrop'] +'</div>'
+                        + '            <label for="overviewMapBackgroundColor">'+ labels['SettingsOverviewMapBackgroundColor'] +'</label>'
+                        + '            <div style="display:flex; align-items:center; gap:5px;">'
+                        + '                <span class="overviewMapBgSwatchWrap" style="'+ mapCheckerboard +' display:inline-flex; border-radius:3px; overflow:hidden; width: calc(100% - 50px);">'
+                        + '                    <input type="color" id="overviewMapBackgroundColor" class="overviewMapBackgroundColor" value="'+ (selectedMapBackgroundColor || '#000000') +'">'
+                        + '                </span>'
+                        + '                <button type="button" class="overviewMapBackgroundClear" title="'+ labels['GenericTransparent'] +'" style="'+ mapCheckerboard +' width:26px; height:26px; padding:0; border:1px solid var(--primary-bg-color); border-radius:3px; cursor:pointer;"></button>'
+                        + '            </div>'
+                        + '            <div class="message active">'+ labels['MessageOverviewMap'] +'</div>'
                         + '        </div>'
-                        + '        <div class="message active">'+ labels['MessageOverviewMap'] +'</div>'
                         + '    </div>'
                         + '</div>';
-        var overviewMapUI = _omw.firstElementChild;
+        var overviewPresentationUI = _omw.firstElementChild;
 
-        adminTabs.querySelector('#OverviewMap').appendChild(overviewMapUI);
+        adminTabs.querySelector('#OverviewPresentation').appendChild(overviewPresentationUI);
+
+        // The map options only mean anything when the overview is a map, so
+        // they are hidden for the grid. .layoutRow is a CSS grid, hence the
+        // inline display toggle rather than a display:block class.
+        var mapSettingsRow = overviewPresentationUI.querySelector('.overviewMapSettings');
+
+        function syncOverviewModeVisibility() {
+            mapSettingsRow.style.display = (selectedOverviewMode === 'map') ? '' : 'none';
+        }
+
+        syncOverviewModeVisibility();
+
+        var overviewModeSelect = overviewPresentationUI.querySelector('.overviewModeSelect');
+
+        overviewModeSelect.querySelectorAll(':scope > div[data-value]').forEach(function(card) {
+            card.addEventListener('click', function() {
+                overviewModeSelect.querySelectorAll(':scope > div[data-value]').forEach(function(sibling) {
+                    sibling.classList.remove('active');
+                });
+                this.classList.add('active');
+
+                selectedOverviewMode = this.getAttribute('data-value');
+                overviewModeSelect.setAttribute('data-value', selectedOverviewMode);
+
+                syncOverviewModeVisibility();
+                configChanged = true;
+            });
+        });
 
         (function() {
 
-            var backgroundList = overviewMapUI.querySelector('.overviewMapBackgroundList');
+            var backgroundList = overviewPresentationUI.querySelector('.overviewMapBackgroundList');
 
             FrameTrail.module('ResourceManager').renderList(backgroundList, true, 'type', 'contains', ['image']);
 
             // The list renders asynchronously and fades in, so the current
             // selection can only be marked once the loading screen is gone.
+            // The attempt count keeps the poll from running forever when the
+            // list never loads, or when the dialog is closed before it does.
             if (selectedMapBackground) {
-                var checkBackgroundLoaded = setInterval(function() {
-                    if (!backgroundList.querySelector('.loadingScreen')) {
+                var backgroundAttemptsLeft = 100,
+                    checkBackgroundLoaded = setInterval(function() {
+                        if (backgroundList.querySelector('.loadingScreen')) {
+                            if (--backgroundAttemptsLeft > 0) return;
+                            clearInterval(checkBackgroundLoaded);
+                            return;
+                        }
                         clearInterval(checkBackgroundLoaded);
                         backgroundList.querySelectorAll('.resourceThumb').forEach(function(thumb) {
                             var res = database.resources[thumb.dataset.resourceid];
@@ -636,12 +702,11 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                 thumb.classList.add('selected');
                             }
                         });
-                    }
-                }, 100);
+                    }, 100);
             }
 
             // Click a selected image again to clear the background.
-            overviewMapUI.addEventListener('click', function(evt) {
+            overviewPresentationUI.addEventListener('click', function(evt) {
                 if (evt.target.closest('.resourceEditButton')) return;
                 var _thumb = evt.target.closest('.overviewMapBackgroundList .resourceThumb');
                 if (!_thumb) return;
@@ -664,13 +729,13 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
             // These are nested under config.overviewMap, and a color input is
             // not one of the types the generic apply loop reads, so both are
             // tracked by hand.
-            overviewMapUI.querySelector('.overviewMapFitSelect').addEventListener('change', function() {
+            overviewPresentationUI.querySelector('.overviewMapFitSelect').addEventListener('change', function() {
                 selectedMapFit = this.value;
                 configChanged = true;
             });
 
-            var mapColorInput = overviewMapUI.querySelector('.overviewMapBackgroundColor'),
-                mapColorClear  = overviewMapUI.querySelector('.overviewMapBackgroundClear');
+            var mapColorInput = overviewPresentationUI.querySelector('.overviewMapBackgroundColor'),
+                mapColorClear  = overviewPresentationUI.querySelector('.overviewMapBackgroundClear');
 
             // The picker sits over a checkerboard; fading it when nothing is set
             // lets the checkerboard show through, which reads as "no colour".
@@ -1117,11 +1182,15 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                     }
                                 });
 
-                                // Apply overview map settings. These live nested
-                                // under config.overviewMap, and the color input is
-                                // not a type the generic loop above reads, so they
-                                // are written explicitly. The markers array is left
-                                // untouched — it is owned by ViewOverviewMap.
+                                // Apply overview presentation settings. The mode is
+                                // picked with option cards rather than a form field,
+                                // and the map settings live nested under
+                                // config.overviewMap with a color input the generic
+                                // loops above do not read, so all of them are written
+                                // explicitly. The markers array is left untouched —
+                                // it is owned by ViewOverviewMap.
+                                database.config.overviewMode = selectedOverviewMode;
+
                                 var _mapData = database.config.overviewMap;
                                 if (!_mapData || typeof _mapData !== 'object') {
                                     _mapData = database.config.overviewMap = {};

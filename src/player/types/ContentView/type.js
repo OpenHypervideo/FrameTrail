@@ -2006,7 +2006,7 @@ FrameTrail.defineType(
                                     +'    </div>'
                                     +'    <hr>'
                                     +'    <div class="layoutRow">'
-                                    +'        <div class="contentViewData column-6" data-property="type" data-value="'+ contentViewData.type +'">'
+                                    +'        <div class="contentViewData optionCards column-6" data-property="type" data-value="'+ contentViewData.type +'">'
                                     +'            <label>'+ self.labels['GenericType'] +':</label>'
                                     +'            <div '+ (contentViewData.type == 'TimedContent' ? 'class="active"' : '') +' data-value="TimedContent">'+ self.labels['GenericAnnotationCollection'] +'</div>'
                                     +'            <div '+ (contentViewData.type == 'CustomHTML' ? 'class="active"' : '') +' data-value="CustomHTML">'+ self.labels['GenericCustomHTML'] +'</div>'
@@ -2014,7 +2014,7 @@ FrameTrail.defineType(
                                     +'            <div '+ (contentViewData.type == 'Timelines' ? 'class="active"' : '') +' data-value="Timelines">'+ self.labels['GenericTimelines'] +'</div>'
                                     +'        </div>'
                                     +'        <div class="generic column-6">'
-                                    +'            <div class="contentViewData" data-property="contentSize" data-value="'+ contentViewData.contentSize +'">'
+                                    +'            <div class="contentViewData optionCards" data-property="contentSize" data-value="'+ contentViewData.contentSize +'">'
                                     +'                <label>'+ self.labels['SettingsContentViewSize'] +':</label>'
                                     +'                <div '+ (contentViewData.contentSize == 'small' ? 'class="active"' : '') +' data-value="small">'+ self.labels['SettingsContentViewSmall'] +'</div>'
                                     +'                <div '+ (contentViewData.contentSize == 'medium' ? 'class="active"' : '') +' data-value="medium">'+ self.labels['SettingsContentViewMedium'] +'</div>'
@@ -2108,7 +2108,7 @@ FrameTrail.defineType(
                     editingUI.querySelector('.contentViewData[data-property="type"]').querySelectorAll(':scope > div[data-value]').forEach(function(optionEl) {
                         var thatType = optionEl.getAttribute('data-value');
                         var thumbWrapper = document.createElement('div');
-                        thumbWrapper.className = 'contentViewOptionThumb';
+                        thumbWrapper.className = 'contentViewOptionThumb optionCardThumb';
                         thumbWrapper.appendChild(_generateSchematic(thatType, 'medium', 'x', false, 3));
                         var labelSpan = document.createElement('span');
                         labelSpan.textContent = optionEl.textContent;
@@ -2126,7 +2126,7 @@ FrameTrail.defineType(
                                 existingThumb.appendChild(_generateSchematic(type, thatSize, thumbAxis, true));
                             } else {
                                 var thumbWrapper = document.createElement('div');
-                                thumbWrapper.className = 'contentViewOptionThumb';
+                                thumbWrapper.className = 'contentViewOptionThumb optionCardThumb';
                                 thumbWrapper.appendChild(_generateSchematic(type, thatSize, thumbAxis, true));
                                 var labelSpan = document.createElement('span');
                                 labelSpan.textContent = optionEl.textContent;

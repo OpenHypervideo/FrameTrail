@@ -658,6 +658,51 @@ input:checked + .slider:before {
     background: var(--secondary-fg-color);
 }
 
+/* Option Cards */
+/* Visual radio-style picker: a wrapper carries data-property and the currently
+   picked data-value, its direct div[data-value] children are the cards. */
+
+.optionCards > div[data-value] {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: stretch;
+    cursor: pointer;
+    vertical-align: top;
+    width: 140px;
+    margin-top: 6px;
+    margin-right: 6px;
+    border: 2px solid transparent;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.optionCards > div[data-value].active {
+    outline: 4px solid #F90;
+}
+
+.optionCards > div[data-value] > span {
+    font-size: 13px;
+    text-align: center;
+    padding: 3px 4px 4px 4px;
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    background: var(--secondary-bg-color);
+}
+
+.optionCards > div[data-value].active > span {
+    font-weight: bold;
+}
+
+.optionCardThumb {
+    position: relative;
+    height: 60px;
+    overflow: hidden;
+    background: var(--primary-bg-color);
+    flex-shrink: 0;
+}
+
 /* Messages */
 
 .message {

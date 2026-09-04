@@ -558,38 +558,8 @@
     height: 278px;
 }
 
-.contentViewEditingUI .contentViewData > div[data-value] {
-    display: inline-flex;
-    flex-direction: column;
-    align-items: stretch;
-    cursor: pointer;
-    vertical-align: top;
-    width: 140px;
-    margin-top: 6px;
-    margin-right: 6px;
-    border: 2px solid transparent;
-    border-radius: 2px;
-    overflow: hidden;
-}
-
-.contentViewEditingUI .contentViewData > div[data-value].active {
-    outline: 4px solid #F90;
-}
-
-.contentViewEditingUI .contentViewData > div[data-value] > span {
-    font-size: 13px;
-    text-align: center;
-    padding: 3px 4px 4px 4px;
-    display: block;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    background: var(--secondary-bg-color);
-}
-
-.contentViewEditingUI .contentViewData > div[data-value].active > span {
-    font-weight: bold;
-}
+/* The card frame itself (.optionCards / .optionCardThumb) comes from
+   generic.css — only the size-specific overrides live here. */
 
 .contentViewEditingUI .contentViewData > div[data-value="small"] {
     width: 54px;
@@ -613,14 +583,6 @@
 
 .contentViewEditingUI .contentViewData > div[data-value="large"] .contentViewOptionThumb {
     height: 157px;
-}
-
-.contentViewEditingUI .contentViewOptionThumb {
-    position: relative;
-    height: 60px;
-    overflow: hidden;
-    background: var(--primary-bg-color);
-    flex-shrink: 0;
 }
 
 /* Size selector: single card fills the thumbnail container */

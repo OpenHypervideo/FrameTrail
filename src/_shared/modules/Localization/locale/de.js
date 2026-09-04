@@ -370,7 +370,6 @@ window.FrameTrail_L10n['de'] = {
     "SettingsNewHypervideoHidden": "Neue Hypervideos standardmäßig verstecken",
     "SettingsOnlyConfirmedUsers": "Nur bestätigte Nutzer:innen",
     "SettingsOpacity": "Deckkraft",
-    "SettingsOverviewMap": "Übersichtskarte",
     "SettingsOverviewMapBackground": "Hintergrundbild",
     "SettingsOverviewMapBackgroundColor": "Hintergrundfarbe",
     "SettingsOverviewMapFit": "Hintergrund-Skalierung",
