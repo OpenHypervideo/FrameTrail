@@ -192,6 +192,53 @@
     border-left: 1px solid #bbb;
 }
 
+/* Collaboration presence
+   The siblings in this container are laid out by an explicit float rule above,
+   so this needs its own — and it is only relevant while editing, like the
+   resource manager and admin buttons. :not(:empty) keeps it out of the layout
+   entirely when nobody else is here, which is the usual case. */
+.titlebar .titlebarActionButtonContainer .collaborationPresence {
+    display: none;
+}
+
+.titlebar.editActive .titlebarActionButtonContainer .collaborationPresence:not(:empty) {
+    display: flex;
+    float: left;
+    align-items: center;
+    height: 40px;
+    max-width: 240px;
+    padding: 0 4px;
+    overflow: hidden;
+}
+
+/* A round avatar carrying up to two initials. The fill and the initials'
+   colour are set inline from the user's own colour — the name itself lives in
+   the tooltip, so this stays a fixed size no matter how long the name is. */
+.titlebar .collaborationChip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    margin: 0 3px;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--secondary-bg-color);
+    color: var(--primary-bg-color);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    text-transform: uppercase;
+    cursor: default;
+}
+
+/* The lock holder — the one person whose edits are actually landing. */
+.titlebar .collaborationChip.editing {
+    box-shadow: 0 0 0 2px var(--primary-bg-color);
+}
+
 .newHypervideoDialog .message.error {
     position: absolute;
 }

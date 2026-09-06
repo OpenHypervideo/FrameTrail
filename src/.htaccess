@@ -15,6 +15,12 @@
 	Deny from all
 </Files>
 ########################################################
+# Deny access to ephemeral collaboration state (_data/.collab)
+########################################################
+<IfModule mod_rewrite.c>
+	RewriteRule (^|/)\.collab(/|$) - [F,L]
+</IfModule>
+########################################################
 # Add Mime Types
 ########################################################
 AddType video/ogg .ogm

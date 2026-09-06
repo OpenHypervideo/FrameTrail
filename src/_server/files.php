@@ -1015,8 +1015,8 @@ function parse_size($size) {
  * 3    =   failed. Config string must be > 3 characters
  *
  */
-function updateConfigFile($configstring) {
-    
+function updateConfigFile($configstring, $baseVersion = null) {
+
     global $conf;
     if ($err = requireLogin("admin")) return $err;
 
@@ -1035,7 +1035,22 @@ function updateConfigFile($configstring) {
     }
 
     $file = new sharedFile($conf["dir"]["data"]."/config.json");
+
+    // Compare-and-swap against the lastchanged we stamped on the previous write.
+    // Without this, two admins in the settings dialog silently erase each other.
+    $current = json_decode($file->read(), true);
+    if ($baseVersion !== null && $baseVersion !== ""
+        && isset($current["lastchanged"]) && $current["lastchanged"] != $baseVersion) {
+        $file->close();
+        $return["status"]   = "fail";
+        $return["code"]     = 7;
+        $return["string"]   = "Config was changed by someone else.";
+        $return["response"] = array("lastchanged" => $current["lastchanged"]);
+        return $return;
+    }
+
     $src = json_decode($configstring, true);
+    $src["lastchanged"] = round(microtime(true) * 1000);
     $jsonsrc = json_encode($src,$conf["settings"]["json_flags"]);
     $file->writeClose($jsonsrc);
 
@@ -1046,6 +1061,7 @@ function updateConfigFile($configstring) {
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Config successfully saved.";
+    $return["response"] = array("lastchanged" => $src["lastchanged"]);
     return $return;
 }
 
@@ -1059,8 +1075,8 @@ function updateConfigFile($configstring) {
  * 2    =   failed. CSS file not found or not writable
  *
  */
-function updateCSSFile($cssstring) {
-    
+function updateCSSFile($cssstring, $baseVersion = null) {
+
     global $conf;
     if ($err = requireLogin("admin")) return $err;
 
@@ -1072,11 +1088,28 @@ function updateCSSFile($cssstring) {
     }
 
     $file = new sharedFile($conf["dir"]["data"]."/custom.css");
+
+    // Plain CSS carries no version field, so the modification time is the token.
+    clearstatcache(true, $conf["dir"]["data"]."/custom.css");
+    $currentVersion = filemtime($conf["dir"]["data"]."/custom.css");
+
+    if ($baseVersion !== null && $baseVersion !== "" && $currentVersion != $baseVersion) {
+        $file->close();
+        $return["status"]   = "fail";
+        $return["code"]     = 7;
+        $return["string"]   = "Global CSS was changed by someone else.";
+        $return["response"] = array("lastchanged" => $currentVersion);
+        return $return;
+    }
+
     $file->writeClose($cssstring);
+
+    clearstatcache(true, $conf["dir"]["data"]."/custom.css");
 
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "CSS file successfully saved.";
+    $return["response"] = array("lastchanged" => filemtime($conf["dir"]["data"]."/custom.css"));
     return $return;
 }
 

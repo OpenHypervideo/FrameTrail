@@ -699,18 +699,6 @@
                 ondrop: function(e) {
                     var dragged = e.relatedTarget;
 
-                    try {
-                        if (TogetherJS && TogetherJS.running) {
-                            var elementFinder = TogetherJS.require("elementFinder");
-                            var location = elementFinder.elementLocation(e.relatedTarget);
-                            TogetherJS.send({
-                                type: "simulate-annotation-add",
-                                element: location,
-                                containerElement: '.annotationTimeline'
-                            });
-                        }
-                    } catch (ex) {}
-
                     var resourceID      = dragged.getAttribute('data-resourceID'),
                         videoDuration   = FrameTrail.module('HypervideoModel').duration,
                         startTime,

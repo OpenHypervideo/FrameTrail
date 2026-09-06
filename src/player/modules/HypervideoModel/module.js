@@ -50,7 +50,14 @@
         unsavedCustomCSS        = false,
         unsavedAnnotations      = false,
         unsavedChapters         = false,
-        unsavedLayout           = false;
+        unsavedLayout           = false,
+
+        autoSaveArmed           = false,
+        autoSaveTimeout         = null;
+
+    // Long enough that a burst of edits coalesces into one write, short enough
+    // that a collaborator's refresh shows recent work.
+    var AUTOSAVE_DELAY = 10000;
 
 
 
@@ -173,6 +180,15 @@
                 return message;
             }
         });
+
+        // Track presence for this hypervideo. Safe to call on every init: the
+        // module no-ops when there is no server or nobody is logged in, and
+        // re-targets itself when the hypervideo changes.
+        autoSaveArmed = false;
+        window.clearTimeout(autoSaveTimeout);
+        if (FrameTrail.module('Collaboration')) {
+            FrameTrail.module('Collaboration').start('hypervideo', FrameTrail.module('RouteNavigation').hypervideoID);
+        }
 
 
         callback.call()
@@ -1028,6 +1044,100 @@
 
         FrameTrail.changeState('unsavedChanges', true);
 
+        var Collaboration = FrameTrail.module('Collaboration');
+        if (Collaboration) {
+            // Gates takeover: a live editor with work only in their browser
+            // must not be overridden.
+            Collaboration.setUnsaved(true);
+            scheduleAutoSave();
+        }
+
+    }
+
+
+    /**
+     * Auto-save exists so that other people can actually see the work — a
+     * collaborator refreshing reads hypervideo.json from disk, so unsaved work
+     * is invisible to them. It therefore arms only while somebody else is
+     * present, and only while we hold the lock (so it can never race).
+     *
+     * Once armed it stays armed for the rest of the edit session rather than
+     * flapping off when the last observer leaves, which would make save
+     * semantics change under the user twice.
+     *
+     * @method scheduleAutoSave
+     */
+    function scheduleAutoSave() {
+
+        var Collaboration = FrameTrail.module('Collaboration');
+
+        if (!Collaboration || !Collaboration.isActive()) return;
+
+        if (!autoSaveArmed) {
+            if (!Collaboration.hasLock() || !Collaboration.othersPresent()) return;
+            armAutoSave();
+            return;   // armAutoSave schedules once the user has answered
+        }
+
+        if (!Collaboration.hasLock()) return;
+
+        window.clearTimeout(autoSaveTimeout);
+        autoSaveTimeout = window.setTimeout(function() {
+            if (FrameTrail.getState('unsavedChanges') && Collaboration.hasLock()) {
+                save();
+            }
+        }, AUTOSAVE_DELAY);
+
+    }
+
+
+    /**
+     * Turning auto-save on removes the "leave without saving to discard"
+     * escape hatch, so if there is already unsaved work when it arms, the user
+     * gets one chance to discard it first.
+     *
+     * @method armAutoSave
+     */
+    function armAutoSave() {
+
+        autoSaveArmed = true;
+
+        if (!FrameTrail.getState('unsavedChanges')) {
+            scheduleAutoSave();
+            return;
+        }
+
+        var _wrapper = document.createElement('div');
+        _wrapper.innerHTML = '<div class="confirmAutoSave">'
+                           + '    <div class="message active">'+ labels['MessageCollabAutoSaveStarting'] +'</div>'
+                           + '</div>';
+
+        var autoSaveDialogCtrl = Dialog({
+            title:     labels['MessageCollabAutoSaveStartingShort'],
+            content:   _wrapper.firstElementChild,
+            resizable: false,
+            modal:     true,
+            close:     function() { autoSaveDialogCtrl.destroy(); },
+            buttons: [
+                {
+                    text: labels['GenericDiscardChanges'],
+                    click: function() {
+                        autoSaveDialogCtrl.destroy();
+                        FrameTrail.module('Collaboration').release();
+                        autoSaveArmed = false;
+                        leaveEditMode();
+                    }
+                },
+                {
+                    text: labels['GenericContinue'],
+                    click: function() {
+                        autoSaveDialogCtrl.destroy();
+                        scheduleAutoSave();
+                    }
+                }
+            ]
+        });
+
     }
 
 
@@ -1103,6 +1213,16 @@
             for (var i=0; i < callbackReturns.length; i++) {
 
                 var result = callbackReturns[i];
+
+                // Compare-and-swap rejected the write: someone else saved
+                // between our load and this save. Writing anyway would erase
+                // their work, so offer a reload instead of a bare error.
+                if (result.failed && result.code === 7) {
+                    FrameTrail.module('InterfaceModal').hideMessage();
+                    showSaveConflictDialog(result.conflict);
+                    return;
+                }
+
                 if (result.failed) {
                     FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] +' ('+ result.error +': '+ result.code +')');
                     return;
@@ -1121,6 +1241,13 @@
             unsavedChapters     = false;
             unsavedLayout       = false;
             FrameTrail.changeState('unsavedChanges', false);
+
+            var Collaboration = FrameTrail.module('Collaboration');
+            if (Collaboration) {
+                // Clean again — a waiting collaborator may now take over.
+                Collaboration.setUnsaved(false);
+                Collaboration.acknowledgeVersion();
+            }
 
             FrameTrail.triggerEvent('userAction', {
                 action: 'EditSave'
@@ -1418,6 +1545,85 @@
 
     }
 
+
+
+    /**
+     * The server refused a save because the document changed underneath us.
+     * There is no merge to offer — our in-memory copy and the file on disk have
+     * diverged wholesale — so the only honest choices are to discard ours and
+     * reload, or to keep editing and deal with it later.
+     *
+     * @method showSaveConflictDialog
+     * @param {Object} conflict server-reported state of the file on disk
+     */
+    function showSaveConflictDialog(conflict) {
+
+        var by = (conflict && conflict.creator) ? conflict.creator : '';
+
+        var _wrapper = document.createElement('div');
+        _wrapper.innerHTML = '<div class="saveConflict">'
+                           + '    <div class="message error active">'+ labels['ErrorSaveConflict'] +'</div>'
+                           + '    <p>'+ (by ? labels['ErrorSaveConflictBy'].replace('%s', by) : '') +'</p>'
+                           + '</div>';
+
+        var conflictDialogCtrl = Dialog({
+            title:     labels['ErrorSaveConflictShort'],
+            content:   _wrapper.firstElementChild,
+            resizable: false,
+            modal:     true,
+            close:     function() { conflictDialogCtrl.destroy(); },
+            buttons: [
+                {
+                    text: labels['GenericContinue'],
+                    click: function() { conflictDialogCtrl.destroy(); }
+                },
+                {
+                    text: labels['GenericReloadDiscard'],
+                    click: function() {
+                        conflictDialogCtrl.destroy();
+                        refreshFromServer();
+                    }
+                }
+            ]
+        });
+
+    }
+
+
+    /**
+     * Reload this hypervideo from the server, discarding local changes.
+     *
+     * This is the existing hypervideo-switch path pointed at the hypervideo we
+     * are already on, so it tears down and rebuilds the player — playback is
+     * interrupted by design. It is only ever run on explicit user action.
+     *
+     * @method refreshFromServer
+     */
+    function refreshFromServer() {
+
+        var currentID = FrameTrail.module('RouteNavigation').hypervideoID,
+            wasEditing = !!FrameTrail.getState('editMode');
+
+        window.clearTimeout(autoSaveTimeout);
+
+        unsavedOverlays     = false;
+        unsavedCodeSnippets = false;
+        unsavedEvents       = false;
+        unsavedCustomCSS    = false;
+        unsavedAnnotations  = false;
+        unsavedChapters     = false;
+        unsavedLayout       = false;
+        FrameTrail.changeState('unsavedChanges', false);
+
+        var Collaboration = FrameTrail.module('Collaboration');
+        if (Collaboration) {
+            Collaboration.setUnsaved(false);
+            Collaboration.acknowledgeVersion();
+        }
+
+        updateHypervideo(currentID, wasEditing, true);
+
+    }
 
 
     /**
@@ -1819,6 +2025,7 @@
         saveAs:                 saveAs,
         leaveEditMode:          leaveEditMode,
         updateHypervideo:       updateHypervideo,
+        refreshFromServer:      refreshFromServer,
         exportIt:               exportIt
 
     }

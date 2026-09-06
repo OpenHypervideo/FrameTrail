@@ -134,6 +134,7 @@
 
     // Set up Undo Manager
     FrameTrail.initModule('UndoManager');
+    FrameTrail.initModule('Collaboration');
 
 
     // Initialize storage, then start the actual init process

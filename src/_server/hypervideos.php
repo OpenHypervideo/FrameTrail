@@ -286,7 +286,7 @@ function hypervideoDelete($hypervideoID,$hypervideoName) {
  * 5       =   failed. Permission denied! The user is not an admin, nor is it their own hypervideo.
  * 6       =   failed. $src too short (< 10 chars)
  */
-function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subtitles = false) {
+function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subtitles = false, $baseVersion = null) {
 
     global $conf;
     if ($err = requireLogin()) return $err;
@@ -316,6 +316,22 @@ function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subt
         $return["status"] = "fail";
         $return["code"] = 5;
         $return["string"] = "Permission denied! The User is not an admin, nor is it his own hypervideo.";
+        return $return;
+    }
+
+    // Compare-and-swap: the client sends the meta.lastchanged it loaded. If the
+    // file has moved on since then, someone else saved in the meantime and
+    // writing $src verbatim would silently erase their work. A missing
+    // baseVersion skips the check, so older clients keep working.
+    if ($baseVersion !== null && $baseVersion !== "" && $hv["meta"]["lastchanged"] != $baseVersion) {
+        $file->close();
+        $return["status"]   = "fail";
+        $return["code"]     = 7;
+        $return["string"]   = "Hypervideo was changed by someone else.";
+        $return["response"] = array(
+            "lastchanged" => $hv["meta"]["lastchanged"],
+            "creator"     => $hv["meta"]["creator"]
+        );
         return $return;
     }
 

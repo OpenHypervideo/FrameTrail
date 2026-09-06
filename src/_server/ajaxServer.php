@@ -131,7 +131,22 @@ switch($_REQUEST["a"]) {
     case "hypervideoChangeFile":
 
         include_once("hypervideos.php");
-        $return = hypervideoChange($_REQUEST["hypervideoID"], $_REQUEST["src"], $_REQUEST["SubtitlesToDelete"], $_FILES["subtitles"]);
+        $return = hypervideoChange($_REQUEST["hypervideoID"], $_REQUEST["src"], $_REQUEST["SubtitlesToDelete"], $_FILES["subtitles"], isset($_REQUEST["baseVersion"]) ? $_REQUEST["baseVersion"] : null);
+        break;
+
+
+    /*#########################################
+     ############ Collaboration Handling
+     #########################################*/
+
+    case "collabSync":
+        include_once("collaboration.php");
+        $return = collabSync($_REQUEST["scope"], $_REQUEST["scopeId"], !empty($_REQUEST["editing"]) && $_REQUEST["editing"] !== "false", !empty($_REQUEST["unsaved"]) && $_REQUEST["unsaved"] !== "false", isset($_REQUEST["knownVersion"]) ? $_REQUEST["knownVersion"] : null);
+        break;
+
+    case "collabLock":
+        include_once("collaboration.php");
+        $return = collabLock($_REQUEST["scope"], $_REQUEST["scopeId"], $_REQUEST["op"]);
         break;
 
 
@@ -191,7 +206,7 @@ switch($_REQUEST["a"]) {
 
     case "configChange":
         include_once("files.php");
-        $return = updateConfigFile($_REQUEST["src"]);
+        $return = updateConfigFile($_REQUEST["src"], isset($_REQUEST["baseVersion"]) ? $_REQUEST["baseVersion"] : null);
         break;
 
     /*#########################################
@@ -200,7 +215,7 @@ switch($_REQUEST["a"]) {
 
     case "globalCSSChange":
         include_once("files.php");
-        $return = updateCSSFile($_REQUEST["src"]);
+        $return = updateCSSFile($_REQUEST["src"], isset($_REQUEST["baseVersion"]) ? $_REQUEST["baseVersion"] : null);
         break;
 
     /*#########################################
@@ -416,7 +431,6 @@ switch($_REQUEST["a"]) {
                 "userTracesEndAction"=> "",
                 "userNeedsConfirmation"=> true,
                 "alwaysForceLogin"=> false,
-                "allowCollaboration"=> false,
                 "allowUploads"=> true,
                 "defaultTheme"=> "",
                 "videoFit"=> "contain",
@@ -576,6 +590,8 @@ switch($_REQUEST["a"]) {
             if ($file->isFile()) {
                 $relativePath = substr($file->getPathname(), strlen($dataDir) + 1);
                 if (basename($relativePath) === "users.json") { continue; }
+                // Collaboration presence/lock state is ephemeral and never part of the portable payload.
+                if (strpos(str_replace(DIRECTORY_SEPARATOR, "/", $relativePath), ".collab/") === 0) { continue; }
                 $zip->addFile($file->getPathname(), "_data/" . str_replace(DIRECTORY_SEPARATOR, "/", $relativePath));
             }
         }

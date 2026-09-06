@@ -371,7 +371,6 @@ Runtime config is in `_data/config.json`:
 - `defaultUserRole` — Role for new users (`"user"` or `"admin"`)
 - `userNeedsConfirmation` — Require admin approval for new accounts
 - `allowUploads` — Enable file uploads
-- `allowCollaboration` — Allow multiple users to annotate
 - `alwaysForceLogin` — Make the instance **private**: require a valid login to view any content (see below)
 - `defaultTheme` — Default color theme
 

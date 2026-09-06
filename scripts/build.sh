@@ -183,6 +183,7 @@ JS_FILES=(
     "_shared/modules/HypervideoFormBuilder/module.js"
     "_shared/modules/UserTraces/module.js"
     "_shared/modules/UndoManager/module.js"
+    "_shared/modules/Collaboration/module.js"
 
     # Player modules
     "player/modules/AnnotationsController/module.js"

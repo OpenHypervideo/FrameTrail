@@ -1010,8 +1010,15 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             FrameTrail.module('InterfaceModal').hideMessage(500);
 
             if (!result || !result.success) {
-                FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingSettings']);
-                console.error('FrameTrail: could not save overview map layout:', result && result.error);
+                // Marker placements live in config.json, the same shared file the
+                // admin settings dialog writes, so this can lose a race with another
+                // admin. Say so plainly rather than reporting a generic save error.
+                if (result && result.code === 7) {
+                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSaveConflictSettings']);
+                } else {
+                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingSettings']);
+                    console.error('FrameTrail: could not save overview map layout:', result && result.error);
+                }
                 if (callback) callback(false);
                 return;
             }

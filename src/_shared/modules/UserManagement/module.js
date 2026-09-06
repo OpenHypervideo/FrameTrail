@@ -801,17 +801,6 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                         modal: true,
                         content: loggedOutDialog,
                         close: function() {
-                            try {
-                                if (TogetherJS && TogetherJS.running) {
-                                    var elementFinder = TogetherJS.require("elementFinder");
-                                    var location = elementFinder.elementLocation(loggedOutDialog);
-                                    TogetherJS.send({
-                                        type: "simulate-dialog-close",
-                                        element: location
-                                    });
-                                }
-                            } catch (e) {}
-
                             FrameTrail.triggerEvent('userAction', {
                                 action: 'UserLogout'
                             });

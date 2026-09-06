@@ -56,6 +56,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '                <button class="editMode" data-editmode="codesnippets"><span class="icon-code"></span><span class="editModeLabel">'+ labels['SidebarCustomCode'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="chapters"><span class="icon-list-bullet"></span><span class="editModeLabel">'+ labels['SidebarChapters'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="annotations"><span class="icon-annotations"></span><span class="editModeLabel">'+ labels['SidebarMyAnnotations'] +'<span class="icon-user"></span></button>'
+                   + '                <div class="collaborationInfo"></div>'
                    + '            </div>'
                    + '        </div>'
                    + '    </div>'
@@ -78,7 +79,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         RedoButton             = domElement.querySelector('.redoButton'),
 
         MapAddButton           = domElement.querySelector('.overviewMapAddButton'),
-        MapSaveButton          = domElement.querySelector('.overviewMapSaveButton');
+        MapSaveButton          = domElement.querySelector('.overviewMapSaveButton'),
+        CollaborationInfo      = domElement.querySelector('.collaborationInfo');
 
     var _resourcesItemHandler = null;
 
@@ -1003,12 +1005,173 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
     };
 
     /**
+     * Edit modes that write to the shared hypervideo.json and therefore need
+     * the soft lock. "annotations" is deliberately absent: annotations live in
+     * per-user files and stay concurrently editable, which is how FrameTrail
+     * has always worked. "preview" writes nothing.
+     */
+    var LOCK_GATED_EDIT_MODES = ['layout', 'overlays', 'codesnippets', 'chapters'];
+
+
+    function isLockGatedMode(editMode) {
+
+        return LOCK_GATED_EDIT_MODES.indexOf(editMode) !== -1;
+
+    }
+
+
+    /**
+     * I render the presence banner, the lock notice and the refresh
+     * affordance. All of it is built from existing generic.css classes.
+     *
+     * @method renderCollaborationInfo
+     */
+    function renderCollaborationInfo() {
+
+        if (!CollaborationInfo) return;
+
+        var Collaboration = FrameTrail.module('Collaboration');
+        if (!Collaboration) return;
+
+        CollaborationInfo.innerHTML = '';
+
+        // Stale: somebody else's work is on disk and we are not showing it.
+        if (Collaboration.isStale()) {
+
+            var holder = Collaboration.lockHolder(),
+                staleText = (holder && holder.name)
+                          ? labels['MessageCollabChangesBy'].replace('%s', holder.name)
+                          : labels['MessageCollabChangesAvailable'];
+
+            var staleMsg = document.createElement('div');
+            staleMsg.className = 'message active';
+            staleMsg.textContent = staleText;
+
+            var refreshBtn = document.createElement('button');
+            refreshBtn.className = 'collabRefreshButton';
+            refreshBtn.textContent = labels['GenericRefresh'];
+            refreshBtn.addEventListener('click', function() {
+                if (FrameTrail.getState('unsavedChanges')) {
+                    if (!window.confirm(labels['MessageCollabRefreshDiscard'])) return;
+                }
+                FrameTrail.module('HypervideoModel').refreshFromServer();
+            });
+
+            CollaborationInfo.appendChild(staleMsg);
+            CollaborationInfo.appendChild(refreshBtn);
+
+        }
+
+        // Somebody else holds the lock: say who, and offer to ask for it.
+        if (Collaboration.isLockedByOther()) {
+
+            var lockHolder = Collaboration.lockHolder();
+
+            var lockMsg = document.createElement('div');
+            lockMsg.className = 'message error active';
+            lockMsg.textContent = labels['MessageCollabLockedBy'].replace('%s', (lockHolder && lockHolder.name) ? lockHolder.name : '');
+
+            var takeoverBtn = document.createElement('button');
+            takeoverBtn.className = 'collabTakeoverButton';
+            takeoverBtn.textContent = labels['GenericRequestEditAccess'];
+            takeoverBtn.addEventListener('click', function() {
+                takeoverBtn.disabled = true;
+                Collaboration.takeover(function(result) {
+                    takeoverBtn.disabled = false;
+                    if (!result.ok) {
+                        // code 5 means the holder is live and has unsaved work.
+                        FrameTrail.module('InterfaceModal').showErrorMessage(
+                            result.code === 5 ? labels['MessageCollabTakeoverBlocked'] : labels['MessageCollabTakeoverFailed']
+                        );
+                        FrameTrail.module('InterfaceModal').hideMessage(3000);
+                    }
+                });
+            });
+
+            CollaborationInfo.appendChild(lockMsg);
+            CollaborationInfo.appendChild(takeoverBtn);
+
+        } else if (Collaboration.hasLock() && Collaboration.othersPresent()) {
+
+            var liveMsg = document.createElement('div');
+            liveMsg.className = 'message active';
+            liveMsg.textContent = labels['MessageCollabAutoSaveActive'];
+            CollaborationInfo.appendChild(liveMsg);
+
+        }
+
+        updateLockGatedControls();
+
+    }
+
+
+    /**
+     * I disable the controls that write to shared state while somebody else
+     * holds the lock. The edit UI stays visible and navigable — only mutation
+     * is blocked — and annotation editing is never affected.
+     *
+     * @method updateLockGatedControls
+     */
+    function updateLockGatedControls() {
+
+        var Collaboration = FrameTrail.module('Collaboration');
+        if (!Collaboration) return;
+
+        var blocked = Collaboration.isLockedByOther();
+
+        videoContainerControls.querySelectorAll('.editMode').forEach(function(btn) {
+            if (isLockGatedMode(btn.dataset.editmode)) {
+                btn.classList.toggle('collabLocked', blocked);
+            }
+        });
+
+        domElement.classList.toggle('collabLocked', blocked);
+
+        if (SaveButton && FrameTrail.getState('editMode')) {
+            SaveButton.disabled = !FrameTrail.module('StorageManager').canSave() || blocked;
+        }
+
+    }
+
+
+    /**
+     * I claim or release the soft lock as the user enters and leaves the edit
+     * modes that write to shared state.
+     *
+     * @method syncCollaborationLock
+     * @param {String} editMode
+     */
+    function syncCollaborationLock(editMode) {
+
+        var Collaboration = FrameTrail.module('Collaboration');
+        if (!Collaboration || !Collaboration.isActive()) return;
+
+        Collaboration.setEditing(!!editMode);
+
+        if (isLockGatedMode(editMode)) {
+            if (!Collaboration.hasLock()) {
+                // A refusal is fine — renderCollaborationInfo then shows who has it.
+                Collaboration.claim(function() { renderCollaborationInfo(); });
+            }
+        } else if (editMode === false) {
+            if (Collaboration.hasLock()) {
+                Collaboration.release(function() { renderCollaborationInfo(); });
+            }
+        }
+
+    }
+
+
+    /**
      * I react to a change in the global state "editMode"
      * @method toggleEditMode
      * @param {String} editMode
      * @param {String} oldEditMode
      */
     function toggleEditMode(editMode, oldEditMode){
+
+        syncCollaborationLock(editMode);
+        renderCollaborationInfo();
 
         if (editMode) {
 
@@ -1119,7 +1282,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             unsavedChanges: toogleUnsavedChanges,
             viewMode:       toggleViewMode,
             editMode:       toggleEditMode,
-            loggedIn:       changeUserLogin
+            loggedIn:       changeUserLogin,
+            collabState:    renderCollaborationInfo
         },
 
         newUnsavedChange: newUnsavedChange,

@@ -232,12 +232,6 @@ FrameTrail.defineType(
                         if (window.htmlCodeEditor) {
                             window.htmlCodeEditor.requestMeasure();
 
-                            try {
-                                if (TogetherJS && TogetherJS.running) {
-                                    TogetherJS.reinitialize();
-                                }
-                            } catch (e) {}
-
                         }
                     });
 

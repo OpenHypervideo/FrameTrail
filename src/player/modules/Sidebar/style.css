@@ -136,6 +136,42 @@
     width: 100%;
 }
 
+/* Collaboration status (lock notice / refresh affordance)
+   The sidebar is a fixed 54px icon rail, so a text banner cannot sit inside it.
+   Anchor the panel just clear of the rail instead — the same expand-to-the-right
+   idiom the edit-mode labels already use on hover. :not(:empty) keeps it out of
+   the layout entirely when there is nothing to say, which is the usual case. */
+.sidebarContainer .viewmodeControls .collaborationInfo {
+    display: none;
+}
+
+.sidebar.editActive .sidebarContainer .viewmodeControls .collaborationInfo:not(:empty) {
+    display: block;
+    position: absolute;
+    left: 54px;
+    top: 0;
+    width: 230px;
+    padding: 8px 8px 4px 8px;
+    background: var(--primary-fg-color);
+    border: 1px solid var(--secondary-bg-color);
+    border-left: none;
+    border-radius: 0 4px 4px 0;
+    box-shadow: 2px 2px 4px rgba(0, 0, 0, .25);
+    z-index: 6;
+}
+
+.sidebarContainer .viewmodeControls .collaborationInfo .message {
+    margin-bottom: 6px;
+}
+
+.sidebarContainer .viewmodeControls .collaborationInfo button {
+    display: block;
+    width: 100%;
+    margin-bottom: 4px;
+    text-align: center;
+    cursor: pointer;
+}
+
 .sidebarContainer .viewmodeControls .viewModeActionButtonContainer {
     padding: 0 0px 8px 0px;
     border-bottom: 1px solid #bbbbbb;

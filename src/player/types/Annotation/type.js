@@ -416,21 +416,6 @@ FrameTrail.defineType(
                                 self.data.start = (leftPercent * (videoDuration / 100)) + HypervideoModel.offsetIn;
                                 self.data.end   = ((leftPercent + widthPercent) * (videoDuration / 100)) + HypervideoModel.offsetIn;
 
-                                try {
-                                    if (TogetherJS && TogetherJS.running) {
-                                        var elementFinder = TogetherJS.require("elementFinder");
-                                        var location = elementFinder.elementLocation(e.target);
-                                        TogetherJS.send({
-                                            type: "simulate-annotation-change",
-                                            element: location,
-                                            containerElement: '.annotationTimeline',
-                                            resourceID: self.data.resourceId,
-                                            startTime: self.data.start,
-                                            endTime: self.data.end
-                                        });
-                                    }
-                                } catch (ex) {}
-
                                 self.updateTimelineElement();
 
                                 FrameTrail.module('AnnotationsController').stackTimelineView();
@@ -619,21 +604,6 @@ FrameTrail.defineType(
 
                                 self.data.start = (leftPercent * (videoDuration / 100)) + HypervideoModel.offsetIn;
                                 self.data.end   = ((leftPercent + widthPercent) * (videoDuration / 100)) + HypervideoModel.offsetIn;
-
-                                try {
-                                    if (TogetherJS && TogetherJS.running) {
-                                        var elementFinder = TogetherJS.require("elementFinder");
-                                        var location = elementFinder.elementLocation(e.target);
-                                        TogetherJS.send({
-                                            type: "simulate-annotation-change",
-                                            element: location,
-                                            containerElement: '.annotationTimeline',
-                                            resourceID: self.data.resourceId,
-                                            startTime: self.data.start,
-                                            endTime: self.data.end
-                                        });
-                                    }
-                                } catch (ex) {}
 
                                 self.updateTimelineElement();
 

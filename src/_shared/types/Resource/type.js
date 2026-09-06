@@ -484,17 +484,6 @@ FrameTrail.defineType(
                             modal:     true,
                             close: function() {
 
-                                try {
-                                    if (TogetherJS && TogetherJS.running) {
-                                        var elementFinder = TogetherJS.require("elementFinder");
-                                        var location = elementFinder.elementLocation(this);
-                                        TogetherJS.send({
-                                            type: "simulate-dialog-close",
-                                            element: location
-                                        });
-                                    }
-                                } catch (e) {}
-
                                 previewDialogCtrl.destroy();
                                 animationDiv.style.top = finalTop + 'px';
                                 animationDiv.style.left = finalLeft + 'px';
@@ -1775,17 +1764,6 @@ FrameTrail.defineType(
 
                     controlsContainer.querySelector('.deleteAnnotation').addEventListener('click', function(){
 
-                        try {
-                            if (TogetherJS && TogetherJS.running) {
-                                var elementFinder = TogetherJS.require("elementFinder");
-                                var location = elementFinder.elementLocation(this);
-                                TogetherJS.send({
-                                    type: "simulate-special-click", 
-                                    element: location
-                                });
-                            }
-                        } catch (e) {}
-                        
                         FrameTrail.module('AnnotationsController').deleteAnnotation(annotation);
 
                     });

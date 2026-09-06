@@ -105,8 +105,6 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             +   '            <input type="radio" name="defaultUserRole" id="user_role_user" value="user" '+((configData.defaultUserRole == "user") ? "checked" : "")+'>'
                             +   '            <label for="user_role_user">'+ labels['UserRoleUser'] +'</label><br>'
                             +   '        </div>'
-                            +   '        <div class="message active">'+ labels['MessageUserCollaboration'] +'</div>'
-                            +   '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="allowCollaboration" id="allowCollaboration" '+((configData.allowCollaboration && configData.allowCollaboration.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="allowCollaboration">'+ labels['SettingsAllowCollaboration'] +'</label></div>'
                             +   '    </div>'
                             +   '    <div class="column-3">'
                             +   '        <div class="message active">'+ labels['MessageAllowFileUploads'] +'</div>'
@@ -1134,6 +1132,9 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
             close: function() {
                 // If closing without applying (X button or ESC), just remove dialog
                 // No changes are applied until "Apply" button is clicked
+                if (FrameTrail.module('Collaboration')) {
+                    FrameTrail.module('Collaboration').stop('settings', 'global');
+                }
                 adminDialogCtrl.destroy();
             },
             buttons: [
@@ -1316,6 +1317,51 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                 }
             ]
         });
+
+        // config.json and custom.css are single shared files written whole, so
+        // two admins in here would silently erase each other. Claim the
+        // 'settings' scope for as long as the dialog is open. This runs
+        // alongside the hypervideo scope, not instead of it.
+        claimSettingsLock(adminDialogCtrl);
+    }
+
+
+    /**
+     * I take the soft lock on the shared instance settings. If somebody else
+     * has it, the dialog stays readable but Apply is disabled — the compare-
+     * and-swap on save would reject the write anyway, and refusing up front is
+     * kinder than failing after the user has retyped everything.
+     *
+     * @method claimSettingsLock
+     * @param {Object} dialogCtrl
+     */
+    function claimSettingsLock(dialogCtrl) {
+
+        var Collaboration = FrameTrail.module('Collaboration');
+        if (!Collaboration || !Collaboration.isActive()) return;
+
+        Collaboration.start('settings', 'global');
+
+        Collaboration.claim(function(result) {
+
+            if (result.ok) return;
+
+            var buttonPane = dialogCtrl.widget().querySelector('.ft-dialog-buttonpane');
+            if (!buttonPane) return;
+
+            var holder = Collaboration.lockHolder('settings', 'global');
+
+            var msgEl = document.createElement('div');
+            msgEl.className = 'message error active';
+            msgEl.style.flexBasis = '100%';
+            msgEl.textContent = labels['MessageCollabSettingsLockedBy'].replace('%s', (holder && holder.name) ? holder.name : '');
+            buttonPane.insertBefore(msgEl, buttonPane.firstChild);
+
+            var applyButton = buttonPane.querySelector('button');
+            if (applyButton) applyButton.disabled = true;
+
+        }, 'settings', 'global');
+
     }
 
     return {

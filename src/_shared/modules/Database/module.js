@@ -38,7 +38,12 @@
             'fr': 'Français'
         },
 
-        users  = {};
+        users  = {},
+
+        // Compare-and-swap token for custom.css. Unlike hypervideo.json and
+        // config.json, plain CSS has nowhere to carry a version, so we only
+        // learn it from the server's reply to our own writes.
+        cssBaseVersion = null;
 
 
     /**
@@ -1644,10 +1649,15 @@
             type:     'POST',
             url:      '_server/ajaxServer.php',
             dataType: 'json',
-            data:     { a: 'configChange', src: JSON.stringify(config, null, 4) }
+            data:     { a: 'configChange', src: JSON.stringify(config, null, 4), baseVersion: (config.lastchanged == null ? '' : config.lastchanged) }
         }, function (data) {
             if (data.code === 0) {
+                if (data.response && data.response.lastchanged) {
+                    config.lastchanged = data.response.lastchanged;
+                }
                 callback.call(window, { success: true });
+            } else if (data.code === 7) {
+                callback.call(window, { failed: 'config', error: 'Conflict', code: 7, conflict: data.response });
             } else {
                 callback.call(window, { failed: 'config', error: data.string, code: data.code });
             }
@@ -1694,10 +1704,18 @@
             type:     'POST',
             url:      '_server/ajaxServer.php',
             dataType: 'json',
-            data:     { a: 'globalCSSChange', src: styles }
+            // Plain CSS carries no version field, so we only have a token once the
+            // server has told us one. The first save of a session is unguarded;
+            // the settings lock covers that window.
+            data:     { a: 'globalCSSChange', src: styles, baseVersion: (cssBaseVersion == null ? '' : cssBaseVersion) }
         }, function (data) {
             if (data.code === 0) {
+                if (data.response && data.response.lastchanged) {
+                    cssBaseVersion = data.response.lastchanged;
+                }
                 callback.call(window, { success: true });
+            } else if (data.code === 7) {
+                callback.call(window, { failed: 'globalcss', error: 'Conflict', code: 7, conflict: data.response });
             } else {
                 callback.call(window, { failed: 'globalcss', error: 'ServerError', code: data.code });
             }
@@ -1733,19 +1751,30 @@
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             var path = 'hypervideos/' + thisHypervideoID + '/hypervideo.json';
             adapter.writeJSON(path, saveData)
-                .then(function() { callback.call(window, { success: true }); })
+                .then(function() {
+                    hypervideos[thisHypervideoID].lastchanged = saveData.meta.lastchanged;
+                    callback.call(window, { success: true });
+                })
                 .catch(function(error) { callback.call(window, { failed: 'hypervideo', error: error.message }); });
             return;
         }
+
+        // The value loaded from disk. convertToDatabaseFormat() stamps a fresh
+        // Date.now() into its own output and never writes back here, so this
+        // stays the version we actually rendered from — the compare-and-swap token.
+        var baseVersion = hypervideos[thisHypervideoID].lastchanged;
 
         _ajax({
             type:     'POST',
             url:      '_server/ajaxServer.php',
             dataType: 'json',
-            data:     { a: 'hypervideoChange', hypervideoID: thisHypervideoID, src: JSON.stringify(saveData, null, 4) }
+            data:     { a: 'hypervideoChange', hypervideoID: thisHypervideoID, src: JSON.stringify(saveData, null, 4), baseVersion: (baseVersion == null ? '' : baseVersion) }
         }, function (data) {
             if (data.code === 0) {
+                hypervideos[thisHypervideoID].lastchanged = saveData.meta.lastchanged;
                 callback.call(window, { success: true });
+            } else if (data.code === 7) {
+                callback.call(window, { failed: 'hypervideo', error: 'Conflict', code: 7, conflict: data.response });
             } else {
                 callback.call(window, { failed: 'hypervideo', error: 'ServerError', code: data.code });
             }
