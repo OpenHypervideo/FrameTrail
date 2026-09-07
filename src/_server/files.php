@@ -1058,10 +1058,22 @@ function updateConfigFile($configstring, $baseVersion = null) {
     // config.alwaysForceLogin value (writes/removes the serve.php rewrite).
     ftSyncPrivacyRules();
 
+    // Name the actual writer so a stale collaborator is told who changed it.
+    include_once("collaboration.php");
+    collabRecordWrite("settings", "global",
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
+
+    clearstatcache(true, $conf["dir"]["data"]."/config.json");
+
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Config successfully saved.";
-    $return["response"] = array("lastchanged" => $src["lastchanged"]);
+    // lastchanged is the compare-and-swap token for config.json itself;
+    // version is the mtime the collaboration poll compares against.
+    $return["response"] = array(
+        "lastchanged" => $src["lastchanged"],
+        "version"     => @filemtime($conf["dir"]["data"]."/config.json")
+    );
     return $return;
 }
 
@@ -1106,10 +1118,16 @@ function updateCSSFile($cssstring, $baseVersion = null) {
 
     clearstatcache(true, $conf["dir"]["data"]."/custom.css");
 
+    include_once("collaboration.php");
+    collabRecordWrite("settings", "global",
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
+
+    $cssVersion = filemtime($conf["dir"]["data"]."/custom.css");
+
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "CSS file successfully saved.";
-    $return["response"] = array("lastchanged" => filemtime($conf["dir"]["data"]."/custom.css"));
+    $return["response"] = array("lastchanged" => $cssVersion, "version" => $cssVersion);
     return $return;
 }
 

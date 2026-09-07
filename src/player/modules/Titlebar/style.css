@@ -211,34 +211,6 @@
     overflow: hidden;
 }
 
-/* A round avatar carrying up to two initials. The fill and the initials'
-   colour are set inline from the user's own colour — the name itself lives in
-   the tooltip, so this stays a fixed size no matter how long the name is. */
-.titlebar .collaborationChip {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    box-sizing: border-box;
-    width: 26px;
-    height: 26px;
-    margin: 0 3px;
-    overflow: hidden;
-    border-radius: 50%;
-    background: var(--secondary-bg-color);
-    color: var(--primary-bg-color);
-    font-size: 11px;
-    font-weight: 600;
-    line-height: 1;
-    text-transform: uppercase;
-    cursor: default;
-}
-
-/* The lock holder — the one person whose edits are actually landing. */
-.titlebar .collaborationChip.editing {
-    box-shadow: 0 0 0 2px var(--primary-bg-color);
-}
-
 .newHypervideoDialog .message.error {
     position: absolute;
 }

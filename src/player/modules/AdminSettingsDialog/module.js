@@ -13,6 +13,21 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
     var labels = FrameTrail.module('Localization').labels;
 
+    function _serverPost(body) {
+        var serverURL = FrameTrail.module('RouteNavigation').resolveServerURL('ajaxServer.php');
+        if (!serverURL) return Promise.reject(new Error('No server configured'));
+        var adapter = FrameTrail.module('StorageManager').getAdapter();
+        if (adapter && adapter.dataPathAbsolute) body.append('dataPath', adapter.dataPathAbsolute);
+        return fetch(serverURL, { method: 'POST', body: body }).then(function(r) { return r.json(); });
+    }
+
+    // Live references into the currently open dialog, so the collabState
+    // listener can update presence without rebuilding anything. Null when the
+    // dialog is closed.
+    var presenceContainer = null,
+        lockMessageEl     = null,
+        applyButton       = null;
+
     /**
      * I push freshly saved overview-map settings into a live map view.
      *
@@ -71,6 +86,9 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                         + '            <a href="#TagDefinitions">'+ labels['SettingsManageTags'] +'</a>'
                         + '        </li>'
                         + '        <li>'
+                        + '            <a href="#UserAdministration">'+ labels['UserAdministration'] +'</a>'
+                        + '        </li>'
+                        + '        <li>'
                         + '            <a href="#Configuration">'+ labels['SettingsConfigurationOptions'] +'</a>'
                         + '        </li>'
                         + '    </ul>'
@@ -78,6 +96,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                         + '    <div id="OverviewPresentation"></div>'
                         + '    <div id="ChangeGlobalCSS"></div>'
                         + '    <div id="TagDefinitions"></div>'
+                        + '    <div id="UserAdministration"></div>'
                         + '    <div id="Configuration"></div>'
                         + '</div>';
         var adminTabs = _atw.firstElementChild;
@@ -95,17 +114,6 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         var configData = database.config;
         var _cuw = document.createElement('div');
         _cuw.innerHTML = '<div class="configEditingForm layoutRow">'
-                            +   '    <div class="column-3">'
-                            +   '        <div class="message active">'+ labels['MessageUserRequireConfirmation'] +'</div>'
-                            +   '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="userNeedsConfirmation" id="userNeedsConfirmation" '+((configData.userNeedsConfirmation && configData.userNeedsConfirmation.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="userNeedsConfirmation">'+ labels['SettingsOnlyConfirmedUsers'] +'</label></div>'
-                            +   '        <div class="message active">'+ labels['MessageUserRequireRole'] +'</div>'
-                            +   '        <div style="margin-top: 5px; margin-bottom: 8px;">'+ labels['SettingsDefaultUserRole'] +': <br>'
-                            +   '            <input type="radio" name="defaultUserRole" id="user_role_admin" value="admin" '+((configData.defaultUserRole == "admin") ? "checked" : "")+'>'
-                            +   '            <label for="user_role_admin">'+ labels['UserRoleAdmin'] +'</label>'
-                            +   '            <input type="radio" name="defaultUserRole" id="user_role_user" value="user" '+((configData.defaultUserRole == "user") ? "checked" : "")+'>'
-                            +   '            <label for="user_role_user">'+ labels['UserRoleUser'] +'</label><br>'
-                            +   '        </div>'
-                            +   '    </div>'
                             +   '    <div class="column-3">'
                             +   '        <div class="message active">'+ labels['MessageAllowFileUploads'] +'</div>'
                             +   '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="allowUploads" id="allowUploads" '+((configData.allowUploads && configData.allowUploads.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="allowUploads">'+ labels['SettingsAllowUploads'] +'</label></div>'
@@ -137,24 +145,33 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
         adminTabs.querySelector('#Configuration').appendChild(configurationUI);
 
-        // Track changes but don't apply them until save
-        configurationUI.querySelectorAll('input[type="text"]').forEach(function(el) { el.addEventListener('keydown', function(evt) {
-            if (!evt.metaKey && evt.key != 'Meta') {
+        /**
+         * Mark the dialog dirty when any config control changes. Defined here
+         * but called after every tab's content exists — config controls live in
+         * more than one tab now, and binding before they are appended would
+         * silently miss them.
+         */
+        function bindConfigDirtyTracking() {
+
+            adminTabs.querySelectorAll('.configEditingForm input[type="text"]').forEach(function(el) { el.addEventListener('keydown', function(evt) {
+                if (!evt.metaKey && evt.key != 'Meta') {
+                    configChanged = true;
+                }
+            }); });
+
+            adminTabs.querySelectorAll('.configEditingForm input[type="checkbox"]').forEach(function(el) { el.addEventListener('change', function(evt) {
                 configChanged = true;
-            }
-        }); });
+            }); });
 
-        configurationUI.querySelectorAll('input[type="checkbox"]').forEach(function(el) { el.addEventListener('change', function(evt) {
-            configChanged = true;
-        }); });
+            adminTabs.querySelectorAll('.configEditingForm input[type="radio"]').forEach(function(el) { el.addEventListener('change', function(evt) {
+                configChanged = true;
+            }); });
 
-        configurationUI.querySelectorAll('input[type="radio"]').forEach(function(el) { el.addEventListener('change', function(evt) {
-            configChanged = true;
-        }); });
+            adminTabs.querySelectorAll('.configEditingForm select').forEach(function(el) { el.addEventListener('change', function(evt) {
+                configChanged = true;
+            }); });
 
-        configurationUI.querySelectorAll('select').forEach(function(el) { el.addEventListener('change', function(evt) {
-            configChanged = true;
-        }); });
+        }
 
         /* Change Theme UI */
         var _ctw = document.createElement('div');
@@ -855,6 +872,277 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
         adminTabs.querySelector('#TagDefinitions').appendChild(tagDefinitionsUI);
 
+
+        /* User Administration UI
+           The registration-policy settings live here rather than in Advanced
+           Settings because they govern what happens when a user is created.
+           They keep the .configEditingForm wrapper so the Apply sweep picks
+           them up wherever in the dialog they sit. */
+        var _uaw = document.createElement('div');
+        _uaw.innerHTML = '<div class="userAdministrationContainer">'
+            + '    <div class="userListHeader">'
+            + '        <button class="addUserButton"><span class="icon-plus"></span> '+ labels['UserAdd'] +'</button>'
+            + '        <input type="text" class="userFilterInput" placeholder="'+ labels['SettingsFilterByName'] +'">'
+            + '    </div>'
+            + '    <div class="userList"></div>'
+            + '    <div class="configEditingForm userRegistrationPolicy">'
+            + '        <div class="message active">'+ labels['MessageUserRequireConfirmation'] +'</div>'
+            + '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="userNeedsConfirmation" id="userNeedsConfirmation" '+((configData.userNeedsConfirmation && configData.userNeedsConfirmation.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="userNeedsConfirmation">'+ labels['SettingsOnlyConfirmedUsers'] +'</label></div>'
+            + '    </div>'
+            + '</div>';
+        var userAdministrationUI = _uaw.firstElementChild;
+
+        adminTabs.querySelector('#UserAdministration').appendChild(userAdministrationUI);
+
+        // Fetched fresh rather than read from Database.users: that roster is
+        // loaded once at boot, possibly before login, and an unauthenticated
+        // userGet deliberately omits role/active/mail.
+        var userRoster = {};
+
+        function refreshUserList() {
+
+            _serverPost(new URLSearchParams({ a: 'userGet' })).then(function(response) {
+                userRoster = (response && response.response && response.response.user) || {};
+                renderUserList(userAdministrationUI.querySelector('.userFilterInput').value);
+            }).catch(function() {
+                renderUserList('');
+            });
+
+        }
+
+        function renderUserList(filterText) {
+
+            var Collaboration = FrameTrail.module('Collaboration');
+            var userList = userAdministrationUI.querySelector('.userList');
+            var ownID    = String(FrameTrail.module('UserManagement').userID);
+            userList.innerHTML = '';
+
+            for (var uid in userRoster) {
+
+                var u = userRoster[uid];
+                if (filterText && (u.name || '').toLowerCase().indexOf(filterText.toLowerCase()) === -1) {
+                    continue;
+                }
+
+                var isSelf   = (String(uid) === ownID),
+                    color    = /^#/.test(u.color || '') ? u.color : '#' + (u.color || '888888'),
+                    inactive = (String(u.active) === '0');
+
+                var _uiw = document.createElement('div');
+                _uiw.innerHTML = '<div class="userListItem'+ (inactive ? ' inactive' : '') +'" data-user-id="'+ uid +'">'
+                    + '    <span class="collaborationChip userListAvatar"></span>'
+                    + '    <div class="userListInfo">'
+                    + '        <div class="userListName"></div>'
+                    + '        <div class="userListMeta"></div>'
+                    + '    </div>'
+                    + '    <div class="userListActions">'
+                    + '        <button class="editUserButton" title="'+ labels['GenericEditStart'] +'"><span class="icon-pencil"></span></button>'
+                    + '        <button class="deleteUserButton" title="'+ labels['GenericDelete'] +'"'+ (isSelf ? ' disabled' : '') +'><span class="icon-trash"></span></button>'
+                    + '    </div>'
+                    + '</div>';
+                var userItem = _uiw.firstElementChild;
+
+                // textContent, not interpolation — names are user-supplied.
+                userItem.querySelector('.userListName').textContent = u.name || '';
+                userItem.querySelector('.userListMeta').textContent =
+                    (u.mail || '') + '  ·  ' + (u.role === 'admin' ? labels['UserRoleAdmin'] : labels['UserRoleUser'])
+                    + (inactive ? '  ·  ' + labels['UserInactive'] : '');
+
+                var avatar = userItem.querySelector('.userListAvatar');
+                avatar.textContent = Collaboration ? Collaboration.initialsOf(u.name) : '';
+                avatar.style.backgroundColor = color;
+                if (Collaboration) { avatar.style.color = Collaboration.readableTextColor(color); }
+
+                userList.appendChild(userItem);
+            }
+
+            if (userList.children.length === 0) {
+                userList.insertAdjacentHTML('beforeend', '<div class="message active">'+ labels['UserNoUsersFound'] +'</div>');
+            }
+
+        }
+
+        userAdministrationUI.querySelector('.userFilterInput').addEventListener('input', function() {
+            renderUserList(this.value);
+        });
+
+        userAdministrationUI.querySelector('.addUserButton').addEventListener('click', function() {
+            openUserEditDialog(null);
+        });
+
+        userAdministrationUI.querySelector('.userList').addEventListener('click', function(evt) {
+            var item = evt.target.closest('.userListItem');
+            if (!item) return;
+            var uid = item.getAttribute('data-user-id');
+            if (evt.target.closest('.editUserButton')) {
+                openUserEditDialog(uid);
+            } else if (evt.target.closest('.deleteUserButton')) {
+                confirmDeleteUser(uid);
+            }
+        });
+
+        /**
+         * Add or edit a user. Creating posts userRegister (the same action the
+         * public sign-up uses), editing posts userChange. Both take effect
+         * immediately, matching the Tag Definitions tab in this dialog rather
+         * than the Apply/Cancel batching of the config panels.
+         */
+        function openUserEditDialog(userId) {
+
+            var isNew = !userId,
+                u     = isNew ? {} : (userRoster[userId] || {}),
+                isSelf = !isNew && String(userId) === String(FrameTrail.module('UserManagement').userID);
+
+            var _uew = document.createElement('div');
+            _uew.innerHTML = '<div class="userEditForm">'
+                + '    <input type="text" class="userEditName" placeholder="'+ labels['UserName'] +'">'
+                + '    <input type="text" class="userEditMail" placeholder="'+ labels['UserMail'] +'">'
+                + '    <input type="password" class="userEditPasswd" placeholder="'+ (isNew ? labels['UserPassword'] : labels['UserNewPassword']) +'">'
+                + '    <div class="userEditColor"></div>'
+                + (isNew ? '' :
+                   '    <div class="userEditRoles">'
+                 + '        <input type="radio" name="userEditRole" id="userEditRoleAdmin" value="admin">'
+                 + '        <label for="userEditRoleAdmin">'+ labels['UserRoleAdmin'] +'</label>'
+                 + '        <input type="radio" name="userEditRole" id="userEditRoleUser" value="user">'
+                 + '        <label for="userEditRoleUser">'+ labels['UserRoleUser'] +'</label><br>'
+                 + '        <div class="checkboxRow"><label class="switch"><input type="checkbox" id="userEditActive"><span class="slider round"></span></label><label for="userEditActive">'+ labels['UserActive'] +'</label></div>'
+                 + '    </div>')
+                + '</div>';
+            var userEditForm = _uew.firstElementChild;
+
+            userEditForm.querySelector('.userEditName').value = u.name || '';
+            userEditForm.querySelector('.userEditMail').value = u.mail || '';
+
+            if (!isNew) {
+                var roleEl = userEditForm.querySelector('#userEditRole' + (u.role === 'admin' ? 'Admin' : 'User'));
+                if (roleEl) roleEl.checked = true;
+                var activeEl = userEditForm.querySelector('#userEditActive');
+                if (activeEl) activeEl.checked = (String(u.active) !== '0');
+            }
+
+            var userDialogCtrl = Dialog({
+                title:     isNew ? labels['UserAdd'] : labels['UserChangeSettings'],
+                content:   userEditForm,
+                modal:     true,
+                resizable: false,
+                width:     460,
+                close:     function() { userDialogCtrl.destroy(); },
+                buttons: [
+                    { text: labels['GenericSaveChanges'],
+                      click: function() { submitUser(); } },
+                    { text: labels['GenericCancel'],
+                      click: function() { userDialogCtrl.close(); } }
+                ]
+            });
+
+            var errorEl = document.createElement('div');
+            errorEl.className = 'message error dialogError';
+            errorEl.style.flexBasis = '100%';
+            userDialogCtrl.widget().querySelector('.ft-dialog-buttonpane').prepend(errorEl);
+
+            // The palette lives in UserManagement so it is defined once.
+            FrameTrail.module('UserManagement').getUserColorCollection(function() {
+                FrameTrail.module('UserManagement').renderUserColorCollectionForm(
+                    u.color || '', userEditForm.querySelector('.userEditColor'));
+            });
+
+            function fail(text) {
+                errorEl.classList.add('active');
+                errorEl.textContent = text;
+            }
+
+            function submitUser() {
+
+                var body = new URLSearchParams();
+                body.append('name',   userEditForm.querySelector('.userEditName').value);
+                body.append('mail',   userEditForm.querySelector('.userEditMail').value);
+                body.append('passwd', userEditForm.querySelector('.userEditPasswd').value);
+
+                var colorInput = userEditForm.querySelector('.userEditColor input[name="color"]');
+                if (colorInput) body.append('color', colorInput.value);
+
+                if (isNew) {
+                    body.append('a', 'userRegister');
+                } else {
+                    body.append('a', 'userChange');
+                    body.append('userID', userId);
+                    var role   = userEditForm.querySelector('input[name="userEditRole"]:checked');
+                    var active = userEditForm.querySelector('#userEditActive');
+                    if (role) body.append('role', role.value);
+                    // The server only accepts the literal strings "1"/"0".
+                    if (active) body.append('active', active.checked ? '1' : '0');
+                }
+
+                _serverPost(body).then(function(response) {
+
+                    // userRegister reports 3 when the account was created but
+                    // still needs activation — a success, not a failure.
+                    if (response.code === 0 || (isNew && response.code === 3)) {
+                        userDialogCtrl.close();
+                        bindConfigDirtyTracking();
+
+        refreshUserList();
+                        // Editing yourself changes what the rest of the UI shows.
+                        if (isSelf) {
+                            FrameTrail.changeState('username', response.response.name);
+                            FrameTrail.changeState('userColor', response.response.color);
+                        }
+                        return;
+                    }
+
+                    fail(response.string || labels['ErrorGeneric']);
+
+                }).catch(function(e) { fail(e.message); });
+
+            }
+
+        }
+
+
+        function confirmDeleteUser(userId) {
+
+            var u = userRoster[userId] || {};
+
+            var _cdw = document.createElement('div');
+            _cdw.innerHTML = '<div class="confirmDeleteUser">'
+                + '    <div class="message error active"></div>'
+                + '    <p>'+ labels['UserDeleteKeepsContent'] +'</p>'
+                + '</div>';
+            var confirmEl = _cdw.firstElementChild;
+            confirmEl.querySelector('.message').textContent =
+                labels['UserDeleteConfirm'].replace('%s', u.name || '');
+
+            var confirmCtrl = Dialog({
+                title:     labels['GenericDelete'],
+                content:   confirmEl,
+                modal:     true,
+                resizable: false,
+                width:     460,
+                close:     function() { confirmCtrl.destroy(); },
+                buttons: [
+                    { text: labels['GenericDelete'],
+                      click: function() {
+                          _serverPost(new URLSearchParams({ a: 'userDelete', userID: userId }))
+                          .then(function(response) {
+                              if (response.code === 0) {
+                                  confirmCtrl.close();
+                                  refreshUserList();
+                              } else {
+                                  var el = confirmEl.querySelector('.message');
+                                  el.textContent = response.string || labels['ErrorGeneric'];
+                              }
+                          });
+                      } },
+                    { text: labels['GenericCancel'],
+                      click: function() { confirmCtrl.close(); } }
+                ]
+            });
+
+        }
+
+
+        refreshUserList();
+
         function renderTagList(filterText) {
             var tagList = tagDefinitionsUI.querySelector('.tagList');
             tagList.innerHTML = '';
@@ -1135,6 +1423,9 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                 if (FrameTrail.module('Collaboration')) {
                     FrameTrail.module('Collaboration').stop('settings', 'global');
                 }
+                presenceContainer = null;
+                lockMessageEl     = null;
+                applyButton       = null;
                 adminDialogCtrl.destroy();
             },
             buttons: [
@@ -1147,7 +1438,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             // Apply config changes from form
                             if (configChanged) {
                                 // Apply text input changes
-                                configurationUI.querySelectorAll('input[type="text"]').forEach(function(el) {
+                                adminTabs.querySelectorAll('.configEditingForm input[type="text"]').forEach(function(el) {
                                     var key = el.getAttribute('name'),
                                         value = el.value;
                                     if (key) {
@@ -1156,7 +1447,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                 });
                                 
                                 // Apply checkbox changes
-                                configurationUI.querySelectorAll('input[type="checkbox"]').forEach(function(el) {
+                                adminTabs.querySelectorAll('.configEditingForm input[type="checkbox"]').forEach(function(el) {
                                     var key = el.getAttribute('name'),
                                         value = el.checked;
                                     
@@ -1166,7 +1457,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                 });
                                 
                                 // Apply radio changes
-                                configurationUI.querySelectorAll('input[type="radio"]:checked').forEach(function(el) {
+                                adminTabs.querySelectorAll('.configEditingForm input[type="radio"]:checked').forEach(function(el) {
                                     var key = el.getAttribute('name'),
                                         value = el.value;
                                     if (key) {
@@ -1175,7 +1466,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                 });
 
                                 // Apply select changes
-                                configurationUI.querySelectorAll('select').forEach(function(el) {
+                                adminTabs.querySelectorAll('.configEditingForm select').forEach(function(el) {
                                     var key = el.getAttribute('name'),
                                         value = el.value;
                                     if (key) {
@@ -1340,32 +1631,59 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         var Collaboration = FrameTrail.module('Collaboration');
         if (!Collaboration || !Collaboration.isActive()) return;
 
+        var buttonPane = dialogCtrl.widget().querySelector('.ft-dialog-buttonpane');
+        if (!buttonPane) return;
+
+        // Apply is the first button as authored; capture it up front so nothing
+        // added later can make a positional lookup pick the wrong element.
+        applyButton = buttonPane.querySelector('button');
+
+        var mounted = Collaboration.mountDialogPresence(dialogCtrl);
+        if (!mounted) return;
+
+        presenceContainer = mounted.presence;
+        lockMessageEl     = mounted.message;
+
         Collaboration.start('settings', 'global');
+        Collaboration.claim(function() { updateSettingsPresence(); }, 'settings', 'global');
 
-        Collaboration.claim(function(result) {
+    }
 
-            if (result.ok) return;
 
-            var buttonPane = dialogCtrl.widget().querySelector('.ft-dialog-buttonpane');
-            if (!buttonPane) return;
+    /**
+     * Reflect the current state of the 'settings' scope into the open dialog:
+     * avatars for everyone else in here, and Apply disabled behind a named
+     * message while somebody else holds the lock.
+     *
+     * @method updateSettingsPresence
+     */
+    function updateSettingsPresence() {
 
-            var holder = Collaboration.lockHolder('settings', 'global');
+        var Collaboration = FrameTrail.module('Collaboration');
+        if (!Collaboration || !presenceContainer) return;
 
-            var msgEl = document.createElement('div');
-            msgEl.className = 'message error active';
-            msgEl.style.flexBasis = '100%';
-            msgEl.textContent = labels['MessageCollabSettingsLockedBy'].replace('%s', (holder && holder.name) ? holder.name : '');
-            buttonPane.insertBefore(msgEl, buttonPane.firstChild);
+        Collaboration.renderAvatars(presenceContainer, 'settings', 'global');
 
-            var applyButton = buttonPane.querySelector('button');
-            if (applyButton) applyButton.disabled = true;
+        var blocked = Collaboration.isLockedByOther('settings', 'global'),
+            holder  = Collaboration.lockHolder('settings', 'global');
 
-        }, 'settings', 'global');
+        if (lockMessageEl) {
+            lockMessageEl.classList.toggle('active', blocked);
+            lockMessageEl.textContent = blocked
+                ? labels['MessageCollabSettingsLockedBy'].replace('%s', (holder && holder.name) ? holder.name : '')
+                : '';
+        }
+
+        if (applyButton) applyButton.disabled = blocked;
 
     }
 
     return {
-        open: open
+        open: open,
+
+        onChange: {
+            collabState: updateSettingsPresence
+        }
     };
 
 });

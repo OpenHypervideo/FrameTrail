@@ -20,11 +20,21 @@ function userGet($userID) {
     $json = file_get_contents($userFile);
 
     $uDB = json_decode($json,true);
-    //if ($_SESSION["ohv"]["projects"][$projectID]["user"]["role"] != "admin") {
+
+    // The client loads this roster at boot to render annotation authors, which
+    // must keep working on a public instance — so this stays reachable without
+    // a session, but an anonymous caller gets only what that rendering needs.
+    // Anything else (mail, role, active, lastLogin) requires being logged in.
+    $isLoggedIn = (isset($_SESSION["ohv"]["login"]) && $_SESSION["ohv"]["login"] == 1);
+    $publicFields = array("name", "color");
+
     foreach ($uDB["user"] as $k=>$u) {
         unset($uDB["user"][$k]["passwd"]);
+        if (!$isLoggedIn) {
+            $uDB["user"][$k] = array_intersect_key($uDB["user"][$k], array_flip($publicFields));
+        }
     }
-    //}
+
     $uDB = ($userID) ? $uDB["user"][$userID] : $uDB;
     $return["status"] = "success";
     $return["code"] = 200;
@@ -90,7 +100,10 @@ function userRegister($name, $mail, $passwd) {
     $user["user"][$user["user-increment"]]["mail"] = strtolower($mail);
     $user["user"][$user["user-increment"]]["registrationDate"] =  time();
     $user["user"][$user["user-increment"]]["passwd"] = password_hash($passwd, PASSWORD_DEFAULT);
-    $user["user"][$user["user-increment"]]["role"] = (($tmpFirstUser) ? "admin" : $configDB["defaultUserRole"]);
+    // New accounts are always plain users; an admin promotes them afterwards in
+    // the User Administration tab. The very first account is the exception —
+    // there is nobody to promote it.
+    $user["user"][$user["user-increment"]]["role"] = (($tmpFirstUser) ? "admin" : "user");
     $user["user"][$user["user-increment"]]["active"] = (($tmpFirstUser) ? 1 : (($configDB["userNeedsConfirmation"]) ? 0 : 1));
     $user["user"][$user["user-increment"]]["lastLogin"] = "";
     $user["user"][$user["user-increment"]]["color"] = getUserColors()["freeColors"][0];
@@ -343,9 +356,12 @@ function userChange($userID,$mail,$name,$passwd,$color,$role,$active) {
                     $mail = strtolower($mail);
                 }
                 $userdb["user"][$userID]["role"] = ((($role) && ($_SESSION["ohv"]["user"]["role"] == "admin")) ? $role : $userdb["user"][$userID]["role"]);
-                $userdb["user"][$userID]["name"] = $name;
+                // Only overwrite what was actually submitted. role, active and
+                // passwd already work this way; name and color did not, so any
+                // caller that omitted them silently wiped the stored value.
+                $userdb["user"][$userID]["name"] = ($name !== null && $name !== "") ? $name : $userdb["user"][$userID]["name"];
                 $userdb["user"][$userID]["mail"] = $mail;
-                $userdb["user"][$userID]["color"] = $color;
+                $userdb["user"][$userID]["color"] = ($color !== null && $color !== "") ? $color : $userdb["user"][$userID]["color"];
                 $userdb["user"][$userID]["active"] = ((($active==="1" || $active==="0") && (($_SESSION["ohv"]["user"]["role"] == "admin"))) ? $active*1 : $userdb["user"][$userID]["active"]*1);
                 $userdb["user"][$userID]["passwd"] = ($passwd) ? password_hash($passwd, PASSWORD_DEFAULT) : $userdb["user"][$userID]["passwd"];
                 $file->write(json_encode($userdb, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));                
@@ -366,6 +382,85 @@ function userChange($userID,$mail,$name,$passwd,$color,$role,$active) {
         $return["string"] = "User not logged in";
     }
 
+    return $return;
+}
+
+/**
+ * @param $userID
+ * @return mixed
+ *
+ * Removes a user account. Their authored content is deliberately left in place:
+ * annotation files (annotations/<id>.json) and the creatorId references inside
+ * hypervideo contents stay exactly as they are, so nothing a deleted person
+ * wrote disappears. The client already tolerates an unknown creatorId and falls
+ * back to a neutral colour.
+ *
+ * Returning Code:
+ * 0    =   Success. User deleted.
+ * 1    =   failed. Not logged in, or not an admin.
+ * 2    =   failed. User database missing.
+ * 3    =   failed. Targeted user not found.
+ * 4    =   failed. Refusing to delete your own account.
+ * 5    =   failed. Refusing to remove the last remaining admin.
+ */
+function userDelete($userID) {
+
+    global $conf;
+
+    if ($err = requireLogin("admin")) return $err;
+
+    $userID = (string)$userID;
+
+    if ($userID === (string)$_SESSION["ohv"]["user"]["id"]) {
+        $return["status"] = "fail";
+        $return["code"] = 4;
+        $return["string"] = "You cannot delete your own account.";
+        return $return;
+    }
+
+    $userFile = $conf["dir"]["data"]."/users.json";
+    if (!file_exists($userFile)) {
+        $return["status"] = "fail";
+        $return["code"] = 2;
+        $return["string"] = "Could not find user database";
+        return $return;
+    }
+
+    $file = new sharedFile($userFile);
+    $uDB  = json_decode($file->read(), true);
+
+    if (!isset($uDB["user"][$userID])) {
+        $file->close();
+        $return["status"] = "fail";
+        $return["code"] = 3;
+        $return["string"] = "Targeted User not found";
+        return $return;
+    }
+
+    // Never leave the instance without an administrator — there would be no way
+    // back into the admin dialog to appoint one.
+    if ($uDB["user"][$userID]["role"] == "admin") {
+        $admins = 0;
+        foreach ($uDB["user"] as $u) {
+            if ($u["role"] == "admin") { $admins++; }
+        }
+        if ($admins <= 1) {
+            $file->close();
+            $return["status"] = "fail";
+            $return["code"] = 5;
+            $return["string"] = "Cannot remove the last remaining admin.";
+            return $return;
+        }
+    }
+
+    $deletedName = $uDB["user"][$userID]["name"];
+    unset($uDB["user"][$userID]);
+
+    $file->writeClose(json_encode($uDB, $conf["settings"]["json_flags"]));
+
+    $return["status"] = "success";
+    $return["code"] = 0;
+    $return["string"] = "User '".$deletedName."' has been deleted.";
     return $return;
 }
 

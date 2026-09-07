@@ -52,7 +52,6 @@
         unsavedChapters         = false,
         unsavedLayout           = false,
 
-        autoSaveArmed           = false,
         autoSaveTimeout         = null;
 
     // Long enough that a burst of edits coalesces into one write, short enough
@@ -184,7 +183,6 @@
         // Track presence for this hypervideo. Safe to call on every init: the
         // module no-ops when there is no server or nobody is logged in, and
         // re-targets itself when the hypervideo changes.
-        autoSaveArmed = false;
         window.clearTimeout(autoSaveTimeout);
         if (FrameTrail.module('Collaboration')) {
             FrameTrail.module('Collaboration').start('hypervideo', FrameTrail.module('RouteNavigation').hypervideoID);
@@ -1069,74 +1067,26 @@
      */
     function scheduleAutoSave() {
 
-        var Collaboration = FrameTrail.module('Collaboration');
-
-        if (!Collaboration || !Collaboration.isActive()) return;
-
-        if (!autoSaveArmed) {
-            if (!Collaboration.hasLock() || !Collaboration.othersPresent()) return;
-            armAutoSave();
-            return;   // armAutoSave schedules once the user has answered
-        }
-
-        if (!Collaboration.hasLock()) return;
+        // Unconditional: any edit session that is able to write, saves. This is
+        // deliberately independent of the Collaboration module, so it works the
+        // same in local-folder mode where there is no server and no presence.
+        var StorageManager = FrameTrail.module('StorageManager');
+        if (!StorageManager || !StorageManager.canSave()) return;
+        if (!FrameTrail.getState('editMode')) return;
 
         window.clearTimeout(autoSaveTimeout);
         autoSaveTimeout = window.setTimeout(function() {
-            if (FrameTrail.getState('unsavedChanges') && Collaboration.hasLock()) {
-                save();
-            }
+            // Re-check rather than trusting the state at schedule time: a
+            // session can expire during the debounce, and save() would then
+            // raise a login box out of a background timer. When we skip, the
+            // changes stay dirty and leaveEditMode()'s prompt is the backstop.
+            if (!FrameTrail.getState('unsavedChanges')) return;
+            if (!FrameTrail.getState('editMode')) return;
+            if (!FrameTrail.module('StorageManager').canSave()) return;
+
+            // silent: a background save must never raise a modal.
+            save(null, null, true);
         }, AUTOSAVE_DELAY);
-
-    }
-
-
-    /**
-     * Turning auto-save on removes the "leave without saving to discard"
-     * escape hatch, so if there is already unsaved work when it arms, the user
-     * gets one chance to discard it first.
-     *
-     * @method armAutoSave
-     */
-    function armAutoSave() {
-
-        autoSaveArmed = true;
-
-        if (!FrameTrail.getState('unsavedChanges')) {
-            scheduleAutoSave();
-            return;
-        }
-
-        var _wrapper = document.createElement('div');
-        _wrapper.innerHTML = '<div class="confirmAutoSave">'
-                           + '    <div class="message active">'+ labels['MessageCollabAutoSaveStarting'] +'</div>'
-                           + '</div>';
-
-        var autoSaveDialogCtrl = Dialog({
-            title:     labels['MessageCollabAutoSaveStartingShort'],
-            content:   _wrapper.firstElementChild,
-            resizable: false,
-            modal:     true,
-            close:     function() { autoSaveDialogCtrl.destroy(); },
-            buttons: [
-                {
-                    text: labels['GenericDiscardChanges'],
-                    click: function() {
-                        autoSaveDialogCtrl.destroy();
-                        FrameTrail.module('Collaboration').release();
-                        autoSaveArmed = false;
-                        leaveEditMode();
-                    }
-                },
-                {
-                    text: labels['GenericContinue'],
-                    click: function() {
-                        autoSaveDialogCtrl.destroy();
-                        scheduleAutoSave();
-                    }
-                }
-            ]
-        });
 
     }
 
@@ -1158,7 +1108,7 @@
      * @param {Function} callback
      * @param {Function} callbackCancel
      */
-    function save(callback, callbackCancel) {
+    function save(callback, callbackCancel, silent) {
 
         var saveRequests     = [],
             callbackReturns  = [],
@@ -1174,7 +1124,9 @@
 
             function(){
 
-                FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateSaving']);
+                if (!silent) {
+                    FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateSaving']);
+                }
 
                 if ( unsavedOverlays || unsavedCodeSnippets
                     || unsavedEvents || unsavedCustomCSS || unsavedChapters || unsavedLayout) {
@@ -1219,19 +1171,31 @@
                 // their work, so offer a reload instead of a bare error.
                 if (result.failed && result.code === 7) {
                     FrameTrail.module('InterfaceModal').hideMessage();
-                    showSaveConflictDialog(result.conflict);
+                    if (silent) {
+                        // An automatic save must not interrupt with a modal.
+                        // Feed the ordinary "changes available" affordance and
+                        // let the user deal with it when they choose to.
+                        var Collab = FrameTrail.module('Collaboration');
+                        if (Collab) { Collab.markStale(); }
+                    } else {
+                        showSaveConflictDialog(result.conflict);
+                    }
                     return;
                 }
 
                 if (result.failed) {
-                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] +' ('+ result.error +': '+ result.code +')');
+                    if (!silent) {
+                        FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] +' ('+ result.error +': '+ result.code +')');
+                    }
                     return;
                 }
 
             }
 
-            FrameTrail.module('InterfaceModal').showSuccessMessage(labels['MessageSaveSuccess']);
-            FrameTrail.module('InterfaceModal').hideMessage(2000);
+            if (!silent) {
+                FrameTrail.module('InterfaceModal').showSuccessMessage(labels['MessageSaveSuccess']);
+                FrameTrail.module('InterfaceModal').hideMessage(2000);
+            }
 
             unsavedOverlays     = false;
             unsavedCodeSnippets = false;
@@ -1246,7 +1210,14 @@
             if (Collaboration) {
                 // Clean again — a waiting collaborator may now take over.
                 Collaboration.setUnsaved(false);
-                Collaboration.acknowledgeVersion();
+                // Adopt the version the server reported *after* writing, not the
+                // one we last polled — otherwise we immediately look stale
+                // against our own save and notify ourselves about it.
+                var writtenVersion = null;
+                for (var v = 0; v < callbackReturns.length; v++) {
+                    if (callbackReturns[v].version) { writtenVersion = callbackReturns[v].version; }
+                }
+                Collaboration.acknowledgeVersion(writtenVersion);
             }
 
             FrameTrail.triggerEvent('userAction', {

@@ -1772,7 +1772,12 @@
         }, function (data) {
             if (data.code === 0) {
                 hypervideos[thisHypervideoID].lastchanged = saveData.meta.lastchanged;
-                callback.call(window, { success: true });
+                // The post-write version token, so the caller can tell the
+                // Collaboration module we are in sync with our own change.
+                callback.call(window, {
+                    success: true,
+                    version: (data.response && data.response.version) ? data.response.version : null
+                });
             } else if (data.code === 7) {
                 callback.call(window, { failed: 'hypervideo', error: 'Conflict', code: 7, conflict: data.response });
             } else {

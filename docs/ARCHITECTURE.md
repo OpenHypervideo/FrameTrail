@@ -498,6 +498,9 @@ All AJAX requests go through `src/_server/ajaxServer.php`:
 | `userLogin` | Authenticate user |
 | `userLogout` | End session |
 | `userChange` | Update user settings |
+| `userDelete` | Remove a user account (admin only; keeps their authored content) |
+| `collabSync` | Presence heartbeat + collaboration state for a scope |
+| `collabLock` | Claim / release / take over the soft edit lock |
 | `hypervideoAdd` | Create hypervideo |
 | `hypervideoChange` | Update hypervideo |
 | `hypervideoClone` | Duplicate hypervideo |

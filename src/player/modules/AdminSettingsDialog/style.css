@@ -256,3 +256,97 @@
     margin-bottom: 5px;
     font-size: 0.9em;
 }
+
+/* User Administration Styles
+   Deliberately mirrors the tag list above — same header/filter/list/row shape,
+   so the two admin tabs read as one thing. */
+.userAdministrationContainer {
+    padding: 10px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.userListHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    gap: 10px;
+}
+
+.userFilterInput {
+    flex: 1;
+    max-width: 200px;
+}
+
+.userList {
+    flex: 1;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin-bottom: 12px;
+}
+
+.userListItem {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+}
+
+.userListItem:last-child {
+    border-bottom: none;
+}
+
+.userListItem:hover {
+    background: #f9f9f9;
+}
+
+/* A deactivated account is still listed, just visibly dimmed. */
+.userListItem.inactive {
+    opacity: .55;
+}
+
+.userListInfo {
+    flex: 1;
+    min-width: 0;
+}
+
+.userListName {
+    font-weight: bold;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.userListMeta {
+    font-size: 12px;
+    opacity: .7;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.userListActions {
+    flex-shrink: 0;
+}
+
+.userRegistrationPolicy {
+    flex-shrink: 0;
+    padding-top: 10px;
+    border-top: 1px solid #ddd;
+}
+
+.userEditForm input[type="text"],
+.userEditForm input[type="password"] {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin-bottom: 8px;
+}
+
+.userEditForm .userEditRoles {
+    margin-top: 10px;
+}

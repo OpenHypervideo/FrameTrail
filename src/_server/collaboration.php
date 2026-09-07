@@ -188,9 +188,52 @@ function _collabResponse($state, $scope, $scopeId, $knownVersion) {
     return array(
         "participants" => $participants,
         "lock"         => $state["lock"],
+        "lastWriter"   => isset($state["lastWriter"]) ? $state["lastWriter"] : null,
         "version"      => $version,
         "stale"        => ($knownVersion !== null && $knownVersion !== "" && (string)$knownVersion !== (string)$version)
     );
+
+}
+
+
+/**
+ * Record who last wrote this scope, so the staleness notice can name the person
+ * who actually saved. The edit lock is not a reliable proxy: after a takeover
+ * the holder is not the last writer, and a client that saves without ever
+ * claiming the lock has no holder at all.
+ *
+ * Called from the write paths themselves (hypervideoChange, updateConfigFile),
+ * so it must never fail the write it is annotating — every error is swallowed.
+ *
+ * @param string $scope   "hypervideo" | "settings"
+ * @param string $scopeId hypervideo ID, or "global"
+ * @param string $userId
+ * @param string $userName
+ */
+function collabRecordWrite($scope, $scopeId, $userId, $userName) {
+
+    global $conf;
+
+    $path = _collabStatePath($scope, $scopeId);
+    if ($path === false) {
+        return;
+    }
+
+    $opened = _collabOpen($path);
+    if ($opened === false) {
+        return;
+    }
+    list($file, $state) = $opened;
+
+    _collabPrune($state, time());
+
+    $state["lastWriter"] = array(
+        "id"   => (string)$userId,
+        "name" => $userName,
+        "at"   => time()
+    );
+
+    $file->writeClose(json_encode($state, $conf["settings"]["json_flags"]));
 
 }
 

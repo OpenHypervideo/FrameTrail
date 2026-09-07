@@ -13,6 +13,111 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
     var labels = FrameTrail.module('Localization').labels;
 
+    // Live references into the currently open dialog, so the collabState
+    // listener can refresh presence without rebuilding anything.
+    var presenceContainer   = null,
+        lockMessageEl       = null,
+        saveButtonEl        = null,
+        lockScopeId         = null,
+        lockClaimedByDialog = false;
+
+
+    /**
+     * This dialog writes the whole hypervideo.json — the very file the editor's
+     * soft lock protects — so it takes the same hypervideo scope rather than a
+     * scope of its own.
+     *
+     * @method claimHypervideoLock
+     * @param {Object} dialogCtrl
+     * @param {String} hypervideoID
+     */
+    function claimHypervideoLock(dialogCtrl, hypervideoID) {
+
+        var Collaboration = FrameTrail.module('Collaboration');
+        if (!Collaboration || !Collaboration.isActive()) return;
+
+        var buttonPane = dialogCtrl.widget().querySelector('.ft-dialog-buttonpane');
+        if (!buttonPane) return;
+
+        // Save is the first button as authored; capture it up front so nothing
+        // added later can make a positional lookup pick the wrong element.
+        saveButtonEl = buttonPane.querySelector('button');
+        lockScopeId  = String(hypervideoID);
+
+        var mounted = Collaboration.mountDialogPresence(dialogCtrl);
+        if (!mounted) return;
+
+        presenceContainer = mounted.presence;
+        lockMessageEl     = mounted.message;
+
+        Collaboration.start('hypervideo', lockScopeId);
+
+        // Already ours from edit mode? Then leave it exactly as it is — taking
+        // it again would make us release it when this dialog closes, dropping
+        // a lock the editor behind us still needs.
+        if (Collaboration.hasLock('hypervideo', lockScopeId)) {
+            updateHypervideoPresence();
+            return;
+        }
+
+        Collaboration.claim(function(result) {
+            lockClaimedByDialog = !!(result && result.ok);
+            updateHypervideoPresence();
+        }, 'hypervideo', lockScopeId);
+
+    }
+
+
+    /**
+     * Release only what this dialog itself claimed.
+     *
+     * @method releaseHypervideoLock
+     */
+    function releaseHypervideoLock() {
+
+        var Collaboration = FrameTrail.module('Collaboration');
+
+        if (Collaboration && lockClaimedByDialog && lockScopeId !== null) {
+            Collaboration.release(null, 'hypervideo', lockScopeId);
+        }
+
+        presenceContainer   = null;
+        lockMessageEl       = null;
+        saveButtonEl        = null;
+        lockScopeId         = null;
+        lockClaimedByDialog = false;
+
+    }
+
+
+    /**
+     * Avatars for everyone else on this hypervideo, and Save disabled behind a
+     * named message while somebody else holds the lock.
+     *
+     * @method updateHypervideoPresence
+     */
+    function updateHypervideoPresence() {
+
+        var Collaboration = FrameTrail.module('Collaboration');
+        if (!Collaboration || !presenceContainer || lockScopeId === null) return;
+
+        Collaboration.renderAvatars(presenceContainer, 'hypervideo', lockScopeId);
+
+        var blocked = Collaboration.isLockedByOther('hypervideo', lockScopeId),
+            holder  = Collaboration.lockHolder('hypervideo', lockScopeId);
+
+        if (lockMessageEl) {
+            lockMessageEl.classList.toggle('active', blocked);
+            lockMessageEl.textContent = blocked
+                ? labels['MessageCollabLockedBy'].replace('%s', (holder && holder.name) ? holder.name : '')
+                : '';
+        }
+
+        if (saveButtonEl) saveButtonEl.disabled = blocked;
+
+    }
+
+
     function _serverPost(body) {
         var serverURL = FrameTrail.module('RouteNavigation').resolveServerURL('ajaxServer.php');
         if (!serverURL) return Promise.reject(new Error('No server configured'));
@@ -765,9 +870,21 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             formData.set('hypervideoID', thisID);
             formData.set('src', JSON.stringify(FrameTrail.module("Database").convertToDatabaseFormat(thisID), null, 4));
 
+            // Compare-and-swap token. This dialog posts the ENTIRE hypervideo.json
+            // — every overlay and code snippet included — so without it a settings
+            // dialog left open silently reverts everything another editor saved.
+            var baseVersion = FrameTrail.module('Database').hypervideos[thisID].lastchanged;
+            formData.set('baseVersion', (baseVersion == null ? '' : baseVersion));
+
             _serverPost(formData)
             .then(function(response) {
                 switch(response['code']) {
+                    case 7:
+                        // Someone else wrote this hypervideo since we opened.
+                        var _conflictEl = EditHypervideoForm.querySelector('.message.error');
+                        _conflictEl.classList.add('active');
+                        _conflictEl.innerHTML = labels['ErrorSaveConflict'];
+                        break;
                     case 0:
                         var sourceWasChanged = sourceChangeConfirmed;
                         var newSourcePath = null;
@@ -997,6 +1114,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             height:  600,
             content: hypervideoDialog,
             close: function() {
+                releaseHypervideoLock();
                 hypervideoDialogCtrl.destroy();
             },
             buttons: [
@@ -1016,6 +1134,8 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 }
             ]
         });
+
+        claimHypervideoLock(hypervideoDialogCtrl, thisID);
 
         // Add YouTube warning to buttonpane
         var buttonPane = hypervideoDialogCtrl.widget().querySelector('.ft-dialog-buttonpane');
@@ -1177,7 +1297,11 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
     return {
         open: open,
-        openDeleteDialog: openDeleteDialog
+        openDeleteDialog: openDeleteDialog,
+
+        onChange: {
+            collabState: updateHypervideoPresence
+        }
     };
 
 });

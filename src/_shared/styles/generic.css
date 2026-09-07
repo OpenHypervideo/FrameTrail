@@ -1185,6 +1185,81 @@ input:checked + .slider:before {
     opacity: 1;
 }
 
+/* Collaboration presence avatars
+   A round avatar carrying up to two initials. The fill and the initials' colour
+   are set inline from the user's own colour; the full name lives in the
+   tooltip, so this stays a fixed size no matter how long the name is.
+   Unscoped, because the titlebar and the settings dialogs all render it. */
+.collaborationChip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: 26px;
+    height: 26px;
+    margin: 0 3px;
+    overflow: hidden;
+    border-radius: 50%;
+    background: var(--secondary-bg-color);
+    color: var(--primary-bg-color);
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1;
+    text-transform: uppercase;
+    cursor: default;
+}
+
+/* The lock holder — the one person whose edits are actually landing. */
+.collaborationChip.editing {
+    box-shadow: 0 0 0 2px var(--primary-bg-color);
+}
+
+/* Presence inside a dialog's title bar: avatars sit at the right, and the
+   status message is centred in the title row. Both are title-level metadata
+   about the document rather than actions, so they live here and not in the
+   button pane. Absent entirely when there is nothing to say. */
+.collaborationPresence.dialogPresence {
+    display: none;
+}
+
+.ft-dialog-titlebar .collaborationPresence.dialogPresence:not(:empty) {
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+    margin-right: 8px;
+}
+
+/* Pull the close button out of its corner pin and into the title row, so it
+   lines up with the avatars. Scoped to bars that actually carry presence, so
+   every other dialog keeps its existing close-button placement. */
+.ft-dialog-titlebar.hasCollabPresence .ft-dialog-titlebar-close {
+    position: static;
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    padding: 0;
+}
+
+.ft-dialog-titlebar .dialogCollabMessage {
+    display: none;
+}
+
+.ft-dialog-titlebar .dialogCollabMessage.active {
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0 12px;
+    padding: 1px 8px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    text-align: center;
+    font-size: 12px;
+    line-height: 18px;
+}
+
 .admin-only {
     opacity: .4;
     pointer-events: none;

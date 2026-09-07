@@ -28,7 +28,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                             + '      <div class="collaborationPresence"></div>'
                             + '      <button class="adminSettingsButton" data-tooltip-bottom-right="'+ labels['GenericAdministration'] +'"><span class="icon-cog"></span></button>'
                             + '      <button class="manageResourcesButton resourceManagerIcon" data-tooltip-bottom-right="'+ labels['ResourcesManage'] +'"><span class="icon-folder-open"></span></button>'
-                            + '      <button class="userSettingsButton" data-tooltip-bottom-right="'+ labels['UserManagement'] +'"><span class="icon-user"></span></button>'
+                            + '      <button class="userSettingsButton" data-tooltip-bottom-right="'+ labels['UserMySettings'] +'"><span class="icon-user"></span></button>'
                             + '      <button class="logoutButton" data-tooltip-bottom-right="'+ labels['UserLogout'] +'"><span class="icon-logout"></span></button>'
                             + '      <button class="startEditButton" data-tooltip-bottom-right="'+ labels['GenericEditStart'] +'"><span class="icon-edit"></span></button>'
                             + '      <button class="leaveEditModeButton" data-tooltip-bottom-right="'+ labels['GenericEditEnd'] +'"><span class="icon-ok-squared"></span></button>'
@@ -49,63 +49,9 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
 
     /**
-     * Up to two initials: the first letters of the first two words, or a
-     * single leading character for a one-word name. Array.from rather than
-     * charAt so a name beginning with an astral character (an emoji, say) is
-     * not split down the middle of a surrogate pair.
-     *
-     * @method initialsOf
-     * @param {String} name
-     * @return String
-     */
-    function initialsOf(name) {
-
-        var words = String(name || '').trim().split(/\s+/).filter(Boolean);
-
-        if (!words.length) return '?';
-
-        return words.slice(0, 2).map(function(word) {
-            return Array.from(word)[0];
-        }).join('').toUpperCase();
-
-    }
-
-
-    /**
-     * Users pick their own colour from a palette spanning very dark to very
-     * light, so the initials cannot simply be white — I choose whichever of
-     * dark/light actually reads on the given fill.
-     *
-     * @method readableTextColor
-     * @param {String} hex
-     * @return String
-     */
-    function readableTextColor(hex) {
-
-        var value = String(hex).replace(/^#/, '');
-
-        if (value.length === 3) {
-            value = value[0] + value[0] + value[1] + value[1] + value[2] + value[2];
-        }
-        if (!/^[0-9a-f]{6}$/i.test(value)) return '';
-
-        var n = parseInt(value, 16),
-            r = (n >> 16) & 255,
-            g = (n >> 8) & 255,
-            b = n & 255,
-            // Rec. 601 luma — ample for a two-way light/dark decision.
-            luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-        return (luma > 0.6) ? '#222222' : '#ffffff';
-
-    }
-
-
-    /**
-     * I show one avatar per other person currently in this hypervideo — a
-     * circle filled with that user's own colour (from Database.users, already
-     * loaded at boot) carrying their initials. The full name lives in the
-     * tooltip. The person holding the edit lock is ringed.
+     * I show one avatar per other person currently in this hypervideo. The
+     * rendering itself lives in the Collaboration module, because the settings
+     * dialogs show the same avatars for their own scopes.
      *
      * @method renderPresence
      */
@@ -114,34 +60,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
         var Collaboration = FrameTrail.module('Collaboration');
         if (!CollaborationPresence || !Collaboration) return;
 
-        CollaborationPresence.innerHTML = '';
-
-        var others = Collaboration.others();
-        if (!others.length) return;
-
-        var lock = Collaboration.lockHolder();
-
-        others.forEach(function(participant) {
-
-            var isEditing = !!(lock && String(lock.id) === String(participant.id));
-
-            var chip = document.createElement('span');
-            chip.className = 'collaborationChip' + (isEditing ? ' editing' : '');
-            chip.textContent = initialsOf(participant.name);
-            chip.setAttribute('data-tooltip-bottom-right',
-                isEditing ? labels['MessageCollabLockedBy'].replace('%s', participant.name)
-                          : labels['MessageCollabAlsoHere'].replace('%s', participant.name));
-
-            if (participant.color) {
-                // Stored without a leading # in users.json.
-                var color = /^#/.test(participant.color) ? participant.color : '#' + participant.color;
-                chip.style.backgroundColor = color;
-                chip.style.color = readableTextColor(color);
-            }
-
-            CollaborationPresence.appendChild(chip);
-
-        });
+        Collaboration.renderAvatars(CollaborationPresence);
 
     }
 
@@ -175,7 +94,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
     });
 
     UserSettingsButton.addEventListener('click', function(){
-        FrameTrail.module('UserManagement').showAdministrationBox();
+        FrameTrail.module('UserManagement').showMySettings();
     });
 
     domElement.querySelector('.sidebarToggleButton') && domElement.querySelector('.sidebarToggleButton').addEventListener('click', function(){

@@ -47,6 +47,11 @@ switch($_REQUEST["a"]) {
         $return = userCheckLogin($_REQUEST["role"]);
         break;
 
+    case "userDelete":
+        include_once("user.php");
+        $return = userDelete($_REQUEST["userID"]);
+        break;
+
     case "userChange":
         include_once("user.php");
         $return = userChange($_REQUEST["userID"],$_REQUEST["mail"],$_REQUEST["name"],$_REQUEST["passwd"],$_REQUEST["color"],$_REQUEST["role"],$_REQUEST["active"]);
@@ -425,7 +430,6 @@ switch($_REQUEST["a"]) {
                 "updateServiceURL"=> "https://update.frametrail.org",
                 "autoUpdate"=> false,
                 "allowCaching"=> false,
-                "defaultUserRole"=> "user",
                 "captureUserTraces"=> false,
                 "userTracesStartAction"=> "",
                 "userTracesEndAction"=> "",
@@ -437,7 +441,7 @@ switch($_REQUEST["a"]) {
                 "defaultLanguage"=> "en"
             );
             // Apply optional config overrides sent by the setup wizard
-            $configOverrides = array("defaultUserRole", "userNeedsConfirmation",
+            $configOverrides = array("userNeedsConfirmation",
                                      "alwaysForceLogin", "allowUploads", "defaultTheme",
                                      "defaultLanguage");
             foreach ($configOverrides as $key) {

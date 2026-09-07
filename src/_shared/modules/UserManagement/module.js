@@ -40,68 +40,18 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
     _dmw.innerHTML = '<div class="UserBox">'
         + '    <div class="userStatusMessage message">'
         + '    </div>'
-        + '    <div class="userTabs">'
-        + '        <ul class="userTabMenu">'
-        + '            <li class="userTabSettingsMenu">'
-        + '                <a href="#UserTabSettings">'+ labels['UserMySettings'] +'</a>'
-        + '            </li>'
-        + '            <li class="userTabRegistrationMenu">'
-        + '                <a href="#UserTabRegistration">'+ labels['UserRegister'] +'</a>'
-        + '            </li>'
-        + '            <li class="userTabAdministrationMenu">'
-        + '                <a href="#UserTabAdministration">'+ labels['UserAdministration'] +'</a>'
-        + '            </li>'
-        + '        </ul>'
-        + '        <div id="UserTabSettings">'
-        + '             <form class="settingsForm" method="post">'
-        + '                 <p class="settingsFormStatus message"></p>'
-        + '                 <input type="text" name="name" id="SettingsForm_name" placeholder="'+ labels['UserName'] +'">'
-        + '                 <input type="text" name="mail" id="SettingsForm_mail" placeholder="'+ labels['UserMail'] +'"><br>'
-        + '                 <div class="userColor"></div>'
-        + '                 <input type="password" name="passwd" id="SettingsForm_passwd" placeholder="'+ labels['UserNewPassword'] +'"><br>'
-        + '                 <br>'
-        + '                 <input type="hidden" name="a" value="userChange">'
-        + '                 <input type="hidden" name="userID" id="SettingsForm_userID" value="">'
-        + '                 <input type="submit" value="'+ labels['UserChangeMySettings'] +'">'
-        + '             </form>'
-        + '        </div>'
-        + '        <div id="UserTabRegistration">'
-        + '             <form class="registrationForm" method="post">'
-        + '                 <p class="registrationFormStatus message"></p>'
-        + '                 <input type="text" name="name" placeholder="'+ labels['UserName'] +'">'
-        + '                 <input type="text" name="mail" placeholder="'+ labels['UserMail'] +'">'
-        + '                 <input type="password" name="passwd" placeholder="'+ labels['UserPassword'] +'">'
-        + '                 <input type="hidden" name="a" value="userRegister">'
-        + '                 <input type="submit" value="'+ labels['UserRegister'] +'">'
-        + '             </form>'
-        + '        </div>'
-        + '        <div id="UserTabAdministration">'
-        + '             <p class="administrationFormStatus message"></p>'
-        + '             <button class="administrationFormRefresh">'+ labels['GenericRefresh'] +'</button>'
-        + '             <form class="administrationForm" method="post">'
-        + '               <div class=\"custom-select\" style=\"float: left; margin-top: 10px;\">'
-        + '                   <select name="userID" id="user_change_user">'
-        + '                       <option value="" selected disabled>'+ labels['UserSelect'] +'</option>'
-        + '                   </select>'
-        + '               </div>'
-        + '               <div class="userDataContainer">'
-        + '                   <input type="text" name="name" id="user_change_name" placeholder="'+ labels['UserName'] +'">'
-        + '                   <input type="text" name="mail" id="user_change_mail" placeholder="'+ labels['UserMail'] +'">'
-        + '                   <div id="user_change_colorContainer"></div>'
-        + '                   <input type="password" name="passwd" id="user_change_passwd" placeholder="'+ labels['UserPassword'] +'"><br>'
-        + '                   <input type="radio" name="role" id="user_change_role_admin" value="admin">'
-        + '                   <label for="user_change_role_admin">'+ labels['UserRoleAdmin'] +'</label>'
-        + '                   <input type="radio" name="role" id="user_change_role_user" value="user">'
-        + '                   <label for="user_change_role_user">'+ labels['UserRoleUser'] +'</label><br>'
-        + '                   <input type="radio" name="active" id="user_change_active_1" value="1">'
-        + '                   <label for="user_change_active_1">'+ labels['UserActive'] +'</label>'
-        + '                   <input type="radio" name="active" id="user_change_active_0" value="0">'
-        + '                   <label for="user_change_active_0">'+ labels['UserInactive'] +'</label><br>'
-        + '                   <input type="hidden" name="a" value="userChange">'
-        + '                   <input type="submit" value="'+ labels['UserChangeSettings'] +'">'
-        + '               </div>'
-        + '             </form>'
-        + '        </div>'
+        + '    <div id="UserTabSettings">'
+        + '         <form class="settingsForm" method="post">'
+        + '             <p class="settingsFormStatus message"></p>'
+        + '             <input type="text" name="name" id="SettingsForm_name" placeholder="'+ labels['UserName'] +'">'
+        + '             <input type="text" name="mail" id="SettingsForm_mail" placeholder="'+ labels['UserMail'] +'"><br>'
+        + '             <div class="userColor"></div>'
+        + '             <input type="password" name="passwd" id="SettingsForm_passwd" placeholder="'+ labels['UserNewPassword'] +'"><br>'
+        + '             <br>'
+        + '             <input type="hidden" name="a" value="userChange">'
+        + '             <input type="hidden" name="userID" id="SettingsForm_userID" value="">'
+        + '             <input type="submit" value="'+ labels['UserChangeMySettings'] +'">'
+        + '         </form>'
         + '    </div>'
         + '</div>';
     domElement = _dmw.firstElementChild;
@@ -160,35 +110,6 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         return fetch(serverURL, { method: 'POST', body: body })
             .then(function(r) { return r.json(); });
     }
-    FTTabs(domElement.querySelector('.userTabs'), {
-        heightStyle: 'fill'
-    });
-
-
-    domElement.querySelector('.registrationForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        var _form = this;
-        _serverPost(new FormData(_form))
-        .then(function(response) {
-            var _st = domElement.querySelector('.registrationFormStatus');
-            switch(response.code){
-                case 0:
-                    _st.classList.remove('error'); _st.classList.add('active', 'success'); _st.textContent = labels['MessageSuccessfullyRegistered'];
-                    break;
-                case 1:
-                    _st.classList.remove('success'); _st.classList.add('active', 'error'); _st.textContent = labels['ErrorEmptyFieldsMail'];
-                    break;
-                case 2:
-                    _st.classList.remove('success'); _st.classList.add('active', 'error'); _st.textContent = labels['ErrorMailExists'];
-                    break;
-                case 3:
-                    _st.classList.remove('success', 'error'); _st.classList.add('active'); _st.textContent = labels['MessageRegisteredActivationPending'];
-                    break;
-            }
-        });
-    });
-
-
     domElement.querySelector('.settingsForm').addEventListener('submit', function(e) {
         e.preventDefault();
         var _form = this;
@@ -224,101 +145,6 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         });
     });
 
-
-    var refreshAdministrationForm = function(){
-
-
-        domElement.querySelector('.administrationForm').reset();
-        domElement.querySelector('.userDataContainer').style.display = 'none';
-
-
-        _serverPost(new URLSearchParams({ a: 'userGet' }))
-        .then(function(data) {
-
-            if (!data || !data.response) {
-                console.error(labels['ErrorNoUserFile']);
-                return;
-            }
-
-            var allUsers = data.response.user;
-
-            domElement.querySelector('#user_change_user').innerHTML = '<option value="" selected disabled>'+ labels['UserSelect'] +'</option>';
-
-            for (var id in allUsers) {
-                domElement.querySelector('#user_change_user').insertAdjacentHTML('beforeend', '<option value="' + id + '">' + allUsers[id].name + '</option>');
-            }
-
-        });
-
-    }
-
-    // Bind change event once on the native select element
-    domElement.querySelector('#user_change_user').addEventListener('change', function(evt) {
-
-        var selectedUserID = evt.target.value;
-        _serverPost(new URLSearchParams({ a: 'userGet', userID: selectedUserID }))
-        .then(function(ret) {
-            domElement.querySelector('#user_change_name').value = ret['response']['name'];
-            domElement.querySelector('#user_change_mail').value = ret['response']['mail'];
-            domElement.querySelector('#user_change_passwd').value = '';
-            domElement.querySelectorAll(".administrationForm input[name='role']").forEach(function(el) { el.checked = false; el.removeAttribute('checked'); });
-            domElement.querySelector('.administrationForm input#user_change_role_' + ret['response']['role']).checked = true;
-            domElement.querySelector('.administrationForm input#user_change_role_' + ret['response']['role']).setAttribute('checked', 'checked');
-            domElement.querySelectorAll(".administrationForm input[name='active']").forEach(function(el) { el.checked = false; el.removeAttribute('checked'); });
-            domElement.querySelector('.administrationForm input#user_change_active_' + ret['response']['active']).checked = true;
-            domElement.querySelector('.administrationForm input#user_change_active_' + ret['response']['active']).setAttribute('checked', 'checked');
-            getUserColorCollection(function() {
-                renderUserColorCollectionForm(ret['response']['color'], domElement.querySelector('#user_change_colorContainer'));
-            });
-            domElement.querySelector('.userDataContainer').style.display = 'block';
-        });
-
-    });
-
-
-    domElement.querySelector('.administrationFormRefresh').addEventListener('click', refreshAdministrationForm);
-
-    if (FrameTrail.module('RouteNavigation').hasServer() &&
-        !FrameTrail.getState('videoElement') &&
-        !FrameTrail.getState('videoSource') &&
-        !FrameTrail.getState('users')) {
-        refreshAdministrationForm();
-    }
-
-
-    domElement.querySelector('.administrationForm').addEventListener('submit', function(e) {
-        e.preventDefault();
-        var _form = this;
-        _serverPost(new FormData(_form))
-        .then(function(response) {
-            // TODO: Update client userData Object if Admin edited himself via this view instead of "Settings" Tab
-            refreshAdministrationForm();
-            var _st = domElement.querySelector('.administrationFormStatus');
-            switch(response.code){
-                case 0:
-                    _st.classList.remove('error'); _st.classList.add('active', 'success'); _st.textContent = labels['MessageSettingsChanged'];
-                    break;
-                case 1:
-                    _st.classList.remove('success'); _st.classList.add('active', 'error'); _st.textContent = labels['ErrorUserDBNotFound'];
-                    break;
-                case 2:
-                    _st.classList.remove('success'); _st.classList.add('active', 'error'); _st.textContent = labels['ErrorUserNotAdmin'];
-                    break;
-                case 3:
-                    _st.classList.remove('error', 'success'); _st.classList.add('active'); _st.textContent = labels['MessageSettingsSavedExceptMail'];
-                    break;
-                case 4:
-                    _st.classList.remove('success'); _st.classList.add('active', 'error'); _st.textContent = labels['ErrorNotLoggedInAnymore'];
-                    break;
-                case 5:
-                    _st.classList.remove('success'); _st.classList.add('active', 'error'); _st.textContent = labels['ErrorAccountDeactivated'];
-                    break;
-                case 6:
-                    _st.classList.remove('success'); _st.classList.add('active', 'error'); _st.textContent = labels['ErrorUserNotFound'];
-                    break;
-            }
-        });
-    });
 
     function renderUserColorCollectionForm(selectedColor, targetElement) {
         var _ew = document.createElement('div');
@@ -856,23 +682,19 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
      */
     function updateView(loginStatus){
 
+        // There are no tabs to show or hide any more — this dialog is only ever
+        // the current user's own settings. The admin marker class still matters,
+        // because it gates admin-only affordances elsewhere in the UI.
         if (loginStatus){
 
-            //domElement.find('#UserStatusMessage').addClass('active').text('Hello! Your are logged in, '+ FrameTrail.getState('username') +'.');
-
-            domElement.querySelector('.userTabSettingsMenu').style.display = '';
             updateSettings();
 
             if (userRole === 'admin'){
-                domElement.querySelector('.userTabAdministrationMenu').style.display = '';
                 document.querySelector(FrameTrail.getState('target')).classList.add('frametrail-admin');
             }
 
-
         } else {
 
-            domElement.querySelector('.userTabSettingsMenu').style.display = 'none';
-            domElement.querySelector('.userTabAdministrationMenu').style.display = 'none';
             document.querySelector(FrameTrail.getState('target')).classList.remove('frametrail-admin');
 
         }
@@ -972,24 +794,25 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 
     /**
-     * I open the user administration dialog.
-     * The UI is a single DOM element, which is displayed via jQuery UI Dialog
+     * I open the current user's own settings — name, mail, colour, password.
      *
-     * @method showAdministrationBox
+     * Administering *other* users lives in the admin dialog's User
+     * Administration tab, so this dialog has no tabs at all.
+     *
+     * @method showMySettings
      */
-    function showAdministrationBox() {
+    function showMySettings() {
 
         ensureAuthenticated(function() {
 
             userDialogCtrl = Dialog({
-                title: labels['UserManagement'],
+                title: labels['UserMySettings'],
                 content: domElement,
                 modal: true,
                 width: 600,
-                height: 460,
+                height: 340,
                 open: function() {
                     updateView(true);
-                    FTTabs(domElement.querySelector('.userTabs'), 'refresh');
                     getUserColorCollection(function() {
                         renderUserColorCollectionForm(FrameTrail.getState('userColor'),".userColor")
                     });
@@ -1008,10 +831,10 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
     /**
      * I close the user administration dialog (jQuery UI Dialog).
      *
-     * @method closeAdministrationBox
+     * @method closeMySettings
      * @return
      */
-    function closeAdministrationBox() {
+    function closeMySettings() {
 
         if (userDialogCtrl) userDialogCtrl.close();
 
@@ -1060,8 +883,13 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
         showLoginBox:           showLoginBox,
         closeLoginBox:          closeLoginBox,
-        showAdministrationBox:  showAdministrationBox,
-        closeAdministrationBox: closeAdministrationBox,
+        showMySettings:         showMySettings,
+        closeMySettings:        closeMySettings,
+
+        // Reused by the admin dialog's User Administration tab, so the colour
+        // palette is defined in exactly one place.
+        getUserColorCollection:      getUserColorCollection,
+        renderUserColorCollectionForm: renderUserColorCollectionForm,
 
         isLoggedIn:             isLoggedIn,
         ensureAuthenticated:    ensureAuthenticated,

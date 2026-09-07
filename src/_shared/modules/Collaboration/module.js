@@ -322,10 +322,17 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
         session.participants = response.participants || [];
         session.lock         = response.lock || null;
+        session.lastWriter   = response.lastWriter || null;
         session.version      = response.version;
 
         if (session.knownVersion === null) {
             // First sync of the session: adopt whatever is on disk as our baseline.
+            session.knownVersion = response.version;
+            session.stale = false;
+        } else if (session.lastWriter && String(session.lastWriter.id) === ownUserID()) {
+            // We wrote it. Never tell someone about their own change — and adopt
+            // the version so a save whose response we missed cannot leave us
+            // permanently "stale" against ourselves.
             session.knownVersion = response.version;
             session.stale = false;
         } else {
@@ -418,6 +425,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             stale:        false,
             editing:      false,
             unsaved:      false,
+            lastWriter:   null,
             guestLastModified: null
         };
 
@@ -609,17 +617,64 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
 
     /**
-     * Called once the client has re-rendered from the current server state.
+     * Called once the client is in sync with the server state — after a save of
+     * our own, or after re-rendering from a refresh.
+     *
+     * Pass the version the server reported *after* the write. Without it we
+     * would fall back to session.version, which is the token from the last
+     * poll — i.e. from before our own save — and the next poll would report us
+     * stale against our own change.
+     *
+     * @method acknowledgeVersion
+     * @param {Number} [newVersion] version token reported by the write response
      */
-    function acknowledgeVersion(scope, scopeId) {
+    function acknowledgeVersion(newVersion, scope, scopeId) {
 
         var session = sessionFor(scope, scopeId);
         if (!session) return;
 
-        session.knownVersion = session.version;
+        session.knownVersion = (newVersion === undefined || newVersion === null)
+                             ? session.version
+                             : newVersion;
+        session.version = session.knownVersion;
         session.guestLastModified = null;
         session.stale = false;
         broadcast();
+
+    }
+
+
+    /**
+     * Flag the document as changed underneath us without any UI interruption.
+     * Used when an automatic save is rejected by the compare-and-swap guard:
+     * a background action must never raise a modal, so it feeds the ordinary
+     * "changes available" affordance instead.
+     *
+     * @method markStale
+     */
+    function markStale(scope, scopeId) {
+
+        var session = sessionFor(scope, scopeId);
+        if (!session || session.stale) return;
+
+        session.stale = true;
+        broadcast();
+
+    }
+
+
+    /**
+     * Who last wrote this scope, as reported by the server. This is the correct
+     * attribution for a staleness notice — the lock holder is not, since a
+     * takeover changes the holder without changing who saved.
+     *
+     * @method lastWriter
+     * @return {Object|null} { id, name, at }
+     */
+    function lastWriter(scope, scopeId) {
+
+        var session = sessionFor(scope, scopeId);
+        return session ? (session.lastWriter || null) : null;
 
     }
 
@@ -645,6 +700,157 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
      * allowed to do with them changes — so reset per-session state that the
      * new identity invalidates and pick the polling back up.
      */
+    /* ------------------------------------------------------------------ *
+     * Presence avatars
+     *
+     * Shared here rather than in Titlebar because the settings dialogs show
+     * the same avatars for their own scopes.
+     * ------------------------------------------------------------------ */
+
+    /**
+     * Up to two initials: the first letters of the first two words, or a single
+     * leading character for a one-word name. Array.from rather than charAt so a
+     * name beginning with an astral character is not split mid-surrogate-pair.
+     *
+     * @method initialsOf
+     * @param {String} name
+     * @return String
+     */
+    function initialsOf(name) {
+
+        var words = String(name || '').trim().split(/\s+/).filter(Boolean);
+
+        if (!words.length) return '?';
+
+        return words.slice(0, 2).map(function(word) {
+            return Array.from(word)[0];
+        }).join('').toUpperCase();
+
+    }
+
+
+    /**
+     * Users pick their own colour from a palette spanning very dark to very
+     * light, so the initials cannot simply be white — pick whichever of
+     * dark/light actually reads on the given fill.
+     *
+     * @method readableTextColor
+     * @param {String} hex
+     * @return String
+     */
+    function readableTextColor(hex) {
+
+        var value = String(hex).replace(/^#/, '');
+
+        if (value.length === 3) {
+            value = value[0] + value[0] + value[1] + value[1] + value[2] + value[2];
+        }
+        if (!/^[0-9a-f]{6}$/i.test(value)) return '';
+
+        var n = parseInt(value, 16),
+            r = (n >> 16) & 255,
+            g = (n >> 8) & 255,
+            b = n & 255,
+            // Rec. 601 luma — ample for a two-way light/dark decision.
+            luma = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+        return (luma > 0.6) ? '#222222' : '#ffffff';
+
+    }
+
+
+    /**
+     * Render one avatar per other participant in a scope into a container.
+     * The lock holder is ringed; the full name lives in the tooltip.
+     *
+     * @method renderAvatars
+     * @param {HTMLElement} container
+     * @param {String} [scope]
+     * @param {String} [scopeId]
+     */
+    function renderAvatars(container, scope, scopeId) {
+
+        if (!container) return;
+
+        var labels = FrameTrail.module('Localization').labels;
+
+        container.innerHTML = '';
+
+        var people = others(scope, scopeId);
+        if (!people.length) return;
+
+        var lock = lockHolder(scope, scopeId);
+
+        people.forEach(function(participant) {
+
+            var isEditing = !!(lock && String(lock.id) === String(participant.id));
+
+            var chip = document.createElement('span');
+            chip.className = 'collaborationChip' + (isEditing ? ' editing' : '');
+            chip.textContent = initialsOf(participant.name);
+            chip.setAttribute('data-tooltip-bottom-right',
+                isEditing ? labels['MessageCollabLockedBy'].replace('%s', participant.name)
+                          : labels['MessageCollabAlsoHere'].replace('%s', participant.name));
+
+            if (participant.color) {
+                // Stored without a leading # in users.json.
+                var color = /^#/.test(participant.color) ? participant.color : '#' + participant.color;
+                chip.style.backgroundColor = color;
+                chip.style.color = readableTextColor(color);
+            }
+
+            container.appendChild(chip);
+
+        });
+
+    }
+
+
+    /**
+     * Mount presence UI into a dialog's title bar: avatars on the right, just
+     * clear of the close button, and a status message centred in the title row.
+     * This is title-level metadata about the document, not an action, so it
+     * belongs here rather than in the button pane.
+     *
+     * @method mountDialogPresence
+     * @param {Object} dialogCtrl a Dialog() controller
+     * @return {Object|null} { presence, message } DOM elements
+     */
+    function mountDialogPresence(dialogCtrl) {
+
+        var widget   = dialogCtrl && dialogCtrl.widget ? dialogCtrl.widget() : null,
+            titlebar = widget ? widget.querySelector('.ft-dialog-titlebar') : null;
+
+        if (!titlebar) return null;
+
+        var messageEl = document.createElement('div');
+        messageEl.className = 'dialogCollabMessage message error';
+
+        var presenceEl = document.createElement('div');
+        presenceEl.className = 'collaborationPresence dialogPresence';
+
+        // Before the close button in DOM order; the button itself is absolutely
+        // positioned, so the avatars reserve room for it via margin.
+        var closeBtn = titlebar.querySelector('.ft-dialog-titlebar-close');
+        if (closeBtn) {
+            titlebar.insertBefore(messageEl, closeBtn);
+            titlebar.insertBefore(presenceEl, closeBtn);
+        } else {
+            titlebar.appendChild(messageEl);
+            titlebar.appendChild(presenceEl);
+        }
+
+        // The close button is normally pinned to the dialog's top-right corner,
+        // which leaves it visibly above the avatars. Marking the bar lets CSS
+        // pull the button into the flex row so everything sits on one line —
+        // scoped to this class so no other dialog's layout changes.
+        titlebar.classList.add('hasCollabPresence');
+
+        return { presence: presenceEl, message: messageEl };
+
+    }
+
+
     function reevaluateMode() {
 
         var next = determineMode();
@@ -655,6 +861,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         for (var key in sessions) {
             sessions[key].participants = [];
             sessions[key].lock         = null;
+            sessions[key].lastWriter   = null;
             sessions[key].knownVersion = null;
             sessions[key].stale        = false;
             sessions[key].guestLastModified = null;
@@ -685,6 +892,13 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         setEditing:         setEditing,
         setUnsaved:         setUnsaved,
         acknowledgeVersion: acknowledgeVersion,
+        markStale:          markStale,
+        lastWriter:         lastWriter,
+
+        initialsOf:         initialsOf,
+        readableTextColor:  readableTextColor,
+        renderAvatars:      renderAvatars,
+        mountDialogPresence: mountDialogPresence,
 
         hasLock:            hasLock,
         lockHolder:         lockHolder,

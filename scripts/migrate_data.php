@@ -77,7 +77,6 @@ $DEFAULT_CONFIG = [
     "updateServiceURL" => "https://update.frametrail.org",
     "autoUpdate" => false,
     "allowCaching" => false,
-    "defaultUserRole" => "user",
     "captureUserTraces" => false,
     "userTracesStartAction" => "",
     "userTracesEndAction" => "",
@@ -811,7 +810,7 @@ function migrateConfig($srcDir, $outDir) {
         // Slavin-style project.json: merge into default template
         $project = json_decode(file_get_contents($srcDir . "/project.json"), true);
         $config = $DEFAULT_CONFIG;
-        $mappable = ['userNeedsConfirmation', 'defaultUserRole', 'defaultHypervideoHidden', 'theme'];
+        $mappable = ['userNeedsConfirmation', 'defaultHypervideoHidden', 'theme'];
         foreach ($mappable as $key) {
             if (isset($project[$key])) {
                 $config[$key] = $project[$key];

@@ -368,7 +368,6 @@ Server-side config is in `src/_server/config.php`:
 - `$conf["dir"]["data"]` — Path to `_data` directory (default: `../_data`). Can be overridden by the client's `dataPath` init option — the PHP backend resolves the URL path to a filesystem path and validates it is within the server root (parent of `_server/`). The resolved path is locked into the session at login.
 
 Runtime config is in `_data/config.json`:
-- `defaultUserRole` — Role for new users (`"user"` or `"admin"`)
 - `userNeedsConfirmation` — Require admin approval for new accounts
 - `allowUploads` — Enable file uploads
 - `alwaysForceLogin` — Make the instance **private**: require a valid login to view any content (see below)

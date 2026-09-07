@@ -367,11 +367,26 @@ function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subt
     }
 
     //$file->writeClose(json_encode(json_decode($src,true), $conf["settings"]["json_flags"]));
+    $hypervideoPath = $conf["dir"]["data"]."/hypervideos/".$hvi["hypervideos"][$hypervideoID]."/hypervideo.json";
+
     $file->writeClose($src);
+
+    // Hand the writer the post-write version token. Without this the client
+    // would keep the version it read before saving, immediately consider itself
+    // stale, and notify the user about their own change.
+    clearstatcache(true, $hypervideoPath);
+    $newVersion = @filemtime($hypervideoPath);
+
+    // Name the actual writer, so the staleness notice does not misattribute the
+    // change to whoever happens to hold the lock.
+    include_once("collaboration.php");
+    collabRecordWrite("hypervideo", $hypervideoID,
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
 
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Hypervideo #".$hypervideoID." has been changed.";
+    $return["response"] = array("version" => ($newVersion === false) ? null : $newVersion);
     return $return;
 }
 ?>

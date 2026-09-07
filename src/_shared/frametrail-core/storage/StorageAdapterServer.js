@@ -106,6 +106,16 @@ class StorageAdapterServer extends StorageAdapter {
         var match;
 
         if ((match = path.match(/^hypervideos\/([^/]+)\/hypervideo\.json$/))) {
+            // No baseVersion here on purpose. The compare-and-swap token is the
+            // meta.lastchanged that was *loaded*, and this adapter has no access
+            // to it — data.meta.lastchanged is the value being written, freshly
+            // stamped, so it would never match and every write would be rejected.
+            // In practice the guarded path is Database.saveHypervideo(), which
+            // holds the loaded token; the only callers that write hypervideo.json
+            // through an adapter (add, fork, local save) run in local-folder mode
+            // against StorageAdapterLocal, and create files rather than racing
+            // for them. If a server-mode caller is ever added here, it must pass
+            // the loaded token in explicitly.
             return {
                 params: {
                     a: 'hypervideoChange',

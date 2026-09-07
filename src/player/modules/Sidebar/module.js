@@ -1038,9 +1038,11 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         // Stale: somebody else's work is on disk and we are not showing it.
         if (Collaboration.isStale()) {
 
-            var holder = Collaboration.lockHolder(),
-                staleText = (holder && holder.name)
-                          ? labels['MessageCollabChangesBy'].replace('%s', holder.name)
+            // Name whoever actually wrote, not whoever holds the lock — after a
+            // takeover those differ, and the lock holder may well be us.
+            var writer = Collaboration.lastWriter(),
+                staleText = (writer && writer.name)
+                          ? labels['MessageCollabChangesBy'].replace('%s', writer.name)
                           : labels['MessageCollabChangesAvailable'];
 
             var staleMsg = document.createElement('div');
@@ -1073,7 +1075,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
             var takeoverBtn = document.createElement('button');
             takeoverBtn.className = 'collabTakeoverButton';
-            takeoverBtn.textContent = labels['GenericRequestEditAccess'];
+            takeoverBtn.textContent = labels['GenericTakeOverEditAccess'];
             takeoverBtn.addEventListener('click', function() {
                 takeoverBtn.disabled = true;
                 Collaboration.takeover(function(result) {
@@ -1090,13 +1092,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
             CollaborationInfo.appendChild(lockMsg);
             CollaborationInfo.appendChild(takeoverBtn);
-
-        } else if (Collaboration.hasLock() && Collaboration.othersPresent()) {
-
-            var liveMsg = document.createElement('div');
-            liveMsg.className = 'message active';
-            liveMsg.textContent = labels['MessageCollabAutoSaveActive'];
-            CollaborationInfo.appendChild(liveMsg);
 
         }
 
