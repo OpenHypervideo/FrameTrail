@@ -213,3 +213,24 @@
 .sidebarContainer .viewmodeControls .exportButton {
     display: none;
 }
+
+/* Edit modes locked by another editor
+   A lock badge only — no dimming. These buttons sit in a rail of icons that
+   already vary in opacity by state, so fading them read as a glitch rather
+   than as a lock. The blocking sheet over the player carries the message; this
+   is just the cue for which modes it will appear in.
+
+   :before, not :after — :after on these buttons is the active-mode edge marker
+   (.editMode.active:after above), and .active + .collabLocked co-occur the
+   moment you enter a locked mode, so a lock badge there would erase it.
+   :before is the unsaved-changes asterisk, which genuinely cannot co-occur:
+   you cannot have unsaved changes in a mode you were never able to edit. */
+.viewmodeControls button.editMode.collabLocked:before {
+    content: "\e81a";   /* icon-lock */
+    font-family: "FrameTrail";
+    position: absolute;
+    top: 2px;
+    left: 42px;
+    font-size: 11px;
+    color: var(--primary-bg-color);
+}

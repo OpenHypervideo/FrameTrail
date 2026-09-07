@@ -1676,6 +1676,11 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
         if (applyButton) applyButton.disabled = blocked;
 
+        // Grey out the form itself. The title bar sits outside .ft-dialog-content,
+        // so the avatars and the "X is editing…" message stay fully legible.
+        var widget = presenceContainer.closest('.ft-dialog');
+        if (widget) widget.classList.toggle('collabLocked', blocked);
+
     }
 
     return {

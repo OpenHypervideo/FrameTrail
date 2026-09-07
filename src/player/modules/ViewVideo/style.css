@@ -1752,3 +1752,32 @@
     height: 1px;
     width: 100%;
 }
+
+/* Locked by another editor
+   One blocking sheet over the whole player rather than dimming each region:
+   greying regions individually left parts of the UI looking oddly faded, and
+   several of them carry inline styles that a stylesheet cannot reliably beat.
+   The sheet also does the blocking simply by being there and swallowing events,
+   so nothing needs pointer-events juggling underneath.
+
+   Shown only for the edit modes that write to the shared hypervideo.json.
+   Preview is read-only anyway, and annotations live in per-user files and stay
+   concurrently editable — so neither is ever blocked. */
+.viewVideo .collabBlocker {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: #fff;
+    opacity: .5;
+    z-index: 5;
+}
+
+.mainContainer.editActive.collabLocked[data-edit-mode="layout"] .viewVideo .collabBlocker,
+.mainContainer.editActive.collabLocked[data-edit-mode="overlays"] .viewVideo .collabBlocker,
+.mainContainer.editActive.collabLocked[data-edit-mode="codesnippets"] .viewVideo .collabBlocker,
+.mainContainer.editActive.collabLocked[data-edit-mode="chapters"] .viewVideo .collabBlocker {
+    display: block;
+}

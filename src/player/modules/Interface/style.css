@@ -12,6 +12,7 @@
     color: var(--primary-fg-color);
     container-type: size;
     container-name: ft-main;
+    z-index: 3;
 }
 
 

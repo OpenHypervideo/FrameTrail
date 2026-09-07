@@ -125,6 +125,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '        <div class="areaBottomDetails layoutAreaDetails" data-area="areaBottom"></div>'
                         + '    </div>'
                         + '    <div class="hypervideoLayoutContainer"></div>'
+                        + '    <div class="collabBlocker"></div>'
                         + '</div>';
     var domElement = _dvv.firstElementChild,
 

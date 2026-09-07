@@ -209,6 +209,29 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
 
         }
 
+        // Entering a mode while the lock is already held must apply at once,
+        // rather than waiting for the next poll to broadcast collabState.
+        reflectCollaborationLock();
+
+    };
+
+
+    /**
+     * I mirror "someone else holds the edit lock" onto the main container, so
+     * CSS alone can make the regions that write to the shared hypervideo.json
+     * inert. Annotations are exempt — they are per-user files and stay
+     * concurrently editable — which the stylesheets express via the
+     * data-edit-mode attribute set above.
+     *
+     * @method reflectCollaborationLock
+     */
+    function reflectCollaborationLock() {
+
+        var Collaboration = FrameTrail.module('Collaboration');
+
+        mainContainer.classList.toggle('collabLocked',
+            !!(Collaboration && Collaboration.isLockedByOther()));
+
     };
 
 
@@ -221,7 +244,8 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
 
         onChange: {
             sidebarOpen:    toggleSidebarOpen,
-            editMode:       toggleEditMode
+            editMode:       toggleEditMode,
+            collabState:    reflectCollaborationLock
         }
 
     };

@@ -1242,6 +1242,14 @@ input:checked + .slider:before {
     padding: 0;
 }
 
+/* Another user holds this scope's edit lock: the form is readable but inert.
+   Only the content wrapper — the title bar keeps the avatars, the message
+   naming the holder, and a working close button at full opacity. */
+.ft-dialog.collabLocked .ft-dialog-content {
+    opacity: .5;
+    pointer-events: none;
+}
+
 .ft-dialog-titlebar .dialogCollabMessage {
     display: none;
 }

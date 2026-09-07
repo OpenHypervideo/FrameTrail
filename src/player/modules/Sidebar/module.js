@@ -1120,8 +1120,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             }
         });
 
-        domElement.classList.toggle('collabLocked', blocked);
-
         if (SaveButton && FrameTrail.getState('editMode')) {
             SaveButton.disabled = !FrameTrail.module('StorageManager').canSave() || blocked;
         }
