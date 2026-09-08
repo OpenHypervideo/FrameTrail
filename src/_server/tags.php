@@ -64,6 +64,11 @@ function tagSet($tagName,$lang,$label,$description) {
 
     $t = json_encode($t, $conf["settings"]["json_flags"]);
     $file->writeClose($t);
+
+    include_once("collaboration.php");
+    collabRecordWrite("tags", "global",
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
+
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Tag has been saved";
@@ -152,6 +157,10 @@ function tagDelete($tagName) {
     $t = json_encode($t, $conf["settings"]["json_flags"]);
     $file->writeClose($t);
 
+    include_once("collaboration.php");
+    collabRecordWrite("tags", "global",
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
+
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Tag has been removed";
@@ -164,6 +173,15 @@ function tagDelete($tagName) {
 
 
 /**
+ * Remove one language from one tag. Removing a tag's last language removes the
+ * tag itself, which is what the client's local-storage branch has always done.
+ *
+ * I used to take only $lang and strip that language from EVERY tag, while the
+ * client called me meaning "this one tag" — so the two sides disagreed about
+ * what the operation was. The UI never reached me, which is the only reason
+ * that never destroyed anyone's definitions.
+ *
+ * @param $tagName
  * @param $lang
  *
  * Returning Code:
@@ -171,14 +189,22 @@ function tagDelete($tagName) {
  * 1       =   failed. User is not logged in as admin.
  * 3       =   failed. tagdefinitions.json has not been found.
  * 4       =   failed. lang must be exactly 2 characters.
+ * 5       =   failed. tagName was not submitted, or is not defined.
  */
-function tagLangDelete($lang) {
+function tagLangDelete($tagName, $lang) {
     global $conf;
 
     if (strlen($lang) != 2) {
         $return["status"] = "fail";
         $return["code"] = 4;
         $return["string"] = "Language code is not valid (must be exactly 2 characters)";
+        return $return;
+    }
+
+    if (!isset($tagName) || strlen($tagName) == 0) {
+        $return["status"] = "fail";
+        $return["code"] = 5;
+        $return["string"] = "Tag name has not been submitted.";
         return $return;
     }
 
@@ -200,18 +226,32 @@ function tagLangDelete($lang) {
 
     $t = json_decode($json,true);
 
-    foreach ($t as $tn=>$tv) {
-        if (array_key_exists($lang,$tv)) {
-            unset($t[$tn][$lang]);
-        }
+    if (!is_array($t) || !array_key_exists($tagName, $t)) {
+        $file->close();
+        $return["status"] = "fail";
+        $return["code"] = 5;
+        $return["string"] = "Tag '".$tagName."' is not defined.";
+        return $return;
+    }
+
+    unset($t[$tagName][$lang]);
+
+    // A tag with no languages left has no label in any locale, so it could only
+    // ever render as its raw id. Drop it rather than leave that behind.
+    if (count($t[$tagName]) == 0) {
+        unset($t[$tagName]);
     }
 
     $t = json_encode($t, $conf["settings"]["json_flags"]);
     $file->writeClose($t);
 
+    include_once("collaboration.php");
+    collabRecordWrite("tags", "global",
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
+
     $return["status"] = "success";
     $return["code"] = 0;
-    $return["string"] = "Tag has been removed";
+    $return["string"] = "Tag language has been removed";
     $return["response"] = json_decode($t,true);
     return $return;
 

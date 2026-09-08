@@ -175,17 +175,69 @@
     flex-shrink: 0;
 }
 
+/* Logging out mid-fullscreen drops you onto a page you cannot see, so it is
+   withheld there. In the player that is now a menu entry rather than a button —
+   on the entry, not on the menu, or My Settings and Manage Users would go with
+   it. The standalone resource manager still builds a plain button. */
+.frametrail-body.inFullscreen .titlebar .userMenuLogout,
 .frametrail-body.inFullscreen .titlebar .logoutButton {
     display: none !important;
 }
 
-.titlebar .titlebarActionButtonContainer .manageResourcesButton, 
-.titlebar .titlebarActionButtonContainer .adminSettingsButton, 
-.titlebar .titlebarActionButtonContainer .startEditButton, 
-.titlebar .titlebarActionButtonContainer .leaveEditModeButton, 
-.titlebar .titlebarActionButtonContainer .userSettingsButton, 
-.titlebar .titlebarActionButtonContainer .logoutButton {
+/* .logoutButton is still the resource manager's own titlebar (it builds one of
+   its own and loads this stylesheet); the player's logout moved into the menu. */
+.titlebar .titlebarActionButtonContainer .manageResourcesButton,
+.titlebar .titlebarActionButtonContainer .adminSettingsButton,
+.titlebar .titlebarActionButtonContainer .startEditButton,
+.titlebar .titlebarActionButtonContainer .leaveEditModeButton,
+.titlebar .titlebarActionButtonContainer .logoutButton,
+.titlebar .titlebarActionButtonContainer .userSettingsMenu {
     float: left;
+}
+
+/* User menu
+   The chip reuses .collaborationChip so "you" and "everyone else" read as one
+   set, but that class is styled for a passive avatar — as a button it needs to
+   look pressable and to sit on the 40px title bar baseline. */
+.titlebar .titlebarActionButtonContainer .userSettingsMenu {
+    height: 40px;
+    display: flex;
+    align-items: center;
+    padding: 0 4px;
+}
+
+/* The chip's own metrics have to be restated here, not just inherited from
+   .collaborationChip: `.titlebar button` sizes every title-bar icon button at
+   40px with 19px glyphs, and being one class plus one element it outranks the
+   single class .collaborationChip. Without this the avatar renders at title-bar
+   button size while the presence avatars beside it stay at 26px. */
+.titlebar .userSettingsMenu .userSettingsButton {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    border: none;
+    font-size: 11px;
+    line-height: 1;
+    /* Same reason: the transparent background of a title-bar button would win
+       over the chip's. The inline colour set per user overrides both. */
+    background-color: var(--secondary-bg-color);
+    cursor: pointer;
+}
+
+.titlebar .userSettingsMenu .userSettingsButton:hover,
+.titlebar .userSettingsMenu.active .userSettingsButton {
+    box-shadow: 0 0 0 2px var(--primary-bg-color);
+}
+
+/* The shared .contextSelectList is positioned for a small inline button inside
+   a panel (top: 20px, left: -2px). Under a 40px button pinned to the right edge
+   of the title bar it would overlap the chip and run off screen. */
+.titlebar .userSettingsMenu .contextSelectList {
+    top: 40px;
+    left: auto;
+    right: 0;
+    max-height: none;
+    white-space: nowrap;
 }
 
 .titlebar .titlebarActionButtonContainer .leaveEditModeButton {
@@ -207,7 +259,8 @@
     align-items: center;
     height: 40px;
     max-width: 240px;
-    padding: 0 4px;
+    padding: 0 8px 0 4px;
+    border-right: 1px solid #bbb;
     overflow: hidden;
 }
 

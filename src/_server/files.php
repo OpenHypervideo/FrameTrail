@@ -1132,6 +1132,45 @@ function updateCSSFile($cssstring, $baseVersion = null) {
 }
 
 /**
+ * The compare-and-swap tokens for the two files the settings dialog writes.
+ *
+ * config.json carries its own lastchanged, so a client that loaded it already
+ * holds that token. Plain CSS has nowhere to carry one, which used to leave
+ * the first save of every session unguarded — long enough for one admin to
+ * silently overwrite another's stylesheet. Asking for the token up front
+ * closes that window.
+ *
+ * @return mixed
+ *
+ * Returning Code:
+ * 0    =   Success. In $return["response"]: { config, css }.
+ * 1    =   failed. User is not logged in or is inactive.
+ *
+ */
+function getConfigVersions() {
+
+    global $conf;
+    if ($err = requireLogin()) return $err;
+
+    clearstatcache();
+
+    $configPath = $conf["dir"]["data"]."/config.json";
+    $cssPath    = $conf["dir"]["data"]."/custom.css";
+
+    $current = json_decode(@file_get_contents($configPath), true);
+    $cssTime = @filemtime($cssPath);
+
+    $return["status"] = "success";
+    $return["code"] = 0;
+    $return["string"] = "Config versions read.";
+    $return["response"] = array(
+        "config" => isset($current["lastchanged"]) ? $current["lastchanged"] : null,
+        "css"    => ($cssTime === false) ? 0 : $cssTime
+    );
+    return $return;
+}
+
+/**
  * Optimize an uploaded image
  * - Resize if larger than maxWidth
  * - Compress to specified quality

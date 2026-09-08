@@ -1474,6 +1474,9 @@ FrameTrail.defineType(
                                             + '                <span class="icon-plus">'+ this.labels['GenericAdd'] +'</span>'
                                             + '                <div class="contextSelectList"></div>'
                                             + '            </div>'
+                                            + '            <div class="button small manageTagsButton" style="display: none;">'
+                                            + '                <span class="icon-cog"> '+ this.labels['SettingsManageTags'] +'</span>'
+                                            + '            </div>'
                                             + '        </div>'
                                             + '    </div>'
                                             + '</div>';
@@ -1510,12 +1513,32 @@ FrameTrail.defineType(
                         this.classList.toggle('active');
                     });
 
+                    // Defining a tag is admin-only on the server, so offering
+                    // the button to anyone else would only ever fail. This is
+                    // where someone discovers the tag they want does not exist
+                    // yet, which is why it belongs beside the picker.
+                    var manageTagsButton = tagManagementUI.querySelector('.manageTagsButton'),
+                        tagsDialog       = FrameTrail.module('ManageTagsDialog');
+
+                    if (manageTagsButton && tagsDialog
+                            && FrameTrail.module('UserManagement').userRole === 'admin') {
+
+                        manageTagsButton.style.display = '';
+                        manageTagsButton.addEventListener('click', function() {
+                            tagsDialog.open({ onChanged: function() {
+                                updateExistingTags();
+                                updateTagSelectContainer();
+                            }});
+                        });
+
+                    }
+
                     function updateExistingTags() {
                         tagManagementUI.querySelector('.existingTags').innerHTML = '';
 
                         for (var i=0; i<annotation.data.tags.length; i++) {
 
-                            var tagLabel = FrameTrail.module('TagModel').getTagLabelAndDescription(annotation.data.tags[i], 'de').label;
+                            var tagLabel = FrameTrail.module('TagModel').getTagLabelAndDescription(annotation.data.tags[i], FrameTrail.module('Localization').language).label;
                             var _tiw = document.createElement('div');
                             _tiw.innerHTML = '<div class="tagItem" data-tag="'+ annotation.data.tags[i] +'">'+ tagLabel +'</div>';
                             var tagItem = _tiw.firstElementChild;
@@ -1578,7 +1601,7 @@ FrameTrail.defineType(
 
                         tagManagementUI.querySelector('.newTagButton .contextSelectList').innerHTML = '';
 
-                        var allTags = FrameTrail.module('TagModel').getAllTagLabelsAndDescriptions('de');
+                        var allTags = FrameTrail.module('TagModel').getAllTagLabelsAndDescriptions(FrameTrail.module('Localization').language);
                         for (var tagID in allTags) {
                             if ( annotation.data.tags.indexOf(tagID) != -1 ) {
                                 continue;

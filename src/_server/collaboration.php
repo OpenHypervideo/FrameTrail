@@ -10,12 +10,14 @@ require_once("./user.php");
  * it may be deleted at any time, is excluded from the data export, and is never
  * part of the portable _data payload.
  *
- * Two scopes exist:
- *   "hypervideo" — scopeId is the hypervideo ID; guards hypervideo.json
- *   "settings"   — scopeId is "global";          guards config.json + custom.css
+ * The scopes are declared once in _collabScopes() below. Every one of them is
+ * a shared file (or set of files) that two people can be looking at, and only
+ * one of them can win a write to.
  *
  * Annotations are deliberately NOT covered: they live in per-user files
- * (annotations/<userId>.json) and are safe to edit concurrently.
+ * (annotations/<userId>.json) and are safe to edit concurrently. Neither are
+ * uploaded resources — the resource manager re-reads its index after every
+ * operation of its own, so a version token would only add noise.
  *
  * Returning Code:
  * 0       =   Success.
@@ -30,6 +32,72 @@ define("COLLAB_LEASE", 45);
 
 
 /**
+ * The single source of truth for which collaboration scopes exist and which
+ * files each one guards.
+ *
+ * _collabStatePath() uses the keys as its whitelist; _collabVersion() takes the
+ * newest mtime across a scope's files as the token clients compare against.
+ * Adding a scope is therefore one entry here and nothing else.
+ *
+ * "files" is a callable so a scope whose file set depends on its id — or on a
+ * directory listing — can say so without a second lookup table. "global" marks
+ * a singleton scope, whose only valid scopeId is "global".
+ */
+function _collabScopes() {
+
+    global $conf;
+    $data = $conf["dir"]["data"];
+
+    return array(
+
+        "hypervideo" => array(
+            "global" => false,
+            "files"  => function($scopeId) {
+                $dir = _collabHypervideoDir($scopeId);
+                return ($dir === false) ? array() : array($dir."/hypervideo.json");
+            }
+        ),
+
+        "settings" => array(
+            "global" => true,
+            "files"  => function($scopeId) use ($data) {
+                return array($data."/config.json", $data."/custom.css");
+            }
+        ),
+
+        "users" => array(
+            "global" => true,
+            "files"  => function($scopeId) use ($data) {
+                return array($data."/users.json");
+            }
+        ),
+
+        "tags" => array(
+            "global" => true,
+            "files"  => function($scopeId) use ($data) {
+                return array($data."/tagdefinitions.json");
+            }
+        ),
+
+        // The index alone would miss a rename: hypervideoChange writes only
+        // hypervideo.json, and the overview lists the names out of it. Statting
+        // every hypervideo.json is a handful of stat() calls per poll — cheap
+        // next to parsing them, which is the whole reason this token exists.
+        "library" => array(
+            "global" => true,
+            "files"  => function($scopeId) use ($data) {
+                $files = array($data."/hypervideos/_index.json");
+                $found = glob($data."/hypervideos/*/hypervideo.json");
+                return ($found === false) ? $files : array_merge($files, $found);
+            }
+        )
+
+    );
+
+}
+
+
+/**
  * Resolve and validate the state file path for a scope.
  * Returns false if the scope or id is not acceptable.
  */
@@ -37,11 +105,18 @@ function _collabStatePath($scope, $scopeId) {
 
     global $conf;
 
-    if ($scope !== "hypervideo" && $scope !== "settings") {
+    $scopes = _collabScopes();
+
+    if (!isset($scopes[$scope])) {
         return false;
     }
     // No path separators, no traversal — the id becomes part of a filename.
     if (!is_string($scopeId) || !preg_match('/^[A-Za-z0-9_-]{1,64}$/', $scopeId)) {
+        return false;
+    }
+    // A singleton scope has exactly one state file. Anything else would create
+    // orphans that nobody ever reads or prunes.
+    if ($scopes[$scope]["global"] && $scopeId !== "global") {
         return false;
     }
 
@@ -95,23 +170,41 @@ function _collabHypervideoDir($hypervideoID) {
  */
 function _collabVersion($scope, $scopeId) {
 
-    global $conf;
-
     clearstatcache();
 
-    if ($scope === "hypervideo") {
-        $dir = _collabHypervideoDir($scopeId);
-        if ($dir === false) {
-            return 0;
-        }
-        $mtime = @filemtime($dir."/hypervideo.json");
-        return ($mtime === false) ? 0 : $mtime;
+    $scopes = _collabScopes();
+    if (!isset($scopes[$scope])) {
+        return 0;
     }
 
-    $configTime = @filemtime($conf["dir"]["data"]."/config.json");
-    $cssTime    = @filemtime($conf["dir"]["data"]."/custom.css");
+    $newest = 0;
 
-    return max(($configTime === false ? 0 : $configTime), ($cssTime === false ? 0 : $cssTime));
+    foreach (call_user_func($scopes[$scope]["files"], $scopeId) as $path) {
+        $mtime = @filemtime($path);
+        if ($mtime !== false && $mtime > $newest) {
+            $newest = $mtime;
+        }
+    }
+
+    return $newest;
+
+}
+
+
+/**
+ * Drop a scope's ephemeral state, e.g. when its subject is deleted. Errors are
+ * swallowed: this is housekeeping, never a reason to fail the caller.
+ *
+ * @param string $scope
+ * @param string $scopeId
+ */
+function collabForgetScope($scope, $scopeId) {
+
+    $path = _collabStatePath($scope, $scopeId);
+
+    if ($path !== false && file_exists($path)) {
+        @unlink($path);
+    }
 
 }
 
@@ -239,17 +332,83 @@ function collabRecordWrite($scope, $scopeId, $userId, $userName) {
 
 
 /**
- * Heartbeat: register/refresh the caller's presence and read back the state.
+ * Heartbeat one scope: register/refresh the caller's presence and read back the
+ * state. Returns array("response" => …) or array("error" => …).
  *
- * @param string $scope         "hypervideo" | "settings"
- * @param string $scopeId       hypervideo ID, or "global"
- * @param bool   $editing       caller is currently in edit mode
- * @param bool   $unsaved       caller holds unsaved changes (gates takeover)
- * @param mixed  $knownVersion  version the caller last rendered from
+ * Assumes the caller has already authenticated and closed the session, because
+ * a batch does both once for all of its scopes.
+ *
+ * @param array  $d         { scope, scopeId, editing, unsaved, knownVersion, observe }
+ * @param string $userId
+ * @param string $userName
+ * @param string $userColor
+ * @param int    $now
  */
-function collabSync($scope, $scopeId, $editing, $unsaved, $knownVersion) {
+function _collabSyncOne($d, $userId, $userName, $userColor, $now) {
 
     global $conf;
+
+    $scope        = isset($d["scope"])   ? $d["scope"]   : null;
+    $scopeId      = isset($d["scopeId"]) ? (string)$d["scopeId"] : "";
+    $knownVersion = isset($d["knownVersion"]) ? $d["knownVersion"] : null;
+
+    $path = _collabStatePath($scope, $scopeId);
+    if ($path === false) {
+        return array("error" => array("code" => 2, "string" => "Invalid collaboration scope."));
+    }
+
+    $opened = _collabOpen($path);
+    if ($opened === false) {
+        return array("error" => array("code" => 3, "string" => "Could not access collaboration state."));
+    }
+    list($file, $state) = $opened;
+
+    _collabPrune($state, $now);
+
+    // An observer wants the staleness signal and nothing else. Registering it as
+    // a participant would put every admin merely in edit mode into the settings
+    // dialog's avatar row, where "who else is here" has to keep meaning "who
+    // else has this dialog open".
+    if (!empty($d["observe"])) {
+        $file->close();
+        return array("response" => _collabResponse($state, $scope, $scopeId, $knownVersion));
+    }
+
+    $state["participants"][$userId] = array(
+        "name"     => $userName,
+        "color"    => $userColor,
+        "editing"  => !empty($d["editing"]),
+        "lastSeen" => $now
+    );
+
+    // Refresh our own lease and record whether we are safe to take over from.
+    if ($state["lock"] !== null && (string)$state["lock"]["holderId"] === $userId) {
+        $state["lock"]["expires"] = $now + COLLAB_LEASE;
+        $state["lock"]["unsaved"] = !empty($d["unsaved"]);
+    }
+
+    $file->writeClose(json_encode($state, $conf["settings"]["json_flags"]));
+
+    return array("response" => _collabResponse($state, $scope, $scopeId, $knownVersion));
+
+}
+
+
+/**
+ * Heartbeat for one or more scopes at once.
+ *
+ * The client polls every scope it is watching, so batching them into a single
+ * request keeps the request count flat as the number of watched scopes grows —
+ * which is what makes ambient, always-on scopes affordable at all.
+ *
+ * The response is keyed "<scope>:<scopeId>" rather than an ordered array, so
+ * nothing depends on the server echoing back what it was handed. The keys
+ * always contain a colon, so json_encode can never degrade the map to a list.
+ *
+ * @param array $sessionDescriptors  [{ scope, scopeId, editing, unsaved, knownVersion, observe }, …]
+ * @param bool  $legacySingle        return the lone response unwrapped
+ */
+function collabSync($sessionDescriptors, $legacySingle = false) {
 
     if ($err = requireLogin()) return $err;
 
@@ -261,40 +420,35 @@ function collabSync($scope, $scopeId, $editing, $unsaved, $knownVersion) {
     // are not serialised behind this poll by PHP's session file lock.
     session_write_close();
 
-    $path = _collabStatePath($scope, $scopeId);
-    if ($path === false) {
-        return array("status" => "fail", "code" => 2, "string" => "Invalid collaboration scope.");
+    if (!is_array($sessionDescriptors) || count($sessionDescriptors) === 0) {
+        return array("status" => "fail", "code" => 2, "string" => "No collaboration scopes submitted.");
     }
 
-    $opened = _collabOpen($path);
-    if ($opened === false) {
-        return array("status" => "fail", "code" => 3, "string" => "Could not access collaboration state.");
+    $now       = time();
+    $responses = array();
+    $errors    = array();
+
+    foreach ($sessionDescriptors as $d) {
+
+        if (!is_array($d)) continue;
+
+        $key = (isset($d["scope"]) ? $d["scope"] : "?").":".(isset($d["scopeId"]) ? $d["scopeId"] : "?");
+        $one = _collabSyncOne($d, $userId, $userName, $userColor, $now);
+
+        if (isset($one["error"])) {
+            $errors[$key] = $one["error"];
+        } else {
+            $responses[$key] = $one["response"];
+        }
+
     }
-    list($file, $state) = $opened;
-
-    $now = time();
-    _collabPrune($state, $now);
-
-    $state["participants"][$userId] = array(
-        "name"     => $userName,
-        "color"    => $userColor,
-        "editing"  => (bool)$editing,
-        "lastSeen" => $now
-    );
-
-    // Refresh our own lease and record whether we are safe to take over from.
-    if ($state["lock"] !== null && (string)$state["lock"]["holderId"] === $userId) {
-        $state["lock"]["expires"] = $now + COLLAB_LEASE;
-        $state["lock"]["unsaved"] = (bool)$unsaved;
-    }
-
-    $file->writeClose(json_encode($state, $conf["settings"]["json_flags"]));
 
     return array(
         "status"   => "success",
         "code"     => 0,
         "string"   => "Collaboration state synced.",
-        "response" => _collabResponse($state, $scope, $scopeId, $knownVersion)
+        "response" => $legacySingle ? (count($responses) ? reset($responses) : null) : $responses,
+        "errors"   => $errors
     );
 
 }

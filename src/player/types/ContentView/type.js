@@ -2219,6 +2219,9 @@ FrameTrail.defineType(
                                     +'                    <span class="icon-plus">'+ self.labels['GenericAdd'] +'</span>'
                                     +'                    <div class="contextSelectList"></div>'
                                     +'                </div>'
+                                    +'                <div class="button small manageTagsButton" style="display: none;">'
+                                    +'                    <span class="icon-cog"> '+ self.labels['SettingsManageTags'] +'</span>'
+                                    +'                </div>'
                                     +'                <input type="hidden" class="contentViewData" data-property="collectionFilter-tags" data-value="'+ contentViewData.collectionFilter.tags +'" value="'+ contentViewData.collectionFilter.tags +'" placeholder="('+ self.labels['GenericOptional'] +')">'
                                     +'            </div>'
                                     +'            <div class="column-3">'
@@ -2446,25 +2449,48 @@ FrameTrail.defineType(
                         });
 
                         updateExisting();
+
+                        // So a caller that changes the underlying definitions —
+                        // the Manage Tags dialog — can redraw this section.
+                        return { refresh: updateExisting };
                     }
 
                     // Tag Filter UI
-                    createFilterSection({
+                    var tagFilterSection = createFilterSection({
                         filters:    tagFilters,
                         attrName:   'tag',
                         itemClass:  'tagItem',
                         containerSel: '.existingTags',
                         buttonSel:  '.newTagButton',
                         getLabel: function(id) {
-                            return FrameTrail.module('TagModel').getTagLabelAndDescription(id, 'de').label;
+                            return FrameTrail.module('TagModel').getTagLabelAndDescription(id, FrameTrail.module('Localization').language).label;
                         },
                         getAllItems: function() {
-                            var allTags = FrameTrail.module('TagModel').getAllTagLabelsAndDescriptions('de'),
+                            var allTags = FrameTrail.module('TagModel').getAllTagLabelsAndDescriptions(FrameTrail.module('Localization').language),
                                 result = [];
                             for (var tagID in allTags) { result.push({ id: tagID, label: allTags[tagID].label }); }
                             return result;
                         }
                     });
+
+                    // Defining a tag is admin-only on the server, so the button
+                    // is only offered where it could actually work.
+                    (function() {
+
+                        var manageTagsButton = editingUI.querySelector('.manageTagsButton'),
+                            tagsDialog       = FrameTrail.module('ManageTagsDialog');
+
+                        if (!manageTagsButton || !tagsDialog
+                                || FrameTrail.module('UserManagement').userRole !== 'admin') return;
+
+                        manageTagsButton.style.display = '';
+                        manageTagsButton.addEventListener('click', function() {
+                            // Opens on top of this dialog — native <dialog>
+                            // stacking puts the newest modal in front.
+                            tagsDialog.open({ onChanged: tagFilterSection.refresh });
+                        });
+
+                    })();
 
                     // Type Filter UI
                     createFilterSection({

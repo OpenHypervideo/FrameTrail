@@ -14,23 +14,20 @@
 
  FrameTrail.defineModule('TagModel', function(FrameTrail){
 
+    /**
+     * My callers pass plain success/fail callbacks rather than inspecting
+     * response codes, so unlike the shared helper I turn a reported failure
+     * into a rejection.
+     */
     function _serverPost(body) {
-        var serverURL = FrameTrail.module('RouteNavigation').resolveServerURL('ajaxServer.php');
-        if (!serverURL) return Promise.reject(new Error('No server configured'));
-        var adapter = FrameTrail.module('StorageManager').getAdapter();
-        if (adapter && adapter.dataPathAbsolute) body.append('dataPath', adapter.dataPathAbsolute);
-        return fetch(serverURL, {
-            method: 'POST',
-            cache: (config.allowCaching) ? 'default' : 'no-cache',
-            body: body
-        }).then(function(r) {
-            return r.json();
-        }).then(function(json) {
+
+        return FrameTrail.module('StorageManager').serverPost(body).then(function(json) {
             if (json.status === 'fail') {
                 return Promise.reject(json);
             }
             return json;
         });
+
     }
 
     var labels = FrameTrail.module('Localization').labels;
@@ -89,12 +86,43 @@
     }
 
 
+    /**
+     * I resolve a tag's label and description, falling back rather than
+     * throwing.
+     *
+     * Two things routinely make the requested entry missing: a tag defined in
+     * only one language, and a tag another admin deleted while an annotation
+     * here still references it. Neither is a reason to take down the whole
+     * annotation editor, which is what indexing straight into the definitions
+     * used to do. An unknown tag renders as its own id, so the editor can see
+     * the dangling reference and remove it.
+     *
+     * @method tagEntry
+     * @param {String} tagname
+     * @param {String} language
+     * @return {Object} { label, description }
+     */
+    function tagEntry (tagname, language) {
+
+        var entry = tags[tagname];
+
+        if (!entry) {
+            return { label: tagname, description: '' };
+        }
+
+        return entry[language]
+            || entry['en']
+            || entry[Object.keys(entry)[0]]
+            || { label: tagname, description: '' };
+
+    }
+
     function getAllTagLabelsAndDescriptions (language) {
 
         var result = {};
 
         for (var tagname in tags) {
-            result[tagname] = tags[tagname][language];
+            result[tagname] = tagEntry(tagname, language);
         }
 
         return result;
@@ -102,7 +130,7 @@
     }
 
     function getTagLabelAndDescription (tagname, language) {
-        return tags[tagname][language];
+        return tagEntry(tagname, language);
     }
 
 
@@ -142,7 +170,7 @@
             return;
         }
 
-        _serverPost(new URLSearchParams({ a: 'tagLangDelete', tagName: tagname, language: language }))
+        _serverPost(new URLSearchParams({ a: 'tagLangDelete', tagName: tagname, lang: language }))
         .then(function() { updateTagModel(success, fail); })
         .catch(fail);
 

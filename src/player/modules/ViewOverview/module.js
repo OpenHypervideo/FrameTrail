@@ -868,7 +868,14 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
             viewMode:       toggleViewMode,
             editMode:       toggleEditMode,
 
-            loggedIn:       updateUserLogin
+            loggedIn:       updateUserLogin,
+
+            // The map deliberately registers no onChange of its own, so that
+            // the order in which we and it react to a state stays explicit.
+            collabState:    function() {
+                                var map = MapModule;
+                                if (map && map.reflectLock) map.reflectLock();
+                            }
         },
 
         create:      create,

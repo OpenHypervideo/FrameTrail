@@ -110,6 +110,13 @@ function userRegister($name, $mail, $passwd) {
 
     $file->writeClose(json_encode($user, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 
+    // Public sign-up reaches this without a session, so the new account names
+    // itself as the writer — there is nobody else it could be.
+    include_once("collaboration.php");
+    collabRecordWrite("users", "global",
+                      isset($_SESSION["ohv"]["user"]["id"])   ? $_SESSION["ohv"]["user"]["id"]   : $user["user-increment"],
+                      isset($_SESSION["ohv"]["user"]["name"]) ? $_SESSION["ohv"]["user"]["name"] : $name);
+
     $return["status"] = "success";
     $return["code"] = ($user["user"][$user["user-increment"]]["active"] == 1) ? 0 : 3;
     $return["string"] = "Registration succeeded";
@@ -364,7 +371,12 @@ function userChange($userID,$mail,$name,$passwd,$color,$role,$active) {
                 $userdb["user"][$userID]["color"] = ($color !== null && $color !== "") ? $color : $userdb["user"][$userID]["color"];
                 $userdb["user"][$userID]["active"] = ((($active==="1" || $active==="0") && (($_SESSION["ohv"]["user"]["role"] == "admin"))) ? $active*1 : $userdb["user"][$userID]["active"]*1);
                 $userdb["user"][$userID]["passwd"] = ($passwd) ? password_hash($passwd, PASSWORD_DEFAULT) : $userdb["user"][$userID]["passwd"];
-                $file->write(json_encode($userdb, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));                
+                $file->write(json_encode($userdb, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
+                include_once("collaboration.php");
+                collabRecordWrite("users", "global",
+                                  $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
+
                 $return["status"] = "success";
                 $return["string"] = "User data updated";
                 $return["response"] = $userdb["user"][$userID];
@@ -457,6 +469,10 @@ function userDelete($userID) {
     unset($uDB["user"][$userID]);
 
     $file->writeClose(json_encode($uDB, $conf["settings"]["json_flags"]));
+
+    include_once("collaboration.php");
+    collabRecordWrite("users", "global",
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
 
     $return["status"] = "success";
     $return["code"] = 0;

@@ -69,7 +69,16 @@ FrameTrail.defineModule('Localization', function(FrameTrail){
          * current locale's label data. Modules may safely cache this reference.
          * @attribute labels
          */
-        get labels() { return labelsProxy }
+        get labels() { return labelsProxy },
+
+        /**
+         * The active two-character locale code. Content that carries its own
+         * per-language data — tag definitions, above all — needs to know which
+         * language to render, and asking for it here is what keeps that in step
+         * with the interface instead of hard-coding a locale at the call site.
+         * @attribute language
+         */
+        get language() { return locale }
 
     };
 

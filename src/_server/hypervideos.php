@@ -77,6 +77,11 @@ function hypervideoAdd($src, $subtitles = false) {
 
 
     $return["status"] = "success";
+
+    include_once("collaboration.php");
+    collabRecordWrite("library", "global",
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
+
     $return["code"] = 0;
     $return["string"] = "Hypervideo has been added. Look at response.";
     $return["response"] = $src;
@@ -197,6 +202,11 @@ function hypervideoClone($hypervideoID, $src) {
     $file->writeClose($src);
     /* TODO: How to handle annotation files? */
 
+
+    include_once("collaboration.php");
+    collabRecordWrite("library", "global",
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
+
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Hypervideo has been cloned. Look at response.";
@@ -263,6 +273,13 @@ function hypervideoDelete($hypervideoID,$hypervideoName) {
     rrmdir($conf["dir"]["data"]."/hypervideos/".$hvi["hypervideos"][$hypervideoID]);
     unset($hvi["hypervideos"][$hypervideoID]);
     $file->writeClose(json_encode($hvi, $conf["settings"]["json_flags"]));
+
+    include_once("collaboration.php");
+    collabRecordWrite("library", "global",
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
+    // Nobody can be present in a hypervideo that no longer exists.
+    collabForgetScope("hypervideo", $hypervideoID);
+
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Hypervideo deleted.";
@@ -381,6 +398,13 @@ function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subt
     // change to whoever happens to hold the lock.
     include_once("collaboration.php");
     collabRecordWrite("hypervideo", $hypervideoID,
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
+
+    // The library token spans every hypervideo.json, because a rename shows
+    // up in the overview but never touches _index.json. Record there as well,
+    // or the self-write suppression misses and authors are told about their
+    // own save the moment they look at the overview.
+    collabRecordWrite("library", "global",
                       $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
 
     $return["status"] = "success";

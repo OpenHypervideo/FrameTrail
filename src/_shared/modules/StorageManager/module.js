@@ -292,8 +292,42 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
     }
 
 
+    /**
+     * POST a form body to the PHP backend and resolve with the parsed JSON.
+     *
+     * Every server action needs the same three things — the resolved endpoint,
+     * the dataPath telling PHP which _data directory to use, and a JSON parse —
+     * so they live here once rather than in a private copy per module.
+     *
+     * I resolve with whatever the server replied, including failures: an action
+     * that reports "code": 4 is a well-formed answer, not a transport error.
+     * Callers branch on the code themselves. I reject only when there is no
+     * server configured, or the request never completed.
+     *
+     * @method serverPost
+     * @param {FormData|URLSearchParams} body
+     * @return {Promise<Object>}
+     */
+    function serverPost(body) {
+
+        var serverURL = FrameTrail.module('RouteNavigation').resolveServerURL('ajaxServer.php');
+        if (!serverURL) return Promise.reject(new Error('No server configured'));
+
+        var adapter = getAdapter();
+        if (adapter && adapter.dataPathAbsolute) body.append('dataPath', adapter.dataPathAbsolute);
+
+        return fetch(serverURL, {
+            method: 'POST',
+            cache:  'no-cache',
+            body:   body
+        }).then(function(r) { return r.json(); });
+
+    }
+
+
     return {
         init:               init,
+        serverPost:         serverPost,
         getAdapter:         getAdapter,
         getServerAdapter:   getServerAdapter,
         getStaticAdapter:   getStaticAdapter,

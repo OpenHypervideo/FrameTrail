@@ -15,11 +15,7 @@
 FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
     function _serverPost(body) {
-        var serverURL = FrameTrail.module('RouteNavigation').resolveServerURL('ajaxServer.php');
-        if (!serverURL) return Promise.reject(new Error('No server configured'));
-        var adapter = FrameTrail.module('StorageManager').getAdapter();
-        if (adapter && adapter.dataPathAbsolute) body.append('dataPath', adapter.dataPathAbsolute);
-        return fetch(serverURL, { method: 'POST', body: body }).then(function(r) { return r.json(); });
+        return FrameTrail.module('StorageManager').serverPost(body);
     }
 
     var labels = FrameTrail.module('Localization').labels;
@@ -36,6 +32,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '                    <button class="overviewMapSaveButton" data-tooltip-bottom-left="'+ labels['OverviewMapSave'] +'"><span class="icon-floppy"></span></button>'
                    + '                    <div style="clear: both;"></div>'
                    + '                </div>'
+                   + '                <div class="collaborationInfo"></div>'
                    + '            </div>'
                    + '        </div>'
                    + '        <div data-viewmode="video">'
@@ -80,7 +77,13 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
         MapAddButton           = domElement.querySelector('.overviewMapAddButton'),
         MapSaveButton          = domElement.querySelector('.overviewMapSaveButton'),
-        CollaborationInfo      = domElement.querySelector('.collaborationInfo');
+
+        // One panel per view mode. The overview needed its own because that is
+        // where the instance-wide scopes are acted on — the map is edited
+        // there — and the video panel lives inside [data-viewmode="video"],
+        // which is not rendered in the overview at all.
+        CollaborationInfoVideo    = videoContainer.querySelector('.collaborationInfo'),
+        CollaborationInfoOverview = overviewContainer.querySelector('.collaborationInfo');
 
     var _resourcesItemHandler = null;
 
@@ -1002,6 +1005,10 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
         updateOverviewMapControls();
 
+        // Each view has its own notice panel, and which scopes belong in it
+        // depends on the view — so they are re-rendered on the way in.
+        renderCollaborationInfo();
+
     };
 
     /**
@@ -1021,29 +1028,118 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
 
     /**
-     * I render the presence banner, the lock notice and the refresh
-     * affordance. All of it is built from existing generic.css classes.
+     * The scopes the sidebar reports on, and how each one is worded and
+     * refreshed. A table rather than four copies of the same block — they
+     * differ only in labels, in which view they belong to, and in what
+     * "refresh" means.
      *
-     * @method renderCollaborationInfo
+     * A null scope means the primary one, which every Collaboration accessor
+     * already resolves to the hypervideo — so that row needs no special case.
+     *
+     * The users and tags scopes are deliberately absent: their dialogs re-read
+     * themselves when they go stale, and nothing outside those dialogs renders
+     * either, so a sidebar notice would be noise nobody could act on.
      */
-    function renderCollaborationInfo() {
+    var COLLAB_SCOPE_ROWS = [
 
-        if (!CollaborationInfo) return;
+        {   scope: null,        scopeId: null,      viewModes: ['video'],
+            staleBy:  'MessageCollabChangesBy',
+            stale:    'MessageCollabChangesAvailable',
+            lockedBy: 'MessageCollabLockedBy',
+            takeover: true,
+            refresh:  refreshHypervideoFromServer,
+            visible:  function() { return true; }
+        },
+
+        {   scope: 'settings',  scopeId: 'global',  viewModes: ['video', 'overview'],
+            staleBy:  'MessageCollabSettingsChangesBy',
+            stale:    'MessageCollabSettingsChanged',
+            // No lock notice here, deliberately. Who holds the settings lock is
+            // only worth saying where you are about to write settings and are
+            // being stopped — which is inside the settings dialog, and it says
+            // so there. Out here it is a standing report on somebody else's
+            // activity that you can neither act on nor dismiss.
+            lockedBy: null,
+            takeover: false,
+            refresh:  refreshSettings,
+            visible:  function() { return FrameTrail.module('UserManagement').userRole === 'admin'; }
+        },
+
+        {   scope: 'library',   scopeId: 'global',  viewModes: ['overview'],
+            staleBy:  'MessageCollabLibraryChangesBy',
+            stale:    'MessageCollabLibraryChanged',
+            lockedBy: null,
+            takeover: false,
+            refresh:  refreshLibrary,
+            visible:  function() { return true; }
+        }
+
+    ];
+
+
+    function refreshHypervideoFromServer() {
+
+        if (FrameTrail.getState('unsavedChanges')) {
+            if (!window.confirm(labels['MessageCollabRefreshDiscard'])) return;
+        }
+
+        FrameTrail.module('HypervideoModel').refreshFromServer();
+
+    }
+
+
+    function refreshSettings() {
+
+        var ViewOverview = FrameTrail.module('ViewOverview'),
+            map          = (ViewOverview && ViewOverview.getMap) ? ViewOverview.getMap() : null;
+
+        // Re-reading the config replaces overviewMap wholesale, marker
+        // placements included, so drags that were never saved would vanish
+        // without a word.
+        if (map && map.hasUnsavedChanges && map.hasUnsavedChanges()
+                && !window.confirm(labels['MessageCollabRefreshDiscardMap'])) {
+            return;
+        }
+
+        FrameTrail.module('Database').loadConfigData(function() {
+            if (map && map.reloadFromConfig) map.reloadFromConfig();
+            FrameTrail.module('Database').loadConfigVersions();
+            FrameTrail.module('Collaboration').acknowledgeVersion(null, 'settings', 'global');
+        }, function() {});
+
+    }
+
+
+    function refreshLibrary() {
+
+        FrameTrail.module('Database').loadHypervideoData(function() {
+            FrameTrail.module('ViewOverview').refreshList();
+            FrameTrail.module('Collaboration').acknowledgeVersion(null, 'library', 'global');
+        }, function() {});
+
+    }
+
+
+    /**
+     * I render one scope's staleness notice and lock notice into a container.
+     *
+     * @method renderCollabRow
+     * @param {HTMLElement} container
+     * @param {Object} row  an entry of COLLAB_SCOPE_ROWS
+     */
+    function renderCollabRow(container, row) {
 
         var Collaboration = FrameTrail.module('Collaboration');
-        if (!Collaboration) return;
-
-        CollaborationInfo.innerHTML = '';
 
         // Stale: somebody else's work is on disk and we are not showing it.
-        if (Collaboration.isStale()) {
+        if (Collaboration.isStale(row.scope, row.scopeId)) {
 
             // Name whoever actually wrote, not whoever holds the lock — after a
             // takeover those differ, and the lock holder may well be us.
-            var writer = Collaboration.lastWriter(),
+            var writer = Collaboration.lastWriter(row.scope, row.scopeId),
                 staleText = (writer && writer.name)
-                          ? labels['MessageCollabChangesBy'].replace('%s', writer.name)
-                          : labels['MessageCollabChangesAvailable'];
+                          ? labels[row.staleBy].replace('%s', writer.name)
+                          : labels[row.stale];
 
             var staleMsg = document.createElement('div');
             staleMsg.className = 'message active';
@@ -1052,26 +1148,25 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             var refreshBtn = document.createElement('button');
             refreshBtn.className = 'collabRefreshButton';
             refreshBtn.textContent = labels['GenericRefresh'];
-            refreshBtn.addEventListener('click', function() {
-                if (FrameTrail.getState('unsavedChanges')) {
-                    if (!window.confirm(labels['MessageCollabRefreshDiscard'])) return;
-                }
-                FrameTrail.module('HypervideoModel').refreshFromServer();
-            });
+            refreshBtn.addEventListener('click', row.refresh);
 
-            CollaborationInfo.appendChild(staleMsg);
-            CollaborationInfo.appendChild(refreshBtn);
+            container.appendChild(staleMsg);
+            container.appendChild(refreshBtn);
 
         }
 
         // Somebody else holds the lock: say who, and offer to ask for it.
-        if (Collaboration.isLockedByOther()) {
+        if (row.lockedBy && Collaboration.isLockedByOther(row.scope, row.scopeId)) {
 
-            var lockHolder = Collaboration.lockHolder();
+            var lockHolder = Collaboration.lockHolder(row.scope, row.scopeId);
 
             var lockMsg = document.createElement('div');
             lockMsg.className = 'message error active';
-            lockMsg.textContent = labels['MessageCollabLockedBy'].replace('%s', (lockHolder && lockHolder.name) ? lockHolder.name : '');
+            lockMsg.textContent = labels[row.lockedBy].replace('%s', (lockHolder && lockHolder.name) ? lockHolder.name : '');
+
+            container.appendChild(lockMsg);
+
+            if (!row.takeover) return;
 
             var takeoverBtn = document.createElement('button');
             takeoverBtn.className = 'collabTakeoverButton';
@@ -1090,9 +1185,37 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 });
             });
 
-            CollaborationInfo.appendChild(lockMsg);
-            CollaborationInfo.appendChild(takeoverBtn);
+            container.appendChild(takeoverBtn);
 
+        }
+
+    }
+
+
+    /**
+     * I render the staleness and lock notices for every scope that belongs to
+     * the current view. All of it is built from existing generic.css classes.
+     *
+     * @method renderCollaborationInfo
+     */
+    function renderCollaborationInfo() {
+
+        var Collaboration = FrameTrail.module('Collaboration');
+        if (!Collaboration) return;
+
+        [CollaborationInfoVideo, CollaborationInfoOverview].forEach(function(el) {
+            if (el) el.innerHTML = '';
+        });
+
+        var viewMode  = FrameTrail.getState('viewMode'),
+            container = (viewMode === 'overview') ? CollaborationInfoOverview : CollaborationInfoVideo;
+
+        if (container) {
+            COLLAB_SCOPE_ROWS.forEach(function(row) {
+                if (row.viewModes.indexOf(viewMode) === -1) return;
+                if (!row.visible()) return;
+                renderCollabRow(container, row);
+            });
         }
 
         updateLockGatedControls();

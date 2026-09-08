@@ -11,15 +11,24 @@
  * lives behind _transport below, so a push-based transport (a WebSocket hub,
  * say) can replace polling later without any of the feature code changing.
  *
- * I track several scopes at once, because the two shared surfaces can be open
- * simultaneously — you can have the admin settings dialog open while a
+ * I track several scopes at once, because more than one shared surface can be
+ * open simultaneously — you can have the admin settings dialog open while a
  * hypervideo is loaded:
  *
  *   'hypervideo' / <id>       guards hypervideo.json
  *   'settings'   / 'global'   guards config.json and custom.css
+ *   'users'      / 'global'   guards users.json
+ *   'tags'       / 'global'   guards tagdefinitions.json
+ *   'library'    / 'global'   guards hypervideos/_index.json and every hypervideo.json
  *
  * The hypervideo scope is the "primary" one, and every accessor defaults to it
  * so callers that only care about the hypervideo need not pass a scope.
+ *
+ * A session is either participating or merely *observing*. An observer polls
+ * for staleness but registers no presence and takes no lock, which is how the
+ * instance-wide scopes can be watched for a whole session without everyone
+ * appearing to everyone else as though they had the settings dialog open. All
+ * sessions are polled in a single request, so watching more costs nothing.
  *
  * I run in one of three modes, re-evaluated whenever login state changes:
  *
@@ -57,7 +66,6 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         primaryKey = null,
         pollTimer  = null,
         revision   = 0,
-        pollInFlight = 0,
 
         boundVisibility = null,
         boundPageHide   = null;
@@ -92,35 +100,16 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
     var _transport = {
 
         /**
-         * POST to the collaboration endpoints. Mirrors Database._ajax's POST
-         * branch, including the dataPath the PHP backend needs to resolve the
-         * right _data directory.
+         * POST to the collaboration endpoints. Takes a plain object rather than
+         * a form body, because every caller here builds one, and reports through
+         * callbacks rather than a promise to match the rest of this module.
          */
         post: function(data, done, fail) {
 
-            var RouteNav  = FrameTrail.module('RouteNavigation'),
-                serverURL = RouteNav ? RouteNav.resolveServerURL('ajaxServer.php') : null;
-
-            if (!serverURL) {
-                if (fail) fail(new Error('No server configured'));
-                return;
-            }
-
-            var adapter = FrameTrail.module('StorageManager').getAdapter();
-            if (adapter && adapter.dataPathAbsolute) {
-                data.dataPath = adapter.dataPathAbsolute;
-            }
-
-            fetch(serverURL, {
-                method: 'POST',
-                cache:  'no-cache',
-                body:   new URLSearchParams(data)
-            }).then(function(r) {
-                if (!r.ok) throw new Error('HTTP ' + r.status);
-                return r.json();
-            }).then(done).catch(function(err) {
-                if (fail) fail(err);
-            });
+            FrameTrail.module('StorageManager')
+                .serverPost(new URLSearchParams(data))
+                .then(done)
+                .catch(function(err) { if (fail) fail(err); });
 
         },
 
@@ -227,89 +216,110 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         var keys = Object.keys(sessions);
         if (!keys.length) return;
 
-        pollInFlight = keys.length;
-
-        keys.forEach(function(key) {
-            if (mode === MODE_STALENESS_ONLY) {
-                pollGuest(sessions[key]);
-            } else {
-                pollSession(sessions[key]);
-            }
-        });
-
-    }
-
-
-    function pollDone() {
-
-        if (--pollInFlight <= 0) {
-            pollInFlight = 0;
-            scheduleNextPoll();
+        if (mode === MODE_STALENESS_ONLY) {
+            pollGuest(keys);
+        } else {
+            pollBatch(keys);
         }
 
     }
 
 
-    function pollSession(session) {
+    /**
+     * One request for every scope we are watching. Batching is what makes the
+     * always-on scopes affordable: they ride along in the request the primary
+     * scope was going to send anyway, so watching more costs nothing.
+     */
+    function pollBatch(keys) {
+
+        var payload = keys.map(function(key) {
+
+            var session = sessions[key];
+
+            return {
+                scope:        session.scope,
+                scopeId:      session.scopeId,
+                editing:      !!session.editing,
+                unsaved:      !!session.unsaved,
+                observe:      !!session.observe,
+                knownVersion: (session.knownVersion == null ? null : session.knownVersion)
+            };
+
+        });
 
         _transport.post({
-            a:            'collabSync',
-            scope:        session.scope,
-            scopeId:      session.scopeId,
-            editing:      session.editing ? '1' : '0',
-            unsaved:      session.unsaved ? '1' : '0',
-            knownVersion: (session.knownVersion == null ? '' : session.knownVersion)
+            a:        'collabSync',
+            sessions: JSON.stringify(payload)
         }, function(data) {
 
             if (data && data.code === 0 && data.response) {
-                applyState(session, data.response);
+                for (var key in data.response) {
+                    // A session may have been stopped while the poll was in
+                    // flight; there is nothing left to apply it to.
+                    if (sessions[key]) applyState(sessions[key], data.response[key]);
+                }
             }
-            pollDone();
+            scheduleNextPoll();
 
         }, function() {
             // A failed poll is not worth surfacing — the next one may well work.
-            pollDone();
+            scheduleNextPoll();
         });
 
     }
 
 
     /**
-     * Guests have no authenticated endpoint, but hypervideo.json is a plain
-     * static file, so its Last-Modified header is a free staleness signal.
+     * Scopes whose staleness a guest can detect without an authenticated
+     * endpoint, because the file behind them is plain and static: its
+     * Last-Modified header is a free signal.
+     *
+     * A scope absent from here is simply not watched in guest mode, which is
+     * right for settings, users and tags — a guest can act on none of them.
      */
-    function pollGuest(session) {
+    var GUEST_STALENESS_PATHS = {
+        hypervideo: function(scopeId) { return 'hypervideos/' + scopeId + '/hypervideo.json'; },
+        library:    function()        { return 'hypervideos/_index.json'; }
+    };
 
-        if (session.scope !== 'hypervideo') {
-            pollDone();
-            return;
-        }
+
+    function pollGuest(keys) {
 
         var adapter = FrameTrail.module('StorageManager').getAdapter();
         if (!adapter || !adapter.dataPathAbsolute) {
-            pollDone();
+            scheduleNextPoll();
             return;
         }
 
-        var url = adapter.dataPathAbsolute + 'hypervideos/' + session.scopeId + '/hypervideo.json';
+        Promise.all(keys.map(function(key) {
 
-        fetch(url, { method: 'HEAD', cache: 'no-cache' }).then(function(r) {
+            var session = sessions[key],
+                resolve = GUEST_STALENESS_PATHS[session.scope];
 
-            if (!r.ok) return;
+            if (!resolve) return Promise.resolve();
 
-            var lastModified = r.headers.get('Last-Modified');
-            if (!lastModified) return;
+            return fetch(adapter.dataPathAbsolute + resolve(session.scopeId), {
+                method: 'HEAD',
+                cache:  'no-cache'
+            }).then(function(r) {
 
-            if (session.guestLastModified === null) {
-                session.guestLastModified = lastModified;
-            } else if (session.guestLastModified !== lastModified && !session.stale) {
-                session.stale = true;
-                broadcast();
-            }
+                if (!r.ok) return;
 
-        }).catch(function() {
-            // Ignore — try again on the next tick.
-        }).then(pollDone);
+                var lastModified = r.headers.get('Last-Modified');
+                if (!lastModified) return;
+
+                if (session.guestLastModified === null) {
+                    session.guestLastModified = lastModified;
+                } else if (session.guestLastModified !== lastModified && !session.stale) {
+                    session.stale = true;
+                    broadcast();
+                }
+
+            }).catch(function() {
+                // Ignore — try again on the next tick.
+            });
+
+        })).then(scheduleNextPoll);
 
     }
 
@@ -394,10 +404,11 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
      * which every accessor defaults to.
      *
      * @method start
-     * @param {String} scope   'hypervideo' or 'settings'
+     * @param {String} scope   'hypervideo', 'settings', 'users', 'tags' or 'library'
      * @param {String} scopeId hypervideo ID, or 'global'
+     * @param {Object} [options] { observe: true } to watch without joining
      */
-    function start(scope, scopeId) {
+    function start(scope, scopeId, options) {
 
         // Register the session regardless of mode. Callers start us during
         // player init, which routinely happens before the user has logged in —
@@ -413,7 +424,13 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             stop('hypervideo', sessions[primaryKey].scopeId);
         }
 
-        if (sessions[key]) return;
+        if (sessions[key]) {
+            // An ambient session may already be watching this scope; a caller
+            // arriving to actually work in it takes it over rather than being
+            // silently ignored.
+            if (options && options.observe === false) setObserving(false, scope, scopeId);
+            return;
+        }
 
         sessions[key] = {
             scope:        scope,
@@ -425,6 +442,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             stale:        false,
             editing:      false,
             unsaved:      false,
+            observe:      !!(options && options.observe),
             lastWriter:   null,
             guestLastModified: null
         };
@@ -432,6 +450,38 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         if (scope === 'hypervideo') primaryKey = key;
 
         bindWindowHandlers();
+        poll();
+
+    }
+
+
+    /**
+     * I promote a watched scope to a participating one, or demote it back.
+     *
+     * An observed scope polls for staleness but registers no presence and holds
+     * no lock, so a passive admin learns the settings changed without appearing
+     * to everyone as though they had the settings dialog open. A surface that
+     * actually edits the scope promotes it for as long as it is open.
+     *
+     * Demoting releases any lock we hold, so a closing dialog cannot strand one.
+     *
+     * @method setObserving
+     * @param {Boolean} value
+     * @param {String} [scope]
+     * @param {String} [scopeId]
+     */
+    function setObserving(value, scope, scopeId) {
+
+        var session = sessionFor(scope, scopeId);
+        if (!session || session.observe === !!value) return;
+
+        session.observe = !!value;
+
+        if (session.observe && holdsLock(session)) {
+            lockOperation(session, 'release');
+        }
+
+        // Presence must not wait for the next tick to appear or disappear.
         poll();
 
     }
@@ -513,7 +563,16 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
 
     function claim(callback, scope, scopeId) {
-        lockOperation(sessionFor(scope, scopeId), 'claim', callback);
+
+        var session = sessionFor(scope, scopeId);
+
+        // Taking the lock is joining by definition, and collabLock registers
+        // presence server-side regardless — so an observing session that stayed
+        // observing would show up in the state and then vanish on its next poll.
+        if (session) session.observe = false;
+
+        lockOperation(session, 'claim', callback);
+
     }
 
     function release(callback, scope, scopeId) {
@@ -851,6 +910,46 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
     }
 
 
+    /**
+     * Scopes watched for the whole session rather than opened by one surface.
+     *
+     * Batched polling makes these free — they ride along in the request the
+     * primary scope already sends — which is what lets a passive admin sitting
+     * in the overview find out that somebody changed the instance settings, and
+     * anyone at all find out that the hypervideo library changed.
+     */
+    var AMBIENT_SCOPES = [
+        { scope: 'library',  scopeId: 'global', adminOnly: false },
+        { scope: 'settings', scopeId: 'global', adminOnly: true  }
+    ];
+
+
+    function syncAmbientScopes() {
+
+        var UserManagement = FrameTrail.module('UserManagement'),
+            // Guest mode hands out the admin role locally, so an admin-only
+            // scope also has to require a session that can actually write —
+            // and a guest has no business being told the settings moved.
+            isAdmin = mode === MODE_FULL && !!UserManagement && UserManagement.userRole === 'admin';
+
+        AMBIENT_SCOPES.forEach(function(entry) {
+
+            var key    = keyOf(entry.scope, entry.scopeId),
+                wanted = (mode !== MODE_DORMANT) && (!entry.adminOnly || isAdmin);
+
+            if (wanted && !sessions[key]) {
+                start(entry.scope, entry.scopeId, { observe: true });
+            } else if (!wanted && sessions[key] && sessions[key].observe) {
+                // Only ever retract what we opened ourselves — a surface that
+                // promoted this scope owns it now and will stop it in its turn.
+                stop(entry.scope, entry.scopeId);
+            }
+
+        });
+
+    }
+
+
     function reevaluateMode() {
 
         var next = determineMode();
@@ -867,6 +966,10 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             sessions[key].guestLastModified = null;
         }
 
+        // The role that decides which ambient scopes apply is only known once
+        // somebody is logged in, so this belongs here rather than at init.
+        syncAmbientScopes();
+
         if (mode === MODE_DORMANT) {
             window.clearTimeout(pollTimer);
             pollTimer = null;
@@ -877,6 +980,14 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         broadcast();
 
     }
+
+
+    // The player initializes me before storage and login are settled, so this
+    // normally finds nothing to do and reevaluateMode opens the ambient scopes
+    // later. It matters for a host that initializes me after the fact, where no
+    // loggedIn change is ever going to arrive.
+    mode = determineMode();
+    syncAmbientScopes();
 
 
     return {
@@ -891,6 +1002,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
         setEditing:         setEditing,
         setUnsaved:         setUnsaved,
+        setObserving:       setObserving,
         acknowledgeVersion: acknowledgeVersion,
         markStale:          markStale,
         lastWriter:         lastWriter,

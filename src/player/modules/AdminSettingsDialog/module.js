@@ -3,7 +3,17 @@
  */
 
 /**
- * I am the AdminSettingsDialog. I provide a dialog for editing admin/global settings.
+ * I am the AdminSettingsDialog. I edit the instance-wide presentation and
+ * behaviour settings: colour theme, overview presentation, global CSS and the
+ * advanced options.
+ *
+ * Every one of my tabs writes config.json or custom.css, both of which are
+ * single shared files written whole — so I batch everything behind Apply and
+ * hold the 'settings' soft lock for as long as I am open. That is only honest
+ * because managing users and tags moved out into dialogs of their own: those
+ * write different files, field by field, and take effect immediately, so
+ * holding them behind my lock disabled them for no reason. I keep buttons to
+ * both, since this is still where an admin comes looking.
  *
  * @class AdminSettingsDialog
  * @static
@@ -13,20 +23,13 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
     var labels = FrameTrail.module('Localization').labels;
 
-    function _serverPost(body) {
-        var serverURL = FrameTrail.module('RouteNavigation').resolveServerURL('ajaxServer.php');
-        if (!serverURL) return Promise.reject(new Error('No server configured'));
-        var adapter = FrameTrail.module('StorageManager').getAdapter();
-        if (adapter && adapter.dataPathAbsolute) body.append('dataPath', adapter.dataPathAbsolute);
-        return fetch(serverURL, { method: 'POST', body: body }).then(function(r) { return r.json(); });
-    }
-
     // Live references into the currently open dialog, so the collabState
     // listener can update presence without rebuilding anything. Null when the
     // dialog is closed.
     var presenceContainer = null,
         lockMessageEl     = null,
-        applyButton       = null;
+        applyButton       = null,
+        reloadButton      = null;
 
     /**
      * I push freshly saved overview-map settings into a live map view.
@@ -83,20 +86,12 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                         + '            <a href="#ChangeGlobalCSS">'+ labels['SettingsGlobalCSS'] +'</a>'
                         + '        </li>'
                         + '        <li>'
-                        + '            <a href="#TagDefinitions">'+ labels['SettingsManageTags'] +'</a>'
-                        + '        </li>'
-                        + '        <li>'
-                        + '            <a href="#UserAdministration">'+ labels['UserAdministration'] +'</a>'
-                        + '        </li>'
-                        + '        <li>'
                         + '            <a href="#Configuration">'+ labels['SettingsConfigurationOptions'] +'</a>'
                         + '        </li>'
                         + '    </ul>'
                         + '    <div id="ChangeTheme"></div>'
                         + '    <div id="OverviewPresentation"></div>'
                         + '    <div id="ChangeGlobalCSS"></div>'
-                        + '    <div id="TagDefinitions"></div>'
-                        + '    <div id="UserAdministration"></div>'
                         + '    <div id="Configuration"></div>'
                         + '</div>';
         var adminTabs = _atw.firstElementChild;
@@ -117,6 +112,12 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             +   '    <div class="column-3">'
                             +   '        <div class="message active">'+ labels['MessageAllowFileUploads'] +'</div>'
                             +   '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="allowUploads" id="allowUploads" '+((configData.allowUploads && configData.allowUploads.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="allowUploads">'+ labels['SettingsAllowUploads'] +'</label></div>'
+                            // Registration policy. It used to sit in the user
+                            // administration tab, but it is a config.json value
+                            // like the rest of this form, and Manage Users is a
+                            // dialog of its own now with no Apply to catch it.
+                            +   '        <div class="message active">'+ labels['MessageUserRequireConfirmation'] +'</div>'
+                            +   '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="userNeedsConfirmation" id="userNeedsConfirmation" '+((configData.userNeedsConfirmation && configData.userNeedsConfirmation.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="userNeedsConfirmation">'+ labels['SettingsOnlyConfirmedUsers'] +'</label></div>'
                             +   '    </div>'
                             +   '    <div class="column-3">'
                             +   '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="captureUserTraces" id="captureUserTraces" '+((configData.captureUserTraces && configData.captureUserTraces.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="captureUserTraces">'+ labels['SettingsCaptureUserActions'] +'</label></div>'
@@ -832,583 +833,101 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         });
         cm6Wrapper._cm6view = codeEditor;
 
-        // this is necessary to be able to manipulate the css live
-        if ( !document.head.querySelector('style.FrameTrailGlobalCustomCSS') ) {
-            if (FrameTrail.getState('storageMode') === 'local') {
-                var adapter = FrameTrail.module('StorageManager').getAdapter();
-                adapter.readText('custom.css').then(function(cssString) {
-                    codeEditor.dispatch({ changes: { from: 0, to: codeEditor.state.doc.length, insert: cssString }, annotations: CM6.Transaction.userEvent.of('setValue') });
-                    document.head.insertAdjacentHTML('beforeend', '<style class="FrameTrailGlobalCustomCSS" type="text/css">'+ cssString +'</style>');
-                    var _lnk = document.head.querySelector('link[href$="custom.css"]'); if (_lnk) { _lnk.remove(); }
-                }).catch(function() {
-                    // No custom.css yet — create empty style tag so edits can be applied
-                    document.head.insertAdjacentHTML('beforeend', '<style class="FrameTrailGlobalCustomCSS" type="text/css"></style>');
-                    var _lnk = document.head.querySelector('link[href$="custom.css"]'); if (_lnk) { _lnk.remove(); }
-                });
-            } else if ( document.head.querySelector('link[href$="custom.css"]') ) {
-                fetch(document.head.querySelector('link[href$="custom.css"]').getAttribute('href'))
-                    .then(function(r) { return r.text(); })
-                    .then(function(cssString) {
-                        codeEditor.dispatch({ changes: { from: 0, to: codeEditor.state.doc.length, insert: cssString }, annotations: CM6.Transaction.userEvent.of('setValue') });
-                        document.head.insertAdjacentHTML('beforeend', '<style class="FrameTrailGlobalCustomCSS" type="text/css">'+ cssString +'</style>');
-                        var _lnk = document.head.querySelector('link[href$="custom.css"]'); if (_lnk) { _lnk.remove(); }
-                    })
-                    .catch(function() {
-                        console.log(labels['ErrorCouldNotRetrieveCustomCSS']);
-                    });
+        /**
+         * I write CSS into the live <style> element, creating it if this is the
+         * first time. Database.saveGlobalCSS reads that element, so it has to
+         * exist before anything can be saved — which used not to be guaranteed
+         * in download mode, where nothing ever created it.
+         *
+         * @method setLiveGlobalCSS
+         * @param {String} cssString
+         */
+        function setLiveGlobalCSS(cssString) {
+
+            var styleEl = document.head.querySelector('style.FrameTrailGlobalCustomCSS');
+
+            if (!styleEl) {
+                styleEl = document.createElement('style');
+                styleEl.className = 'FrameTrailGlobalCustomCSS';
+                styleEl.type = 'text/css';
+                document.head.appendChild(styleEl);
             }
-        }
 
-        /* Tag Definitions UI */
-        var _tdw = document.createElement('div');
-        _tdw.innerHTML = '<div class="tagDefinitionsContainer">'
-            + '    <div class="tagListHeader">'
-            + '        <button class="addTagButton"><span class="icon-plus"></span> '+ labels['TagAdd'] +'</button>'
-            + '        <input type="text" class="tagFilterInput" placeholder="'+ labels['SettingsFilterByName'] +'">'
-            + '    </div>'
-            + '    <div class="tagList"></div>'
-            + '</div>';
-        var tagDefinitionsUI = _tdw.firstElementChild;
-
-        adminTabs.querySelector('#TagDefinitions').appendChild(tagDefinitionsUI);
-
-
-        /* User Administration UI
-           The registration-policy settings live here rather than in Advanced
-           Settings because they govern what happens when a user is created.
-           They keep the .configEditingForm wrapper so the Apply sweep picks
-           them up wherever in the dialog they sit. */
-        var _uaw = document.createElement('div');
-        _uaw.innerHTML = '<div class="userAdministrationContainer">'
-            + '    <div class="userListHeader">'
-            + '        <button class="addUserButton"><span class="icon-plus"></span> '+ labels['UserAdd'] +'</button>'
-            + '        <input type="text" class="userFilterInput" placeholder="'+ labels['SettingsFilterByName'] +'">'
-            + '    </div>'
-            + '    <div class="userList"></div>'
-            + '    <div class="configEditingForm userRegistrationPolicy">'
-            + '        <div class="message active">'+ labels['MessageUserRequireConfirmation'] +'</div>'
-            + '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="userNeedsConfirmation" id="userNeedsConfirmation" '+((configData.userNeedsConfirmation && configData.userNeedsConfirmation.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="userNeedsConfirmation">'+ labels['SettingsOnlyConfirmedUsers'] +'</label></div>'
-            + '    </div>'
-            + '</div>';
-        var userAdministrationUI = _uaw.firstElementChild;
-
-        adminTabs.querySelector('#UserAdministration').appendChild(userAdministrationUI);
-
-        // Fetched fresh rather than read from Database.users: that roster is
-        // loaded once at boot, possibly before login, and an unauthenticated
-        // userGet deliberately omits role/active/mail.
-        var userRoster = {};
-
-        function refreshUserList() {
-
-            _serverPost(new URLSearchParams({ a: 'userGet' })).then(function(response) {
-                userRoster = (response && response.response && response.response.user) || {};
-                renderUserList(userAdministrationUI.querySelector('.userFilterInput').value);
-            }).catch(function() {
-                renderUserList('');
-            });
+            styleEl.textContent = cssString;
 
         }
 
-        function renderUserList(filterText) {
-
-            var Collaboration = FrameTrail.module('Collaboration');
-            var userList = userAdministrationUI.querySelector('.userList');
-            var ownID    = String(FrameTrail.module('UserManagement').userID);
-            userList.innerHTML = '';
-
-            for (var uid in userRoster) {
-
-                var u = userRoster[uid];
-                if (filterText && (u.name || '').toLowerCase().indexOf(filterText.toLowerCase()) === -1) {
-                    continue;
-                }
-
-                var isSelf   = (String(uid) === ownID),
-                    color    = /^#/.test(u.color || '') ? u.color : '#' + (u.color || '888888'),
-                    inactive = (String(u.active) === '0');
-
-                var _uiw = document.createElement('div');
-                _uiw.innerHTML = '<div class="userListItem'+ (inactive ? ' inactive' : '') +'" data-user-id="'+ uid +'">'
-                    + '    <span class="collaborationChip userListAvatar"></span>'
-                    + '    <div class="userListInfo">'
-                    + '        <div class="userListName"></div>'
-                    + '        <div class="userListMeta"></div>'
-                    + '    </div>'
-                    + '    <div class="userListActions">'
-                    + '        <button class="editUserButton" title="'+ labels['GenericEditStart'] +'"><span class="icon-pencil"></span></button>'
-                    + '        <button class="deleteUserButton" title="'+ labels['GenericDelete'] +'"'+ (isSelf ? ' disabled' : '') +'><span class="icon-trash"></span></button>'
-                    + '    </div>'
-                    + '</div>';
-                var userItem = _uiw.firstElementChild;
-
-                // textContent, not interpolation — names are user-supplied.
-                userItem.querySelector('.userListName').textContent = u.name || '';
-                userItem.querySelector('.userListMeta').textContent =
-                    (u.mail || '') + '  ·  ' + (u.role === 'admin' ? labels['UserRoleAdmin'] : labels['UserRoleUser'])
-                    + (inactive ? '  ·  ' + labels['UserInactive'] : '');
-
-                var avatar = userItem.querySelector('.userListAvatar');
-                avatar.textContent = Collaboration ? Collaboration.initialsOf(u.name) : '';
-                avatar.style.backgroundColor = color;
-                if (Collaboration) { avatar.style.color = Collaboration.readableTextColor(color); }
-
-                userList.appendChild(userItem);
-            }
-
-            if (userList.children.length === 0) {
-                userList.insertAdjacentHTML('beforeend', '<div class="message active">'+ labels['UserNoUsersFound'] +'</div>');
-            }
-
-        }
-
-        userAdministrationUI.querySelector('.userFilterInput').addEventListener('input', function() {
-            renderUserList(this.value);
-        });
-
-        userAdministrationUI.querySelector('.addUserButton').addEventListener('click', function() {
-            openUserEditDialog(null);
-        });
-
-        userAdministrationUI.querySelector('.userList').addEventListener('click', function(evt) {
-            var item = evt.target.closest('.userListItem');
-            if (!item) return;
-            var uid = item.getAttribute('data-user-id');
-            if (evt.target.closest('.editUserButton')) {
-                openUserEditDialog(uid);
-            } else if (evt.target.closest('.deleteUserButton')) {
-                confirmDeleteUser(uid);
-            }
-        });
 
         /**
-         * Add or edit a user. Creating posts userRegister (the same action the
-         * public sign-up uses), editing posts userChange. Both take effect
-         * immediately, matching the Tag Definitions tab in this dialog rather
-         * than the Apply/Cancel batching of the config panels.
+         * I seed the CSS editor from the file on disk, and mirror it into the
+         * live <style> element so edits can be previewed.
+         *
+         * Always from the file — never from the <style> element. That element
+         * is created on the first open of this dialog and then just sits in the
+         * head, so seeding from it showed the second open whatever the first
+         * one had loaded. Another admin saving in between was invisible, and
+         * Apply then wrote the stale text straight over their work.
+         *
+         * The read is asynchronous, so initialCSS and cssEditorValue — captured
+         * before it — are reassigned here too. Otherwise the revert-on-error
+         * path restores text that was never on the server either.
          */
-        function openUserEditDialog(userId) {
+        function seedGlobalCSS() {
 
-            var isNew = !userId,
-                u     = isNew ? {} : (userRoster[userId] || {}),
-                isSelf = !isNew && String(userId) === String(FrameTrail.module('UserManagement').userID);
+            function apply(cssString) {
 
-            var _uew = document.createElement('div');
-            _uew.innerHTML = '<div class="userEditForm">'
-                + '    <input type="text" class="userEditName" placeholder="'+ labels['UserName'] +'">'
-                + '    <input type="text" class="userEditMail" placeholder="'+ labels['UserMail'] +'">'
-                + '    <input type="password" class="userEditPasswd" placeholder="'+ (isNew ? labels['UserPassword'] : labels['UserNewPassword']) +'">'
-                + '    <div class="userEditColor"></div>'
-                + (isNew ? '' :
-                   '    <div class="userEditRoles">'
-                 + '        <input type="radio" name="userEditRole" id="userEditRoleAdmin" value="admin">'
-                 + '        <label for="userEditRoleAdmin">'+ labels['UserRoleAdmin'] +'</label>'
-                 + '        <input type="radio" name="userEditRole" id="userEditRoleUser" value="user">'
-                 + '        <label for="userEditRoleUser">'+ labels['UserRoleUser'] +'</label><br>'
-                 + '        <div class="checkboxRow"><label class="switch"><input type="checkbox" id="userEditActive"><span class="slider round"></span></label><label for="userEditActive">'+ labels['UserActive'] +'</label></div>'
-                 + '    </div>')
-                + '</div>';
-            var userEditForm = _uew.firstElementChild;
+                codeEditor.dispatch({
+                    changes: { from: 0, to: codeEditor.state.doc.length, insert: cssString },
+                    annotations: CM6.Transaction.userEvent.of('setValue')
+                });
 
-            userEditForm.querySelector('.userEditName').value = u.name || '';
-            userEditForm.querySelector('.userEditMail').value = u.mail || '';
+                cssEditorValue = cssString;
+                initialCSS     = cssString;
 
-            if (!isNew) {
-                var roleEl = userEditForm.querySelector('#userEditRole' + (u.role === 'admin' ? 'Admin' : 'User'));
-                if (roleEl) roleEl.checked = true;
-                var activeEl = userEditForm.querySelector('#userEditActive');
-                if (activeEl) activeEl.checked = (String(u.active) !== '0');
-            }
+                setLiveGlobalCSS(cssString);
 
-            var userDialogCtrl = Dialog({
-                title:     isNew ? labels['UserAdd'] : labels['UserChangeSettings'],
-                content:   userEditForm,
-                modal:     true,
-                resizable: false,
-                width:     460,
-                close:     function() { userDialogCtrl.destroy(); },
-                buttons: [
-                    { text: labels['GenericSaveChanges'],
-                      click: function() { submitUser(); } },
-                    { text: labels['GenericCancel'],
-                      click: function() { userDialogCtrl.close(); } }
-                ]
-            });
-
-            var errorEl = document.createElement('div');
-            errorEl.className = 'message error dialogError';
-            errorEl.style.flexBasis = '100%';
-            userDialogCtrl.widget().querySelector('.ft-dialog-buttonpane').prepend(errorEl);
-
-            // The palette lives in UserManagement so it is defined once.
-            FrameTrail.module('UserManagement').getUserColorCollection(function() {
-                FrameTrail.module('UserManagement').renderUserColorCollectionForm(
-                    u.color || '', userEditForm.querySelector('.userEditColor'));
-            });
-
-            function fail(text) {
-                errorEl.classList.add('active');
-                errorEl.textContent = text;
-            }
-
-            function submitUser() {
-
-                var body = new URLSearchParams();
-                body.append('name',   userEditForm.querySelector('.userEditName').value);
-                body.append('mail',   userEditForm.querySelector('.userEditMail').value);
-                body.append('passwd', userEditForm.querySelector('.userEditPasswd').value);
-
-                var colorInput = userEditForm.querySelector('.userEditColor input[name="color"]');
-                if (colorInput) body.append('color', colorInput.value);
-
-                if (isNew) {
-                    body.append('a', 'userRegister');
-                } else {
-                    body.append('a', 'userChange');
-                    body.append('userID', userId);
-                    var role   = userEditForm.querySelector('input[name="userEditRole"]:checked');
-                    var active = userEditForm.querySelector('#userEditActive');
-                    if (role) body.append('role', role.value);
-                    // The server only accepts the literal strings "1"/"0".
-                    if (active) body.append('active', active.checked ? '1' : '0');
-                }
-
-                _serverPost(body).then(function(response) {
-
-                    // userRegister reports 3 when the account was created but
-                    // still needs activation — a success, not a failure.
-                    if (response.code === 0 || (isNew && response.code === 3)) {
-                        userDialogCtrl.close();
-                        bindConfigDirtyTracking();
-
-        refreshUserList();
-                        // Editing yourself changes what the rest of the UI shows.
-                        if (isSelf) {
-                            FrameTrail.changeState('username', response.response.name);
-                            FrameTrail.changeState('userColor', response.response.color);
-                        }
-                        return;
-                    }
-
-                    fail(response.string || labels['ErrorGeneric']);
-
-                }).catch(function(e) { fail(e.message); });
+                // The stylesheet is served by the <style> from here on; leaving
+                // the <link> would let the file win the cascade after an edit.
+                var _lnk = document.head.querySelector('link[href$="custom.css"]');
+                if (_lnk) { _lnk.remove(); }
 
             }
 
-        }
-
-
-        function confirmDeleteUser(userId) {
-
-            var u = userRoster[userId] || {};
-
-            var _cdw = document.createElement('div');
-            _cdw.innerHTML = '<div class="confirmDeleteUser">'
-                + '    <div class="message error active"></div>'
-                + '    <p>'+ labels['UserDeleteKeepsContent'] +'</p>'
-                + '</div>';
-            var confirmEl = _cdw.firstElementChild;
-            confirmEl.querySelector('.message').textContent =
-                labels['UserDeleteConfirm'].replace('%s', u.name || '');
-
-            var confirmCtrl = Dialog({
-                title:     labels['GenericDelete'],
-                content:   confirmEl,
-                modal:     true,
-                resizable: false,
-                width:     460,
-                close:     function() { confirmCtrl.destroy(); },
-                buttons: [
-                    { text: labels['GenericDelete'],
-                      click: function() {
-                          _serverPost(new URLSearchParams({ a: 'userDelete', userID: userId }))
-                          .then(function(response) {
-                              if (response.code === 0) {
-                                  confirmCtrl.close();
-                                  refreshUserList();
-                              } else {
-                                  var el = confirmEl.querySelector('.message');
-                                  el.textContent = response.string || labels['ErrorGeneric'];
-                              }
-                          });
-                      } },
-                    { text: labels['GenericCancel'],
-                      click: function() { confirmCtrl.close(); } }
-                ]
-            });
-
-        }
-
-
-        refreshUserList();
-
-        function renderTagList(filterText) {
-            var tagList = tagDefinitionsUI.querySelector('.tagList');
-            tagList.innerHTML = '';
-            var allTags = FrameTrail.module('TagModel').getAllTags();
-
-            for (var tagId in allTags) {
-                if (filterText && tagId.toLowerCase().indexOf(filterText.toLowerCase()) === -1) {
-                    continue;
-                }
-
-                var tagData = allTags[tagId];
-                var _tiw = document.createElement('div');
-                _tiw.innerHTML = '<div class="tagListItem" data-tag-id="'+ tagId +'">'
-                    + '    <div class="tagId">'+ tagId +'</div>'
-                    + '    <div class="tagLanguages"></div>'
-                    + '    <div class="tagActions">'
-                    + '        <button class="editTagButton" title="'+ labels['GenericEditStart'] +'"><span class="icon-pencil"></span></button>'
-                    + '        <button class="deleteTagButton" title="'+ labels['GenericDelete'] +'"><span class="icon-trash"></span></button>'
-                    + '    </div>'
-                    + '</div>';
-                var tagItem = _tiw.firstElementChild;
-
-                var langContainer = tagItem.querySelector('.tagLanguages');
-                for (var lang in tagData) {
-                    langContainer.insertAdjacentHTML('beforeend',
-                        '<div class="tagLang">'
-                        + '    <span class="langCode">'+ lang.toUpperCase() +':</span> '
-                        + '    <span class="langLabel">'+ tagData[lang].label +'</span>'
-                        + '    <span class="langDesc">&mdash; '+ tagData[lang].description +'</span>'
-                        + '</div>'
-                    );
-                }
-
-                tagList.appendChild(tagItem);
-            }
-
-            if (tagList.children.length === 0) {
-                tagList.insertAdjacentHTML('beforeend', '<div class="message active">'+ labels['TagNoTagsDefined'] +'</div>');
-            }
-        }
-
-        FrameTrail.module('TagModel').updateTagModel(function() {
-            renderTagList('');
-        }, function() {
-            renderTagList('');
-        });
-
-        tagDefinitionsUI.querySelector('.tagFilterInput').addEventListener('input', function() {
-            renderTagList(this.value);
-        });
-
-        tagDefinitionsUI.querySelector('.addTagButton').addEventListener('click', function() {
-            openTagEditDialog(null);
-        });
-
-        tagDefinitionsUI.addEventListener('click', function(evt) {
-            var _editBtn = evt.target.closest('.editTagButton');
-            if (_editBtn) {
-                openTagEditDialog(_editBtn.closest('.tagListItem').dataset.tagId);
-                return;
-            }
-            var _delBtn = evt.target.closest('.deleteTagButton');
-            if (_delBtn) {
-                confirmDeleteTag(_delBtn.closest('.tagListItem').dataset.tagId);
-            }
-        });
-
-        function openTagEditDialog(tagId) {
-            var isNew = (tagId === null);
-            var allTags = FrameTrail.module('TagModel').getAllTags();
-            var existingData = isNew ? {} : (allTags[tagId] || {});
-            var errorDiv = document.createElement('div');
-            errorDiv.className = 'message dialogError';
-
-            var _dcw = document.createElement('div');
-            _dcw.innerHTML = '<div class="tagEditDialog">'
-                + '    <div class="formRow">'
-                + '        <label>'+ labels['TagID'] +'</label>'
-                + '        <input type="text" class="tagIdInput" value="'+ (tagId || '') +'" '+ (isNew ? '' : 'readonly') +'>'
-                + '        <div class="fieldHint">'+ labels['TagIDHint'] +'</div>'
-                + '    </div>'
-                + '    <div class="languagesContainer">'
-                + '        <label>'+ labels['TagLanguages'] +'</label>'
-                + '        <div class="languagesList"></div>'
-                + '        <button class="addLanguageButton"><span class="icon-plus"></span> '+ labels['TagAddLanguage'] +'</button>'
-                + '    </div>'
-                + '</div>';
-            var dialogContent = _dcw.firstElementChild;
-
-            var languagesList = dialogContent.querySelector('.languagesList');
-
-            function addLanguageRow(lang, label, description, isExisting) {
-                var _rw = document.createElement('div');
-                _rw.innerHTML = '<div class="languageRow" data-lang="'+ (lang || '') +'">'
-                    + '    <div class="langHeader">'
-                    + '        <input type="text" class="langCodeInput" value="'+ (lang || '') +'" placeholder="en" maxlength="2" '+ (isExisting ? 'readonly' : '') +'>'
-                    + (isExisting ? '' : '        <button class="removeLangButton"><span class="icon-cancel"></span></button>')
-                    + '    </div>'
-                    + '    <div class="langFields">'
-                    + '        <input type="text" class="langLabelInput" value="'+ (label || '') +'" placeholder="'+ labels['TagLabel'] +'">'
-                    + '        <input type="text" class="langDescInput" value="'+ (description || '') +'" placeholder="'+ labels['TagDescription'] +'">'
-                    + '    </div>'
-                    + '</div>';
-                var row = _rw.firstElementChild;
-
-                var _removeBtn = row.querySelector('.removeLangButton');
-                if (_removeBtn) {
-                    _removeBtn.addEventListener('click', function() {
-                        row.remove();
-                    });
-                }
-
-                languagesList.appendChild(row);
-            }
-
-            for (var lang in existingData) {
-                addLanguageRow(lang, existingData[lang].label, existingData[lang].description, true);
-            }
-
-            if (isNew) {
-                addLanguageRow('', '', '', false);
-            }
-
-            dialogContent.querySelector('.addLanguageButton').addEventListener('click', function() {
-                addLanguageRow('', '', '', false);
-            });
-
-            var tagDialogCtrl = Dialog({
-                title:   isNew ? labels['TagAddNew'] : labels['TagEdit'] + ': ' + tagId,
-                content: dialogContent,
-                modal:   true,
-                width:   500,
-                buttons: [
-                    {
-                        text: labels['GenericSave'],
-                        click: function() {
-                            saveTag(dialogContent, errorDiv, function() {
-                                tagDialogCtrl.close();
-                                renderTagList(tagDefinitionsUI.querySelector('.tagFilterInput').value);
-                            });
-                        }
-                    },
-                    {
-                        text: labels['GenericCancel'],
-                        click: function() { tagDialogCtrl.close(); }
-                    }
-                ],
-                close: function() { tagDialogCtrl.destroy(); }
-            });
-            tagDialogCtrl.widget().querySelector('.ft-dialog-buttonpane').prepend(errorDiv);
-        }
-
-        function saveTag(dialogContent, errorDiv, onSuccess) {
-            var tagId = dialogContent.querySelector('.tagIdInput').value.trim();
-            var languageRows = dialogContent.querySelectorAll('.languageRow');
-
-            function showDialogError(msg) {
-                errorDiv.textContent = msg;
-                errorDiv.classList.add('active', 'error');
-            }
-
-            if (tagId.length < 2) {
-                showDialogError(labels['TagErrorIDTooShort']);
+            if (FrameTrail.getState('storageMode') === 'local') {
+                FrameTrail.module('StorageManager').getAdapter()
+                    .readText('custom.css')
+                    .then(apply)
+                    .catch(function() { apply(''); });   // no custom.css yet
                 return;
             }
 
-            if (languageRows.length === 0) {
-                showDialogError(labels['TagErrorNoLanguages']);
+            if (FrameTrail.getState('storageMode') === 'download') {
+                // Nothing to read from — keep whatever is already inlined, but
+                // make sure the element exists so an edit has somewhere to go.
+                setLiveGlobalCSS(cssText);
                 return;
             }
 
-            var saveQueue = [];
-            languageRows.forEach(function(row) {
-                var lang = row.querySelector('.langCodeInput').value.trim().toLowerCase();
-                var label = row.querySelector('.langLabelInput').value.trim();
-                var desc = row.querySelector('.langDescInput').value.trim();
+            fetch(FrameTrail.module('RouteNavigation').resolveDataURL('custom.css'), { cache: 'no-cache' })
+                .then(function(r) { return r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)); })
+                .then(apply)
+                .catch(function() {
+                    console.log(labels['ErrorCouldNotRetrieveCustomCSS']);
+                });
 
-                if (lang.length === 2 && label.length >= 4) {
-                    saveQueue.push({ lang: lang, label: label, description: desc });
-                }
-            });
-
-            if (saveQueue.length === 0) {
-                showDialogError(labels['TagErrorInvalidLanguages']);
-                return;
-            }
-
-            var savedCount = 0;
-
-            function saveNext(idx) {
-                if (idx >= saveQueue.length) {
-                    onSuccess();
-                    return;
-                }
-                var item = saveQueue[idx];
-                FrameTrail.module('TagModel').setTag(
-                    tagId,
-                    item.lang,
-                    item.label,
-                    item.description,
-                    function() {
-                        savedCount++;
-                        saveNext(idx + 1);
-                    },
-                    function() {
-                        showDialogError(labels['TagErrorSaveFailed']);
-                    }
-                );
-            }
-
-            saveNext(0);
         }
 
-        function confirmDeleteTag(tagId) {
-            FrameTrail.module('TagModel').deleteTag(tagId,
-                function(response) {
-                    renderTagList(tagDefinitionsUI.querySelector('.tagFilterInput').value);
-                    FrameTrail.module('InterfaceModal').showStatusMessage(labels['TagDeleted']);
-                    setTimeout(function() {
-                        FrameTrail.module('InterfaceModal').hideMessage(500);
-                    }, 1500);
-                },
-                function(response) {
-                    if (response && response.code === 5 && response.response) {
-                        showTagUsageWarning(tagId, response.response);
-                    } else {
-                        FrameTrail.module('InterfaceModal').showErrorMessage(labels['TagErrorDeleteFailed']);
-                    }
-                }
-            );
-        }
+        seedGlobalCSS();
 
-        function showTagUsageWarning(tagId, usageData) {
-            var _tuw = document.createElement('div');
-            _tuw.innerHTML = '<div class="tagUsageWarning">'
-                + '    <p><strong>'+ labels['TagCannotDelete'].replace('{tagId}', tagId) +'</strong></p>'
-                + '    <p>'+ labels['TagInUseCount'].replace('{count}', usageData.count) +'</p>'
-                + '    <ul class="usageList"></ul>'
-                + '    <p>'+ labels['TagRemoveBeforeDelete'] +'</p>'
-                + '</div>';
-            var content = _tuw.firstElementChild;
+        // Seed the compare-and-swap token for custom.css. Without it the first
+        // save of a session goes out unguarded and can clobber another admin.
+        database.loadConfigVersions();
 
-            var usageList = content.querySelector('.usageList');
-
-            if (usageData.matches) {
-                for (var i = 0; i < usageData.matches.length; i++) {
-                    var match = usageData.matches[i];
-                    usageList.insertAdjacentHTML('beforeend',
-                        '<li>Hypervideo "'+ match.hypervideo +'" &mdash; '
-                        + match.where + ' ('+ match.type +') by '+ match.owner
-                        + '</li>'
-                    );
-                }
-            }
-
-            var tagUsageDialogCtrl = Dialog({
-                title:   labels['TagCannotDeleteTitle'],
-                content: content,
-                modal:   true,
-                width:   450,
-                buttons: [
-                    { text: labels['GenericOK'], click: function() { tagUsageDialogCtrl.close(); } }
-                ],
-                close: function() { tagUsageDialogCtrl.destroy(); }
-            });
-        }
+        // Must run here, not earlier: config controls live in more than one tab,
+        // and every panel's markup has to be in the DOM before the listeners that
+        // set configChanged can be attached to it. Without this, Apply sweeps the
+        // form but configChanged is never true, so nothing is written at all.
+        bindConfigDirtyTracking();
 
         var adminDialogCtrl = Dialog({
             title:   labels['GenericAdministration'],
@@ -1419,17 +938,34 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
             height: 600,
             close: function() {
                 // If closing without applying (X button or ESC), just remove dialog
-                // No changes are applied until "Apply" button is clicked
+                // No changes are applied until "Apply" button is clicked.
+                // Demote rather than stop: the scope stays watched for the rest
+                // of the session, so the overview still learns when somebody
+                // else changes the settings. Demoting releases our lock.
                 if (FrameTrail.module('Collaboration')) {
-                    FrameTrail.module('Collaboration').stop('settings', 'global');
+                    FrameTrail.module('Collaboration').setObserving(true, 'settings', 'global');
                 }
                 presenceContainer = null;
                 lockMessageEl     = null;
                 applyButton       = null;
+                reloadButton      = null;
                 adminDialogCtrl.destroy();
             },
             buttons: [
+                // Users and tags live in their own dialogs now, but this is
+                // still where an admin comes looking for them. They open on top
+                // as ordinary modals, and they are never disabled by the
+                // settings lock — nothing they write goes through Apply.
+                { text: labels['UserAdministration'],
+                    class: 'manageUsersButton',
+                    click: function() { FrameTrail.module('ManageUsersDialog').open(); }
+                },
+                { text: labels['SettingsManageTags'],
+                    class: 'manageTagsButton',
+                    click: function() { FrameTrail.module('ManageTagsDialog').open(); }
+                },
                 { text: labels['GenericApply'] || labels['GenericSaveChanges'] || 'Apply',
+                    class: 'applySettingsButton',
                     click: function() {
                         // Apply and save changes if any were made
                         if (configChanged || globalCSSChanged) {
@@ -1505,13 +1041,23 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             
                             // Apply CSS changes
                             if (globalCSSChanged) {
-                                document.head.querySelector('style.FrameTrailGlobalCustomCSS').innerHTML = cssEditorValue;
+                                setLiveGlobalCSS(cssEditorValue);
                             }
                             
                             var saveCount = 0;
                             var saveTotal = (configChanged ? 1 : 0) + (globalCSSChanged ? 1 : 0);
                             var saveError = null;
-                            
+                            // Highest post-write mtime across both files — the
+                            // 'settings' version spans them, so whichever we
+                            // wrote last is the one the poll will report.
+                            var savedVersion = null;
+
+                            function noteSavedVersion(result) {
+                                if (result && result.version && (savedVersion === null || result.version > savedVersion)) {
+                                    savedVersion = result.version;
+                                }
+                            }
+
                             var saveClosed = false;
                             function checkSaveComplete() {
                                 saveCount++;
@@ -1523,7 +1069,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                         console.error('Error saving admin settings:', saveError);
                                         // Revert changes on error
                                         if (configChanged) {
-                                            database.config = JSON.parse(JSON.stringify(initialConfig));
+                                            database.replaceConfigContents(initialConfig);
                                             // Only revert theme on current view if hypervideo has no per-hypervideo theme
                                             var hvCfg = database.hypervideo && database.hypervideo.config;
                                             if (!hvCfg || !hvCfg.theme) {
@@ -1531,12 +1077,16 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                             }
                                         }
                                         if (globalCSSChanged) {
-                                            document.head.querySelector('style.FrameTrailGlobalCustomCSS').innerHTML = initialCSS;
+                                            setLiveGlobalCSS(initialCSS);
                                         }
                                         // Repaint the map with the reverted values
                                         refreshOverviewMap();
-                                    } else {
-                                        // Reload config to ensure consistency
+                                    } else if (configChanged) {
+                                        // Re-read only when we actually wrote config.json.
+                                        // A CSS-only Apply left it untouched, and reloading
+                                        // it then replaces overviewMap wholesale — silently
+                                        // discarding marker drags that were never saved,
+                                        // and clearing the dirty flag so nobody is asked.
                                         FrameTrail.module('Database').loadConfigData(function(){
                                             // Background, colour and fit live in
                                             // config.overviewMap, and nothing observes
@@ -1545,6 +1095,13 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                             refreshOverviewMap();
                                         }, function(){});
                                     }
+
+                                    // Adopt what we just wrote, so the next poll
+                                    // does not report our own change back to us.
+                                    if (!saveError && FrameTrail.module('Collaboration')) {
+                                        FrameTrail.module('Collaboration').acknowledgeVersion(savedVersion, 'settings', 'global');
+                                    }
+
                                     adminDialogCtrl.close();
                                 }
                             }
@@ -1565,6 +1122,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                         checkSaveComplete();
                                         return;
                                     }
+                                    noteSavedVersion(result);
                                     // If language changed, reload after the save is confirmed complete on disk
                                     if (languageChanged) {
                                         FrameTrail.module('Localization').setLanguage(database.config.defaultLanguage);
@@ -1590,6 +1148,8 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                 FrameTrail.module('Database').saveGlobalCSS(function(result) {
                                     if (!result.success) {
                                         saveError = result.error;
+                                    } else {
+                                        noteSavedVersion(result);
                                     }
                                     checkSaveComplete();
                                 });
@@ -1634,9 +1194,10 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         var buttonPane = dialogCtrl.widget().querySelector('.ft-dialog-buttonpane');
         if (!buttonPane) return;
 
-        // Apply is the first button as authored; capture it up front so nothing
-        // added later can make a positional lookup pick the wrong element.
-        applyButton = buttonPane.querySelector('button');
+        // By class, not by position: the Manage Users and Manage Tags shortcuts
+        // sit ahead of Apply in the pane, and they must stay usable while the
+        // lock is held — they write neither of the files it guards.
+        applyButton = buttonPane.querySelector('.applySettingsButton');
 
         var mounted = Collaboration.mountDialogPresence(dialogCtrl);
         if (!mounted) return;
@@ -1644,7 +1205,23 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         presenceContainer = mounted.presence;
         lockMessageEl     = mounted.message;
 
-        Collaboration.start('settings', 'global');
+        // Offered only once the settings actually moved underneath us. It is
+        // deliberately blunt — close and reopen — because four tabs of
+        // interdependent form state cannot be merged, and reopening is provably
+        // right where a partial refresh would not be.
+        reloadButton = document.createElement('button');
+        reloadButton.className = 'collabReloadButton';
+        reloadButton.textContent = labels['GenericReloadDiscard'];
+        reloadButton.style.display = 'none';
+        reloadButton.addEventListener('click', function() {
+            dialogCtrl.close();
+            FrameTrail.module('Database').loadConfigData(function() { open(); }, function() {});
+        });
+        buttonPane.prepend(reloadButton);
+
+        // Promote the ambient watch on this scope to a participating session:
+        // being in here is exactly what the avatars are meant to show.
+        Collaboration.start('settings', 'global', { observe: false });
         Collaboration.claim(function() { updateSettingsPresence(); }, 'settings', 'global');
 
     }
@@ -1652,8 +1229,12 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
     /**
      * Reflect the current state of the 'settings' scope into the open dialog:
-     * avatars for everyone else in here, and Apply disabled behind a named
-     * message while somebody else holds the lock.
+     * avatars for everyone else in here, Apply disabled behind a named message
+     * while somebody else holds the lock, and a way out when the files moved.
+     *
+     * Lock and staleness share one message element and one line, because they
+     * cannot usefully be shown at once — while somebody holds the lock, Apply
+     * is disabled and what the file says is beside the point.
      *
      * @method updateSettingsPresence
      */
@@ -1665,19 +1246,33 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         Collaboration.renderAvatars(presenceContainer, 'settings', 'global');
 
         var blocked = Collaboration.isLockedByOther('settings', 'global'),
-            holder  = Collaboration.lockHolder('settings', 'global');
+            stale   = Collaboration.isStale('settings', 'global'),
+            holder  = Collaboration.lockHolder('settings', 'global'),
+            writer  = Collaboration.lastWriter('settings', 'global');
 
         if (lockMessageEl) {
-            lockMessageEl.classList.toggle('active', blocked);
-            lockMessageEl.textContent = blocked
-                ? labels['MessageCollabSettingsLockedBy'].replace('%s', (holder && holder.name) ? holder.name : '')
-                : '';
+            if (blocked) {
+                lockMessageEl.className = 'dialogCollabMessage message error active';
+                lockMessageEl.textContent = labels['MessageCollabSettingsLockedBy'].replace('%s', (holder && holder.name) ? holder.name : '');
+            } else if (stale) {
+                // Not an error: nobody is blocking us, the file underneath just
+                // moved. What is on screen is simply no longer what is on disk.
+                lockMessageEl.className = 'dialogCollabMessage message active';
+                lockMessageEl.textContent = (writer && writer.name)
+                    ? labels['MessageCollabSettingsChangesBy'].replace('%s', writer.name)
+                    : labels['MessageCollabSettingsChanged'];
+            } else {
+                lockMessageEl.className = 'dialogCollabMessage message';
+                lockMessageEl.textContent = '';
+            }
         }
 
-        if (applyButton) applyButton.disabled = blocked;
+        if (applyButton)  applyButton.disabled  = blocked;
+        if (reloadButton) reloadButton.style.display = (!blocked && stale) ? '' : 'none';
 
         // Grey out the form itself. The title bar sits outside .ft-dialog-content,
-        // so the avatars and the "X is editing…" message stay fully legible.
+        // so the avatars and the "X is editing…" message stay fully legible, and
+        // the button pane keeps the Manage Users / Manage Tags shortcuts live.
         var widget = presenceContainer.closest('.ft-dialog');
         if (widget) widget.classList.toggle('collabLocked', blocked);
 

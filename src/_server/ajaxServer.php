@@ -146,7 +146,19 @@ switch($_REQUEST["a"]) {
 
     case "collabSync":
         include_once("collaboration.php");
-        $return = collabSync($_REQUEST["scope"], $_REQUEST["scopeId"], !empty($_REQUEST["editing"]) && $_REQUEST["editing"] !== "false", !empty($_REQUEST["unsaved"]) && $_REQUEST["unsaved"] !== "false", isset($_REQUEST["knownVersion"]) ? $_REQUEST["knownVersion"] : null);
+        if (isset($_REQUEST["sessions"])) {
+            $return = collabSync(json_decode($_REQUEST["sessions"], true));
+        } else {
+            // Pre-batch client (a build/ bundle updated without _server/, say).
+            // Translating here keeps collaboration.php down to one code path.
+            $return = collabSync(array(array(
+                "scope"        => $_REQUEST["scope"],
+                "scopeId"      => $_REQUEST["scopeId"],
+                "editing"      => !empty($_REQUEST["editing"]) && $_REQUEST["editing"] !== "false",
+                "unsaved"      => !empty($_REQUEST["unsaved"]) && $_REQUEST["unsaved"] !== "false",
+                "knownVersion" => isset($_REQUEST["knownVersion"]) ? $_REQUEST["knownVersion"] : null
+            )), true);
+        }
         break;
 
     case "collabLock":
@@ -202,7 +214,7 @@ switch($_REQUEST["a"]) {
 
     case "tagLangDelete":
         include_once("tags.php");
-        $return = tagLangDelete($_REQUEST["lang"]);
+        $return = tagLangDelete($_REQUEST["tagName"], $_REQUEST["lang"]);
         break;
 
     /*#########################################
@@ -212,6 +224,11 @@ switch($_REQUEST["a"]) {
     case "configChange":
         include_once("files.php");
         $return = updateConfigFile($_REQUEST["src"], isset($_REQUEST["baseVersion"]) ? $_REQUEST["baseVersion"] : null);
+        break;
+
+    case "configVersions":
+        include_once("files.php");
+        $return = getConfigVersions();
         break;
 
     /*#########################################

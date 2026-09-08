@@ -29,6 +29,10 @@
         resources    = {},
         config       = {},
 
+        // Where the config came from, decided on the first load. See
+        // loadConfigData for why this cannot be re-read from the state.
+        configSource = undefined,
+
         annotations  = [],
 
         subtitles              = {},
@@ -210,9 +214,47 @@
         return annotation;
     }
 
+    /**
+     * I replace the config's contents without replacing the object itself.
+     *
+     * Callers hold on to Database.config — ViewOverviewMap keeps working
+     * against config.overviewMap for a whole edit session, for one — so
+     * swapping the object out from under them silently orphans their
+     * reference, and their next write lands somewhere nobody reads.
+     *
+     * This is also why there is no `set config()`: an assignment looks
+     * harmless at the call site and would reintroduce exactly that bug.
+     *
+     * @method replaceConfigContents
+     * @param {Object} newConfig
+     */
+    function replaceConfigContents(newConfig) {
+
+        Object.keys(config).forEach(function(key) { delete config[key]; });
+        Object.assign(config, JSON.parse(JSON.stringify(newConfig)));
+
+        FrameTrail.changeState('config', config);
+
+    };
+
+
     function loadConfigData(success, fail) {
 
-        var configInitOptions = FrameTrail.getState('config');
+        // Captured once, on the first load.
+        //
+        // The 'config' state doubles as an init option — an object means the
+        // host supplied the config and we must not fetch, a string names a URL
+        // to fetch from — but once loaded we publish the config into that same
+        // state for other modules to read. From the second call on it therefore
+        // always looks like an inline object, and every re-read short-circuits
+        // into a no-op. That is invisible at boot and fatal afterwards: it is
+        // what a stale collaborator's Refresh and the overview map's conflict
+        // merge both depend on actually going to the server.
+        if (configSource === undefined) {
+            configSource = FrameTrail.getState('config');
+        }
+
+        var configInitOptions = configSource;
 
         if (typeof configInitOptions === 'object' && configInitOptions !== null) {
 
@@ -245,7 +287,7 @@
         }
 
         function applyConfig(data) {
-            config = data;
+            replaceConfigContents(data);
             // Migrate legacy "theme" key → "defaultTheme"
             if (!config.defaultTheme && config.theme) {
                 config.defaultTheme = config.theme;
@@ -1655,7 +1697,12 @@
                 if (data.response && data.response.lastchanged) {
                     config.lastchanged = data.response.lastchanged;
                 }
-                callback.call(window, { success: true });
+                // The post-write mtime, so the caller can tell the collaboration
+                // poll that this version is ours and not be told about it.
+                callback.call(window, {
+                    success: true,
+                    version: (data.response && data.response.version) ? data.response.version : null
+                });
             } else if (data.code === 7) {
                 callback.call(window, { failed: 'config', error: 'Conflict', code: 7, conflict: data.response });
             } else {
@@ -1664,6 +1711,47 @@
         }, function (error) {
             callback.call(window, { failed: 'config', error: error });
         });
+
+    };
+
+
+    /**
+     * I ask the server for the compare-and-swap tokens of config.json and
+     * custom.css, and seed cssBaseVersion from the answer.
+     *
+     * config.json carries its own lastchanged, so loading it is enough. Plain
+     * CSS does not, and without this the first globalCSSChange of a session
+     * would go out unguarded — which is exactly how one admin ends up
+     * overwriting another's stylesheet without either of them noticing.
+     *
+     * Only server mode has a compare-and-swap to seed; everywhere else this is
+     * a no-op that still calls back, so callers need no storage-mode branch.
+     *
+     * @method loadConfigVersions
+     * @param {Function} [callback]
+     */
+    function loadConfigVersions(callback) {
+
+        function done() { if (callback) callback.call(window); }
+
+        if (FrameTrail.getState('storageMode') !== 'server') {
+            return done();
+        }
+
+        _ajax({
+            type:     'POST',
+            url:      '_server/ajaxServer.php',
+            dataType: 'json',
+            data:     { a: 'configVersions' }
+        }, function (data) {
+            if (data.code === 0 && data.response) {
+                cssBaseVersion = data.response.css;
+                if (data.response.config != null) {
+                    config.lastchanged = data.response.config;
+                }
+            }
+            done();
+        }, done);
 
     };
 
@@ -1713,7 +1801,10 @@
                 if (data.response && data.response.lastchanged) {
                     cssBaseVersion = data.response.lastchanged;
                 }
-                callback.call(window, { success: true });
+                callback.call(window, {
+                    success: true,
+                    version: (data.response && data.response.version) ? data.response.version : null
+                });
             } else if (data.code === 7) {
                 callback.call(window, { failed: 'globalcss', error: 'Conflict', code: 7, conflict: data.response });
             } else {
@@ -2146,6 +2237,9 @@
         loadData:              loadData,
         loadResourceData:      loadResourceData,
         loadConfigData:        loadConfigData,
+        loadConfigVersions:    loadConfigVersions,
+        loadUserData:          loadUserData,
+        replaceConfigContents: replaceConfigContents,
 
         loadHypervideoData:    loadHypervideoData,
         updateHypervideoData:  updateHypervideoData,

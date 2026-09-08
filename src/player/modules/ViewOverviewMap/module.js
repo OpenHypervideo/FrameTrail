@@ -143,7 +143,42 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
         return !!FrameTrail.getState('editMode')
             && FrameTrail.module('UserManagement').userRole === 'admin'
-            && FrameTrail.module('StorageManager').canSave();
+            && FrameTrail.module('StorageManager').canSave()
+            && !isSettingsLockedByOther();
+
+    }
+
+
+    /**
+     * Marker placements live in config.json, which the admin settings dialog
+     * also writes whole — so the two share the 'settings' lock. Without this,
+     * two admins could drag markers at the same time and only find out when the
+     * second one's save was refused.
+     *
+     * @method isSettingsLockedByOther
+     * @return {Boolean}
+     */
+    function isSettingsLockedByOther() {
+
+        var Collaboration = FrameTrail.module('Collaboration');
+        return !!(Collaboration && Collaboration.isLockedByOther('settings', 'global'));
+
+    }
+
+
+    /**
+     * I re-apply the edit affordances after the lock changed hands.
+     *
+     * ViewOverview calls me — I register no onChange of my own, so that the
+     * order in which the overview and its map react stays explicit.
+     *
+     * @method reflectLock
+     */
+    function reflectLock() {
+
+        if (!MapRoot) return;
+
+        MapRoot.classList.toggle('editActive', editModeActive && canEditMap());
 
     }
 
@@ -1010,15 +1045,17 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             FrameTrail.module('InterfaceModal').hideMessage(500);
 
             if (!result || !result.success) {
+
                 // Marker placements live in config.json, the same shared file the
                 // admin settings dialog writes, so this can lose a race with another
-                // admin. Say so plainly rather than reporting a generic save error.
+                // admin.
                 if (result && result.code === 7) {
-                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSaveConflictSettings']);
-                } else {
-                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingSettings']);
-                    console.error('FrameTrail: could not save overview map layout:', result && result.error);
+                    offerConflictMerge(callback);
+                    return;
                 }
+
+                FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingSettings']);
+                console.error('FrameTrail: could not save overview map layout:', result && result.error);
                 if (callback) callback(false);
                 return;
             }
@@ -1026,8 +1063,59 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             setDirty(false);
             editSnapshot = JSON.parse(JSON.stringify(getMapData()));
 
+            var Collaboration = FrameTrail.module('Collaboration');
+            if (Collaboration) {
+                Collaboration.acknowledgeVersion(result.version, 'settings', 'global');
+            }
+
             if (callback) callback(true);
 
+        });
+
+    }
+
+
+    /**
+     * I offer to merge after another admin's write beat ours.
+     *
+     * Marker placements are the only part of config.json this module owns, so
+     * the conflict really is mergeable: take their config, lay our markers back
+     * on top, write once more. Reporting the error and stopping was a dead end —
+     * config.lastchanged never advanced, so every retry failed the same way, and
+     * the only way out was a reload that threw the work away without asking.
+     *
+     * One retry only. A second conflict means somebody is saving continuously,
+     * and looping would just keep clobbering them.
+     *
+     * @method offerConflictMerge
+     * @param {Function} callback Optional, receives a Boolean success flag
+     */
+    function offerConflictMerge(callback) {
+
+        var pendingMarkers = JSON.parse(JSON.stringify(getMapData().markers));
+
+        ConfirmDialog({
+            title:        labels['OverviewMapSaveQuestionShort'],
+            message:      labels['MessageCollabMapConflictMerge'],
+            confirmLabel: labels['GenericSaveChanges'],
+            cancelLabel:  labels['GenericCancel'],
+            onConfirm: function() {
+                FrameTrail.module('Database').loadConfigData(function() {
+                    getMapData().markers = pendingMarkers;
+                    FrameTrail.module('Database').loadConfigVersions(function() {
+                        saveLayout(callback);
+                    });
+                }, function() {
+                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingSettings']);
+                    if (callback) callback(false);
+                });
+            },
+            onCancel: function() {
+                // Keep the drags; the sidebar now offers the ordinary refresh.
+                var Collaboration = FrameTrail.module('Collaboration');
+                if (Collaboration) Collaboration.markStale('settings', 'global');
+                if (callback) callback(false);
+            }
         });
 
     }
@@ -1062,8 +1150,17 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
         if (!MapRoot) return;
 
+        var Collaboration = FrameTrail.module('Collaboration');
+
         if (active && !editModeActive) {
             editSnapshot = JSON.parse(JSON.stringify(getMapData()));
+
+            // Promote the session that is already watching this scope, and take
+            // the lock: from here on we are editing config.json, exactly what
+            // the admin settings dialog holds it for.
+            if (Collaboration && canEditMap()) {
+                Collaboration.claim(function() { reflectLock(); }, 'settings', 'global');
+            }
         }
 
         editModeActive = active;
@@ -1073,6 +1170,12 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             closePopup();
             if (mapDirty) {
                 promptSaveOrDiscard();
+            }
+            // Demote rather than stop — the scope stays watched for the rest of
+            // the session, so we still hear about changes. Demoting releases
+            // the lock, so leaving edit mode never strands one.
+            if (Collaboration) {
+                Collaboration.setObserving(true, 'settings', 'global');
             }
         }
 
@@ -1192,6 +1295,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         closePopup:         closePopup,
         getMarkerElement:   getMarkerElement,
         toggleEditMode:     toggleEditMode,
+        reflectLock:        reflectLock,
         reloadFromConfig:   reloadFromConfig,
         hasUnsavedChanges:  hasUnsavedChanges,
         saveLayout:         saveLayout,
