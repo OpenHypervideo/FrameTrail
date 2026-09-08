@@ -49,9 +49,11 @@ FrameTrail.defineModule('Tooltip', function(FrameTrail){
         MARGIN = 4;   // px minimum distance from the viewport edge
 
 
-    var rootElement,        // this instance's target container (delegation root)
-        tooltipElement,     // the single reused popover element
-        currentHost = null; // element whose tooltip is currently shown
+    var rootElement,          // this instance's target container (delegation root)
+        tooltipElement,       // the single reused popover element
+        currentHost = null,   // element whose tooltip is currently shown
+        removalObserver = null, // watches for the current host disappearing (see onMutation)
+        pointerStationary = false; // pointer has not really moved since the last press (see onOver)
 
 
     function getTooltipData(el) {
@@ -143,11 +145,16 @@ FrameTrail.defineModule('Tooltip', function(FrameTrail){
         }
 
         position(host.getBoundingClientRect(), data.placement);
+
+        // While a bubble is visible, watch for its host being taken out of the DOM.
+        if (!removalObserver) removalObserver = new MutationObserver(onMutation);
+        removalObserver.observe(rootElement, { childList: true, subtree: true });
     }
 
 
     function hide() {
         currentHost = null;
+        if (removalObserver) removalObserver.disconnect();
         try {
             if (tooltipElement.matches(':popover-open')) {
                 tooltipElement.hidePopover();
@@ -158,6 +165,11 @@ FrameTrail.defineModule('Tooltip', function(FrameTrail){
 
     // mouseover, filtered to behave like mouseenter (ignore moves within the same host).
     function onOver(e) {
+        // Only follow *real* pointer movement. The browser also synthesizes mouseover when
+        // it recomputes hover without the pointer moving — most visibly when a modal dialog
+        // closes and the button underneath becomes hoverable again, which would pop the
+        // tooltip straight back up after the very click that opened the dialog.
+        if (pointerStationary) return;
         var host = e.target.closest(SELECTOR);
         if (!host || !rootElement.contains(host)) return;
         if (e.relatedTarget && host.contains(e.relatedTarget)) return;
@@ -173,9 +185,14 @@ FrameTrail.defineModule('Tooltip', function(FrameTrail){
     }
 
     // Keyboard accessibility: show on focus (an improvement over the old hover-only CSS).
+    // Restricted to :focus-visible, because a mouse click focuses the button too — without
+    // that filter the click below would re-show the very tooltip onPointerDown just dismissed.
     function onFocusIn(e) {
         var host = e.target.closest(SELECTOR);
         if (!host || !rootElement.contains(host)) return;
+        try {
+            if (!host.matches(':focus-visible')) return;
+        } catch (err) {}
         show(host);
     }
 
@@ -189,6 +206,33 @@ FrameTrail.defineModule('Tooltip', function(FrameTrail){
     // Simplest correct behaviour for a transient hover label: dismiss it.
     function onScrollOrResize() {
         if (currentHost) hide();
+    }
+
+    // Any pointer press dismisses the tooltip. This is what keeps a bubble from getting
+    // stuck: the two cases where no mouseout can ever arrive are a click that removes its
+    // own host (a delete button) and a click that opens a modal dialog over it (the host
+    // goes inert under the dialog's backdrop, and the pointer never moves off it).
+    function onPointerDown() {
+        pointerStationary = true;
+        if (currentHost) hide();
+    }
+
+    // A mousemove is only ever dispatched for actual pointer motion, so it is what
+    // re-arms hover after a press. Synthesized hover recomputes carry no mousemove.
+    function onMouseMove() {
+        pointerStationary = false;
+    }
+
+    // Same reasoning for anything that takes the pointer away without a mouseout:
+    // window/tab switches, native alert()/confirm(), devtools.
+    function onWindowBlur() {
+        if (currentHost) hide();
+    }
+
+    // Fires only while a bubble is shown (see show()/hide()). A host that has been removed
+    // from the document — deleted item, re-rendered list — can never emit mouseout itself.
+    function onMutation() {
+        if (currentHost && !currentHost.isConnected) hide();
     }
 
 
@@ -207,6 +251,11 @@ FrameTrail.defineModule('Tooltip', function(FrameTrail){
         rootElement.addEventListener('focusout', onFocusOut);
         window.addEventListener('scroll', onScrollOrResize, true);
         window.addEventListener('resize', onScrollOrResize);
+        // On document, capturing: a handler that stops propagation must not keep the
+        // bubble alive, and the press may land outside this instance's root.
+        document.addEventListener('pointerdown', onPointerDown, true);
+        document.addEventListener('mousemove', onMouseMove, {capture: true, passive: true});
+        window.addEventListener('blur', onWindowBlur);
     }
 
 
@@ -218,7 +267,11 @@ FrameTrail.defineModule('Tooltip', function(FrameTrail){
         rootElement.removeEventListener('focusout', onFocusOut);
         window.removeEventListener('scroll', onScrollOrResize, true);
         window.removeEventListener('resize', onScrollOrResize);
+        document.removeEventListener('pointerdown', onPointerDown, true);
+        document.removeEventListener('mousemove', onMouseMove, true);
+        window.removeEventListener('blur', onWindowBlur);
         hide();
+        removalObserver = null;
         if (tooltipElement && tooltipElement.parentNode) {
             tooltipElement.parentNode.removeChild(tooltipElement);
         }
