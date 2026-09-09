@@ -384,8 +384,8 @@ details[open] > summary {
     min-width: 170px;
     min-height: 10px;
     background: var(--primary-fg-color);
-    border: 2px solid var(--primary-bg-color);
-    box-shadow: 0 0 3px 0px var(--primary-fg-color);
+    border: 1px solid var(--primary-bg-color);
+    box-shadow: 0 0 3px 0px var(--primary-bg-color);
     z-index: 99;
     display: none;
     max-height: 91px;

@@ -240,6 +240,19 @@
     white-space: nowrap;
 }
 
+/* The first row names the logged-in user (this replaced the chip's tooltip).
+   It is a label, not a command, so it opts out of the list's hover affordance. */
+.titlebar .userSettingsMenu .contextSelectList .userMenuName {
+    font-weight: bold;
+    border-bottom: 1px solid var(--primary-bg-color);
+}
+
+.titlebar .userSettingsMenu .contextSelectList .userMenuName:hover {
+    color: var(--primary-bg-color);
+    background: var(--primary-fg-color);
+    cursor: default;
+}
+
 .titlebar .titlebarActionButtonContainer .leaveEditModeButton {
     border-left: 1px solid #bbb;
 }

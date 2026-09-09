@@ -124,6 +124,9 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
      * the same chip the presence row uses, so "you" and "everyone else" read
      * as one set rather than an icon next to a row of circles.
      *
+     * The chip carries no tooltip: initials are ambiguous, so the full name is
+     * the menu's first row, where it stays readable while the menu is open.
+     *
      * @method renderUserChip
      */
     function renderUserChip() {
@@ -146,14 +149,15 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             UserSettingsButton.style.color = '';
         }
 
-        UserSettingsButton.setAttribute('data-tooltip-bottom-right', name || labels['UserMySettings']);
-
     }
 
 
     /**
      * I build the user menu fresh on every open, so a role or name that changed
      * during the session is reflected without rebuilding the title bar.
+     *
+     * The first row is the name behind the chip's initials — a label, not a
+     * command, so it gets no action and no icon.
      *
      * Logout is always here. It is the reason this whole control is shown to
      * guests at all — they have no settings of their own to edit, but they must
@@ -168,19 +172,25 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             isAdmin        = UserManagement.userRole === 'admin' && !isGuest,
             entries        = [];
 
-        if (isAdmin && FrameTrail.module('ManageUsersDialog')) {
-            entries.push({ label: labels['UserAdministration'], action: function() {
-                FrameTrail.module('ManageUsersDialog').open();
-            }});
+        var username = FrameTrail.getState('username') || '';
+
+        if (username) {
+            entries.push({ label: username, className: 'userMenuName' });
         }
 
         if (!isGuest) {
-            entries.push({ label: labels['UserMySettings'], action: function() {
+            entries.push({ label: labels['UserMySettings'], icon: 'icon-user', action: function() {
                 FrameTrail.module('UserManagement').showMySettings();
             }});
         }
 
-        entries.push({ label: labels['UserLogout'], className: 'userMenuLogout', action: function() {
+        if (isAdmin && FrameTrail.module('ManageUsersDialog')) {
+            entries.push({ label: labels['UserAdministration'], icon: 'icon-users', action: function() {
+                FrameTrail.module('ManageUsersDialog').open();
+            }});
+        }
+
+        entries.push({ label: labels['UserLogout'], icon: 'icon-logout', className: 'userMenuLogout', action: function() {
             // Not logout() directly: this is the path that offers to save
             // unsaved work before the session ends.
             FrameTrail.module('HypervideoModel').leaveEditMode(true);
@@ -190,12 +200,19 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
         entries.forEach(function(entry) {
             var item = document.createElement('div');
-            item.textContent = entry.label;
+            if (entry.icon) {
+                var icon = document.createElement('span');
+                icon.className = entry.icon + ' mr-1';
+                item.appendChild(icon);
+            }
+            item.appendChild(document.createTextNode(entry.label));
             if (entry.className) item.className = entry.className;
-            item.addEventListener('click', function() {
-                closeUserMenu();
-                entry.action();
-            });
+            if (entry.action) {
+                item.addEventListener('click', function() {
+                    closeUserMenu();
+                    entry.action();
+                });
+            }
             UserSettingsList.appendChild(item);
         });
 
