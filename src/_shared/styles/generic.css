@@ -385,6 +385,7 @@ details[open] > summary {
     min-height: 10px;
     background: var(--primary-fg-color);
     border: 2px solid var(--primary-bg-color);
+    box-shadow: 0 0 3px 0px var(--primary-fg-color);
     z-index: 99;
     display: none;
     max-height: 91px;
@@ -398,7 +399,7 @@ details[open] > summary {
 .contextSelectList div {
     display: block;
     margin: 0px;
-    padding: 2px 4px;
+    padding: 4px 10px;
     line-height: initial;
     color: var(--primary-bg-color);
     background: var(--primary-fg-color);
@@ -406,7 +407,7 @@ details[open] > summary {
 
 .contextSelectList div:hover {
     color: var(--primary-fg-color);
-    background: var(--secondary-bg-color);
+    background: var(--primary-bg-color);
     cursor: pointer;
 }
 
