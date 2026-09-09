@@ -413,4 +413,98 @@ function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subt
     $return["response"] = array("version" => ($newVersion === false) ? null : $newVersion);
     return $return;
 }
+
+/**
+ * @param $src:json  the complete overviewMap document
+ * @param $baseVersion  the overviewMap.lastchanged the client loaded
+ * @return mixed
+ *
+ * I write the overview map document into the hypervideo index.
+ *
+ * The map is content, not configuration: which hypervideos are on it and where
+ * they sit belongs to the library, so it lives in _index.json next to the
+ * hypervideos it places. Only the "overviewMap" key is replaced, under the
+ * index file's own lock — hypervideoAdd/Clone/Delete touch "hypervideos" and
+ * the increment, so the two can never clobber each other however stale either
+ * client's copy of the file is.
+ *
+ * Returning Code:
+ * 0       =   Success. Overview map has been written.
+ * 1       =   failed. Not logged in, inactive, or not an admin.
+ * 3       =   failed. $src is not a JSON object.
+ * 7       =   failed. The map was changed by someone else.
+ */
+function overviewMapChange($src, $baseVersion = null) {
+
+    global $conf;
+
+    // Same gate as the config file: placing hypervideos on the shared overview
+    // is an instance-wide act, not something a hypervideo's own author may do.
+    if ($err = requireLogin("admin")) return $err;
+
+    $newMap = json_decode($src, true);
+
+    if (!is_array($newMap)) {
+        $return["status"] = "fail";
+        $return["code"] = 3;
+        $return["string"] = "Overview map JSON has not been sent.";
+        return $return;
+    }
+
+    $indexPath = $conf["dir"]["data"]."/hypervideos/_index.json";
+
+    $file = new sharedFile($indexPath);
+    $hvi = json_decode($file->read(), true);
+
+    if (!is_array($hvi)) {
+        $hvi = array();
+    }
+
+    // Compare-and-swap on the map's own token, not on the index file as a
+    // whole: a hypervideo added since we loaded is no reason to refuse a
+    // marker drag.
+    $currentChanged = isset($hvi["overviewMap"]["lastchanged"]) ? $hvi["overviewMap"]["lastchanged"] : null;
+
+    if ($baseVersion !== null && $baseVersion !== ""
+        && $currentChanged !== null && $currentChanged != $baseVersion) {
+        $file->close();
+        $return["status"]   = "fail";
+        $return["code"]     = 7;
+        $return["string"]   = "Overview map was changed by someone else.";
+        $return["response"] = array("overviewMap" => $hvi["overviewMap"]);
+        return $return;
+    }
+
+    $newMap["lastchanged"] = round(microtime(true) * 1000);
+
+    // An empty markers object decodes to an empty PHP array and would be
+    // re-encoded as [] — which the client reads back as "no map at all".
+    if (!isset($newMap["markers"]) || !is_array($newMap["markers"])) {
+        $newMap["markers"] = array();
+    }
+    if (count($newMap["markers"]) === 0) {
+        $newMap["markers"] = new stdClass();
+    }
+
+    $hvi["overviewMap"] = $newMap;
+
+    $file->writeClose(json_encode($hvi, $conf["settings"]["json_flags"]));
+
+    clearstatcache(true, $indexPath);
+
+    include_once("collaboration.php");
+    collabRecordWrite("library", "global",
+                      $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
+
+    $return["status"] = "success";
+    $return["code"] = 0;
+    $return["string"] = "Overview map has been changed.";
+    // lastchanged is the compare-and-swap token for the map itself;
+    // version is the mtime the collaboration poll compares against.
+    $return["response"] = array(
+        "lastchanged" => $newMap["lastchanged"],
+        "version"     => @filemtime($indexPath)
+    );
+    return $return;
+}
 ?>

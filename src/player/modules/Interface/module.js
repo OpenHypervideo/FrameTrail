@@ -26,6 +26,7 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
 
     FrameTrail.initModule('HypervideoSettingsDialog');
     FrameTrail.initModule('AdminSettingsDialog');
+    FrameTrail.initModule('OverviewMapSettingsDialog');
 
     // Before Titlebar: it decides at construction time whether the user menu
     // offers a Manage Users entry, by asking whether the module resolves.

@@ -139,6 +139,11 @@ switch($_REQUEST["a"]) {
         $return = hypervideoChange($_REQUEST["hypervideoID"], $_REQUEST["src"], $_REQUEST["SubtitlesToDelete"], $_FILES["subtitles"], isset($_REQUEST["baseVersion"]) ? $_REQUEST["baseVersion"] : null);
         break;
 
+    case "overviewMapChange":
+        include_once("hypervideos.php");
+        $return = overviewMapChange($_REQUEST["src"], isset($_REQUEST["baseVersion"]) ? $_REQUEST["baseVersion"] : null);
+        break;
+
 
     /*#########################################
      ############ Collaboration Handling

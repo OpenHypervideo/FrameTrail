@@ -36,6 +36,20 @@ body > .contentViewPreview,
     --tooltip-bg-color: #D8D3AD;
     --video-background-color: #000;
 
+    /* Editing affordances — intentionally theme-independent.
+       Buttons that act on the document rather than present it read as part of
+       the editing chrome, and the editing chrome does not follow the theme:
+       .titlebar.editActive and .sidebar.editActive keep these colours whatever
+       theme the instance uses, because the theme overrides below only rebind
+       the primary and secondary colours inside .mainContainer.
+
+       The overview map's toolbar and the thumbnail option buttons live inside
+       .mainContainer, so there those names mean the theme's colours and cannot
+       express "the editing colours" — hence a pair of their own, matching the
+       chrome: a light surface with dark text, inverted on hover. */
+    --editing-bg-color: rgba(220, 220, 220, 1);
+    --editing-fg-color: rgba(47, 50, 58, 1);
+
     /* Thumbnail image overlays — intentionally theme-independent.
        These elements sit on top of arbitrary background images (thumbnails can
        be anything — dark, bright, colourful). They must stay readable in every

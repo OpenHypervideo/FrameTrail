@@ -28,10 +28,14 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '                <div class="viewModeActionButtonContainer">'
                    + '                    <button class="newHypervideoButton" data-tooltip-bottom-left="'+ labels['HypervideoNew'] +'"><span class="icon-hypervideo-add"></span></button>'
                    + '                    <button class="exportButton" data-tooltip-bottom-left="'+ labels['GenericExport'] +'"><span class="icon-download"></span></button>'
-                   + '                    <button class="overviewMapAddButton" data-tooltip-bottom-left="'+ labels['OverviewMapAddHypervideo'] +'"><span class="icon-plus-squared"></span></button>'
-                   + '                    <button class="overviewMapSaveButton" data-tooltip-bottom-left="'+ labels['OverviewMapSave'] +'"><span class="icon-floppy"></span></button>'
                    + '                    <div style="clear: both;"></div>'
                    + '                </div>'
+                   // Styled as an edit-mode button because that is what it is:
+                   // the overview's counterpart to the video view's modes, down
+                   // to the lock badge it inherits for free. The controls that
+                   // act on the map live on the map itself (.overviewMapToolbar),
+                   // so this is only the way in.
+                   + '                <button class="editMode overviewMapEditButton" data-editmode="map"><span class="icon-pencil"></span><span class="editModeLabel">'+ labels['OverviewMapEdit'] +'</span></button>'
                    + '                <div class="collaborationInfo"></div>'
                    + '            </div>'
                    + '        </div>'
@@ -75,8 +79,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         UndoButton             = domElement.querySelector('.undoButton'),
         RedoButton             = domElement.querySelector('.redoButton'),
 
-        MapAddButton           = domElement.querySelector('.overviewMapAddButton'),
-        MapSaveButton          = domElement.querySelector('.overviewMapSaveButton'),
+        MapEditButton          = domElement.querySelector('.overviewMapEditButton'),
 
         // One panel per view mode. The overview needed its own because that is
         // where the instance-wide scopes are acted on — the map is edited
@@ -241,7 +244,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             FrameTrail.module('Database').loadHypervideoData(
                 function() {
                     FrameTrail.module('ViewOverview').refreshList();
-                    history.pushState({ editMode: wasEditMode }, '', '#hypervideo=' + newID);
+                    FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newID });
                     if (wasEditMode) {
                         FrameTrail.changeState('editMode', false);
                     }
@@ -319,7 +322,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 function() {
                     FrameTrail.module('ViewOverview').refreshList();
 
-                    history.pushState({ editMode: wasEditMode }, '', '#hypervideo=' + newID);
+                    FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newID });
 
                     if (wasEditMode) {
                         FrameTrail.changeState('editMode', false);
@@ -573,7 +576,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                         FrameTrail.module('Database').loadHypervideoData(
                             function(){
                                 FrameTrail.module('ViewOverview').refreshList();
-                                history.pushState({ editMode: wasEditMode }, '', '#hypervideo=' + newID);
+                                FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newID });
                                 if (wasEditMode) {
                                     FrameTrail.changeState('editMode', false);
                                 }
@@ -754,9 +757,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
                                 var newHypervideoID = response['newHypervideoID'];
 
-                                history.pushState({
-                                    editMode: wasEditMode
-                                }, "", "#hypervideo=" + newHypervideoID);
+                                FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newHypervideoID });
 
                                 if (wasEditMode) {
                                     FrameTrail.changeState('editMode', false);
@@ -805,14 +806,25 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         FrameTrail.module('HypervideoModel').exportIt();
     }); });
 
-    MapAddButton.addEventListener('click', function() {
-        var map = FrameTrail.module('ViewOverview').getMap();
-        if (map) map.addHypervideo();
-    });
+    MapEditButton.addEventListener('click', function() {
 
-    MapSaveButton.addEventListener('click', function() {
         var map = FrameTrail.module('ViewOverview').getMap();
-        if (map) map.saveLayout();
+        if (!map) return;
+
+        // Somebody else is arranging the map. Say so rather than toggling into
+        // a mode in which nothing can be moved.
+        if (!map.isMapEditing() && map.isLockedByOther()) {
+            var Collaboration = FrameTrail.module('Collaboration'),
+                holder        = Collaboration && Collaboration.lockHolder('library', 'global');
+            FrameTrail.module('InterfaceModal').showErrorMessage(
+                labels['MessageCollabOverviewLockedBy'].replace('%s', (holder && holder.name) ? holder.name : '')
+            );
+            FrameTrail.module('InterfaceModal').hideMessage(3000);
+            return;
+        }
+
+        map.setMapEditing(!map.isMapEditing());
+
     });
 
     // In map mode the "new hypervideo" flow navigates straight into the new
@@ -827,40 +839,54 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
 
     /**
-     * I show the map controls only for an admin who can actually re-arrange
-     * the map, and hide them entirely in grid mode.
+     * I offer the way into map editing to an admin who can re-arrange the map,
+     * and hide it entirely in grid mode.
+     *
+     * Only the toggle lives here. Everything that acts on the map — place a
+     * hypervideo, map settings, done — is on the canvas itself, where what it
+     * acts on is visible, and appears only while the map is being arranged.
+     *
+     * The toggle is offered on exactly the test that entering the mode applies
+     * (ViewOverviewMap.mayEditMap), and carries the lock badge when somebody
+     * else holds it, so being stopped is legible rather than merely silent.
      *
      * @method updateOverviewMapControls
      */
     function updateOverviewMapControls() {
 
-        var ViewOverview = FrameTrail.module('ViewOverview');
+        var ViewOverview = FrameTrail.module('ViewOverview'),
+            map          = (ViewOverview && ViewOverview.isMapMode()) ? ViewOverview.getMap() : null;
 
-        var show = !!ViewOverview
-                && ViewOverview.isMapMode()
-                && !!FrameTrail.getState('editMode')
-                && FrameTrail.module('UserManagement').userRole === 'admin'
-                && FrameTrail.module('StorageManager').canSave();
+        if (!map) {
+            if (MapEditButton) MapEditButton.style.display = 'none';
+            return;
+        }
 
-        [MapAddButton, MapSaveButton].forEach(function(btn) {
-            if (btn) btn.style.display = show ? '' : 'none';
-        });
+        var mayEdit = map.mayEditMap(),
+            locked  = map.isLockedByOther(),
+            editing = map.isMapEditing();
+
+        MapEditButton.style.display = mayEdit ? '' : 'none';
+        MapEditButton.classList.toggle('inEditMode', mayEdit);
+        MapEditButton.classList.toggle('active', editing);
+        MapEditButton.classList.toggle('collabLocked', locked && !editing);
 
     }
 
 
     /**
-     * I highlight the map save button while the layout has unsaved changes.
+     * I flag that a map change could not be written.
      *
-     * This is driven by ViewOverviewMap's own dirty flag rather than the
-     * global "unsavedChanges" state, which belongs to HypervideoModel.
+     * Map edits save themselves, so nothing normally marks the map as unsaved.
+     * A failed write is the one case where what is on screen and what is on
+     * disk have parted company, and the user has to be able to see it.
      *
-     * @method setOverviewMapDirty
+     * @method setOverviewMapSaveFailed
      * @param {Boolean} flag
      */
-    function setOverviewMapDirty(flag) {
+    function setOverviewMapSaveFailed(flag) {
 
-        if (MapSaveButton) MapSaveButton.classList.toggle('unsavedChanges', !!flag);
+        if (MapEditButton) MapEditButton.classList.toggle('unsavedChanges', !!flag);
 
     }
 
@@ -1065,11 +1091,15 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             visible:  function() { return FrameTrail.module('UserManagement').userRole === 'admin'; }
         },
 
+        // The library scope guards hypervideos/_index.json, which is where the
+        // overview map lives — so unlike the other instance-wide scopes it does
+        // have a lock worth naming: somebody arranging the map is the reason
+        // the map controls are unavailable, and this is where you are stopped.
         {   scope: 'library',   scopeId: 'global',  viewModes: ['overview'],
             staleBy:  'MessageCollabLibraryChangesBy',
             stale:    'MessageCollabLibraryChanged',
-            lockedBy: null,
-            takeover: false,
+            lockedBy: 'MessageCollabOverviewLockedBy',
+            takeover: true,
             refresh:  refreshLibrary,
             visible:  function() { return true; }
         }
@@ -1090,19 +1120,9 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
     function refreshSettings() {
 
-        var ViewOverview = FrameTrail.module('ViewOverview'),
-            map          = (ViewOverview && ViewOverview.getMap) ? ViewOverview.getMap() : null;
-
-        // Re-reading the config replaces overviewMap wholesale, marker
-        // placements included, so drags that were never saved would vanish
-        // without a word.
-        if (map && map.hasUnsavedChanges && map.hasUnsavedChanges()
-                && !window.confirm(labels['MessageCollabRefreshDiscardMap'])) {
-            return;
-        }
-
+        // The map is no longer part of the config, so re-reading it can no
+        // longer take anyone's placements with it.
         FrameTrail.module('Database').loadConfigData(function() {
-            if (map && map.reloadFromConfig) map.reloadFromConfig();
             FrameTrail.module('Database').loadConfigVersions();
             FrameTrail.module('Collaboration').acknowledgeVersion(null, 'settings', 'global');
         }, function() {});
@@ -1112,7 +1132,13 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
     function refreshLibrary() {
 
+        var ViewOverview = FrameTrail.module('ViewOverview'),
+            map          = (ViewOverview && ViewOverview.getMap) ? ViewOverview.getMap() : null;
+
+        // The index carries the map, so re-reading the library brings the map
+        // back with it — which is also how a failed save is recovered from.
         FrameTrail.module('Database').loadHypervideoData(function() {
+            if (map && map.reload) map.reload();
             FrameTrail.module('ViewOverview').refreshList();
             FrameTrail.module('Collaboration').acknowledgeVersion(null, 'library', 'global');
         }, function() {});
@@ -1173,6 +1199,9 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             takeoverBtn.textContent = labels['GenericTakeOverEditAccess'];
             takeoverBtn.addEventListener('click', function() {
                 takeoverBtn.disabled = true;
+                // Every accessor defaults to the primary scope, so a row for
+                // any other one has to name it — without this the button on the
+                // overview asked for the open hypervideo's lock instead.
                 Collaboration.takeover(function(result) {
                     takeoverBtn.disabled = false;
                     if (!result.ok) {
@@ -1182,7 +1211,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                         );
                         FrameTrail.module('InterfaceModal').hideMessage(3000);
                     }
-                });
+                }, row.scope, row.scopeId);
             });
 
             container.appendChild(takeoverBtn);
@@ -1246,6 +1275,10 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         if (SaveButton && FrameTrail.getState('editMode')) {
             SaveButton.disabled = !FrameTrail.module('StorageManager').canSave() || blocked;
         }
+
+        // The map's lock is a different one, and its controls have to follow it
+        // the moment it changes hands — not only when a view or edit mode does.
+        updateOverviewMapControls();
 
     }
 
@@ -1404,7 +1437,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
         newUnsavedChange: newUnsavedChange,
 
-        setOverviewMapDirty: setOverviewMapDirty,
+        setOverviewMapSaveFailed:   setOverviewMapSaveFailed,
+        refreshOverviewMapControls: updateOverviewMapControls,
 
         /**
          * I am the width of the sidebar's DOM element.

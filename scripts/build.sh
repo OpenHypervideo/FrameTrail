@@ -210,6 +210,7 @@ JS_FILES=(
     "player/modules/ViewLayout/module.js"
     "player/modules/HypervideoSettingsDialog/module.js"
     "player/modules/AdminSettingsDialog/module.js"
+    "player/modules/OverviewMapSettingsDialog/module.js"
 
     # Resource manager module
     "resourcemanager/modules/ResourceManagerLauncher/module.js"

@@ -95,7 +95,7 @@ _data/
 ├── tagdefinitions.json      # Tag definitions
 ├── custom.css               # Global custom styles
 ├── hypervideos/
-│   ├── _index.json          # Hypervideo registry
+│   ├── _index.json          # Hypervideo registry + the overview map document
 │   └── {hypervideoId}/
 │       ├── hypervideo.json  # Metadata, clips, overlays, config
 │       ├── annotations/
@@ -342,6 +342,41 @@ There is no session-based override — every request is validated independently.
 - Theme/UI settings
 - Default user roles and permissions
 - Custom labels for UI elements
+
+## Overview Map
+
+The overview can present hypervideos as a grid or as pins on a background image. Which of the two is a **setting** (`config.overviewMode`: `"grid"` / `"map"`, decided once in `ViewOverview.create()`, so switching it reloads the page). The map itself is **content** and lives in the `overviewMap` key of `_data/hypervideos/_index.json`, reachable as `Database.overviewMap`:
+
+```jsonc
+"overviewMap": {
+    "background": "1_1788531102_overview-vector.svg",  // a resource src
+    "backgroundColor": "#2f3139",
+    "fit": "contain",                                   // or "cover"
+    "lastchanged": 1788942480663,                       // compare-and-swap token
+    "markers": { "9": { "x": 0.371, "y": 0.182, "size": 6.08 } }   // keyed by hypervideoID
+}
+```
+
+`x`/`y` are normalized image coordinates of the pin's **centre**; `size` is the pin diameter as a percentage of stage width.
+
+Why the index rather than `config.json`, where it used to live: the map is part of the library, its coordinates are meaningless without the background they were placed against, and putting it in the config forced marker editing to take the `settings` lock — so arranging the map blocked every other admin's settings dialog, and every save rewrote a file the settings dialog also owned.
+
+- **Writing:** `Database.saveOverviewMap()` → PHP action `overviewMapChange` (`hypervideos.php`), which replaces **only** the `overviewMap` key under the index file's lock. `hypervideoAdd`/`Clone`/`Delete` touch `hypervideos` and the increment, so the two can never clobber each other. Compare-and-swap is on `overviewMap.lastchanged`, returning code 7 like the other guarded writes.
+- **Locking:** map editing claims the **`library`** collaboration scope, which already guards `_index.json`. It is claimed only by `ViewOverviewMap.setMapEditing(true)` (the sidebar's "Edit map" toggle) — *not* by the global edit mode.
+- **Saving:** every change (drag, resize, add, remove, settings) auto-saves via a short debounce. There is no dirty flag, no save button and no discard prompt.
+- **Settings:** background / fit / colour are edited in `OverviewMapSettingsDialog`, opened from map editing. `AdminSettingsDialog` only owns the grid/map mode cards.
+- **Back-compat:** a `_data` directory whose map is still in `config.overviewMap` (markers as an array) is adopted on load and migrated to the index on the first map save, which then drops the legacy key.
+
+## Routing and View State
+
+The hash fragment records **which view is on screen**, not just which hypervideo is loaded:
+
+- `#hypervideo=<id>` — the video view. `&t=<seconds>` seeks.
+- `#overview` — the overview. Outranks the `startID` init option, so a host that names a start hypervideo can still link to its own overview.
+
+`RouteNavigation.navigateToView('overview' | 'video')` is the single entry point for user-driven view switching: it writes the hash via `history.pushState` and then changes the `viewMode` state. Going back to the overview **keeps the hypervideo loaded** — only the URL and the visible view change, so the titlebar switches straight back into it at its playhead.
+
+`routeHasChanged()` listens on both `popstate` (history traversal) and `hashchange` (a fragment written by something else, e.g. the `jumpToHypervideo` action). `pushState`/`replaceState` fire neither, so the module's own writes cannot re-enter it.
 
 ## Overlay Scaling Mechanism
 

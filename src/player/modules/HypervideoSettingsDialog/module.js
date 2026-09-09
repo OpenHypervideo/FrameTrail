@@ -1187,8 +1187,10 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                         FrameTrail.module('RouteNavigation').hypervideoID = null;
                         document.querySelector('.titlebar button[data-viewmode="video"]').style.display = 'none';
                         if (FrameTrail.getState('viewMode') === 'video') {
-                            window.location.hash = '#';
-                            FrameTrail.changeState('viewMode', 'overview');
+                            // Replace rather than push: the entry we are on
+                            // points at a hypervideo that no longer exists, so
+                            // Back must not lead to it.
+                            FrameTrail.module('RouteNavigation').navigateToView('overview', { replace: true });
                         }
                     }
                 },
@@ -1238,8 +1240,10 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                                     FrameTrail.module('RouteNavigation').hypervideoID = null;
                                     document.querySelector('.titlebar button[data-viewmode="video"]').style.display = 'none';
                                     if (FrameTrail.getState('viewMode') === 'video') {
-                                        window.location.hash = '#';
-                                        FrameTrail.changeState('viewMode', 'overview');
+                                        // Replace rather than push: the entry we
+                                        // are on points at a hypervideo that no
+                                        // longer exists.
+                                        FrameTrail.module('RouteNavigation').navigateToView('overview', { replace: true });
                                     }
                                 }
                             },

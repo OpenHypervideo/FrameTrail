@@ -44,10 +44,158 @@
 
         users  = {},
 
+        // The overview map document, from hypervideos/_index.json. It is
+        // content, not configuration — which hypervideos are on the map and
+        // where they sit belongs to the library — so it travels with the index
+        // rather than with config.json, and is written through its own,
+        // narrow save path.
+        overviewMap = null,
+
+        // Set when the map was adopted from a pre-2.0 config.json. The first
+        // successful map save clears the legacy key, so a data directory
+        // migrates itself the first time somebody edits the map.
+        overviewMapMigrated = false,
+
         // Compare-and-swap token for custom.css. Unlike hypervideo.json and
         // config.json, plain CSS has nowhere to carry a version, so we only
         // learn it from the server's reply to our own writes.
         cssBaseVersion = null;
+
+
+    /**
+     * I normalize whatever an index file (or a legacy config) holds into the
+     * shape the rest of the app expects.
+     *
+     * Markers are keyed by hypervideo ID rather than listed, so a placement can
+     * be looked up, replaced or dropped without scanning, and the same
+     * hypervideo cannot end up on the map twice. Old data stored an array, and
+     * PHP re-encodes an empty object as [], so both have to be accepted here.
+     *
+     * @method normalizeOverviewMap
+     * @param {Object} raw
+     * @return {Object}
+     * @private
+     */
+    function normalizeOverviewMap(raw) {
+
+        var map = (raw && typeof raw === 'object' && !Array.isArray(raw))
+                ? JSON.parse(JSON.stringify(raw))
+                : {};
+
+        var markers = {};
+
+        if (Array.isArray(map.markers)) {
+
+            map.markers.forEach(function(marker) {
+                if (!marker || marker.hypervideoID == null) return;
+                markers[String(marker.hypervideoID)] = {
+                    x:    marker.x,
+                    y:    marker.y,
+                    size: marker.size
+                };
+            });
+
+        } else if (map.markers && typeof map.markers === 'object') {
+
+            Object.keys(map.markers).forEach(function(hypervideoID) {
+                var marker = map.markers[hypervideoID];
+                if (!marker || typeof marker !== 'object') return;
+                markers[String(hypervideoID)] = {
+                    x:    marker.x,
+                    y:    marker.y,
+                    size: marker.size
+                };
+            });
+
+        }
+
+        map.markers = markers;
+
+        return map;
+
+    }
+
+
+    /**
+     * I install the overview map that came with the hypervideo index.
+     *
+     * When the index carries none, I fall back to the legacy location inside
+     * config.json and flag the adoption, so an existing _data directory keeps
+     * showing its map and migrates on the next save. Read-only sources (the
+     * hosted examples) simply keep working from the fallback forever.
+     *
+     * @method adoptOverviewMap
+     * @param {Object} raw the index file's overviewMap, if it had one
+     * @private
+     */
+    function adoptOverviewMap(raw) {
+
+        var fromIndex = !!(raw && typeof raw === 'object' && !Array.isArray(raw)),
+            next      = normalizeOverviewMap(fromIndex ? raw : (config && config.overviewMap));
+
+        overviewMapMigrated = fromIndex ? false : !!(config && config.overviewMap);
+
+        // Callers hold on to this object for a whole edit session, exactly as
+        // they do with the config, so a reload has to refill it rather than
+        // swap it out — see replaceConfigContents.
+        if (!overviewMap) {
+            overviewMap = next;
+            return;
+        }
+
+        Object.keys(overviewMap).forEach(function(key) { delete overviewMap[key]; });
+        Object.assign(overviewMap, next);
+
+    }
+
+
+    /**
+     * I build a hypervideo index out of what is loaded in memory.
+     *
+     * The wrapper shape is not decoration: the loaders read data.hypervideos,
+     * so an index written as a bare map of entries reads back as an empty
+     * library. This is the one place that shape is spelled out for writers that
+     * have no file to merge into.
+     *
+     * @method buildHypervideoIndex
+     * @return {Object}
+     */
+    function buildHypervideoIndex() {
+
+        var entries = {},
+            highest = 0;
+
+        Object.keys(hypervideos).forEach(function(hypervideoID) {
+            entries[hypervideoID] = './' + hypervideoID;
+            var numeric = parseInt(hypervideoID, 10);
+            if (numeric > highest) highest = numeric;
+        });
+
+        return {
+            'hypervideo-increment': highest,
+            'hypervideos':          entries
+        };
+
+    }
+
+
+    /**
+     * I return the overview map document, materializing it on first use.
+     *
+     * Data sources that have no hypervideo index at all (a single hypervideo
+     * passed in via init options, the plain-HTTP loader) never reach
+     * adoptOverviewMap, so the fallback has to be lazy rather than at load.
+     *
+     * @method getOverviewMap
+     * @return {Object}
+     */
+    function getOverviewMap() {
+
+        if (!overviewMap) adoptOverviewMap(null);
+
+        return overviewMap;
+
+    }
 
 
     /**
@@ -217,10 +365,10 @@
     /**
      * I replace the config's contents without replacing the object itself.
      *
-     * Callers hold on to Database.config — ViewOverviewMap keeps working
-     * against config.overviewMap for a whole edit session, for one — so
+     * Callers hold on to Database.config across a whole dialog session, so
      * swapping the object out from under them silently orphans their
      * reference, and their next write lands somewhere nobody reads.
+     * adoptOverviewMap refills the map document for the same reason.
      *
      * This is also why there is no `set config()`: an assignment looks
      * harmless at the call site and would reintroduce exactly that bug.
@@ -637,6 +785,8 @@
             var countdown = Object.keys(data.hypervideos).length,
                 bufferedData = {};
 
+            adoptOverviewMap(data.overviewMap);
+
             // TODO: fix server object / array php problem
             if ( Array.isArray(data.hypervideos) || countdown == 0 ) {
                 hypervideos = {};
@@ -771,6 +921,8 @@
             var keys = Object.keys(data.hypervideos || {}),
                 countdown = keys.length,
                 bufferedData = {};
+
+            adoptOverviewMap(data.overviewMap);
 
             if (Array.isArray(data.hypervideos) || countdown === 0) {
                 hypervideos = {};
@@ -1716,6 +1868,121 @@
 
 
     /**
+     * I write the overview map document back into hypervideos/_index.json.
+     *
+     * My success callback gets one argument, which is either
+     *
+     *     { success: true, version: <mtime> }
+     * or
+     *     { failed: 'overviewMap', error: ..., code: ... }
+     *
+     * In server mode this is a narrow write: the backend replaces only the
+     * "overviewMap" key of the index under that file's lock, so it cannot
+     * clobber a hypervideo added or deleted since we loaded. Everywhere else
+     * the same guarantee is bought by re-reading the index immediately before
+     * writing it.
+     *
+     * @method saveOverviewMap
+     * @param {Function} callback
+     */
+    function saveOverviewMap(callback) {
+
+        var map = getOverviewMap();
+
+        function done(result) {
+            // A data directory that still carries the map in config.json
+            // migrates the first time somebody edits it: the index is now the
+            // source of truth, so the legacy copy has to go or the next reader
+            // has two answers to the same question.
+            if (result.success && overviewMapMigrated) {
+                overviewMapMigrated = false;
+                if (config && config.overviewMap) {
+                    delete config.overviewMap;
+                    // Best effort: a refused write just means the stale key is
+                    // cleaned up the next time round, and it is ignored either
+                    // way now that the index has a map.
+                    saveConfig(function() {});
+                }
+            }
+            callback.call(window, result);
+        }
+
+        if (FrameTrail.getState('storageMode') !== 'server') {
+
+            var adapter = FrameTrail.module('StorageManager').getAdapter(),
+                written = false;
+
+            // Re-read immediately before writing, so a hypervideo added since
+            // we loaded survives — the local mirror of the server's merge.
+            //
+            // The fallback matters: the download adapter has no index in
+            // memory at all and throws, and writing a bare { overviewMap }
+            // would leave a file that names no hypervideos — an index that
+            // erases the library it is supposed to list.
+            adapter.readJSON('hypervideos/_index.json')
+                .catch(function() { return null; })
+                .then(function(index) {
+
+                    if (!index || typeof index !== 'object' || Array.isArray(index)) {
+                        index = buildHypervideoIndex();
+                    }
+
+                    index.overviewMap = JSON.parse(JSON.stringify(map));
+                    index.overviewMap.lastchanged = Date.now();
+
+                    return adapter.writeJSON('hypervideos/_index.json', index).then(function() {
+                        map.lastchanged = index.overviewMap.lastchanged;
+                        written = true;
+                        done({ success: true, version: null });
+                    });
+
+                })
+                .catch(function(error) {
+                    // Only report a failure we have not already reported as a
+                    // success — a throw out of the callback must not turn a
+                    // completed write into an error message.
+                    if (!written) done({ failed: 'overviewMap', error: error.message });
+                });
+
+            return;
+        }
+
+        _ajax({
+            type:     'POST',
+            url:      '_server/ajaxServer.php',
+            dataType: 'json',
+            data:     {
+                a:           'overviewMapChange',
+                src:         JSON.stringify(map),
+                baseVersion: (map.lastchanged == null ? '' : map.lastchanged)
+            }
+        }, function (data) {
+            if (data.code === 0) {
+                if (data.response && data.response.lastchanged) {
+                    map.lastchanged = data.response.lastchanged;
+                }
+                done({
+                    success: true,
+                    version: (data.response && data.response.version) ? data.response.version : null
+                });
+            } else if (data.code === 7) {
+                callback.call(window, {
+                    failed: 'overviewMap',
+                    error:  'Conflict',
+                    code:   7,
+                    conflict: (data.response && data.response.overviewMap) || null
+                });
+            } else {
+                callback.call(window, { failed: 'overviewMap', error: data.string, code: data.code });
+            }
+        }, function (error) {
+            callback.call(window, { failed: 'overviewMap', error: error });
+        });
+
+    };
+
+
+    /**
      * I ask the server for the compare-and-swap tokens of config.json and
      * custom.css, and seed cssBaseVersion from the answer.
      *
@@ -2230,6 +2497,18 @@
          */
         get config()     { return config },
 
+        /**
+         * I store the overview map document (the "overviewMap" key of
+         * _data/hypervideos/_index.json): its background, how that background
+         * is fitted, and where each placed hypervideo sits on it.
+         *
+         * Like config, I keep one object for the lifetime of the page — read
+         * through me, never cache the result.
+         *
+         * @attribute overviewMap
+         */
+        get overviewMap() { return getOverviewMap() },
+
 
         getIdOfResource:       getIdOfResource,
         getIdOfHypervideo:     getIdOfHypervideo,
@@ -2251,6 +2530,8 @@
         getAnnotationsW3C:     getAnnotationsW3C,
         saveConfig:            saveConfig,
         saveGlobalCSS:         saveGlobalCSS,
+        saveOverviewMap:       saveOverviewMap,
+        buildHypervideoIndex:  buildHypervideoIndex,
 
         //TODO only shortcut for now
         convertToDatabaseFormat: convertToDatabaseFormat

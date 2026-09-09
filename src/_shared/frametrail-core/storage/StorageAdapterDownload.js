@@ -169,19 +169,33 @@ class StorageAdapterDownload extends StorageAdapter {
         var files = {};
 
         if (options.allHv) {
-            var allHvs  = Database.hypervideos;
-            var hvIndex = {};
+            // Both index files are written in the shape the loaders expect: a
+            // wrapper object with an increment beside the map of entries. An
+            // export that is not re-openable as a _data folder is not a backup,
+            // and the overview map now lives in this file too.
+            var allHvs = Database.hypervideos;
             for (var id in allHvs) {
                 if (allHvs.hasOwnProperty(id)) {
                     files['hypervideos/' + id + '/hypervideo.json'] = Database.convertToDatabaseFormat(id);
-                    hvIndex[id] = allHvs[id];
                 }
             }
+            var hvIndex = Database.buildHypervideoIndex();
+            hvIndex.overviewMap = Database.overviewMap;
             files['hypervideos/_index.json'] = hvIndex;
         }
 
         if (options.resources) {
-            files['resources/_index.json'] = Database.resources;
+            var allResources  = Database.resources;
+            var highestResID  = 0;
+            for (var resourceID in allResources) {
+                if (allResources.hasOwnProperty(resourceID) && parseInt(resourceID, 10) > highestResID) {
+                    highestResID = parseInt(resourceID, 10);
+                }
+            }
+            files['resources/_index.json'] = {
+                'resources-increment': highestResID,
+                'resources':           allResources
+            };
         }
 
         if (options.config) {

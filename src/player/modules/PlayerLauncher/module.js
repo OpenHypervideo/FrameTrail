@@ -289,9 +289,11 @@
 
                 function(){
 
-                    // Auto-open if there is exactly one hypervideo and no explicit ID was requested
+                    // Auto-open if there is exactly one hypervideo and no explicit ID was requested.
+                    // "#overview" is such a request, in the other direction: somebody linked to the
+                    // overview and must land there, however few hypervideos it holds.
                     var hvIDs = Object.keys(FrameTrail.module('Database').hypervideos);
-                    if (hvIDs.length === 1) {
+                    if (hvIDs.length === 1 && !FrameTrail.module('RouteNavigation').overviewRequested) {
                         FrameTrail.module('RouteNavigation').hypervideoID = hvIDs[0];
                         FrameTrail.changeState('viewMode', 'video');
                         continueLoading();

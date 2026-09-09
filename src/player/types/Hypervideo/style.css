@@ -110,39 +110,69 @@
     pointer-events: none;
 }
 
+/*
+ * Shown whenever they exist, not only on hover: there is no hover on a touch
+ * screen, so a hover-gated control is simply unreachable there. Nothing is
+ * given away by showing them, because they are only built at all for someone
+ * who may edit this hypervideo — see ViewOverview.initList() and
+ * ViewOverviewMap.openPopup(), both of which require admin-or-owner, edit mode
+ * and a writable target. The map's resize handles are ungated for the same
+ * reason.
+ */
 .hypervideoThumb .hypervideoOptions {
     position: absolute;
     top: 0;
     right: 0;
     z-index: 3;
-    display: none;
-}
-
-.hypervideoThumb:hover .hypervideoOptions {
     display: flex;
 }
 
+/*
+ * These edit, delete and un-place the hypervideo — they act on it rather than
+ * present it, so they wear the editing palette (see --editing-* in
+ * variables.css) and not the theme's. Opaque, because they sit on top of an
+ * arbitrary thumbnail image and a translucent button over one is barely
+ * visible. Hover inverts, matching the sidebar and titlebar in edit mode.
+ */
 .hypervideoThumb .hypervideoOptions button {
     display: flex;
     align-items: center;
     justify-content: center;
-    background-color: var(--secondary-bg-color);
-    border-color: var(--primary-fg-color);
+    background-color: var(--editing-bg-color);
+    border-color: var(--editing-fg-color);
     border-radius: 50%;
     height: 40px;
     width: 40px;
-    color: var(--primary-fg-color);
+    color: var(--editing-fg-color);
     margin: 8px 8px 8px 0;
-    opacity: 0.8;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
 }
 
 .hypervideoThumb .hypervideoOptions button:hover {
-    opacity: 1;
+    background-color: var(--editing-fg-color);
+    color: var(--editing-bg-color);
+    border-color: var(--editing-bg-color);
+}
+
+/*
+ * Centre the glyph, not the line box around it — the same correction the map
+ * toolbar makes, and for the same reason: the icon span's line box carries the
+ * strut of the inherited 14px UI font, roughly 2px of descender space below the
+ * baseline that the 20px icon box never uses, so align-items:center leaves the
+ * glyph about a pixel high. This used to be cancelled with margin-top: 2px,
+ * which overshot by a third of a pixel and only held for this exact pairing of
+ * font and size.
+ */
+.hypervideoThumb .hypervideoOptions button > span[class^="icon-"],
+.hypervideoThumb .hypervideoOptions button > span[class*=" icon-"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .hypervideoThumb .hypervideoOptions button [class^="icon-"]::before, .ui-tabs-panel .hypervideoThumb .hypervideoOptions button [class*=" icon-"]::before {
+    display: block;
     font-size: 20px;
-    margin-left: 4px;
-    margin-top: 2px;
     width: 22px;
+    margin: 0;
 }

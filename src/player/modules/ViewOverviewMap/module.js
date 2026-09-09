@@ -21,6 +21,21 @@
  * so `left: x%` and `top: y%` are literally normalized image coordinates and
  * stay locked to image features under both fit modes at any container size.
  *
+ * Where my data lives
+ * -------------------
+ * In the "overviewMap" key of hypervideos/_index.json, reachable as
+ * Database.overviewMap. It is content — which hypervideos are on the map and
+ * where — so it belongs to the library, not to the instance settings. That is
+ * also what lets me take the 'library' lock while editing instead of the
+ * 'settings' one, so an admin arranging the map no longer blocks another
+ * admin's settings dialog, and my saves cannot race theirs.
+ *
+ * Editing is an explicit mode of its own (setMapEditing), not a side effect of
+ * the global edit mode: the lock is what stops two people dragging the same
+ * pins, and it should only be held by somebody who is actually arranging the
+ * map. Every change is written immediately, so there is no dirty state to
+ * reconcile and nothing to lose to a mistimed refresh.
+ *
  * @class ViewOverviewMap
  * @static
  */
@@ -52,20 +67,30 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      * Bound on the container-size-0 retry, so a permanently collapsed
      * container cannot leave a timer running for the life of the page.
      */
-        MAX_LAYOUT_RETRIES  = 40;
+        MAX_LAYOUT_RETRIES  = 40,
+
+    /**
+     * How long a change waits before it is written. Long enough to collapse
+     * the tail of a drag into one request, short enough that letting go of a
+     * pin and closing the tab keeps the placement.
+     */
+        SAVE_DEBOUNCE_MS    = 400;
 
 
     var MapRoot         = null,     // .overviewMap  — the viewport box
         MapStage        = null,     // .overviewMapStage — the image box
         BackgroundImage = null,
         Popup           = null,
+        Toolbar         = null,     // .overviewMapToolbar — shown while editing
 
         MarkerElements  = {},       // hypervideoID -> pin element
         openHandler     = null,     // set by ViewOverview.create()
 
-        editModeActive  = false,
-        mapDirty        = false,
-        editSnapshot    = null,     // deep clone taken on entering edit mode
+        editModeActive  = false,    // the global edit mode
+        mapEditActive   = false,    // this module's own "arrange the map" mode
+
+        saveTimer       = null,
+        saveFailed      = false,
 
         pendingAutoPlace   = false,
         autoPlaceKnownIDs  = null,
@@ -80,29 +105,24 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
 
     /**
-     * I return the map data object from the config, creating a well-formed
-     * empty one if it does not exist yet.
+     * I return the map document.
      *
-     * Always read through me and never cache the returned object: saving does
-     * not round-trip the config, but AdminSettingsDialog can replace the whole
-     * `config` object underneath us.
+     * Always read through me and never cache the returned object: the Database
+     * refills it in place when the library is re-read, so a cached reference
+     * would keep serving the copy that was replaced.
      *
      * @method getMapData
      * @return {Object}
      */
     function getMapData() {
 
-        var config = FrameTrail.module('Database').config;
+        var mapData = FrameTrail.module('Database').overviewMap;
 
-        if (!config.overviewMap || typeof config.overviewMap !== 'object') {
-            config.overviewMap = {};
+        if (!mapData.markers || typeof mapData.markers !== 'object') {
+            mapData.markers = {};
         }
 
-        if (!Array.isArray(config.overviewMap.markers)) {
-            config.overviewMap.markers = [];
-        }
-
-        return config.overviewMap;
+        return mapData;
 
     }
 
@@ -116,52 +136,60 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      */
     function getMarkerData(hypervideoID) {
 
-        var markers = getMapData().markers;
-
-        for (var i = 0; i < markers.length; i++) {
-            if (String(markers[i].hypervideoID) === String(hypervideoID)) {
-                return markers[i];
-            }
-        }
-
-        return null;
+        return getMapData().markers[String(hypervideoID)] || null;
 
     }
 
 
     /**
-     * I decide whether the current user may re-arrange the map.
+     * I decide whether the current user may re-arrange the map right now.
      *
-     * Placement is stored in config.json, and the server only lets admins write
-     * that file, so this is deliberately stricter than the gate used for the
-     * per-hypervideo edit/delete buttons.
+     * The map is instance-wide and the server only lets admins write it, so
+     * this is deliberately stricter than the gate on the per-hypervideo
+     * edit/delete buttons. Everything that shows or enables a map editing
+     * control has to ask me and nothing else — a control that is offered on a
+     * looser test than the action behind it accepts is a button that silently
+     * does nothing.
      *
      * @method canEditMap
      * @return {Boolean}
      */
     function canEditMap() {
 
-        return !!FrameTrail.getState('editMode')
-            && FrameTrail.module('UserManagement').userRole === 'admin'
-            && FrameTrail.module('StorageManager').canSave()
-            && !isSettingsLockedByOther();
+        return mapEditActive && mayEditMap() && !isMapLockedByOther();
 
     }
 
 
     /**
-     * Marker placements live in config.json, which the admin settings dialog
-     * also writes whole — so the two share the 'settings' lock. Without this,
-     * two admins could drag markers at the same time and only find out when the
-     * second one's save was refused.
+     * I decide whether the current user may enter map editing at all —
+     * everything canEditMap() asks except the mode and the lock, so the
+     * "Edit map" toggle itself can be offered before either is settled.
      *
-     * @method isSettingsLockedByOther
+     * @method mayEditMap
      * @return {Boolean}
      */
-    function isSettingsLockedByOther() {
+    function mayEditMap() {
+
+        return !!FrameTrail.getState('editMode')
+            && FrameTrail.module('UserManagement').userRole === 'admin'
+            && FrameTrail.module('StorageManager').canSave();
+
+    }
+
+
+    /**
+     * The map lives in hypervideos/_index.json, which is what the 'library'
+     * scope guards — so that is the lock it takes. Without it two admins could
+     * drag the same pins and only the second one's save would be refused.
+     *
+     * @method isMapLockedByOther
+     * @return {Boolean}
+     */
+    function isMapLockedByOther() {
 
         var Collaboration = FrameTrail.module('Collaboration');
-        return !!(Collaboration && Collaboration.isLockedByOther('settings', 'global'));
+        return !!(Collaboration && Collaboration.isLockedByOther('library', 'global'));
 
     }
 
@@ -172,13 +200,25 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      * ViewOverview calls me — I register no onChange of my own, so that the
      * order in which the overview and its map react stays explicit.
      *
+     * Losing or gaining the lock changes whether pins are draggable, which is
+     * decided per pin when it is built, so the pins are rebuilt rather than
+     * just re-classed.
+     *
      * @method reflectLock
      */
     function reflectLock() {
 
         if (!MapRoot) return;
 
-        MapRoot.classList.toggle('editActive', editModeActive && canEditMap());
+        var editable = canEditMap();
+
+        if (MapRoot.classList.contains('editActive') !== editable) {
+            MapRoot.classList.toggle('editActive', editable);
+            renderMarkers();
+            return;
+        }
+
+        MapRoot.classList.toggle('editActive', editable);
 
     }
 
@@ -192,9 +232,18 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
     function create(parentElement) {
 
         var _wrapper = document.createElement('div');
+        // The toolbar sits on the canvas rather than in the sidebar: everything
+        // on it acts on the map, and it only exists while the map is being
+        // arranged. "Done" is what ends that — a mode nobody can see the end of
+        // is a mode people stay in, holding the lock against everyone else.
         _wrapper.innerHTML = '<div class="overviewMap">'
                            + '    <div class="overviewMapStage">'
                            + '        <img class="overviewMapBackground" alt="">'
+                           + '    </div>'
+                           + '    <div class="overviewMapToolbar">'
+                           + '        <button class="overviewMapAddButton" data-tooltip-bottom-left="'+ labels['OverviewMapAddHypervideo'] +'"><span class="icon-plus-squared"></span></button>'
+                           + '        <button class="overviewMapSettingsButton" data-tooltip-bottom-left="'+ labels['SettingsOverviewMapSettings'] +'"><span class="icon-cog"></span></button>'
+                           + '        <button class="overviewMapDoneButton"><span class="icon-ok"></span><span>'+ labels['OverviewMapEditDone'] +'</span></button>'
                            + '    </div>'
                            + '    <div class="overviewMapPopup"></div>'
                            + '</div>';
@@ -203,6 +252,27 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         MapStage        = MapRoot.querySelector('.overviewMapStage');
         BackgroundImage = MapRoot.querySelector('.overviewMapBackground');
         Popup           = MapRoot.querySelector('.overviewMapPopup');
+        Toolbar         = MapRoot.querySelector('.overviewMapToolbar');
+
+        // An open card would sit behind the dialog these two raise, and be
+        // stale by the time it came back — the pins may have moved.
+        Toolbar.querySelector('.overviewMapAddButton').addEventListener('click', function(evt) {
+            evt.stopPropagation();
+            closePopup();
+            addHypervideo();
+        });
+
+        Toolbar.querySelector('.overviewMapSettingsButton').addEventListener('click', function(evt) {
+            evt.stopPropagation();
+            closePopup();
+            if (!canEditMap()) { reportEditRefused(); return; }
+            FrameTrail.module('OverviewMapSettingsDialog').open();
+        });
+
+        Toolbar.querySelector('.overviewMapDoneButton').addEventListener('click', function(evt) {
+            evt.stopPropagation();
+            setMapEditing(false);
+        });
 
         parentElement.append(MapRoot);
 
@@ -482,10 +552,9 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             activeID       = FrameTrail.module('RouteNavigation').hypervideoID,
             editable       = canEditMap();
 
-        markers.forEach(function(markerData) {
+        Object.keys(markers).forEach(function(hypervideoID) {
 
-            var hypervideoID = String(markerData.hypervideoID),
-                hypervideo   = database.hypervideos[hypervideoID];
+            var hypervideo = database.hypervideos[hypervideoID];
 
             // The hypervideo may have been deleted since it was placed.
             // Dangling entries are pruned on the next save.
@@ -567,7 +636,6 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         if (!pendingAutoPlace) return;
 
         var known   = autoPlaceKnownIDs || [],
-            mapData = getMapData(),
             placed  = false;
 
         Object.keys(FrameTrail.module('Database').hypervideos).forEach(function(hypervideoID) {
@@ -576,20 +644,73 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             if (known.indexOf(hypervideoID) !== -1) return;
             if (getMarkerData(hypervideoID)) return;
 
-            mapData.markers.push({
-                hypervideoID: hypervideoID,
-                x:            0.5,
-                y:            0.5,
-                size:         MARKER_DEFAULT_SIZE
-            });
-
+            placeMarker(hypervideoID);
             placed = true;
-            setDirty(true);
 
         });
 
         pendingAutoPlace  = false;
         autoPlaceKnownIDs = null;
+
+        if (placed) scheduleMapSave();
+
+    }
+
+
+    /**
+     * I put a hypervideo on the canvas at the first spot that is not already
+     * taken.
+     *
+     * Everything used to be dropped at dead centre, which meant the second pin
+     * landed exactly underneath the first — indistinguishable from the button
+     * having done nothing at all. Walking outwards in a coarse spiral keeps new
+     * pins near the middle (where they are easy to find and drag away) while
+     * making every one of them visible the moment it appears.
+     *
+     * @method placeMarker
+     * @param {String} hypervideoID
+     * @return {Object} the new marker entry
+     */
+    function placeMarker(hypervideoID) {
+
+        var step   = 0.09,
+            radius = 0,
+            angle  = 0,
+            x      = 0.5,
+            y      = 0.5;
+
+        // Bounded: past a couple of turns the canvas is crowded enough that
+        // landing on top of something is the least of anyone's problems.
+        for (var attempt = 0; attempt < 48 && isSpotTaken(x, y); attempt++) {
+            angle += Math.PI / 3;
+            if (attempt % 6 === 5) radius += step;
+            x = Math.max(0.05, Math.min(0.95, 0.5 + Math.cos(angle) * radius));
+            y = Math.max(0.05, Math.min(0.95, 0.5 + Math.sin(angle) * radius));
+        }
+
+        var marker = { x: x, y: y, size: MARKER_DEFAULT_SIZE };
+
+        getMapData().markers[String(hypervideoID)] = marker;
+
+        return marker;
+
+    }
+
+
+    /**
+     * @method isSpotTaken
+     * @param {Number} x
+     * @param {Number} y
+     * @return {Boolean}
+     */
+    function isSpotTaken(x, y) {
+
+        var markers = getMapData().markers;
+
+        return Object.keys(markers).some(function(hypervideoID) {
+            var marker = markers[hypervideoID];
+            return Math.abs(marker.x - x) < 0.04 && Math.abs(marker.y - y) < 0.04;
+        });
 
     }
 
@@ -601,7 +722,11 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      */
     function notePendingAutoPlace() {
 
-        if (!canEditMap()) return;
+        // Deliberately not canEditMap(): creating a hypervideo is offered
+        // outside map editing, and a new hypervideo that silently fails to
+        // appear is the exact trap this exists to close. Only somebody else
+        // holding the lock is a reason to skip it.
+        if (!mayEditMap() || isMapLockedByOther()) return;
 
         pendingAutoPlace  = true;
         autoPlaceKnownIDs = Object.keys(FrameTrail.module('Database').hypervideos);
@@ -830,11 +955,10 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
                     marker.style.left = (data.x * 100) + '%';
                     marker.style.top  = (data.y * 100) + '%';
-
-                    setDirty(true);
                 },
                 end: function() {
                     marker.classList.remove('dragging');
+                    scheduleMapSave();
                 }
             }
         });
@@ -910,11 +1034,10 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
                     marker.style.width  = diameter + 'px';
                     marker.style.height = diameter + 'px';
-
-                    setDirty(true);
                 },
                 end: function() {
                     marker.classList.remove('resizing');
+                    scheduleMapSave();
                 }
             }
         // interact.js writes an inline `cursor` on whatever it is dragging, and
@@ -936,13 +1059,9 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      */
     function removeMarker(hypervideoID) {
 
-        var mapData = getMapData();
+        delete getMapData().markers[String(hypervideoID)];
 
-        mapData.markers = mapData.markers.filter(function(marker) {
-            return String(marker.hypervideoID) !== String(hypervideoID);
-        });
-
-        setDirty(true);
+        scheduleMapSave();
 
     }
 
@@ -955,11 +1074,19 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      */
     function addHypervideo() {
 
-        if (!canEditMap()) return;
+        // Never fail silently here. The controls are gated on canEditMap() too,
+        // so reaching this at all means the two disagreed — say why rather than
+        // leaving a live-looking button that does nothing.
+        if (!canEditMap()) {
+            console.debug('FrameTrail: cannot add to the overview map —',
+                          'mapEditActive:', mapEditActive,
+                          'mayEdit:', mayEditMap(),
+                          'lockedByOther:', isMapLockedByOther());
+            reportEditRefused();
+            return;
+        }
 
-        var placed = getMapData().markers.map(function(marker) {
-            return String(marker.hypervideoID);
-        });
+        var placed = Object.keys(getMapData().markers);
 
         if (!FrameTrail.module('HypervideoPicker')) {
             FrameTrail.initModule('HypervideoPicker');
@@ -969,106 +1096,159 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
             if (getMarkerData(hypervideoID)) return;
 
-            getMapData().markers.push({
-                hypervideoID: String(hypervideoID),
-                x:            0.5,
-                y:            0.5,
-                size:         MARKER_DEFAULT_SIZE
-            });
-
-            setDirty(true);
+            placeMarker(hypervideoID);
+            scheduleMapSave();
             renderMarkers();
+
+            // Say where it landed. Without this the only evidence that the
+            // picker did anything is a new pin somewhere on a canvas the user
+            // was not looking at.
+            openPopup(String(hypervideoID));
 
         }, { exclude: placed });
 
     }
 
 
-    /* ------------------------------------------------------------------ *
-     *  Dirty state & saving
-     * ------------------------------------------------------------------ */
-
     /**
-     * I track unsaved map changes.
+     * I explain why an edit was refused.
      *
-     * Deliberately a module-local flag rather than the global `unsavedChanges`
-     * state: that state is owned by HypervideoModel, and its "save" path only
-     * ever writes the hypervideo and its annotations. Setting it here would
-     * mean the leave-edit-mode dialog's "yes, save" button silently discarded
-     * the map layout.
-     *
-     * @method setDirty
-     * @param {Boolean} flag
+     * @method reportEditRefused
      */
-    function setDirty(flag) {
+    function reportEditRefused() {
 
-        if (mapDirty === flag) return;
-        mapDirty = flag;
+        var Collaboration = FrameTrail.module('Collaboration');
 
-        var Sidebar = FrameTrail.module('Sidebar');
-        if (Sidebar && Sidebar.setOverviewMapDirty) {
-            Sidebar.setOverviewMapDirty(flag);
+        if (isMapLockedByOther()) {
+            var holder = Collaboration.lockHolder('library', 'global');
+            FrameTrail.module('InterfaceModal').showErrorMessage(
+                labels['MessageCollabOverviewLockedBy'].replace('%s', (holder && holder.name) ? holder.name : '')
+            );
+            FrameTrail.module('InterfaceModal').hideMessage(3000);
         }
 
     }
 
 
+    /* ------------------------------------------------------------------ *
+     *  Saving
+     * ------------------------------------------------------------------ */
+
     /**
-     * @method hasUnsavedChanges
-     * @return {Boolean}
+     * I write the map after every change, coalescing bursts.
+     *
+     * There is no dirty flag and no save button on purpose. The map used to
+     * carry both, because it lived in config.json and a save meant rewriting a
+     * file the settings dialog also owned — so writing eagerly would have
+     * clobbered somebody's settings, and the alternative was a second,
+     * parallel save/discard flow that the rest of the overview knew nothing
+     * about. Now the map is its own document, written through its own narrow
+     * server action while we hold the lock: there is nothing left to race, so
+     * a change can simply be saved when it is made.
+     *
+     * @method scheduleMapSave
      */
-    function hasUnsavedChanges() {
-        return mapDirty;
+    function scheduleMapSave() {
+
+        if (saveTimer) window.clearTimeout(saveTimer);
+
+        saveTimer = window.setTimeout(function() {
+            saveTimer = null;
+            saveMap();
+        }, SAVE_DEBOUNCE_MS);
+
     }
 
 
     /**
-     * I write the map layout back into config.json.
+     * I write the map now, if a save is pending.
      *
-     * @method saveLayout
-     * @param {Function} callback Optional, receives a Boolean success flag
+     * Called when leaving map editing, so the last drag of a session is never
+     * left sitting in the debounce.
+     *
+     * @method flushMapSave
      */
-    function saveLayout(callback) {
+    function flushMapSave() {
+
+        if (!saveTimer) return;
+
+        window.clearTimeout(saveTimer);
+        saveTimer = null;
+        saveMap();
+
+    }
+
+
+    /**
+     * @method roundCoordinate
+     * @param {Number} value
+     * @return {Number}
+     */
+    function roundCoordinate(value) {
+
+        return (typeof value === 'number' && isFinite(value))
+             ? Math.round(value * 1e6) / 1e6
+             : value;
+
+    }
+
+
+    /**
+     * @method saveMap
+     */
+    function saveMap() {
 
         var database = FrameTrail.module('Database'),
             mapData  = getMapData();
 
-        // Prune placements whose hypervideo no longer exists.
-        mapData.markers = mapData.markers.filter(function(marker) {
-            return !!database.hypervideos[String(marker.hypervideoID)];
-        });
+        Object.keys(mapData.markers).forEach(function(hypervideoID) {
 
-        FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateSaving']);
-
-        database.saveConfig(function(result) {
-
-            FrameTrail.module('InterfaceModal').hideMessage(500);
-
-            if (!result || !result.success) {
-
-                // Marker placements live in config.json, the same shared file the
-                // admin settings dialog writes, so this can lose a race with another
-                // admin.
-                if (result && result.code === 7) {
-                    offerConflictMerge(callback);
-                    return;
-                }
-
-                FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingSettings']);
-                console.error('FrameTrail: could not save overview map layout:', result && result.error);
-                if (callback) callback(false);
+            // Drop placements whose hypervideo no longer exists. They render as
+            // nothing at all, so they are invisible until somebody reads the file.
+            if (!database.hypervideos[hypervideoID]) {
+                delete mapData.markers[hypervideoID];
                 return;
             }
 
-            setDirty(false);
-            editSnapshot = JSON.parse(JSON.stringify(getMapData()));
+            // A drag leaves a full-precision double behind, and how much of it
+            // survives a round trip is the server's float settings' business,
+            // not ours — one PHP install writes 17 digits, another writes the
+            // exact binary expansion and the file grows unreadable. Six decimals
+            // of a normalized coordinate is well under a pixel on any image
+            // anyone will use as a map.
+            var marker = mapData.markers[hypervideoID];
+            marker.x    = roundCoordinate(marker.x);
+            marker.y    = roundCoordinate(marker.y);
+            marker.size = roundCoordinate(marker.size);
+
+        });
+
+        database.saveOverviewMap(function(result) {
 
             var Collaboration = FrameTrail.module('Collaboration');
-            if (Collaboration) {
-                Collaboration.acknowledgeVersion(result.version, 'settings', 'global');
+
+            if (result && result.success) {
+                setSaveFailed(false);
+                if (Collaboration) {
+                    Collaboration.acknowledgeVersion(result.version, 'library', 'global');
+                }
+                return;
             }
 
-            if (callback) callback(true);
+            // Rare: we hold the lock, so nobody should be writing the map
+            // underneath us. Feed the ordinary staleness affordance rather than
+            // raising a dialog over a canvas the user is still dragging on —
+            // the sidebar's Refresh re-reads the library and the map with it.
+            setSaveFailed(true);
+
+            FrameTrail.module('InterfaceModal').showErrorMessage(labels['MessageOverviewMapSaveFailed']);
+            FrameTrail.module('InterfaceModal').hideMessage(4000);
+
+            console.error('FrameTrail: could not save the overview map:', result && result.error);
+
+            if (result && result.code === 7 && Collaboration) {
+                Collaboration.markStale('library', 'global');
+            }
 
         });
 
@@ -1076,108 +1256,51 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
 
     /**
-     * I offer to merge after another admin's write beat ours.
+     * I mark the map as diverged from what is on disk.
      *
-     * Marker placements are the only part of config.json this module owns, so
-     * the conflict really is mergeable: take their config, lay our markers back
-     * on top, write once more. Reporting the error and stopping was a dead end —
-     * config.lastchanged never advanced, so every retry failed the same way, and
-     * the only way out was a reload that threw the work away without asking.
-     *
-     * One retry only. A second conflict means somebody is saving continuously,
-     * and looping would just keep clobbering them.
-     *
-     * @method offerConflictMerge
-     * @param {Function} callback Optional, receives a Boolean success flag
+     * @method setSaveFailed
+     * @param {Boolean} flag
      */
-    function offerConflictMerge(callback) {
+    function setSaveFailed(flag) {
 
-        var pendingMarkers = JSON.parse(JSON.stringify(getMapData().markers));
+        if (saveFailed === !!flag) return;
+        saveFailed = !!flag;
 
-        ConfirmDialog({
-            title:        labels['OverviewMapSaveQuestionShort'],
-            message:      labels['MessageCollabMapConflictMerge'],
-            confirmLabel: labels['GenericSaveChanges'],
-            cancelLabel:  labels['GenericCancel'],
-            onConfirm: function() {
-                FrameTrail.module('Database').loadConfigData(function() {
-                    getMapData().markers = pendingMarkers;
-                    FrameTrail.module('Database').loadConfigVersions(function() {
-                        saveLayout(callback);
-                    });
-                }, function() {
-                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingSettings']);
-                    if (callback) callback(false);
-                });
-            },
-            onCancel: function() {
-                // Keep the drags; the sidebar now offers the ordinary refresh.
-                var Collaboration = FrameTrail.module('Collaboration');
-                if (Collaboration) Collaboration.markStale('settings', 'global');
-                if (callback) callback(false);
-            }
-        });
-
-    }
-
-
-    /**
-     * I restore the map to the state it had when edit mode was entered.
-     *
-     * @method discardChanges
-     */
-    function discardChanges() {
-
-        if (editSnapshot) {
-            FrameTrail.module('Database').config.overviewMap = JSON.parse(JSON.stringify(editSnapshot));
+        var Sidebar = FrameTrail.module('Sidebar');
+        if (Sidebar && Sidebar.setOverviewMapSaveFailed) {
+            Sidebar.setOverviewMapSaveFailed(saveFailed);
         }
 
-        setDirty(false);
-        renderMarkers();
-
     }
 
 
+    /* ------------------------------------------------------------------ *
+     *  Edit mode
+     * ------------------------------------------------------------------ */
+
     /**
-     * I react to edit mode being entered or left.
+     * I react to the global edit mode being entered or left.
+     *
+     * I do not claim anything here: the global edit mode is also on while
+     * somebody is only adding a hypervideo or looking around, and a lock held
+     * for that would stop another admin arranging the map for no reason.
+     * Leaving it does end a map editing session, though — there is no way back
+     * to the controls from outside edit mode.
      *
      * @method toggleEditMode
      * @param {String|Boolean} editMode
      */
     function toggleEditMode(editMode) {
 
-        var active = !!editMode;
-
         if (!MapRoot) return;
 
-        var Collaboration = FrameTrail.module('Collaboration');
+        editModeActive = !!editMode;
 
-        if (active && !editModeActive) {
-            editSnapshot = JSON.parse(JSON.stringify(getMapData()));
-
-            // Promote the session that is already watching this scope, and take
-            // the lock: from here on we are editing config.json, exactly what
-            // the admin settings dialog holds it for.
-            if (Collaboration && canEditMap()) {
-                Collaboration.claim(function() { reflectLock(); }, 'settings', 'global');
-            }
+        if (!editModeActive && mapEditActive) {
+            setMapEditing(false);
         }
 
-        editModeActive = active;
-        MapRoot.classList.toggle('editActive', active && canEditMap());
-
-        if (!active) {
-            closePopup();
-            if (mapDirty) {
-                promptSaveOrDiscard();
-            }
-            // Demote rather than stop — the scope stays watched for the rest of
-            // the session, so we still hear about changes. Demoting releases
-            // the lock, so leaving edit mode never strands one.
-            if (Collaboration) {
-                Collaboration.setObserving(true, 'settings', 'global');
-            }
-        }
+        reflectLock();
 
         // Edit mode does not change the geometry (the canvas renders the
         // configured fit either way), but the editActive border does resize
@@ -1188,45 +1311,61 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
 
     /**
-     * I ask whether to keep or drop unsaved map changes.
+     * I enter or leave map editing, taking and giving back the lock.
      *
-     * There is no Cancel: by the time this runs the editMode state has already
-     * been written, so vetoing would require a re-entrant changeState.
-     *
-     * @method promptSaveOrDiscard
+     * @method setMapEditing
+     * @param {Boolean} value
      */
-    function promptSaveOrDiscard() {
+    function setMapEditing(value) {
 
-        var content = document.createElement('div');
-        content.className = 'confirmSaveChanges';
-        content.innerHTML = '<div class="message active">'+ labels['OverviewMapSaveQuestion'] +'</div>';
+        value = !!value && mayEditMap();
 
-        var dialogCtrl = Dialog({
-            title:     labels['OverviewMapSaveQuestionShort'],
-            content:   content,
-            modal:     true,
-            resizable: false,
-            close: function() {
-                dialogCtrl.destroy();
-            },
-            buttons: [
-                {
-                    text: labels['GenericSaveChanges'],
-                    click: function() {
-                        saveLayout();
-                        dialogCtrl.close();
-                    }
-                },
-                {
-                    text: labels['GenericNoDiscard'],
-                    click: function() {
-                        discardChanges();
-                        dialogCtrl.close();
-                    }
-                }
-            ]
-        });
+        if (value === mapEditActive) return;
 
+        var Collaboration = FrameTrail.module('Collaboration');
+
+        mapEditActive = value;
+
+        if (mapEditActive) {
+
+            if (Collaboration) {
+                // Promote the session that is already watching the library and
+                // take the lock. A refusal is fine: canEditMap() then stays
+                // false and the sidebar names whoever holds it.
+                Collaboration.claim(function() { reflectLock(); }, 'library', 'global');
+            }
+
+        } else {
+
+            closePopup();
+            flushMapSave();
+
+            // Demote rather than stop — the scope stays watched for the rest of
+            // the session, so we still hear about changes. Demoting releases
+            // the lock, so leaving map editing never strands one.
+            if (Collaboration) {
+                Collaboration.setObserving(true, 'library', 'global');
+            }
+
+        }
+
+        reflectLock();
+        renderMarkers();
+
+        var Sidebar = FrameTrail.module('Sidebar');
+        if (Sidebar && Sidebar.refreshOverviewMapControls) {
+            Sidebar.refreshOverviewMapControls();
+        }
+
+    }
+
+
+    /**
+     * @method isMapEditing
+     * @return {Boolean}
+     */
+    function isMapEditing() {
+        return mapEditActive;
     }
 
 
@@ -1235,23 +1374,19 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      * ------------------------------------------------------------------ */
 
     /**
-     * I re-read the map settings from the config and repaint.
+     * I repaint from the current map document.
      *
-     * AdminSettingsDialog calls me after it applies background / colour / fit,
-     * so those take effect immediately instead of only on the next page load.
+     * Called after the background, colour or fit were changed, and after the
+     * library was re-read, so a change takes effect immediately instead of
+     * only on the next page load.
      *
-     * Its save serialises the whole config object, so any pending marker edits
-     * were written to disk along with it — hence the dirty flag is cleared and
-     * the edit-session snapshot re-taken.
-     *
-     * @method reloadFromConfig
+     * @method reload
      */
-    function reloadFromConfig() {
+    function reload() {
 
         if (!MapRoot) return;
 
-        setDirty(false);
-        editSnapshot = JSON.parse(JSON.stringify(getMapData()));
+        setSaveFailed(false);
 
         layoutMemo = null;
         renderMarkers();
@@ -1295,11 +1430,13 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         closePopup:         closePopup,
         getMarkerElement:   getMarkerElement,
         toggleEditMode:     toggleEditMode,
+        setMapEditing:      setMapEditing,
+        isMapEditing:       isMapEditing,
+        canEditMap:         canEditMap,
+        mayEditMap:         mayEditMap,
+        isLockedByOther:    isMapLockedByOther,
         reflectLock:        reflectLock,
-        reloadFromConfig:   reloadFromConfig,
-        hasUnsavedChanges:  hasUnsavedChanges,
-        saveLayout:         saveLayout,
-        discardChanges:     discardChanges,
+        reload:             reload,
         addHypervideo:      addHypervideo,
         notePendingAutoPlace: notePendingAutoPlace,
         isEmpty:            isEmpty

@@ -158,3 +158,100 @@
     height: 144px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
 }
+
+/*
+ * Editing toolbar.
+ *
+ * On the canvas rather than in the sidebar, because everything on it acts on
+ * the canvas: "place a hypervideo" needs somewhere to place it, and the map
+ * settings are the ground the pins are placed against. It exists only while
+ * the map is being arranged, so the controls appear exactly when they mean
+ * something — and "Done" gives the mode a visible end, without which people
+ * stay in it and hold the lock against everyone else.
+ *
+ * Sits in the viewport box, not the stage, so it stays put under both fit
+ * modes and is never clipped by the stage's overflow.
+ */
+.overviewMapToolbar {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    /* Above the popup card, so a pin opened near the corner cannot bury Done. */
+    z-index: 11;
+    display: none;
+    align-items: center;
+    gap: 8px;
+}
+
+.overviewMap.editActive .overviewMapToolbar {
+    display: flex;
+}
+
+.overviewMapToolbar button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 40px;
+    /* Opaque, and in the editing palette rather than the theme's: these act on
+       the map, they do not present it. A translucent button over an arbitrary
+       background image is also simply hard to see. */
+    background-color: var(--editing-bg-color);
+    border-color: var(--editing-fg-color);
+    color: var(--editing-fg-color);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+
+.overviewMapToolbar button:hover {
+    background-color: var(--editing-fg-color);
+    border-color: var(--editing-bg-color);
+    color: var(--editing-bg-color);
+}
+
+/* The two icon-only actions are round, matching the thumb option buttons. */
+.overviewMapToolbar .overviewMapAddButton,
+.overviewMapToolbar .overviewMapSettingsButton {
+    width: 40px;
+    padding: 0;
+    border-radius: 50%;
+}
+
+/*
+ * Centre the glyph, not the line box around it.
+ *
+ * The icon span is a flex item, and its line box carries the strut of the
+ * inherited 14px UI font: about 2px of descender space below the baseline that
+ * the 20px icon box never uses. align-items:center then centres a 22px box
+ * holding a 20px glyph, which leaves the glyph 1px above the button's middle.
+ * Letting the span centre the glyph itself takes the text baseline out of it,
+ * rather than cancelling the gap with a hand-tuned margin that only holds for
+ * this particular pairing of font and size.
+ */
+.overviewMapToolbar button > span[class^="icon-"],
+.overviewMapToolbar button > span[class*=" icon-"] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.overviewMapToolbar button [class^="icon-"]::before,
+.overviewMapToolbar button [class*=" icon-"]::before {
+    display: block;
+    font-size: 20px;
+    width: 22px;
+    margin: 0;
+}
+
+/* Done ends the mode, so it is the one labelled action. It reads as primary by
+   being the inverse of its neighbours — still the editing palette, no theme
+   colour and no colour of its own. */
+.overviewMapToolbar .overviewMapDoneButton {
+    gap: 4px;
+    padding: 0 14px 0 10px;
+    border-radius: 20px;
+    margin-left: 4px;
+}
+
+.overviewMapToolbar .overviewMapDoneButton [class^="icon-"]::before {
+    font-size: 16px;
+    width: 18px;
+}

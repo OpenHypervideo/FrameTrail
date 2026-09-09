@@ -220,7 +220,10 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
     TitlebarViewMode.addEventListener('click', function(evt) {
         var btn = evt.target.closest('button');
-        if (btn) { FrameTrail.changeState('viewMode', btn.getAttribute('data-viewmode')); }
+        // Through RouteNavigation rather than straight to the state: this is
+        // the user navigating, and the address bar has to say which of the two
+        // views they are looking at.
+        if (btn) { FrameTrail.module('RouteNavigation').navigateToView(btn.getAttribute('data-viewmode')); }
     });
 
 

@@ -299,8 +299,10 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
                     if ( FrameTrail.module('RouteNavigation').hypervideoID == newHypervideoID ) {
 
-                        // Just switch to video view - animation will happen in toggleViewMode
-                        FrameTrail.changeState('viewMode', 'video');
+                        // Already loaded — just switch to the video view, and record
+                        // it, so the URL stops saying "overview". The animation
+                        // happens in toggleViewMode.
+                        FrameTrail.module('RouteNavigation').navigateToView('video');
 
                     } else {
 
@@ -326,11 +328,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
                                     FrameTrail.module('HypervideoModel').save(function(){
 
-                                        if (window.FrameTrail.instances.length <= 1) {
-                                            history.pushState({
-                                                editMode: FrameTrail.getState('editMode')
-                                            }, "", "#hypervideo=" + newHypervideoID);
-                                        }
+                                        FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newHypervideoID });
 
                                         FrameTrail.changeState('editMode', false);
 
@@ -365,11 +363,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
                             setActiveHypervideo(newHypervideoID);
 
-                            if (window.FrameTrail.instances.length <= 1) {
-                                history.pushState({
-                                    editMode: FrameTrail.getState('editMode')
-                                }, "", "#hypervideo=" + newHypervideoID);
-                            }
+                            FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newHypervideoID });
 
                             if ( FrameTrail.getState('editMode') ) {
 
