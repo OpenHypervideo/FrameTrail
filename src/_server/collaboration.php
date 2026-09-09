@@ -90,6 +90,18 @@ function _collabScopes() {
                 $found = glob($data."/hypervideos/*/hypervideo.json");
                 return ($found === false) ? $files : array_merge($files, $found);
             }
+        ),
+
+        // Not a document, so it guards no files and carries no version token:
+        // joining it *is* the statement "I am editing somewhere on this
+        // instance". Everything else a scope already provides — the lease, the
+        // pruning, the participant record — is exactly what presence needs, so
+        // it costs one entry here and nothing else.
+        "presence" => array(
+            "global" => true,
+            "files"  => function($scopeId) {
+                return array();
+            }
         )
 
     );
@@ -369,9 +381,35 @@ function _collabSyncOne($d, $userId, $userName, $userColor, $now) {
     // a participant would put every admin merely in edit mode into the settings
     // dialog's avatar row, where "who else is here" has to keep meaning "who
     // else has this dialog open".
+    //
+    // Observing is also how a session *leaves*: a closing dialog demotes itself
+    // to an observer, and stop() sends one final observing sync on its way out.
+    // So an observer that is still on the participant list is one that has just
+    // left, and must be dropped now rather than lingering for a whole lease —
+    // 45 seconds of ghost presence is exactly the staleness this exists to
+    // avoid. Writing only when something actually changed keeps the common
+    // case, an observer that was never a participant, a pure read.
     if (!empty($d["observe"])) {
-        $file->close();
+
+        if (isset($state["participants"][$userId])) {
+
+            unset($state["participants"][$userId]);
+
+            // _collabPrune ran before we removed ourselves, so a lock we held
+            // would otherwise survive until somebody else's next request.
+            if (isset($state["lock"]) && is_array($state["lock"])
+                && (string)$state["lock"]["holderId"] === $userId) {
+                $state["lock"] = null;
+            }
+
+            $file->writeClose(json_encode($state, $conf["settings"]["json_flags"]));
+
+        } else {
+            $file->close();
+        }
+
         return array("response" => _collabResponse($state, $scope, $scopeId, $knownVersion));
+
     }
 
     $state["participants"][$userId] = array(

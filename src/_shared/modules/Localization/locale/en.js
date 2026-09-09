@@ -198,6 +198,7 @@ window.FrameTrail_L10n['en'] = {
     "MessageChooseFiles": "Choose Files",
     "MessageClientDataUpdated": "Client data updated",
     "MessageCodeContainsErrors": "Code contains errors",
+    "MessageCollabAlsoEditing": "%s is also editing",
     "MessageCollabAlsoHere": "%s is also here",
     "MessageCollabChangesAvailable": "This hypervideo has changed on the server.",
     "MessageCollabChangesBy": "%s changed this hypervideo.",

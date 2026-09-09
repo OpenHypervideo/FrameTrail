@@ -324,11 +324,26 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
     }
 
 
+    /**
+     * Who is present, as a value that changes whenever the membership does.
+     * A count would not: one person leaving as another joins is a different
+     * room with the same number of people in it, and the presence row would
+     * go on naming whoever left until something else happened to broadcast.
+     */
+    function participantSignature(participants) {
+
+        return (participants || []).map(function(participant) {
+            return String(participant.id);
+        }).sort().join(',');
+
+    }
+
+
     function applyState(session, response) {
 
-        var previousStale = session.stale,
-            previousLock  = session.lock ? session.lock.holderId : null,
-            previousCount = session.participants.length;
+        var previousStale     = session.stale,
+            previousLock      = session.lock ? session.lock.holderId : null,
+            previousSignature = participantSignature(session.participants);
 
         session.participants = response.participants || [];
         session.lock         = response.lock || null;
@@ -351,7 +366,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
         if (session.stale !== previousStale
             || (session.lock ? session.lock.holderId : null) !== previousLock
-            || session.participants.length !== previousCount) {
+            || participantSignature(session.participants) !== previousSignature) {
             broadcast();
         }
 
@@ -406,7 +421,8 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
      * @method start
      * @param {String} scope   'hypervideo', 'settings', 'users', 'tags' or 'library'
      * @param {String} scopeId hypervideo ID, or 'global'
-     * @param {Object} [options] { observe: true } to watch without joining
+     * @param {Object} [options] { observe: true } to watch without joining,
+     *                           { editing: true } to heartbeat as an editor
      */
     function start(scope, scopeId, options) {
 
@@ -440,7 +456,11 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             version:      null,
             knownVersion: null,
             stale:        false,
-            editing:      false,
+            // Set here rather than by a setEditing() after the fact, because
+            // start() polls immediately: a scope that is only ever entered by
+            // an editor would otherwise report editing:false on its very first
+            // heartbeat and correct itself one tick later.
+            editing:      !!(options && options.editing),
             unsaved:      false,
             observe:      !!(options && options.observe),
             lastWriter:   null,
@@ -488,6 +508,36 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
 
     /**
+     * Tell the server we have left a scope, so we stop appearing to everyone
+     * else in it. Without this the only way out is the lease expiring, and 45
+     * seconds of ghost presence is exactly the staleness presence exists to
+     * avoid — someone who left edit mode would go on being listed as editing.
+     *
+     * Spelled as an observing sync rather than a new operation because that is
+     * already what leaving means: setObserving demotes the same way, and the
+     * server drops a participant that turns up observing.
+     *
+     * Fire-and-forget: the session is going away regardless, and a failed
+     * request only means falling back to the lease.
+     */
+    function deregister(session) {
+
+        if (mode !== MODE_FULL || !session || session.observe) return;
+
+        _transport.post({
+            a:        'collabSync',
+            sessions: JSON.stringify([{
+                scope:        session.scope,
+                scopeId:      session.scopeId,
+                observe:      true,
+                knownVersion: null
+            }])
+        }, function() {}, function() {});
+
+    }
+
+
+    /**
      * I stop tracking a scope, releasing its lock if we hold it.
      *
      * @method stop
@@ -504,6 +554,8 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         if (holdsLock(session)) {
             lockOperation(session, 'release');
         }
+
+        deregister(session);
 
         delete sessions[key];
         if (primaryKey === key) primaryKey = null;
@@ -822,25 +874,54 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
      * Render one avatar per other participant in a scope into a container.
      * The lock holder is ringed; the full name lives in the tooltip.
      *
+     * The options exist for the title bar, which draws a different set of
+     * people than the one whose lock it wants to ring: its people come from the
+     * instance-wide presence scope, while the ring must mean "and this is the
+     * one editing what you are looking at". Every option defaults to the
+     * single-scope behaviour, so a caller that only cares about one scope —
+     * every dialog — passes nothing.
+     *
      * @method renderAvatars
      * @param {HTMLElement} container
      * @param {String} [scope]
      * @param {String} [scopeId]
+     * @param {Object} [options]
+     * @param {String} [options.lockScope]   scope whose lock decides the ring
+     * @param {String} [options.lockScopeId]
+     * @param {String} [options.tooltip]     label key for a non-holder chip
+     * @param {Number} [options.max]         cap; the rest collapse into one +N chip
      */
-    function renderAvatars(container, scope, scopeId) {
+    function renderAvatars(container, scope, scopeId, options) {
 
         if (!container) return;
 
-        var labels = FrameTrail.module('Localization').labels;
+        options = options || {};
+
+        var labels  = FrameTrail.module('Localization').labels,
+            tooltip = options.tooltip || 'MessageCollabAlsoHere';
 
         container.innerHTML = '';
 
         var people = others(scope, scopeId);
         if (!people.length) return;
 
-        var lock = lockHolder(scope, scopeId);
+        var lock = ('lockScope' in options)
+                 ? lockHolder(options.lockScope, options.lockScopeId)
+                 : lockHolder(scope, scopeId);
 
-        people.forEach(function(participant) {
+        // The lock holder is the one chip that must never be the one dropped:
+        // whoever is editing what you are looking at is the whole point of the
+        // row. Everyone else keeps the server's order.
+        if (lock && options.max && people.length > options.max) {
+            people = people.slice().sort(function(a, b) {
+                return (String(b.id) === String(lock.id)) - (String(a.id) === String(lock.id));
+            });
+        }
+
+        var shown  = options.max ? people.slice(0, options.max) : people,
+            hidden = options.max ? people.slice(options.max)    : [];
+
+        shown.forEach(function(participant) {
 
             var isEditing = !!(lock && String(lock.id) === String(participant.id));
 
@@ -849,7 +930,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             chip.textContent = initialsOf(participant.name);
             chip.setAttribute('data-tooltip-bottom-right',
                 isEditing ? labels['MessageCollabLockedBy'].replace('%s', participant.name)
-                          : labels['MessageCollabAlsoHere'].replace('%s', participant.name));
+                          : labels[tooltip].replace('%s', participant.name));
 
             if (participant.color) {
                 // Stored without a leading # in users.json.
@@ -861,6 +942,21 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             container.appendChild(chip);
 
         });
+
+        if (hidden.length) {
+
+            // Deliberately left without an inline colour: .collaborationChip's
+            // own fill is what marks this one as a count rather than a person.
+            var more = document.createElement('span');
+            more.className = 'collaborationChip';
+            more.textContent = '+' + hidden.length;
+            more.setAttribute('data-tooltip-bottom-right', hidden.map(function(participant) {
+                return participant.name;
+            }).join(', '));
+
+            container.appendChild(more);
+
+        }
 
     }
 
@@ -911,6 +1007,19 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
 
     /**
+     * Guest mode hands out the admin role locally, so anything gated on being
+     * an admin also has to require a session that can actually write — a guest
+     * has no business being told the settings moved.
+     */
+    function isAdmin() {
+
+        var UserManagement = FrameTrail.module('UserManagement');
+        return mode === MODE_FULL && !!UserManagement && UserManagement.userRole === 'admin';
+
+    }
+
+
+    /**
      * Scopes watched for the whole session rather than opened by one surface.
      *
      * Batched polling makes these free — they ride along in the request the
@@ -919,29 +1028,54 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
      * anyone at all find out that the hypervideo library changed.
      */
     var AMBIENT_SCOPES = [
-        { scope: 'library',  scopeId: 'global', adminOnly: false },
-        { scope: 'settings', scopeId: 'global', adminOnly: true  }
+
+        { scope: 'library',  scopeId: 'global', observe: true,
+          wanted: function() { return mode !== MODE_DORMANT; } },
+
+        { scope: 'settings', scopeId: 'global', observe: true,
+          wanted: function() { return mode !== MODE_DORMANT && isAdmin(); } },
+
+        // The one *participating* ambient scope, and the only one that guards
+        // no file. It exists exactly as long as we are in edit mode, which is
+        // what lets membership itself be the signal: the people in it are the
+        // people editing this instance right now, so the presence row needs no
+        // filtering and the lease does the "still active" pruning for free. A
+        // passive viewer writes nothing to it and appears to nobody.
+        { scope: 'presence', scopeId: 'global', observe: false,
+          wanted: function() { return mode === MODE_FULL && !!FrameTrail.getState('editMode'); } }
+
     ];
 
 
     function syncAmbientScopes() {
 
-        var UserManagement = FrameTrail.module('UserManagement'),
-            // Guest mode hands out the admin role locally, so an admin-only
-            // scope also has to require a session that can actually write —
-            // and a guest has no business being told the settings moved.
-            isAdmin = mode === MODE_FULL && !!UserManagement && UserManagement.userRole === 'admin';
-
         AMBIENT_SCOPES.forEach(function(entry) {
 
             var key    = keyOf(entry.scope, entry.scopeId),
-                wanted = (mode !== MODE_DORMANT) && (!entry.adminOnly || isAdmin);
+                wanted = entry.wanted();
 
             if (wanted && !sessions[key]) {
-                start(entry.scope, entry.scopeId, { observe: true });
-            } else if (!wanted && sessions[key] && sessions[key].observe) {
-                // Only ever retract what we opened ourselves — a surface that
-                // promoted this scope owns it now and will stop it in its turn.
+
+                // Participating in an ambient scope means editing — that is the
+                // only reason we join one — so it also sets the cadence. Without
+                // it an editor working only in the overview polls at the idle
+                // interval, because Sidebar's setEditing has no primary
+                // hypervideo session to land on.
+                start(entry.scope, entry.scopeId, {
+                    observe: entry.observe,
+                    editing: !entry.observe
+                });
+
+                if (sessions[key]) sessions[key].ambient = true;
+
+            } else if (!wanted && sessions[key]
+                       && sessions[key].ambient
+                       && sessions[key].observe === entry.observe) {
+                // Only ever retract what we opened ourselves, and only while it
+                // is still in the state we opened it in — a surface that
+                // promoted an observed scope owns it now and will stop it in
+                // its turn. `ambient` alone would not say that, since the
+                // presence scope is ours *and* participating.
                 stop(entry.scope, entry.scopeId);
             }
 
@@ -978,6 +1112,21 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         }
 
         broadcast();
+
+    }
+
+
+    /**
+     * Entering or leaving edit mode joins or leaves the presence scope, which
+     * is the whole of what "who is editing" means.
+     *
+     * Deliberately not reevaluateMode: the mode has not changed here, and that
+     * function resets every session's state when it does.
+     */
+    function editModeChanged() {
+
+        mode = determineMode();
+        syncAmbientScopes();
 
     }
 
@@ -1023,7 +1172,8 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         mode:               function() { return mode; },
 
         onChange: {
-            'loggedIn': reevaluateMode
+            'loggedIn': reevaluateMode,
+            'editMode': editModeChanged
         }
 
     };

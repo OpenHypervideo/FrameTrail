@@ -53,9 +53,24 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
 
     /**
-     * I show one avatar per other person currently in this hypervideo. The
-     * rendering itself lives in the Collaboration module, because the settings
-     * dialogs show the same avatars for their own scopes.
+     * I show one avatar per other person currently editing this instance —
+     * anywhere in it, not only in whatever hypervideo happens to be loaded.
+     * That set is the presence scope's membership, which is why it needs no
+     * filtering: joining it is what being in edit mode means.
+     *
+     * Drawing the loaded hypervideo's participants instead, as this used to,
+     * made the row mean different things in different places. It kept naming a
+     * video's viewers after you had switched to the overview, showed nothing at
+     * all if you had opened the overview directly, and included people who were
+     * only watching.
+     *
+     * The ring still means "and this is the one editing what you are looking
+     * at", so it comes from the scope the current view is about — the
+     * hypervideo in the video view, the library in the overview, since that is
+     * the lock the overview map takes.
+     *
+     * The rendering itself lives in the Collaboration module, because the
+     * settings dialogs show the same avatars for their own scopes.
      *
      * @method renderPresence
      */
@@ -64,7 +79,14 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
         var Collaboration = FrameTrail.module('Collaboration');
         if (!CollaborationPresence || !Collaboration) return;
 
-        Collaboration.renderAvatars(CollaborationPresence);
+        var inVideo = FrameTrail.getState('viewMode') === 'video';
+
+        Collaboration.renderAvatars(CollaborationPresence, 'presence', 'global', {
+            lockScope:   inVideo ? null : 'library',   // null → primary (hypervideo)
+            lockScopeId: inVideo ? null : 'global',
+            tooltip:     'MessageCollabAlsoEditing',
+            max:         4
+        });
 
     }
 
@@ -375,6 +397,12 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             HypervideoDeleteButton.classList.remove('active');
         }
 
+        // The presence row keeps its membership across the switch, but the ring
+        // is about the view — it has to be re-resolved against the scope we
+        // just moved to. onChange takes one handler per state, so this cannot
+        // be registered separately.
+        renderPresence();
+
     }
 
 
@@ -436,6 +464,13 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             UserSettingsMenu.style.display = 'none';
 
         }
+
+        // Joining and leaving the presence scope is what entering and leaving
+        // edit mode *is*, so the row has to be redrawn on the transition. On the
+        // way out this clears chips that would otherwise still be in the DOM,
+        // hidden by CSS, and reappear for a moment on the way back in; on the
+        // way in it draws an empty row that the first poll then fills.
+        renderPresence();
 
     }
 

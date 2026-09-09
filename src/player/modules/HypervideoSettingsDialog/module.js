@@ -15,11 +15,12 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
     // Live references into the currently open dialog, so the collabState
     // listener can refresh presence without rebuilding anything.
-    var presenceContainer   = null,
-        lockMessageEl       = null,
-        saveButtonEl        = null,
-        lockScopeId         = null,
-        lockClaimedByDialog = false;
+    var presenceContainer     = null,
+        lockMessageEl         = null,
+        saveButtonEl          = null,
+        lockScopeId           = null,
+        lockClaimedByDialog   = false,
+        sessionOpenedByDialog = false;
 
 
     /**
@@ -49,6 +50,14 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
         presenceContainer = mounted.presence;
         lockMessageEl     = mounted.message;
+
+        // Opened from the overview, this dialog is routinely about a hypervideo
+        // other than the loaded one — and the hypervideo scope is single: an
+        // out-of-band start re-targets the primary session, stopping the loaded
+        // video's. Remembering that here is what lets the close path put it
+        // back, instead of leaving the sidebar's notices, setEditing and the
+        // edit lock all pointed at a video nobody is watching.
+        sessionOpenedByDialog = (lockScopeId !== String(FrameTrail.module('RouteNavigation').hypervideoID));
 
         Collaboration.start('hypervideo', lockScopeId);
 
@@ -81,11 +90,27 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             Collaboration.release(null, 'hypervideo', lockScopeId);
         }
 
-        presenceContainer   = null;
-        lockMessageEl       = null;
-        saveButtonEl        = null;
-        lockScopeId         = null;
-        lockClaimedByDialog = false;
+        // Hand the primary hypervideo scope back to whatever is actually
+        // loaded. start() is a no-op when its session already exists, so the
+        // ordinary case — the dialog opened on the loaded video — never gets
+        // here at all.
+        if (Collaboration && sessionOpenedByDialog && lockScopeId !== null) {
+
+            Collaboration.stop('hypervideo', lockScopeId);
+
+            var loadedID = FrameTrail.module('RouteNavigation').hypervideoID;
+            if (loadedID) {
+                Collaboration.start('hypervideo', loadedID);
+            }
+
+        }
+
+        presenceContainer     = null;
+        lockMessageEl         = null;
+        saveButtonEl          = null;
+        lockScopeId           = null;
+        lockClaimedByDialog   = false;
+        sessionOpenedByDialog = false;
 
     }
 
