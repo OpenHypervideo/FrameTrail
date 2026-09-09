@@ -151,6 +151,7 @@ FrameTrail.defineModule('ViewResources', function(FrameTrail){
 
             viewResourcesDialog = Dialog({
                 title:    labels['ResourcesManage'],
+                icon:     'icon-folder-open',
                 content:  domElement,
                 autoOpen: false,
                 width:    954,

@@ -369,6 +369,7 @@
 
         var folderDialogCtrl = Dialog({
             title:         labels['SelectDataFolder'],
+            icon:          'icon-folder-open',
             content:       folderDialog,
             modal:         true,
             width:         450,

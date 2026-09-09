@@ -1095,6 +1095,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
 
                     uploadDialogCtrl = Dialog({
                         title: labels['ResourceAddNew'] || 'Add Resource',
+                        icon: 'icon-doc-new',
                         resizable: false,
                         width: 680,
                         modal: true,
@@ -2319,6 +2320,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
         var editDialog;
         editDialog = Dialog({
             title:   labels['ResourceEditDialogTitle'],
+            icon:    'icon-pencil',
             content: content,
             modal:   true,
             width:   600,
@@ -2383,6 +2385,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
         deleteBtn.addEventListener('click', function() {
             ConfirmDialog({
                 title:        labels['GenericConfirmDelete'],
+                icon:         'icon-trash',
                 message:      labels['ResourceEditDeleteConfirm'],
                 confirmLabel: labels['GenericYes'],
                 cancelLabel:  labels['GenericCancel'],

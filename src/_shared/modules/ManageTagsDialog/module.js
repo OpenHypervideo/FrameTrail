@@ -72,6 +72,7 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
 
         dialogCtrl = Dialog({
             title:     labels['SettingsManageTags'],
+            icon:      'icon-tags-1',
             content:   containerElement,
             modal:     true,
             resizable: false,
@@ -341,6 +342,7 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
 
         var tagDialogCtrl = Dialog({
             title:   isNew ? labels['TagAddNew'] : labels['TagEdit'] + ': ' + tagId,
+            icon:    isNew ? 'icon-plus' : 'icon-tag-1',
             content: dialogContent,
             modal:   true,
             width:   500,
@@ -475,6 +477,7 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
 
         var tagUsageDialogCtrl = Dialog({
             title:   labels['TagCannotDeleteTitle'],
+            icon:    'icon-attention',
             content: content,
             modal:   true,
             width:   450,

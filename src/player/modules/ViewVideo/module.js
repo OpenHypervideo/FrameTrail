@@ -301,6 +301,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         var shareDialogCtrl = Dialog({
             title:     labels['GenericShareEmbed'],
+            icon:      'icon-share',
             content:   shareDialog,
             inheritTheme: SharingWidget,
             modal:     true,

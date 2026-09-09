@@ -803,6 +803,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
             userDialogCtrl = Dialog({
                 title: labels['UserMySettings'],
+                icon: 'icon-user',
                 content: domElement,
                 modal: true,
                 width: 600,

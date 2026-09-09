@@ -156,6 +156,7 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
 
         var dialogCtrl = Dialog({
             title:     labels['SettingsOverviewMapSettings'],
+            icon:      'icon-cog',
             content:   dialogContent,
             modal:     true,
             resizable: false,

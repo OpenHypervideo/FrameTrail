@@ -74,6 +74,7 @@ FrameTrail.defineModule('ManageUsersDialog', function(FrameTrail){
 
         dialogCtrl = Dialog({
             title:     labels['UserAdministration'],
+            icon:      'icon-users',
             content:   containerElement,
             modal:     true,
             resizable: false,
@@ -296,6 +297,7 @@ FrameTrail.defineModule('ManageUsersDialog', function(FrameTrail){
 
         var userDialogCtrl = Dialog({
             title:     isNew ? labels['UserAdd'] : (isSelf ? labels['UserMySettings'] : labels['UserChangeSettings']),
+            icon:      isNew ? 'icon-plus' : 'icon-user',
             content:   userEditForm,
             modal:     true,
             resizable: false,
@@ -388,6 +390,7 @@ FrameTrail.defineModule('ManageUsersDialog', function(FrameTrail){
 
         var confirmCtrl = Dialog({
             title:     labels['GenericDelete'],
+            icon:      'icon-trash',
             content:   confirmEl,
             modal:     true,
             resizable: false,

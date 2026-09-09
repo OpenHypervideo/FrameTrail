@@ -96,6 +96,18 @@
     display: none;
 }
 
+/* Buttons that lead somewhere else rather than acting on this dialog sit at
+   the far end of the pane, so the dialog's own actions keep the reading
+   position. Only the first one takes the auto margin — the rest ride along
+   behind it at the normal gap. */
+.ft-dialog-buttonpane .ft-dialog-button-right {
+    margin-left: auto;
+}
+
+.ft-dialog-buttonpane .ft-dialog-button-right ~ .ft-dialog-button-right {
+    margin-left: 0;
+}
+
 /* ── Variant: no resizable handle needed (native <dialog> is not resizable) */
 
 /* ── quizDialog variant ──────────────────────────────────────────────── */

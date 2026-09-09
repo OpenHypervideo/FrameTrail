@@ -782,6 +782,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
         var adminDialogCtrl = Dialog({
             title:   labels['GenericAdministration'],
+            icon:    'icon-cog',
             content: adminDialog,
             modal: true,
             resizable: false,
@@ -803,18 +804,6 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                 adminDialogCtrl.destroy();
             },
             buttons: [
-                // Users and tags live in their own dialogs now, but this is
-                // still where an admin comes looking for them. They open on top
-                // as ordinary modals, and they are never disabled by the
-                // settings lock — nothing they write goes through Apply.
-                { text: labels['UserAdministration'],
-                    class: 'manageUsersButton',
-                    click: function() { FrameTrail.module('ManageUsersDialog').open(); }
-                },
-                { text: labels['SettingsManageTags'],
-                    class: 'manageTagsButton',
-                    click: function() { FrameTrail.module('ManageTagsDialog').open(); }
-                },
                 { text: labels['GenericApply'] || labels['GenericSaveChanges'] || 'Apply',
                     class: 'applySettingsButton',
                     click: function() {
@@ -991,6 +980,22 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                     click: function() {
                         adminDialogCtrl.close();
                     }
+                },
+                // Users and tags live in their own dialogs now, but this is
+                // still where an admin comes looking for them. They are side
+                // doors, not actions on this dialog, so they park at the right
+                // edge behind Apply and Cancel. They open on top as ordinary
+                // modals, and they are never disabled by the settings lock —
+                // nothing they write goes through Apply.
+                { text: labels['UserAdministration'],
+                    class: 'manageUsersButton ft-dialog-button-right',
+                    icon:  'icon-users',
+                    click: function() { FrameTrail.module('ManageUsersDialog').open(); }
+                },
+                { text: labels['SettingsManageTags'],
+                    class: 'manageTagsButton ft-dialog-button-right',
+                    icon:  'icon-tags-1',
+                    click: function() { FrameTrail.module('ManageTagsDialog').open(); }
                 }
             ]
         });
@@ -1021,8 +1026,9 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         if (!buttonPane) return;
 
         // By class, not by position: the Manage Users and Manage Tags shortcuts
-        // sit ahead of Apply in the pane, and they must stay usable while the
-        // lock is held — they write neither of the files it guards.
+        // sit after Apply in the pane, right-aligned, and the reload button is
+        // prepended ahead of it. They must all stay usable while the lock is
+        // held — they write neither of the files it guards.
         applyButton = buttonPane.querySelector('.applySettingsButton');
 
         var mounted = Collaboration.mountDialogPresence(dialogCtrl);

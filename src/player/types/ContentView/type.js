@@ -2077,6 +2077,7 @@ FrameTrail.defineType(
 
                         var editDialogCtrl = Dialog({
                             title:     dialogTitle,
+                            icon:      isNew ? 'icon-plus' : 'icon-pencil',
                             content:   editDialog,
                             resizable: false,
                             width:     860,

@@ -1385,6 +1385,7 @@
 
         saveAsDialogCtrl = Dialog({
             title:   labels['GenericSaveAs'],
+            icon:    'icon-export',
             content: saveAsDialog,
             modal:   true,
             width:   800,
@@ -1539,6 +1540,7 @@
 
         var conflictDialogCtrl = Dialog({
             title:     labels['ErrorSaveConflictShort'],
+            icon:      'icon-attention',
             content:   _wrapper.firstElementChild,
             resizable: false,
             modal:     true,

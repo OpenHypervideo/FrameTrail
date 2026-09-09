@@ -5,12 +5,13 @@
  * Usage:
  *   var ctrl = Dialog({
  *       title:    'Dialog Title',            // or derived from content.getAttribute('title')
+ *       icon:     'icon-cog',                // webfont class shown before the title
  *       content:  domElementOrJQueryObject,  // required
  *       modal:    true,                      // default true
  *       width:    500,                       // px or 'auto' (default)
  *       height:   400,                       // px or 'auto' (default)
  *       buttons:  [                          // array or plain object
- *           { text: 'OK', click: function() { ctrl.close(); } }
+ *           { text: 'OK', icon: 'icon-ok', click: function() { ctrl.close(); } }
  *       ],
  *       close:    function() { ... },        // 'this' = content element
  *       open:     function() { ... },        // 'this' = content element
@@ -48,6 +49,7 @@ window.Dialog = function(opts) {
         contentEl.removeAttribute('title');
     }
 
+    var icon           = opts.icon    || '';
     var buttons        = opts.buttons || [];
     var closeCallback  = opts.close   || null;
     var openCallback   = opts.open    || null;
@@ -82,7 +84,16 @@ window.Dialog = function(opts) {
 
     var titleEl = document.createElement('span');
     titleEl.className = 'ft-dialog-title';
-    titleEl.textContent = title;
+
+    // Icon first, then the title as a text node — never innerHTML, so a title
+    // that happens to contain markup still renders literally. The icon leads,
+    // so it is never the part the title bar's ellipsis eats.
+    if (icon) {
+        var titleIcon = document.createElement('span');
+        titleIcon.className = icon + ' mr-1';
+        titleEl.appendChild(titleIcon);
+    }
+    titleEl.appendChild(document.createTextNode(title));
 
     var xBtn = document.createElement('button');
     xBtn.type = 'button';
@@ -143,7 +154,16 @@ window.Dialog = function(opts) {
             btns.forEach(function(btn) {
                 var b = document.createElement('button');
                 b.type    = 'button';
-                b.textContent = btn.text || '';
+                // Icon span plus a leading space, matching how icon buttons are
+                // written by hand elsewhere ('<span class="icon-plus"></span> Add').
+                if (btn.icon) {
+                    var bIcon = document.createElement('span');
+                    bIcon.className = btn.icon;
+                    b.appendChild(bIcon);
+                    b.appendChild(document.createTextNode(' ' + (btn.text || '')));
+                } else {
+                    b.textContent = btn.text || '';
+                }
                 if (btn.id)       b.id = btn.id;
                 if (btn.class)    b.className = btn.class;
                 if (btn.disabled) b.disabled = true;
@@ -274,6 +294,7 @@ window.Dialog = function(opts) {
  * Usage:
  *   ConfirmDialog({
  *       title:        'Confirm',          // dialog title (optional)
+ *       icon:         'icon-trash',       // webfont class shown before the title (optional)
  *       message:      'Are you sure?',    // body text shown to the user
  *       confirmLabel: 'Yes',              // confirm button label
  *       cancelLabel:  'Cancel',           // cancel button label
@@ -292,6 +313,7 @@ window.ConfirmDialog = function(opts) {
 
     var d = Dialog({
         title:   opts.title || '',
+        icon:    opts.icon  || '',
         content: contentEl,
         modal:   true,
         width:   opts.width || 380,

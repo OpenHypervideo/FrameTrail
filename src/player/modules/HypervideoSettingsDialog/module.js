@@ -330,6 +330,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
         var confirmDialogCtrl = Dialog({
             title:   labels['DurationChangeWarningTitle'],
+            icon:    'icon-attention',
             modal:   true,
             width:   450,
             content: confirmDialog,
@@ -1135,6 +1136,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
         hypervideoDialogCtrl = Dialog({
             title:   labels['SettingsHypervideoSettings'],
+            icon:    'icon-pencil',
             modal:   true,
             width:   830,
             height:  600,
