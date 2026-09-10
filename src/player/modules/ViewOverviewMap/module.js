@@ -720,8 +720,6 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         if (!MapRoot) return;
 
         var database = FrameTrail.module('Database'),
-            admin    = FrameTrail.module('UserManagement').userRole === 'admin',
-            userID   = FrameTrail.module('UserManagement').userID,
             reopenID = popupHypervideoID;
 
         closePopup();
@@ -755,11 +753,6 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             // The hypervideo may have been deleted since it was placed.
             // Dangling entries are pruned on the next save.
             if (!hypervideo) return;
-
-            // Stricter than the grid, which does not filter hidden at all:
-            // a curated public map must not leak someone else's hidden video.
-            var owner = hypervideo.creatorId === userID;
-            if (hypervideo.hidden && !owner && !admin) return;
 
             var marker = document.createElement('div');
             marker.className = 'overviewMapMarker';

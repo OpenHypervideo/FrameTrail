@@ -358,7 +358,6 @@ _data/
   },
   "config": {
     "layoutArea": { "areaTop": [], "areaBottom": [], "areaLeft": [], "areaRight": [] },
-    "hidden": false,
     "slidingMode": "overlay"
   },
   "clips": [

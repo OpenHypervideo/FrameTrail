@@ -307,7 +307,6 @@
                 get creatorId()     { return FrameTrail.module('HypervideoModel').creatorId },
                 get created()       { return FrameTrail.module('HypervideoModel').created },
                 get lastchanged()   { return FrameTrail.module('HypervideoModel').lastchanged },
-                get hidden()        { return FrameTrail.module('HypervideoModel').hidden },
                 get hypervideoName(){ return FrameTrail.module('HypervideoModel').hypervideoName },
                 get description()   { return FrameTrail.module('HypervideoModel').description },
             },

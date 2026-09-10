@@ -31,7 +31,6 @@ FrameTrail.defineModule('HypervideoPicker', function(FrameTrail){
                         : [];
 
         var hypervideos = FrameTrail.module('Database').hypervideos,
-            admin = FrameTrail.module('UserManagement').userRole === 'admin',
             currentHypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
 
         // Create dialog container
@@ -45,52 +44,46 @@ FrameTrail.defineModule('HypervideoPicker', function(FrameTrail){
 
         // Render hypervideo thumbs
         for (var id in hypervideos) {
-            var owner = hypervideos[id].creatorId === FrameTrail.module('UserManagement').userID;
-
             if (exclude.indexOf(String(id)) !== -1) continue;
 
-            // Show hypervideo if not hidden, or if user is owner/admin
-            if (!hypervideos[id].hidden || owner || admin) {
+            // One entry with incomplete data used to take the whole picker
+            // with it: this loop runs before the dialog is opened, so a
+            // throw here left the caller's button looking dead. Skip the
+            // entry, say so, and show the rest.
+            try {
 
-                // One entry with incomplete data used to take the whole picker
-                // with it: this loop runs before the dialog is opened, so a
-                // throw here left the caller's button looking dead. Skip the
-                // entry, say so, and show the rest.
-                try {
+                var hypervideo = FrameTrail.newObject('Hypervideo', hypervideos[id]);
+                var thumb = hypervideo.renderThumb();
 
-                    var hypervideo = FrameTrail.newObject('Hypervideo', hypervideos[id]);
-                    var thumb = hypervideo.renderThumb();
-
-                    // Mark current hypervideo
-                    if (thumb.dataset.hypervideoid == currentHypervideoID) {
-                        thumb.classList.add('activeHypervideo');
-                    }
-
-                    // Add selection behavior (hypervideoIcon has no listeners in vanilla renderThumb)
-                    thumb.querySelector('.hypervideoIcon').style.cursor = 'pointer';
-
-                    thumb.addEventListener('click', function(evt) {
-                        evt.preventDefault();
-                        evt.stopPropagation();
-
-                        var selectedHypervideoID = this.dataset.hypervideoid;
-
-                        // Close dialog
-                        pickerDialogCtrl.close();
-
-                        // Call callback with selected hypervideo ID
-                        if (callback && typeof callback === 'function') {
-                            callback(selectedHypervideoID);
-                        }
-                    });
-
-                    pickerList.append(thumb);
-
-                } catch (exception) {
-                    console.error('FrameTrail: could not render hypervideo ' + id + ' in the picker:', exception);
+                // Mark current hypervideo
+                if (thumb.dataset.hypervideoid == currentHypervideoID) {
+                    thumb.classList.add('activeHypervideo');
                 }
 
+                // Add selection behavior (hypervideoIcon has no listeners in vanilla renderThumb)
+                thumb.querySelector('.hypervideoIcon').style.cursor = 'pointer';
+
+                thumb.addEventListener('click', function(evt) {
+                    evt.preventDefault();
+                    evt.stopPropagation();
+
+                    var selectedHypervideoID = this.dataset.hypervideoid;
+
+                    // Close dialog
+                    pickerDialogCtrl.close();
+
+                    // Call callback with selected hypervideo ID
+                    if (callback && typeof callback === 'function') {
+                        callback(selectedHypervideoID);
+                    }
+                });
+
+                pickerList.append(thumb);
+
+            } catch (exception) {
+                console.error('FrameTrail: could not render hypervideo ' + id + ' in the picker:', exception);
             }
+
         }
 
         // Open dialog - CSS Grid handles responsive layout automatically

@@ -384,17 +384,8 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
         if (FrameTrail.module('RouteNavigation').hypervideoID) {
             domElement.querySelector('button[data-viewmode="video"]').style.display = '';
 
-            // count visible hypervideos
-            var hypervideos = FrameTrail.module('Database').hypervideos,
-                visibleCount = 0;
-            for (var id in hypervideos) {
-                if (!hypervideos[id].hidden) {
-                    visibleCount++;
-                }
-            }
-
             // hide 'Overview' and 'Video' controls when there's only one hypervideo
-            if (visibleCount == 1) {
+            if (Object.keys(FrameTrail.module('Database').hypervideos).length == 1) {
                 TitlebarViewMode.classList.add('hidden');
             }
 

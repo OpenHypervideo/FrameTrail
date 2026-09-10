@@ -241,7 +241,7 @@ FrameTrail.init({
         hypervideo: {
             meta: { name: 'My Video', creator: 'Anonymous', creatorId: 'anon',
                     created: Date.now(), lastchanged: Date.now() },
-            config: { layoutArea: {}, hidden: false },
+            config: { layoutArea: {} },
             clips: [{ resourceId: 'my-video', duration: 120, start: 0, end: 120 }],
             contents: [],
             subtitles: {},

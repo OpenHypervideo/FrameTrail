@@ -816,7 +816,6 @@
                                 "creatorId": hypervideoData.meta.creatorId,
                                 "created": hypervideoData.meta.created,
                                 "lastchanged": hypervideoData.meta.lastchanged,
-                                "hidden": hypervideoData.config.hidden,
                                 "config": hypervideoData.config,
                                 "mainAnnotation": annotationsIndex.mainAnnotation,
                                 "annotationfiles": annotationsIndex.annotationfiles,
@@ -884,7 +883,6 @@
                 "creatorId": hypervideoData.meta.creatorId,
                 "created": hypervideoData.meta.created,
                 "lastchanged": hypervideoData.meta.lastchanged,
-                "hidden": hypervideoData.config.hidden,
                 "config": hypervideoData.config,
                 "mainAnnotation": null,
                 "annotationfiles": null,
@@ -948,7 +946,6 @@
                                 "creatorId": hypervideoData.meta.creatorId,
                                 "created": hypervideoData.meta.created,
                                 "lastchanged": hypervideoData.meta.lastchanged,
-                                "hidden": hypervideoData.config.hidden,
                                 "config": hypervideoData.config,
                                 "mainAnnotation": annotationsIndex.mainAnnotation || null,
                                 "annotationfiles": annotationsIndex.annotationfiles || null,
@@ -1576,7 +1573,6 @@
                 "autohideControls": hypervideos[thisHypervideoID].config.autohideControls,
                 "captionsVisible": hypervideos[thisHypervideoID].config.captionsVisible,
                 "clipTimeVisible": hypervideos[thisHypervideoID].config.clipTimeVisible,
-                "hidden": hypervideos[thisHypervideoID].hidden,
                 "theme": hypervideos[thisHypervideoID].config.theme || "",
                 "layoutArea": (function () {
                     var layoutArea = (FrameTrail.module('ViewLayout') && FrameTrail.module('ViewLayout').getLayoutAreaData)

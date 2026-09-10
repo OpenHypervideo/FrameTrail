@@ -71,7 +71,6 @@
                         lastchanged: Date.now()
                     },
                     config: {
-                        hidden:            false,
                         slidingMode:       'none',
                         slidingTrigger:    'click',
                         autohideControls:  false,

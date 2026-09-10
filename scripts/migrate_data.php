@@ -810,7 +810,7 @@ function migrateConfig($srcDir, $outDir) {
         // Slavin-style project.json: merge into default template
         $project = json_decode(file_get_contents($srcDir . "/project.json"), true);
         $config = $DEFAULT_CONFIG;
-        $mappable = ['userNeedsConfirmation', 'defaultHypervideoHidden', 'theme'];
+        $mappable = ['userNeedsConfirmation', 'theme'];
         foreach ($mappable as $key) {
             if (isset($project[$key])) {
                 $config[$key] = $project[$key];
