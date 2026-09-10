@@ -51,7 +51,7 @@ docker compose up -d
 
 Open `http://localhost:8080` and follow the setup wizard. The `Dockerfile` builds the minified bundle from source in a throwaway Node stage (mirrors `scripts/build.sh`) and serves it via PHP + Apache — no Node or build tooling ends up in the final image. `_data/` persists in the named `frametrail_data` volume across container restarts/upgrades.
 
-FFmpeg (server-side video transcoding + thumbnail/scrub-sprite generation) is left out by default to keep the image lean (~500MB smaller); the app detects its absence at runtime and skips those features gracefully. To include it:
+FFmpeg (server-side video transcoding + thumbnail/scrub-sprite generation) is left out by default to keep the image lean (~400MB smaller); the app detects its absence at runtime and skips those features gracefully. To include it:
 
 ```bash
 docker compose build --build-arg WITH_FFMPEG=true

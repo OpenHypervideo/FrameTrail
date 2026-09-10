@@ -25,21 +25,22 @@ RUN npm install -g terser csso-cli \
 ########################################
 FROM php:8.3-apache
 
-# ffmpeg adds ~500MB (codecs/libs) for a feature (server-side video transcoding +
+# ffmpeg adds ~400MB (codecs/libs) for a feature (server-side video transcoding +
 # thumbnail/scrub-sprite generation) the app detects at runtime and silently skips
 # if absent. Off by default for a lean image; opt in with --build-arg WITH_FFMPEG=true.
 ARG WITH_FFMPEG=false
 
-# gd   -> image thumbnails (src/_server/files.php)
-# curl -> oEmbed / OpenGraph resource previews
+# gd  -> image thumbnails (src/_server/files.php)
+# zip -> ZipArchive for the "Save As -> All Data" export (ajaxServer.php: dataExport)
+# curl is already compiled into the base image (--with-curl), so it is not installed here.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libfreetype6-dev \
         libjpeg62-turbo-dev \
         libpng-dev \
-        libcurl4-openssl-dev \
+        libzip-dev \
         $( [ "$WITH_FFMPEG" = "true" ] && echo ffmpeg ) \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install -j"$(nproc)" gd curl \
+    && docker-php-ext-install -j"$(nproc)" gd zip \
     && a2enmod rewrite \
     && printf '<Directory /var/www/html>\n    AllowOverride All\n</Directory>\n' \
         >> /etc/apache2/apache2.conf \
@@ -47,13 +48,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     # marks them "manually installed" so the --auto-remove purge below doesn't
     # treat them as orphaned deps of the -dev packages and remove them too.
     && apt-get install -y --no-install-recommends \
-        libfreetype6 libjpeg62-turbo libpng16-16t64 libcurl4t64 \
+        libfreetype6 libjpeg62-turbo libpng16-16t64 libzip5 \
     && apt-get purge -y --auto-remove \
-        libfreetype6-dev libjpeg62-turbo-dev libpng-dev libcurl4-openssl-dev \
+        libfreetype6-dev libjpeg62-turbo-dev libpng-dev libzip-dev \
     && rm -rf /var/lib/apt/lists/* \
     # Fail the build loudly (rather than shipping a broken image) if a future base
     # image bump renames the runtime lib packages above and breaks extension loading.
-    && php -m | grep -qx gd && php -m | grep -qx curl
+    && php -m | grep -qx gd && php -m | grep -qx zip && php -m | grep -qx curl
 
 WORKDIR /var/www/html
 COPY --from=build /src/build/ ./

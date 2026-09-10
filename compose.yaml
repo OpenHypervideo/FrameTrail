@@ -3,7 +3,7 @@ services:
     build:
       context: .
       # args:
-      #   WITH_FFMPEG: "true"   # adds ffmpeg for server-side transcoding (~500MB larger)
+      #   WITH_FFMPEG: "true"   # adds ffmpeg for server-side transcoding (~400MB larger)
     ports:
       - "8080:80"
     volumes:

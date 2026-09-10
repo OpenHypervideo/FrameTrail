@@ -8,3 +8,12 @@ CLAUDE.md
 build
 node_modules
 scripts/node_modules
+
+# Runtime data directories (mirrors .gitignore) — these can be hundreds of MB
+# and contain user accounts and uploaded media; they must never enter the build context.
+**/_data
+**/_data-*
+**/_data_*
+plans
+.claude
+**/.DS_Store
