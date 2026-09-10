@@ -74,10 +74,31 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      * the tail of a drag into one request, short enough that letting go of a
      * pin and closing the tab keeps the placement.
      */
-        SAVE_DEBOUNCE_MS    = 400;
+        SAVE_DEBOUNCE_MS    = 400,
+
+    /**
+     * Smallest the padded inner box may become on either axis. A padding
+     * wider than its container would give the stage a negative size, and
+     * every pin percentage with it.
+     */
+        MIN_INNER_PX        = 40,
+
+    /**
+     * The pin animations the canvas knows how to run. Kept as a list so that
+     * switching one on is switching every other one off, and so that a value
+     * the canvas does not know simply animates nothing.
+     */
+        PIN_ANIMATIONS      = ['ripple', 'pulse', 'scale', 'wobble', 'glow'],
+
+    /**
+     * The glyph an icon pin falls back to when none is configured, or when
+     * what is configured cannot be a class name.
+     */
+        DEFAULT_PIN_ICON    = 'icon-location-2';
 
 
     var MapRoot         = null,     // .overviewMap  — the viewport box
+        MapFrame        = null,     // .overviewMapFrame — the padded inner box
         MapStage        = null,     // .overviewMapStage — the image box
         BackgroundImage = null,
         Popup           = null,
@@ -137,6 +158,108 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
     function getMarkerData(hypervideoID) {
 
         return getMapData().markers[String(hypervideoID)] || null;
+
+    }
+
+
+    /**
+     * I resolve the configured padding into a pixel inset per axis.
+     *
+     * A percentage resolves against the viewport box's WIDTH on both axes,
+     * exactly as a CSS percentage padding does, so the ring stays the same
+     * thickness all the way round instead of stretching with the container's
+     * aspect ratio.
+     *
+     * The clamp is per axis and deliberately not proportional: a padding that
+     * is merely generous on a wide window can be wider than a narrow one is
+     * tall, and an inner box of zero would take every pin percentage down
+     * with it.
+     *
+     * @method resolvePadding
+     * @param {Object} mapData
+     * @param {Number} cw viewport box width in px
+     * @param {Number} ch viewport box height in px
+     * @return {Object} { x: Number, y: Number } in px
+     */
+    function resolvePadding(mapData, cw, ch) {
+
+        var value = parseFloat(mapData.padding);
+
+        if (!isFinite(value) || value <= 0) return { x: 0, y: 0 };
+
+        var pixels = (mapData.paddingUnit === 'px') ? value : (value / 100) * cw;
+
+        return {
+            x: Math.max(0, Math.min(pixels, (cw - MIN_INNER_PX) / 2)),
+            y: Math.max(0, Math.min(pixels, (ch - MIN_INNER_PX) / 2))
+        };
+
+    }
+
+
+    /**
+     * I return what the pins show: the hypervideo's thumbnail, or one glyph
+     * for all of them.
+     *
+     * @method getPinStyle
+     * @return {String} 'icon' or 'thumb'
+     */
+    function getPinStyle() {
+
+        return (getMapData().pinStyle === 'icon') ? 'icon' : 'thumb';
+
+    }
+
+
+    /**
+     * I reduce whatever was typed or stored to something that can be a class
+     * name, and prefix the bare glyph name for anyone who typed 'map' rather
+     * than 'icon-map'.
+     *
+     * This is not hygiene. The value is interpolated into markup when the
+     * settings dialog is built and into a class attribute when a pin is; the
+     * server stores the map's top-level keys verbatim with no whitelist, and
+     * _data files are hand-editable. I am the only gate between the two, so
+     * the settings dialog shares me rather than keeping a second copy that
+     * can only drift.
+     *
+     * @method sanitizeIconClass
+     * @param {String} value
+     * @return {String}
+     */
+    function sanitizeIconClass(value) {
+
+        var raw = String(value || '').trim();
+
+        if (!/^[A-Za-z0-9_-]+$/.test(raw)) return DEFAULT_PIN_ICON;
+
+        return (raw.indexOf('icon-') === 0) ? raw : ('icon-' + raw);
+
+    }
+
+
+    /**
+     * I return the icon class every pin wears in icon mode.
+     *
+     * @method getPinIcon
+     * @return {String}
+     */
+    function getPinIcon() {
+
+        return sanitizeIconClass(getMapData().pinIcon);
+
+    }
+
+
+    /**
+     * @method getPinAnimation
+     * @return {String} one of PIN_ANIMATIONS, or 'none'
+     */
+    function getPinAnimation() {
+
+        var value = getMapData().pinAnimation;
+
+        return (PIN_ANIMATIONS.indexOf(value) !== -1) ? value : 'none';
 
     }
 
@@ -237,8 +360,10 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         // arranged. "Done" is what ends that — a mode nobody can see the end of
         // is a mode people stay in, holding the lock against everyone else.
         _wrapper.innerHTML = '<div class="overviewMap">'
-                           + '    <div class="overviewMapStage">'
-                           + '        <img class="overviewMapBackground" alt="">'
+                           + '    <div class="overviewMapFrame">'
+                           + '        <div class="overviewMapStage">'
+                           + '            <img class="overviewMapBackground" alt="">'
+                           + '        </div>'
                            + '    </div>'
                            + '    <div class="overviewMapToolbar">'
                            + '        <button class="overviewMapAddButton" data-tooltip-bottom-left="'+ labels['OverviewMapAddHypervideo'] +'"><span class="icon-plus-squared"></span></button>'
@@ -249,6 +374,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
                            + '</div>';
 
         MapRoot         = _wrapper.firstElementChild;
+        MapFrame        = MapRoot.querySelector('.overviewMapFrame');
         MapStage        = MapRoot.querySelector('.overviewMapStage');
         BackgroundImage = MapRoot.querySelector('.overviewMapBackground');
         Popup           = MapRoot.querySelector('.overviewMapPopup');
@@ -364,22 +490,38 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         }
 
         var mapData = getMapData(),
-            fit     = (mapData.fit === 'cover') ? 'cover' : 'contain';
+            fit     = (mapData.fit === 'cover') ? 'cover' : 'contain',
+            pad     = resolvePadding(mapData, cw, ch),
+            frameW  = cw - 2 * pad.x,
+            frameH  = ch - 2 * pad.y;
 
-        var memo = [cw, ch, fit, bgW, bgH].join('|');
+        // Only 'cover' has an overscan to clip, and clipping costs the pins
+        // near the edge the label and ripple room the padding was added to
+        // give them. Set before the memo check, so it is right on a memo hit.
+        MapRoot.classList.toggle('fitCover', fit === 'cover');
+
+        // The padding is part of the geometry: without it here, changing the
+        // ring would leave the stage sitting exactly where it was.
+        var memo = [cw, ch, fit, bgW, bgH, pad.x, pad.y].join('|');
         if (memo === layoutMemo) return;
         layoutMemo = memo;
 
         var scale  = (fit === 'cover')
-                        ? Math.max(cw / bgW, ch / bgH)
-                        : Math.min(cw / bgW, ch / bgH),
+                        ? Math.max(frameW / bgW, frameH / bgH)
+                        : Math.min(frameW / bgW, frameH / bgH),
             stageW = bgW * scale,
             stageH = bgH * scale;
 
+        MapFrame.style.left   = pad.x + 'px';
+        MapFrame.style.top    = pad.y + 'px';
+        MapFrame.style.width  = frameW + 'px';
+        MapFrame.style.height = frameH + 'px';
+
         // Not rounded on purpose: rounding introduces sub-pixel drift between
-        // the image and the %-positioned pins.
-        MapStage.style.left   = ((cw - stageW) / 2) + 'px';
-        MapStage.style.top    = ((ch - stageH) / 2) + 'px';
+        // the image and the %-positioned pins. Offsets are against the frame,
+        // which is the stage's containing block.
+        MapStage.style.left   = ((frameW - stageW) / 2) + 'px';
+        MapStage.style.top    = ((frameH - stageH) / 2) + 'px';
         MapStage.style.width  = stageW + 'px';
         MapStage.style.height = stageH + 'px';
 
@@ -446,12 +588,38 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
             var diameter = Math.max(MARKER_MIN_PX, (data.size / 100) * stageW);
 
-            element.style.left   = (data.x * 100) + '%';
-            element.style.top    = (data.y * 100) + '%';
-            element.style.width  = diameter + 'px';
-            element.style.height = diameter + 'px';
+            element.style.left = (data.x * 100) + '%';
+            element.style.top  = (data.y * 100) + '%';
+
+            applyMarkerDiameter(element, diameter);
 
         });
+
+    }
+
+
+    /**
+     * I write a pin's rendered diameter onto its element.
+     *
+     * The font-size is the diameter, not decoration: an icon pin's glyph is
+     * sized in em, so this is the one thing that makes it track the pin. It
+     * lives here rather than at each call site because the resize gesture sizes
+     * a pin directly, without going through layoutMarkers() — and a second copy
+     * of these three lines is exactly how the glyph came to stop resizing until
+     * the next full render.
+     *
+     * Harmless in thumbnail mode: everything else inside a pin is sized in px,
+     * the label included.
+     *
+     * @method applyMarkerDiameter
+     * @param {HTMLElement} element
+     * @param {Number} diameter in px
+     */
+    function applyMarkerDiameter(element, diameter) {
+
+        element.style.width    = diameter + 'px';
+        element.style.height   = diameter + 'px';
+        element.style.fontSize = diameter + 'px';
 
     }
 
@@ -494,6 +662,31 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
         BackgroundImage.setAttribute('src', url);
         layoutMemo = null;
+
+    }
+
+
+    /**
+     * I put the map-wide pin appearance on the viewport box.
+     *
+     * One class per property on one element, rather than a class on every pin:
+     * these are properties of the map, not of any one pin, and no pin should
+     * have to be rebuilt to change how the map animates. It is also what lets
+     * the settings dialog preview a choice by putting a real pin inside a real
+     * (miniature) viewport box, instead of maintaining a second set of rules
+     * that can only drift from these.
+     *
+     * @method applyPinAppearance
+     */
+    function applyPinAppearance() {
+
+        var animation = getPinAnimation();
+
+        PIN_ANIMATIONS.forEach(function(name) {
+            MapRoot.classList.toggle('pinAnimation-' + name, name === animation);
+        });
+
+        MapRoot.classList.toggle('pinStyle-icon', getPinStyle() === 'icon');
 
     }
 
@@ -547,10 +740,13 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
         applyAutoPlace();
         applyBackground();
+        applyPinAppearance();
 
         var markers        = getMapData().markers,
             activeID       = FrameTrail.module('RouteNavigation').hypervideoID,
-            editable       = canEditMap();
+            editable       = canEditMap(),
+            pinStyle       = getPinStyle(),
+            pinIcon        = getPinIcon();
 
         Object.keys(markers).forEach(function(hypervideoID) {
 
@@ -570,9 +766,28 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             marker.setAttribute('data-hypervideoid', hypervideoID);
             marker.setAttribute('data-name', hypervideo.name || '');
 
-            if (hypervideo.thumb) {
-                marker.style.backgroundImage = 'url(' + FrameTrail.module('RouteNavigation').getResourceURL(hypervideo.thumb) + ')';
+            // Everything the pin looks like lives on an inner element, and
+            // everything it IS — the anchor point, the hit area, the resize
+            // handles — stays on the pin itself. That split is what lets the
+            // animations transform the pin's appearance without dragging the
+            // title label round with it, without clobbering the centring
+            // translate, and without moving the resize handles out from under
+            // the cursor while the map is being arranged.
+            var markerBody = document.createElement('div');
+            markerBody.className = 'overviewMapMarkerBody';
+
+            if (pinStyle === 'icon') {
+                // A child span rather than an icon class on the body: the
+                // font's rule renders the glyph through ::before, which the
+                // body would then have no way to also use for anything else.
+                var markerIcon = document.createElement('span');
+                markerIcon.className = 'overviewMapMarkerIcon ' + pinIcon;
+                markerBody.append(markerIcon);
+            } else if (hypervideo.thumb) {
+                markerBody.style.backgroundImage = 'url(' + FrameTrail.module('RouteNavigation').getResourceURL(hypervideo.thumb) + ')';
             }
+
+            marker.append(markerBody);
 
             if (hypervideoID == activeID) {
                 marker.classList.add('activeHypervideo');
@@ -1032,8 +1247,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
                     data.size = diameter / stageRect.width * 100;
 
-                    marker.style.width  = diameter + 'px';
-                    marker.style.height = diameter + 'px';
+                    applyMarkerDiameter(marker, diameter);
                 },
                 end: function() {
                     marker.classList.remove('resizing');
@@ -1439,7 +1653,14 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         reload:             reload,
         addHypervideo:      addHypervideo,
         notePendingAutoPlace: notePendingAutoPlace,
-        isEmpty:            isEmpty
+        isEmpty:            isEmpty,
+
+        // Shared with OverviewMapSettingsDialog, so that the list it offers
+        // and the rule it validates against are the ones the canvas actually
+        // implements.
+        pinAnimations:      PIN_ANIMATIONS,
+        defaultPinIcon:     DEFAULT_PIN_ICON,
+        sanitizeIconClass:  sanitizeIconClass
 
     };
 

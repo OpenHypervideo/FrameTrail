@@ -14,6 +14,32 @@
 }
 
 /*
+ * The padding frame is the box the background image is fitted into: sized and
+ * positioned in px by layoutStage(), inset by the configured padding.
+ *
+ * A CSS padding on the viewport box would not do the job, twice over. overflow
+ * clips at the border box rather than the padding box, so a 'cover' overscan
+ * would bleed straight through the ring it is supposed to sit inside; and the
+ * toolbar and the card are positioned against the viewport box, so they would
+ * be pushed inwards with it. Like the stage inside it, I carry no border and
+ * no padding of my own.
+ */
+.overviewMapFrame {
+    position: absolute;
+    border: 0;
+    padding: 0;
+}
+
+/*
+ * Only 'cover' has an overscan to clip. Under 'contain' the image already fits
+ * inside me, and clipping would cost the pins near the edge exactly the label
+ * and ripple room the padding was added to give them.
+ */
+.overviewMap.fitCover .overviewMapFrame {
+    overflow: hidden;
+}
+
+/*
  * The stage IS the background image's box: sized in px by layoutStage().
  * It must carry no border and no padding — percentage offsets on the pins
  * resolve against the padding box, so either would break the position lock.
@@ -55,34 +81,89 @@
  * Pins. left/top are percentages of the stage, i.e. normalized image
  * coordinates; translate(-50%, -50%) makes that percentage the pin's centre,
  * so resizing a pin never moves it off the feature it marks.
+ *
+ * The pin is the anchor: position, hit area, resize handles, stacking. What it
+ * LOOKS like is one element in, on .overviewMapMarkerBody. The split is what
+ * lets an animation transform the pin's appearance without rotating the title
+ * label with it, without replacing the centring translate above (an animation
+ * replaces the whole property for its duration), and without moving the resize
+ * handles out from under the cursor while the map is being arranged.
  */
 .overviewMapMarker {
     position: absolute;
     transform: translate(-50%, -50%);
+    cursor: pointer;
+    z-index: 1;
+}
+
+.overviewMapMarkerBody {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
     border-radius: 50%;
-    background-color: #333333;
+    /*
+     * The pin palette is the theme's the other way round: foreground where the
+     * rest of the UI puts background, and vice versa. A pin sits on somebody
+     * else's photograph or map artwork rather than on the app's own ground, so
+     * taking the theme's background colour would camouflage it against exactly
+     * the thing it has to stand out from. Every colour below — border, fill,
+     * label, glyph, ripple, glow — is inverted together, so a pin reads as one
+     * object rather than as a mix of the two palettes.
+     */
+    background-color: #f8f8f8;
     background-size: cover;
     background-position: center;
-    border: 2px solid rgba(53, 57, 60, 0.7);
+    border: 2px solid rgba(248, 248, 248, 0.7);
     box-sizing: border-box;
+    /* The shadows stay dark throughout: they are depth, not a palette role. */
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.4);
-    cursor: pointer;
-    transition-property: border-color, box-shadow;
+    transition-property: border-color, box-shadow, color, filter;
     transition-duration: 200ms;
     transition-timing-function: linear;
 }
 
 .overviewMapMarker:hover {
-    border-color: #f8f8f8;
-    z-index: 3;
+    z-index: 4;
+}
+
+/*
+ * Hover deepens the shadow and changes nothing else.
+ *
+ * A pin stands on somebody else's artwork, so a hover that recolours it either
+ * vanishes into that artwork or fights it, and the colour that reads best over
+ * one background is the wrong one over the next. Lifting the pin off the map
+ * instead says the same thing against any background, in both pin styles and
+ * in every theme. The z-index above does the rest: the hovered pin and its
+ * label come out from under their neighbours'.
+ */
+.overviewMapMarker:hover .overviewMapMarkerBody {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.55);
 }
 
 .overviewMapMarker.activeHypervideo {
-    border-color: var(--primary-fg-color);
-    box-shadow: 0 0 0 3px var(--primary-fg-color), 0 2px 6px rgba(0, 0, 0, 0.4);
-    z-index: 2;
+    z-index: 3;
 }
 
+.overviewMapMarker.activeHypervideo .overviewMapMarkerBody {
+    border-color: var(--primary-bg-color);
+    box-shadow: 0 0 0 3px var(--primary-bg-color), 0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+/* The active pin's ring IS its box-shadow, and it ties with the hover rule on
+   specificity — so hovering it would otherwise lose the lift to source order.
+   It gets its own hover, keeping the ring and taking the deeper shadow. */
+.overviewMapMarker.activeHypervideo:hover .overviewMapMarkerBody {
+    box-shadow: 0 0 0 3px var(--primary-bg-color), 0 4px 12px rgba(0, 0, 0, 0.55);
+}
+
+/*
+ * Titles are always on, not revealed by hover: on a map the whole point of a
+ * pin is WHICH hypervideo it is, and a map of anonymous dots makes the reader
+ * hunt for that one pin at a time. Hover still raises the pin's z-index, which
+ * is what lifts a label out from under a neighbour's on a crowded map.
+ */
 .overviewMapMarkerLabel {
     position: absolute;
     top: 100%;
@@ -91,18 +172,21 @@
     margin-top: 6px;
     padding: 2px 8px;
     border-radius: 4px;
-    background: var(--primary-fg-color);
-    color: var(--primary-bg-color);
+    background: var(--primary-bg-color);
+    color: var(--primary-fg-color);
     font-size: 12px;
     white-space: nowrap;
+    max-width: 160px;
+    overflow: hidden;
+    text-overflow: ellipsis;
     pointer-events: none;
-    opacity: 0;
     transition: opacity 200ms linear;
 }
 
-.overviewMapMarker:hover .overviewMapMarkerLabel,
-.overviewMapMarker.activeHypervideo .overviewMapMarkerLabel {
-    opacity: 1;
+/* A label on the pin being placed only hides what is being placed. */
+.overviewMapMarker.dragging .overviewMapMarkerLabel,
+.overviewMapMarker.resizing .overviewMapMarkerLabel {
+    opacity: 0;
 }
 
 /*
@@ -134,6 +218,243 @@
 .overviewMapMarker.dragging {
     opacity: 0.85;
     z-index: 5;
+}
+
+/* ------------------------------------------------------------------------ *
+ *  Icon pins
+ *
+ *  A bare glyph, with no disc behind it: a teardrop drawn inside a circle
+ *  reads as a badge, not as a pin, and half the point of choosing an icon is
+ *  that it looks like something dropped onto a map. The pin's box is still
+ *  there and still square, so the hit area, the anchor point and the resize
+ *  handles are exactly what they are for a thumbnail pin.
+ * ------------------------------------------------------------------------ */
+
+.overviewMap.pinStyle-icon .overviewMapMarkerBody {
+    background-color: transparent;
+    background-image: none;
+    border: 0;
+    border-radius: 0;
+    /* drop-shadow follows the glyph's alpha; box-shadow would trace the
+       invisible square box the glyph sits in. */
+    box-shadow: none;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+    color: var(--primary-bg-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* The same lift as a thumbnail pin, through the shadow the glyph already
+   carries. An icon pin has no border to sharpen and its glyph is drawn in the
+   background colour at full opacity, so there is nothing to brighten either —
+   the shadow is the whole affordance here. */
+.overviewMap.pinStyle-icon .overviewMapMarker:hover .overviewMapMarkerBody {
+    filter: drop-shadow(0 3px 7px rgba(0, 0, 0, 0.7));
+}
+
+/* The active pin has no border to carry its ring, so it is marked by a halo
+   in the theme colour instead. */
+.overviewMap.pinStyle-icon .overviewMapMarker.activeHypervideo .overviewMapMarkerBody {
+    filter: drop-shadow(0 0 5px var(--primary-bg-color)) drop-shadow(0 2px 3px rgba(0, 0, 0, 0.55));
+}
+
+/* Ties with the hover rule on specificity, as in thumbnail mode: the active
+   icon pin keeps its halo and takes the deeper shadow. */
+.overviewMap.pinStyle-icon .overviewMapMarker.activeHypervideo:hover .overviewMapMarkerBody {
+    filter: drop-shadow(0 0 5px var(--primary-bg-color)) drop-shadow(0 3px 7px rgba(0, 0, 0, 0.7));
+}
+
+.overviewMapMarkerIcon {
+    line-height: 1;
+    /* The pin owns hover, drag and click; the glyph is decoration. */
+    pointer-events: none;
+    user-select: none;
+}
+
+/*
+ * The pin's font-size is its diameter (layoutMarkers), so an em here is a
+ * fixed fraction of the pin at every canvas size. The icon font's base rule
+ * gives every glyph a 1em box with .2em side margins for inline use; both are
+ * cleared, so a wide glyph still sits on the pin's middle. Only font-family
+ * carries !important in that rule, so this wins.
+ */
+.overviewMapMarkerIcon::before {
+    display: block;
+    font-size: 1em;
+    width: auto;
+    margin: 0px;
+    line-height: 1;
+}
+
+/* ------------------------------------------------------------------------ *
+ *  Pin animations
+ *
+ *  All five are map-wide and switched by a single class on the viewport box,
+ *  so no pin is ever re-classed to change how the map animates — and the
+ *  settings dialog can preview one by putting a real pin inside a real,
+ *  miniature viewport box, rather than keeping a second set of rules that
+ *  could only drift from these.
+ *
+ *  They run in editing too. That costs nothing here because they animate the
+ *  pin's body, while the resize handles hang off the pin itself: a breathing
+ *  pin keeps its handles exactly where the cursor left them.
+ *
+ *  Nothing but transform and opacity is animated, and the two expensive
+ *  effects live on pseudo-elements, so a map of fifty pins stays on the
+ *  compositor.
+ * ------------------------------------------------------------------------ */
+
+/*
+ * Ripple: two rings half a cycle apart, expanding out of the pin's outline.
+ * Rings rather than the pin, because growing the pin would grow its hit area
+ * and drag its resize handles outwards with it. They are on the pin and not on
+ * its body so that the body's icon-mode drop-shadow does not blur them.
+ */
+.overviewMap.pinAnimation-ripple .overviewMapMarker::before,
+.overviewMap.pinAnimation-ripple .overviewMapMarker::after {
+    content: '';
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    border: 2px solid var(--primary-bg-color);
+    border-radius: 50%;
+    transform-origin: center center;
+    pointer-events: none;
+    animation: overviewMapPinRipple 2400ms ease-out infinite;
+}
+
+.overviewMap.pinAnimation-ripple .overviewMapMarker::before {
+    animation-delay: 1200ms;
+}
+
+@keyframes overviewMapPinRipple {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(2.6);
+        opacity: 0;
+    }
+}
+
+/* Pulse: opacity only, so the pin's geometry — and everything positioned
+   against it — stays exactly where it is. */
+.overviewMap.pinAnimation-pulse .overviewMapMarkerBody {
+    animation: overviewMapPinPulse 1800ms ease-in-out infinite;
+}
+
+@keyframes overviewMapPinPulse {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.45; }
+}
+
+.overviewMap.pinAnimation-scale .overviewMapMarkerBody {
+    animation: overviewMapPinScale 2600ms ease-in-out infinite;
+}
+
+@keyframes overviewMapPinScale {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.14); }
+}
+
+/* A circle turning about its own centre shows nothing but its content
+   rotating. Rocking it about its lowest point swings the whole pin, so it
+   reads as a marker planted on the spot it marks. */
+.overviewMap.pinAnimation-wobble .overviewMapMarkerBody {
+    transform-origin: 50% 100%;
+    animation: overviewMapPinWobble 1600ms ease-in-out infinite;
+}
+
+@keyframes overviewMapPinWobble {
+    0%, 100% { transform: rotate(0deg); }
+    25%      { transform: rotate(-7deg); }
+    75%      { transform: rotate(7deg); }
+}
+
+/*
+ * Glow is a halo on ::after carrying a static shadow whose opacity animates,
+ * not an animated box-shadow on the pin. An animation replaces the whole
+ * property for its duration, and .activeHypervideo's ring IS a box-shadow — so
+ * animating the body's would blank the "you are here" ring on the one pin that
+ * needs it. Animating opacity also spares the compositor a blurred repaint
+ * every frame. It sits behind the pin, so the halo surrounds it rather than
+ * washing the thumbnail out.
+ */
+.overviewMap.pinAnimation-glow .overviewMapMarker::after {
+    content: '';
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    box-shadow: 0 0 14px 5px var(--primary-bg-color);
+    pointer-events: none;
+    z-index: -1;
+    animation: overviewMapPinGlow 2000ms ease-in-out infinite;
+}
+
+@keyframes overviewMapPinGlow {
+    0%, 100% { opacity: 0.15; }
+    50%      { opacity: 0.9; }
+}
+
+/*
+ * Stopping an animation is not enough for the two pseudo-element effects:
+ * frozen, a ripple is a permanent ring and a glow a permanent halo.
+ */
+@media (prefers-reduced-motion: reduce) {
+
+    .overviewMap.pinAnimation-pulse .overviewMapMarkerBody,
+    .overviewMap.pinAnimation-scale .overviewMapMarkerBody,
+    .overviewMap.pinAnimation-wobble .overviewMapMarkerBody {
+        animation: none;
+    }
+
+    .overviewMap.pinAnimation-ripple .overviewMapMarker::before,
+    .overviewMap.pinAnimation-ripple .overviewMapMarker::after,
+    .overviewMap.pinAnimation-glow .overviewMapMarker::after {
+        display: none;
+    }
+
+}
+
+/* ------------------------------------------------------------------------ *
+ *  Pin previews in the map settings dialog
+ *
+ *  The dialog previews a choice with a real .overviewMap holding a real pin,
+ *  which is what stops a settings card from advertising something the canvas
+ *  does not do. A card is not a map, though. A pin on the canvas stands on
+ *  somebody's background image, which is exactly why its palette is the
+ *  theme's inverted — while a preview stands on the dialog's own background
+ *  colour, where that same inversion paints the pin in the colour already
+ *  behind it, and the card goes blank.
+ *
+ *  So inside a preview, and only there, the pin wears the theme the right way
+ *  up. Must stay last: the ripple rings match on specificity, so it is source
+ *  order that settles them.
+ * ------------------------------------------------------------------------ */
+
+.overviewMap.overviewMapPreview .overviewMapMarkerBody {
+    border-color: rgba(53, 57, 60, 0.7);
+}
+
+.overviewMap.overviewMapPreview.pinStyle-icon .overviewMapMarkerBody {
+    color: var(--primary-fg-color);
+}
+
+.overviewMap.overviewMapPreview .overviewMapMarker::before,
+.overviewMap.overviewMapPreview .overviewMapMarker::after {
+    border-color: var(--primary-fg-color);
+}
+
+.overviewMap.overviewMapPreview.pinAnimation-glow .overviewMapMarker::after {
+    box-shadow: 0 0 14px 5px var(--primary-fg-color);
 }
 
 /*
