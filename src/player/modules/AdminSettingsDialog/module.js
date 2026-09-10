@@ -869,6 +869,11 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                 setLiveGlobalCSS(cssEditorValue);
                             }
                             
+                            // One tick per write we actually issue. Only the
+                            // save callbacks may tick it: a branch we skip has
+                            // nothing to wait for, so counting it here as well
+                            // completed the batch before the write it was
+                            // waiting on had even answered.
                             var saveCount = 0;
                             var saveTotal = (configChanged ? 1 : 0) + (globalCSSChanged ? 1 : 0);
                             var saveError = null;
@@ -955,10 +960,8 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                     }
                                     checkSaveComplete();
                                 });
-                            } else {
-                                checkSaveComplete();
                             }
-                            
+
                             if (globalCSSChanged) {
                                 FrameTrail.module('Database').saveGlobalCSS(function(result) {
                                     if (!result.success) {
@@ -968,8 +971,6 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                     }
                                     checkSaveComplete();
                                 });
-                            } else {
-                                checkSaveComplete();
                             }
                         } else {
                             adminDialogCtrl.close();

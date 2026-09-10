@@ -70,11 +70,13 @@
     margin-left: -20px;
     margin-top: -24px;
     color: var(--primary-fg-color);
+    background: var(--primary-bg-color);
+    border-radius: 50%;
     text-shadow: 0px 0px 20px var(--primary-bg-color);
 }
 
 .hypervideoThumb.activeHypervideo .hypervideoIcon [class^="icon-"]::before, .hypervideoThumb.activeHypervideo .hypervideoIcon [class*=" icon-"]::before {
-    content: "\e8a9";
+    content: "\f28b";
 }
 
 .hypervideoThumb .hypervideoTitle {

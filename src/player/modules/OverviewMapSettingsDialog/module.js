@@ -42,8 +42,9 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
      * documentation for the free-text field below them — and saves a dozen
      * locale keys that could only ever have restated an icon.
      */
-    var PIN_ICONS = ['icon-hypervideo', 'icon-play-circled', 'icon-video-circled',
-                     'icon-location', 'icon-location-circled', 'icon-dot-circled'];
+    var PIN_ICONS = ['icon-hypervideo', 'icon-play', 'icon-play-circled',
+                     'icon-play-circled2-1', 'icon-video-circled', 'icon-location',
+                     'icon-location-circled', 'icon-dot-circled'];
 
     // Used only if the canvas cannot be reached to ask (a partial deploy),
     // where falling back beats throwing inside a dialog nobody can then close.

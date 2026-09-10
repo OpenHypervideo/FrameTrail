@@ -306,7 +306,25 @@
  * ------------------------------------------------------------------------ */
 
 /*
- * Ripple: two rings half a cycle apart, expanding out of the pin's outline.
+ * One cycle for every pin animation.
+ *
+ * Each plays its motion in the leading part of the cycle and holds still for
+ * the rest, so a pin moves, settles, and moves again rather than never
+ * standing still — a map of pins in perpetual motion is exhausting to read,
+ * and an affordance that never stops stops being noticed.
+ *
+ * Where each one stops moving is set by its own keyframe percentages, so
+ * changing this number rescales the motion and the pause together. To retune
+ * only the pause, move the percentages instead.
+ */
+.overviewMap {
+    --pin-animation-cycle: 3500ms;
+}
+
+/*
+ * Ripple: two rings expanding out of the pin's outline, the second close
+ * behind the first, then quiet until the cycle comes round again.
+ *
  * Rings rather than the pin, because growing the pin would grow its hit area
  * and drag its resize handles outwards with it. They are on the pin and not on
  * its body so that the body's icon-mode drop-shadow does not blur them.
@@ -324,17 +342,27 @@
     border-radius: 50%;
     transform-origin: center center;
     pointer-events: none;
-    animation: overviewMapPinRipple 2400ms ease-out infinite;
+    animation: overviewMapPinRipple var(--pin-animation-cycle) ease-out infinite;
 }
 
+/*
+ * The trailing ring. `backwards` matters: without it the ring spends its delay
+ * rendering the plain rule above — a hard, fully opaque circle sitting on the
+ * pin — instead of holding the frame it is about to animate from.
+ */
 .overviewMap.pinAnimation-ripple .overviewMapMarker::before {
-    animation-delay: 1200ms;
+    animation-delay: 600ms;
+    animation-fill-mode: backwards;
 }
 
 @keyframes overviewMapPinRipple {
     0% {
         transform: scale(1);
         opacity: 0.8;
+    }
+    57% {
+        transform: scale(2.6);
+        opacity: 0;
     }
     100% {
         transform: scale(2.6);
@@ -345,21 +373,23 @@
 /* Pulse: opacity only, so the pin's geometry — and everything positioned
    against it — stays exactly where it is. */
 .overviewMap.pinAnimation-pulse .overviewMapMarkerBody {
-    animation: overviewMapPinPulse 1800ms ease-in-out infinite;
+    animation: overviewMapPinPulse var(--pin-animation-cycle) ease-in-out infinite;
 }
 
 @keyframes overviewMapPinPulse {
-    0%, 100% { opacity: 1; }
-    50%      { opacity: 0.45; }
+    0%        { opacity: 1; }
+    28%       { opacity: 0.45; }
+    57%, 100% { opacity: 1; }
 }
 
 .overviewMap.pinAnimation-scale .overviewMapMarkerBody {
-    animation: overviewMapPinScale 2600ms ease-in-out infinite;
+    animation: overviewMapPinScale var(--pin-animation-cycle) ease-in-out infinite;
 }
 
 @keyframes overviewMapPinScale {
-    0%, 100% { transform: scale(1); }
-    50%      { transform: scale(1.14); }
+    0%        { transform: scale(1); }
+    28%       { transform: scale(1.14); }
+    57%, 100% { transform: scale(1); }
 }
 
 /* A circle turning about its own centre shows nothing but its content
@@ -367,13 +397,15 @@
    reads as a marker planted on the spot it marks. */
 .overviewMap.pinAnimation-wobble .overviewMapMarkerBody {
     transform-origin: 50% 100%;
-    animation: overviewMapPinWobble 1600ms ease-in-out infinite;
+    animation: overviewMapPinWobble var(--pin-animation-cycle) ease-in-out infinite;
 }
 
 @keyframes overviewMapPinWobble {
-    0%, 100% { transform: rotate(0deg); }
-    25%      { transform: rotate(-7deg); }
-    75%      { transform: rotate(7deg); }
+    0%        { transform: rotate(0deg); }
+    11%       { transform: rotate(-7deg); }
+    21%       { transform: rotate(7deg); }
+    32%       { transform: rotate(-4deg); }
+    43%, 100% { transform: rotate(0deg); }
 }
 
 /*
@@ -396,12 +428,13 @@
     box-shadow: 0 0 14px 5px var(--primary-bg-color);
     pointer-events: none;
     z-index: -1;
-    animation: overviewMapPinGlow 2000ms ease-in-out infinite;
+    animation: overviewMapPinGlow var(--pin-animation-cycle) ease-in-out infinite;
 }
 
 @keyframes overviewMapPinGlow {
-    0%, 100% { opacity: 0.15; }
-    50%      { opacity: 0.9; }
+    0%        { opacity: 0.15; }
+    28%       { opacity: 0.9; }
+    57%, 100% { opacity: 0.15; }
 }
 
 /*
