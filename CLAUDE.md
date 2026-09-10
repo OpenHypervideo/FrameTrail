@@ -249,6 +249,8 @@ The build script:
 5. Generates clean HTML entry points that load only the two bundles
 6. Copies `_server/`, `.htaccess`, `favico.png`, `LICENSE.md`
 
+**Docker:** `Dockerfile` + `compose.yaml` in the repo root run this same build in a throwaway Node stage and serve the output via PHP + Apache (`docker compose up -d`). See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#option-1-server-deployment-php) for build args (e.g. `WITH_FFMPEG`) and volume details.
+
 ### CI/CD
 
 - **Build verification** (`.github/workflows/build.yml`): Runs on every push to `main`/`develop` and every PR. Builds and verifies output.

@@ -41,6 +41,24 @@ Then open `http://localhost:8080`. No Apache, no XAMPP needed if PHP is installe
 - `.htaccess` — Apache rewrite rules
 - `favico.png`, `README.md`, `LICENSE.md`
 
+**Or use Docker:**
+
+```bash
+git clone https://github.com/OpenHypervideo/FrameTrail.git
+cd FrameTrail
+docker compose up -d
+```
+
+Open `http://localhost:8080` and follow the setup wizard. The `Dockerfile` builds the minified bundle from source in a throwaway Node stage (mirrors `scripts/build.sh`) and serves it via PHP + Apache — no Node or build tooling ends up in the final image. `_data/` persists in the named `frametrail_data` volume across container restarts/upgrades.
+
+FFmpeg (server-side video transcoding + thumbnail/scrub-sprite generation) is left out by default to keep the image lean (~500MB smaller); the app detects its absence at runtime and skips those features gracefully. To include it:
+
+```bash
+docker compose build --build-arg WITH_FFMPEG=true
+```
+
+or uncomment the `args:` block in `compose.yaml`.
+
 ### Option 2: Local Folder Mode (No Server)
 
 Single-user editing without a server. Uses the [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API) to read and write files directly on disk. File uploads (images, video, audio) are supported, but server-side capabilities like media transcoding and user management are not available.

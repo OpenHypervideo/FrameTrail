@@ -1,0 +1,10 @@
+.git
+.github
+.gitignore
+docs
+examples
+CONTRIBUTING.md
+CLAUDE.md
+build
+node_modules
+scripts/node_modules

@@ -69,6 +69,14 @@ FrameTrail works in three modes with different capabilities.
 
 For public deployments, use Apache (`.htaccess` included) or nginx with PHP-FPM. No PHP installed? Use [XAMPP](https://www.apachefriends.org/) (Windows) or [MAMP](https://www.mamp.info/) (Mac/Windows).
 
+**Or use Docker** — no PHP install needed:
+
+```bash
+docker compose up -d
+```
+
+Open `http://localhost:8080` and follow the setup wizard. The image builds the minified bundle from source in a throwaway Node stage and serves it via PHP + Apache, so no build tooling ends up in the final image; `_data/` persists in a named volume across restarts. Pass `--build-arg WITH_FFMPEG=true` (or uncomment the `args:` in `compose.yaml`) to include FFmpeg for server-side video transcoding and thumbnail generation — it's off by default to keep the image lean (~500MB smaller).
+
 ### Option 2: Local Folder Mode 
 
 1. Download and extract FrameTrail
