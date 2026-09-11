@@ -179,15 +179,6 @@
     flex-shrink: 0;
 }
 
-/* Logging out mid-fullscreen drops you onto a page you cannot see, so it is
-   withheld there. In the player that is now a menu entry rather than a button —
-   on the entry, not on the menu, or My Settings and Manage Users would go with
-   it. The standalone resource manager still builds a plain button. */
-.frametrail-body.inFullscreen .titlebar .userMenuLogout,
-.frametrail-body.inFullscreen .titlebar .logoutButton {
-    display: none !important;
-}
-
 /* .logoutButton is still the resource manager's own titlebar (it builds one of
    its own and loads this stylesheet); the player's logout moved into the menu. */
 .titlebar .titlebarActionButtonContainer .manageResourcesButton,
