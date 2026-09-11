@@ -853,7 +853,59 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
     };
 
 
-    var scrubPreviewElement = null;
+    var scrubPreviewElement = null,
+        scrubSprite         = null;
+
+    /**
+     * I resolve the URL of this hypervideo's scrub sprite, or return null when
+     * there cannot be one.
+     *
+     * The video clip may carry a `scrubSprite` override (HypervideoModel.scrubSprite):
+     * a string URL is used directly; `false`/`null` disables the preview. When
+     * unset I fall back to the naming convention, but only when the derived
+     * sprite URL is same-origin as the page — server-generated sprites only ever
+     * live next to same-origin (uploaded) videos, so probing an externally hosted
+     * video would just fire a guaranteed cross-origin 404.
+     *
+     * @method resolveScrubSpriteUrl
+     * @private
+     * @return {String|null}
+     */
+    function resolveScrubSpriteUrl() {
+
+        var HypervideoModel = FrameTrail.module('HypervideoModel');
+
+        if (HypervideoModel.videoType !== 'native' || !HypervideoModel.sourcePath) { return null; }
+        if (/\.m3u8/.test(HypervideoModel.sourcePath)) { return null; }
+
+        var scrubOverride = HypervideoModel.scrubSprite;
+
+        if (typeof scrubOverride === 'string' && scrubOverride.length) {
+            // Explicit sprite URL set on the clip — use it as-is.
+            return FrameTrail.module('RouteNavigation').getResourceURL(scrubOverride);
+        }
+
+        if (scrubOverride === false || scrubOverride === null) {
+            // Explicitly disabled for this clip.
+            return null;
+        }
+
+        // Auto-probe by naming convention, but only when same-origin.
+        var spriteUrl = FrameTrail.module('RouteNavigation').getResourceURL(
+            HypervideoModel.sourcePath.replace(/\.[^.\/]+$/, '') + '_scrub.jpg'
+        );
+
+        var spriteOrigin;
+        try {
+            spriteOrigin = new URL(spriteUrl, window.location.href).origin;
+        } catch (e) {
+            spriteOrigin = null;
+        }
+        if (spriteOrigin !== window.location.origin) { return null; }
+
+        return spriteUrl;
+
+    };
 
     /**
      * I probe for a scrub preview sprite ({videoBasename}_scrub.jpg next to the
@@ -861,12 +913,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
      * _server/files.php) and, when present, show frame previews while hovering
      * or dragging the progress bar. Without a sprite nothing changes.
      *
-     * The video clip may carry a `scrubSprite` override (HypervideoModel.scrubSprite):
-     * a string URL is used directly; `false`/`null` disables the preview. When
-     * unset I fall back to the naming convention, but only probe when the derived
-     * sprite URL is same-origin as the page — server-generated sprites only ever
-     * live next to same-origin (uploaded) videos, so probing an externally hosted
-     * video would just fire a guaranteed cross-origin 404.
+     * On a successful probe I also publish the sprite's geometry via
+     * getScrubSprite(), so other views (e.g. a Chapters ContentView) can cut
+     * their own thumbnails out of it without probing a second time.
      *
      * @method initScrubPreview
      * @private
@@ -880,46 +929,43 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             scrubPreviewElement = null;
         }
 
-        if (HypervideoModel.videoType !== 'native' || !HypervideoModel.sourcePath) { return; }
-        if (/\.m3u8/.test(HypervideoModel.sourcePath)) { return; }
+        scrubSprite = null;
 
-        var TILE_COLUMNS = 5,
-            TILE_COUNT   = 25,
-            TILE_WIDTH   = 160,
-            TILE_HEIGHT  = 90;
+        // The grid is the sprite's contract; the tiles' pixel size deliberately is
+        // not, so that a sheet generated at any resolution renders correctly (see
+        // the percentage positioning below).
+        var TILE_COLUMNS  = 5,
+            TILE_ROWS     = 5,
+            TILE_COUNT    = 25,
+            // Width of the .scrubPreview element itself (see ViewVideo/style.css),
+            // used only to keep it inside the progress bar.
+            PREVIEW_WIDTH = 160;
 
-        var scrubOverride = HypervideoModel.scrubSprite,
-            spriteUrl;
+        var spriteUrl = resolveScrubSpriteUrl();
 
-        if (typeof scrubOverride === 'string' && scrubOverride.length) {
-            // Explicit sprite URL set on the clip — use it as-is.
-            spriteUrl = FrameTrail.module('RouteNavigation').getResourceURL(scrubOverride);
-        } else if (scrubOverride === false || scrubOverride === null) {
-            // Explicitly disabled for this clip.
-            return;
-        } else {
-            // Auto-probe by naming convention, but only when same-origin.
-            spriteUrl = FrameTrail.module('RouteNavigation').getResourceURL(
-                HypervideoModel.sourcePath.replace(/\.[^.\/]+$/, '') + '_scrub.jpg'
-            );
-
-            var spriteOrigin;
-            try {
-                spriteOrigin = new URL(spriteUrl, window.location.href).origin;
-            } catch (e) {
-                spriteOrigin = null;
-            }
-            if (spriteOrigin !== window.location.origin) { return; }
-        }
+        if (!spriteUrl) { return; }
 
         var probeImage = new Image();
         probeImage.onload = function() {
 
             var progressEl = ViewVideo.PlayerProgress;
 
+            scrubSprite = {
+                url:     spriteUrl,
+                columns: TILE_COLUMNS,
+                rows:    TILE_ROWS,
+                count:   TILE_COUNT
+            };
+
             scrubPreviewElement = document.createElement('div');
             scrubPreviewElement.className = 'scrubPreview';
             scrubPreviewElement.style.backgroundImage = 'url("' + spriteUrl + '")';
+            // Scale the sheet to the grid rather than assuming a tile pixel size:
+            // one tile then fills this element exactly, whatever resolution the
+            // sprite was generated at. That is what keeps sprites written before
+            // the tiles were raised to 320x180 working unchanged.
+            scrubPreviewElement.style.backgroundSize =
+                (TILE_COLUMNS * 100) + '% ' + (TILE_ROWS * 100) + '%';
             scrubPreviewElement.innerHTML = '<div class="scrubPreviewChapter"></div><div class="scrubPreviewTime"></div>';
             progressEl.appendChild(scrubPreviewElement);
 
@@ -930,9 +976,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 var ratio = Math.max(0, Math.min(1, (evt.clientX - rect.left) / rect.width));
                 var tileIndex = Math.min(TILE_COUNT - 1, Math.floor(ratio * TILE_COUNT));
                 scrubPreviewElement.style.backgroundPosition =
-                    (-(tileIndex % TILE_COLUMNS) * TILE_WIDTH) + 'px ' +
-                    (-Math.floor(tileIndex / TILE_COLUMNS) * TILE_HEIGHT) + 'px';
-                scrubPreviewElement.style.left = Math.max(TILE_WIDTH / 2, Math.min(rect.width - TILE_WIDTH / 2, evt.clientX - rect.left)) + 'px';
+                    ((tileIndex % TILE_COLUMNS) * 100 / (TILE_COLUMNS - 1)) + '% ' +
+                    (Math.floor(tileIndex / TILE_COLUMNS) * 100 / (TILE_ROWS - 1)) + '%';
+                scrubPreviewElement.style.left = Math.max(PREVIEW_WIDTH / 2, Math.min(rect.width - PREVIEW_WIDTH / 2, evt.clientX - rect.left)) + 'px';
 
                 var previewTime = ratio * HypervideoModel.duration;
                 scrubPreviewElement.querySelector('.scrubPreviewTime').textContent = formatTime(previewTime);
@@ -959,8 +1005,29 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             progressEl.addEventListener('pointerleave', hidePreview);
             progressEl.addEventListener('pointerup', hidePreview);
 
+            // The probe is async, so any Chapters ContentView has already
+            // rendered without thumbnails — let it pick them up now.
+            refreshChaptersContentViews();
+
         };
         probeImage.src = spriteUrl;
+
+    };
+
+
+    /**
+     * I ask the ViewLayout to re-render any Chapters ContentViews.
+     *
+     * @method refreshChaptersContentViews
+     * @private
+     */
+    function refreshChaptersContentViews() {
+
+        var ViewLayout = FrameTrail.module('ViewLayout');
+
+        if (ViewLayout && ViewLayout.updateChaptersContentViews) {
+            ViewLayout.updateChaptersContentViews();
+        }
 
     };
 
@@ -984,6 +1051,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         if (!chapters.length) {
             chapterButton.style.display = 'none';
+            // Deleting the last chapter lands here, so the Chapters ContentViews
+            // have to be told on this path too — otherwise they keep showing the
+            // cards of chapters that no longer exist.
+            refreshChaptersContentViews();
             return;
         }
 
@@ -1006,7 +1077,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             var entry = document.createElement('div');
             entry.className = 'chapterSelect';
             entry.innerHTML = '<span class="chapterSelectTime"></span><span class="chapterSelectTitle"></span>';
-            entry.querySelector('.chapterSelectTime').textContent = formatTime(chapter.data.start);
+            // Chapter starts are absolute times; the player clock and the
+            // progress markers are both relative to the clip's in-point, so
+            // this has to be too.
+            entry.querySelector('.chapterSelectTime').textContent =
+                formatTime(chapter.data.start - HypervideoModel.offsetIn);
             entry.querySelector('.chapterSelectTitle').textContent = chapter.data.title;
             entry.addEventListener('click', function() {
                 setCurrentTime(chapter.data.start);
@@ -1016,6 +1091,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         });
 
         updateCurrentChapter();
+
+        // I am the funnel every chapter mutation passes through (add, delete,
+        // start change, drag end), so this is where Chapters ContentViews learn
+        // that the chapter set has changed.
+        refreshChaptersContentViews();
 
     };
 
@@ -1739,6 +1819,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         var hours, minutes, seconds, hourValue;
 
+        // A time before the clip's in-point (e.g. a chapter that starts ahead of
+        // it) is negative once made relative, and would format as "0-1:0-1".
+        // Seeking there clamps to the in-point, so 0 is what it actually means.
+        if (!(aNumber > 0)) { aNumber = 0; }
+
         seconds     = Math.ceil(aNumber);
         hours       = Math.floor(seconds / (60 * 60));
         hours       = (hours >= 10) ? hours : '0' + hours;
@@ -1787,6 +1872,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         updateDescriptions: updateDescriptions,
         updateChapterDisplay: updateChapterDisplay,
+        getChapterIndexAtTime: getChapterIndexAtTime,
+        getScrubSprite:     function() { return scrubSprite; },
         formatTime:         formatTime,
         clearIntervals:     clearIntervals,
 

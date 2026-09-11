@@ -16,7 +16,24 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
     var labels = FrameTrail.module('Localization').labels;
 
-    function _generateTemplateSchematic(type, size, axis) {
+    /**
+     * I build the schematic preview markup for a ContentView type.
+     *
+     * I am the single source of truth for these previews. Three callers render
+     * through me: the type palette of the Layout Manager (below), the preview
+     * element of a placed ContentView, and the type/size option cards in the
+     * ContentView settings dialog. The latter two live in the ContentView type
+     * and reach me via FrameTrail.module('ViewLayout').generateSchematic().
+     *
+     * @method generateSchematic
+     * @param {String} type - ContentView type ('TimedContent', 'CustomHTML', 'Transcript', 'Timelines', 'Chapters')
+     * @param {String} size - 'small', 'medium' or 'large'
+     * @param {String} axis - 'x' for the top/bottom areas, 'y' for left/right
+     * @param {Boolean} thumbnail - Draw a single representative item instead of a full set
+     * @param {Number} maxCards - Optional upper bound on the number of items drawn
+     * @return {HTMLElement}
+     */
+    function generateSchematic(type, size, axis, thumbnail, maxCards) {
         var isHorizontal = (axis === 'x'),
             schematic = document.createElement('div');
         schematic.className = 'schematicPreview';
@@ -24,11 +41,14 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         switch (type) {
 
             case 'TimedContent':
-                var cardCount = 3;
+                var cardClass = (thumbnail || !isHorizontal) ? 'schematicCard vertical' : 'schematicCard';
+                var cardCount = thumbnail ? 1 : (isHorizontal
+                    ? ((size == 'small') ? 5 : (size == 'medium') ? 4 : 3)
+                    : ((size == 'small') ? 5 : (size == 'medium') ? 3 : 1));
+                if (maxCards) cardCount = Math.min(cardCount, maxCards);
                 for (var i = 0; i < cardCount; i++) {
                     var card = document.createElement('div');
-                    card.className = isHorizontal ? 'schematicCard' : 'schematicCard vertical';
-                    if (i === (isHorizontal ? 1 : 0)) card.classList.add('active');
+                    card.className = cardClass;
                     card.setAttribute('data-size', size);
                     card.insertAdjacentHTML('beforeend', '<div class="schematicThumb"></div>');
                     if (size == 'medium' || size == 'large') {
@@ -37,6 +57,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                     if (size == 'large') {
                         card.insertAdjacentHTML('beforeend', '<div class="schematicBody"><div class="schematicLine"></div><div class="schematicLine short"></div></div>');
                     }
+                    if (thumbnail || i === (isHorizontal ? 1 : 0)) card.classList.add('active');
                     schematic.appendChild(card);
                 }
                 break;
@@ -100,6 +121,35 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                     );
                 }
                 schematic.appendChild(container);
+                break;
+
+            case 'Chapters':
+                // Two shapes, matching the real cards: a poster card (thumb above the
+                // text) in the horizontal areas, a list row (thumb beside it) in the
+                // vertical ones. "vertical" is the card's own box in the schematic
+                // (full width rather than floated); "rowLayout" is its inner direction.
+                var chapterClass = 'schematicChapterCard'
+                    + ((thumbnail || !isHorizontal) ? ' vertical' : '')
+                    + (isHorizontal ? '' : ' rowLayout');
+                var chapterCount = thumbnail ? 1 : (isHorizontal
+                    ? ((size == 'small') ? 4 : (size == 'medium') ? 3 : 2)
+                    : ((size == 'small') ? 6 : (size == 'medium') ? 4 : 3));
+                if (maxCards) chapterCount = Math.min(chapterCount, maxCards);
+                for (var i = 0; i < chapterCount; i++) {
+                    var chapterCard = document.createElement('div');
+                    chapterCard.className = chapterClass;
+                    chapterCard.setAttribute('data-size', size);
+                    if (size == 'medium' || size == 'large') {
+                        chapterCard.insertAdjacentHTML('beforeend', '<div class="schematicChapterThumb"></div>');
+                    }
+                    chapterCard.insertAdjacentHTML('beforeend',
+                        '<div class="schematicChapterText">'
+                      + '    <div class="schematicChapterTime"></div>'
+                      + '    <div class="schematicChapterTitle"></div>'
+                      + '</div>');
+                    if (thumbnail || i === (isHorizontal ? 1 : 0)) chapterCard.classList.add('active');
+                    schematic.appendChild(chapterCard);
+                }
                 break;
         }
 
@@ -413,6 +463,39 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     }
 
 
+    /**
+     * I re-render only the ContentViews of type "Chapters".
+     *
+     * Chapter edits funnel through HypervideoController.updateChapterDisplay(),
+     * which fires on every add, delete, start change and drag end. Re-rendering
+     * every ContentView there would rebuild all annotation collections on each
+     * of those, so I narrow the refresh to the views that actually show chapters.
+     *
+     * @method updateChaptersContentViews
+     */
+    function updateChaptersContentViews() {
+        var contentViewAreas = [
+            contentViewsTop, contentViewsBottom, contentViewsLeft, contentViewsRight
+        ];
+
+        var found = false;
+
+        for (var a in contentViewAreas) {
+            for (var i in contentViewAreas[a]) {
+                var contentView = contentViewAreas[a][i];
+                if (contentView.contentViewData.type === 'Chapters') {
+                    contentView.updateContent(true);
+                    found = true;
+                }
+            }
+        }
+
+        if (!found) { return; }
+
+        updateTimedStateOfContentViews(FrameTrail.module('HypervideoController').currentTime);
+    }
+
+
     function updateTimedStateOfContentViews(currentTime) {
 
         var self = this;
@@ -504,6 +587,10 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             '        <div class="contentViewTemplate" data-type="Timelines" data-size="large">' +
             '            <div class="contentViewOptionThumb"></div>' +
             '            <div class="contentViewTemplateLabel"><span class="icon-doc-text">'+ labels['GenericTimelines'] +'</span></div>' +
+            '        </div>' +
+            '        <div class="contentViewTemplate" data-type="Chapters" data-size="small">' +
+            '            <div class="contentViewOptionThumb"></div>' +
+            '            <div class="contentViewTemplateLabel"><span class="icon-list-bullet">'+ labels['SettingsChapters'] +'</span></div>' +
             '        </div>' +
             '    </div>' +
             '    <div class="layoutManagerBody">' +
@@ -950,7 +1037,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         LayoutManagerOptions.querySelectorAll('.contentViewTemplate').forEach(function(tmpl) {
             var thumb = tmpl.querySelector('.contentViewOptionThumb');
             if (thumb) {
-                thumb.appendChild(_generateTemplateSchematic(tmpl.dataset.type, tmpl.dataset.size, 'x'));
+                // maxCards 3 keeps the palette thumbnails as compact as they have always been
+                thumb.appendChild(generateSchematic(tmpl.dataset.type, tmpl.dataset.size, 'x', false, 3));
             }
         });
 
@@ -1531,7 +1619,10 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         updateManagedContent: updateManagedContent,
 
         updateContentInContentViews: updateContentInContentViews,
+        updateChaptersContentViews: updateChaptersContentViews,
         adjustContentViewLayout: adjustContentViewLayout,
+
+        generateSchematic: generateSchematic,
 
         updateTimedStateOfContentViews: updateTimedStateOfContentViews,
 

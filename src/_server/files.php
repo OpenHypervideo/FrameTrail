@@ -1431,10 +1431,19 @@ function generateVideoThumbnail($videoPath, $thumbPath) {
  * Generate a scrub preview sprite sheet next to the video file.
  *
  * Convention (shared with the client-side scrub preview in HypervideoController):
- * 25 frames sampled evenly across the video, tiled 5x5, each tile 160x90
+ * 25 frames sampled evenly across the video, tiled 5x5, each tile 320x180
  * (letterboxed), saved as {videoBasename}_scrub.jpg. The sprite is NOT a
  * resource entry — the client probes for the file by naming convention and
  * degrades gracefully when it does not exist.
+ *
+ * Only the grid (5x5, 25 frames) is part of the contract — the client addresses
+ * tiles by percentage, so sheets written at the earlier 160x90 tile size keep
+ * working and simply stay softer. There is no regeneration path for videos that
+ * were already uploaded; re-uploading produces the newer sheet.
+ *
+ * Because the frame count is fixed, the sheet's size does not grow with the
+ * video's length: 1600x900 at -q:v 5 is ~124KB for any duration (the previous
+ * 800x450 was ~46KB). -q:v is the knob if that ever matters (7 ~ 106KB, 9 ~ 92KB).
  *
  * @param string $videoPath
  * @return array Success/error response
@@ -1466,7 +1475,7 @@ function generateScrubSprite($videoPath) {
     $spritePath = preg_replace('/\.[^.]+$/', '', $videoPath) . '_scrub.jpg';
 
     $command = sprintf(
-        '%s -y -i %s -vf "fps=%F,scale=160:90:force_original_aspect_ratio=decrease,pad=160:90:(ow-iw)/2:(oh-ih)/2,tile=5x5" -frames:v 1 -update 1 -q:v 5 %s 2>&1',
+        '%s -y -i %s -vf "fps=%F,scale=320:180:force_original_aspect_ratio=decrease,pad=320:180:(ow-iw)/2:(oh-ih)/2,tile=5x5" -frames:v 1 -update 1 -q:v 5 %s 2>&1',
         escapeshellcmd($ffmpegPath),
         escapeshellarg($videoPath),
         $fps,

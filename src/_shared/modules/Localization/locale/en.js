@@ -228,6 +228,7 @@ window.FrameTrail_L10n['en'] = {
     "MessageHintDragCodeSnippets": "Add custom code by dragging Code Snippets into the active timeline, add \"Custom CSS\" rules, or react to events by editing the \"onReady\", \"onPlay\", \"onPause\" and \"onEnded\" tabs.",
     "MessageHintDragOverlays": "Add Overlays by dragging resources into the video area.",
     "MessageHintNewTranscriptsUpload": "New transcripts can be uploaded in the \"Settings\" tab.",
+    "MessageHintNoChapters": "This hypervideo has no chapters yet. They can be added in the \"Chapters\" editor.",
     "MessageHintTryUsingArrowKeys": "Try using arrow keys",
     "MessageLayoutManagerDropContentViews": "Drag and Drop Content Views into Layout Areas",
     "MessageNewResourceName": "Enter a name for the new resource",

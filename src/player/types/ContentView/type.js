@@ -17,98 +17,22 @@ FrameTrail.defineType(
 
     function (FrameTrail) {
 
+        /**
+         * I delegate to the single schematic generator owned by the ViewLayout
+         * module, so the Layout Manager palette and these previews can never
+         * drift apart. Every call path runs inside or after the Layout Manager,
+         * so the module is initialized by then; the guard is for safety only.
+         */
         function _generateSchematic(type, size, axis, thumbnail, maxCards) {
-            var isHorizontal = (axis === 'x'),
-                schematic = document.createElement('div');
-            schematic.className = 'schematicPreview';
+            var ViewLayout = FrameTrail.module('ViewLayout');
 
-            switch (type) {
-
-                case 'TimedContent':
-                    var cardClass = (thumbnail || !isHorizontal) ? 'schematicCard vertical' : 'schematicCard';
-                    var cardCount = thumbnail ? 1 : (isHorizontal
-                        ? ((size == 'small') ? 5 : (size == 'medium') ? 4 : 3)
-                        : ((size == 'small') ? 5 : (size == 'medium') ? 3 : 1));
-                    if (maxCards) cardCount = Math.min(cardCount, maxCards);
-                    for (var i = 0; i < cardCount; i++) {
-                        var card = document.createElement('div');
-                        card.className = cardClass;
-                        card.setAttribute('data-size', size);
-                        card.insertAdjacentHTML('beforeend', '<div class="schematicThumb"></div>');
-                        if (size == 'medium' || size == 'large') {
-                            card.insertAdjacentHTML('beforeend', '<div class="schematicTitle"></div>');
-                        }
-                        if (size == 'large') {
-                            card.insertAdjacentHTML('beforeend', '<div class="schematicBody"><div class="schematicLine"></div><div class="schematicLine short"></div></div>');
-                        }
-                        if (thumbnail || i === (isHorizontal ? 1 : 0)) card.classList.add('active');
-                        schematic.appendChild(card);
-                    }
-                    break;
-
-                case 'CustomHTML':
-                    var container = document.createElement('div');
-                    container.className = 'schematicCustomHTML';
-                    container.innerHTML = '<p>Custom HTML content area</p>'
-                        + '<p><span class="schematicHighlight">time-based element</span> with interactive text</p>'
-                        + '<p>Additional content goes here...</p>';
-                    schematic.appendChild(container);
-                    break;
-
-                case 'Transcript':
-                    var container = document.createElement('div');
-                    container.className = 'schematicTranscript';
-                    container.innerHTML = '<span>Welcome</span> '
-                        + '<span>to</span> '
-                        + '<span>this</span> '
-                        + '<span class="active">video.</span> '
-                        + '<span class="active">Here</span> '
-                        + '<span class="active">we</span> '
-                        + '<span>explore</span> '
-                        + '<span>the</span> '
-                        + '<span>topic</span> '
-                        + '<span>in</span> '
-                        + '<span>detail.</span> '
-                        + '<span>Each</span> '
-                        + '<span>word</span> '
-                        + '<span>syncs</span> '
-                        + '<span>with</span> '
-                        + '<span>the</span> '
-                        + '<span>video</span> '
-                        + '<span>timeline.</span>';
-                    schematic.appendChild(container);
-                    break;
-
-                case 'Timelines':
-                    var container = document.createElement('div');
-                    container.className = 'schematicTimelines';
-                    var rows = [
-                        { label: 'User 1', offset: '10%', width: '35%' },
-                        { label: 'User 1', offset: '55%', width: '20%' },
-                        { label: 'User 2', offset: '5%',  width: '25%' },
-                        { label: 'User 2', offset: '40%', width: '40%' },
-                        { label: 'User 3', offset: '20%', width: '50%' }
-                    ];
-                    var currentLabel = '';
-                    var row;
-                    for (var i = 0; i < rows.length; i++) {
-                        if (rows[i].label !== currentLabel) {
-                            currentLabel = rows[i].label;
-                            row = document.createElement('div');
-                            row.className = 'schematicTimelineRow';
-                            row.insertAdjacentHTML('beforeend', '<span class="schematicTimelineLabel">'+ rows[i].label +'</span>');
-                            row.insertAdjacentHTML('beforeend', '<div class="schematicTimelineTrack"></div>');
-                            container.appendChild(row);
-                        }
-                        row.querySelector('.schematicTimelineTrack').insertAdjacentHTML('beforeend',
-                            '<div class="schematicTimelineBar" style="left:'+ rows[i].offset +';width:'+ rows[i].width +'"></div>'
-                        );
-                    }
-                    schematic.appendChild(container);
-                    break;
+            if (!ViewLayout || !ViewLayout.generateSchematic) {
+                var fallback = document.createElement('div');
+                fallback.className = 'schematicPreview';
+                return fallback;
             }
 
-            return schematic;
+            return ViewLayout.generateSchematic(type, size, axis, thumbnail, maxCards);
         }
 
         return {
@@ -530,6 +454,14 @@ FrameTrail.defineType(
 
                             break;
 
+                        case 'Chapters':
+
+                            self._clearContentCollection();
+
+                            self.renderChapterCards();
+
+                            break;
+
                     }
 
                     FrameTrail.module('ViewLayout').updateManagedContent();
@@ -923,6 +855,35 @@ FrameTrail.defineType(
                             if (_tlRange) _tlRange.style.width = timePercent + '%';
 
                             break;
+
+                        case 'Chapters':
+
+                            var chapters = FrameTrail.module('HypervideoModel').chapters || [],
+                                chapterIndex = FrameTrail.module('HypervideoController').getChapterIndexAtTime(currentTime),
+                                activeStart = (chapterIndex >= 0) ? chapters[chapterIndex].data.start : null;
+
+                            self.contentViewContainer.querySelectorAll('.chapterElement').forEach(function(card) {
+
+                                // getChapterIndexAtTime indexes the model array, which is
+                                // not necessarily sorted, while the cards are rendered in
+                                // time order — so match on the start time, not the index.
+                                var isActive = (activeStart !== null)
+                                            && (parseFloat(card.getAttribute('data-start')) === activeStart);
+
+                                if (isActive) {
+                                    if ( !card.classList.contains('active') ) {
+                                        card.classList.add('active');
+                                        if (!self.isMouseOver) {
+                                            self._scrollRangeIntoCenter(card, card);
+                                        }
+                                    }
+                                } else if ( card.classList.contains('active') ) {
+                                    card.classList.remove('active');
+                                }
+
+                            });
+
+                            break;
                     }
 
 
@@ -1100,7 +1061,10 @@ FrameTrail.defineType(
                         return;
                     }
 
-                    if ( HypervideoDuration != 0  ) {
+                    // Time-proportional packing is TimedContent's alone — it reads
+                    // contentGroups, which no other type fills, and it would strip
+                    // the inline positions off whatever else is in the container.
+                    if ( HypervideoDuration != 0 && self.contentViewData.type == 'TimedContent' ) {
                         switch (self.contentViewData.contentSize) {
                             case 'small':
                                 self.distributeElements();
@@ -1493,10 +1457,6 @@ FrameTrail.defineType(
                     return _generateSchematic(this.contentViewData.type, this.contentViewData.contentSize, axis);
                 },
 
-                generateSchematicPreviewFor: function(type, size, axis, thumbnail) {
-                    return _generateSchematic(type, size, axis, thumbnail);
-                },
-
 
                 renderContentViewPreviewElement: function() {
 
@@ -1732,6 +1692,190 @@ FrameTrail.defineType(
 
 
                 /**
+                 * I render one card per chapter into my contents container.
+                 *
+                 * Chapters are display-only here: a click seeks, and the card of the
+                 * chapter currently playing is marked .active (see
+                 * updateTimedStateOfContentViews). Authoring stays in the chapter
+                 * editor and on the chapter timeline.
+                 *
+                 * The cards are plain .collectionElement nodes, so they inherit the
+                 * active/hover states, the area-driven flex/scroll container and the
+                 * custom scrollbar from the generic ContentView styles; .chapterElement
+                 * is what the Chapters-specific size rules hook onto.
+                 *
+                 * @method renderChapterCards
+                 */
+                renderChapterCards: function() {
+
+                    var self            = this,
+                        HypervideoModel = FrameTrail.module('HypervideoModel'),
+                        Controller      = FrameTrail.module('HypervideoController'),
+                        offsetIn        = HypervideoModel.offsetIn,
+                        videoEnd        = offsetIn + HypervideoModel.duration,
+                        size            = self.contentViewData.contentSize,
+                        contents        = self.contentViewContainer.querySelector('.contentViewContents');
+
+                    contents.innerHTML = '';
+
+                    var container = document.createElement('div');
+                    container.className = 'chaptersContainer';
+                    contents.appendChild(container);
+
+                    // The model array is only kept sorted while the chapter editor is
+                    // open, so a hand-edited hypervideo.json can arrive out of order.
+                    var chapters = FrameTrail.module('ChaptersController').getSortedChapters();
+
+                    if ( chapters.length == 0 ) {
+                        var emptyMessage = document.createElement('div');
+                        emptyMessage.className = 'message active';
+                        emptyMessage.textContent = self.labels['MessageHintNoChapters'];
+                        container.appendChild(emptyMessage);
+                        return;
+                    }
+
+                    var sprite = (size == 'medium' || size == 'large') ? Controller.getScrubSprite() : null,
+                        isVertical = (self.whichArea == 'left' || self.whichArea == 'right'),
+                        duration   = HypervideoModel.duration;
+
+                    // In a narrow vertical strip the card is only ~44px wide, which is
+                    // not enough for a timecode and a title side by side. There the
+                    // title wins (it is what identifies a chapter) and the time moves
+                    // into the tooltip. The tooltip points away from the video edge.
+                    var tooltipAttribute = (isVertical && size == 'small')
+                        ? ((self.whichArea == 'left') ? 'data-tooltip-left-left' : 'data-tooltip-right-right')
+                        : null;
+
+                    // In a horizontal strip the compact sizes map each card's width to
+                    // its chapter's share of the running time, so the row reads like the
+                    // chapter timeline.
+                    //
+                    // The share is a percentage width, not a flex-grow factor: the cards
+                    // are border-box, so a percentage puts their padding and border
+                    // *inside* the share, whereas flex-grow distributes only the space
+                    // left over after every card's padding and border are subtracted —
+                    // which hands each card ~18px more than its due and pushes the rest
+                    // off their marks. The CSS supplies the per-size minimum width, so a
+                    // very short chapter still stays legible and the strip scrolls once
+                    // those minimums no longer fit.
+                    //
+                    // Not at large: a 260px floor plus a 160px thumbnail would swallow
+                    // the proportions on all but very long videos. Not in the vertical
+                    // areas either, where this would fight the row heights.
+                    var proportional = !isVertical
+                                    && (size == 'small' || size == 'medium')
+                                    && duration > 0;
+
+                    // Chapters need not start at the clip's in-point. The timeline leaves
+                    // that lead-in empty, so an inert spacer reproduces it here.
+                    if (proportional && chapters[0].data.start > offsetIn) {
+                        var spacer = document.createElement('div');
+                        spacer.className = 'chapterCardSpacer';
+                        spacer.style.width = (100 * (chapters[0].data.start - offsetIn) / duration) + '%';
+                        container.appendChild(spacer);
+                    }
+
+                    chapters.forEach(function(chapter, index) {
+
+                        var start = chapter.data.start,
+                            end   = (index + 1 < chapters.length) ? chapters[index + 1].data.start : videoEnd,
+                            // Chapter starts are absolute; the player clock is relative
+                            // to the clip's in-point, so this has to be too.
+                            timeLabel  = Controller.formatTime(start - offsetIn),
+                            titleLabel = chapter.data.title || self.labels['ChapterUntitled'];
+
+                        var card = document.createElement('div');
+                        card.className = 'collectionElement chapterElement';
+                        card.setAttribute('data-start', start);
+                        card.setAttribute('data-end', end);
+
+                        if (proportional) {
+                            card.style.width = 'calc(' + (100 * Math.max(0, end - start) / duration)
+                                             + '% - var(--chapter-gap))';
+                        }
+
+                        if (sprite) {
+                            var thumb = document.createElement('div');
+                            thumb.className = 'chapterCardThumb';
+                            self._applyScrubSpriteTile(thumb, sprite, start);
+                            card.appendChild(thumb);
+                        }
+
+                        // The time and title share one wrapper so that the thumb and the
+                        // text are a single pair of flex children — that is what lets the
+                        // same markup lay out as a poster card (thumb above) in the
+                        // horizontal areas and as a list row (thumb beside) in the vertical ones.
+                        var textElement = document.createElement('div');
+                        textElement.className = 'chapterCardText';
+
+                        var timeElement = document.createElement('div');
+                        timeElement.className = 'chapterCardTime';
+                        timeElement.textContent = timeLabel;
+                        textElement.appendChild(timeElement);
+
+                        var titleElement = document.createElement('div');
+                        titleElement.className = 'chapterCardTitle';
+                        // textContent, not innerHTML — titles are user input
+                        titleElement.textContent = titleLabel;
+                        if (!chapter.data.title) { titleElement.classList.add('placeholder'); }
+                        textElement.appendChild(titleElement);
+
+                        card.appendChild(textElement);
+
+                        if (tooltipAttribute) {
+                            card.setAttribute(tooltipAttribute, timeLabel + '  ' + titleLabel);
+                            card.setAttribute('data-tooltip-variant', 'resourceTitle');
+                        }
+
+                        card.addEventListener('click', function() {
+                            FrameTrail.module('HypervideoController').currentTime = start;
+                        });
+
+                        container.appendChild(card);
+
+                    });
+
+                },
+
+
+                /**
+                 * I point an element's background at one tile of the scrub sprite —
+                 * the frame closest to the given absolute time.
+                 *
+                 * The sprite holds `count` frames in a `columns` x `rows` grid, spread
+                 * evenly across the whole video. I position by percentage rather than
+                 * by pixel (as the scrub preview does, which is a fixed 160x90 box), so
+                 * one rule works at every card size.
+                 *
+                 * @method _applyScrubSpriteTile
+                 * @private
+                 * @param {HTMLElement} element
+                 * @param {Object} sprite - { url, columns, rows, count } from HypervideoController.getScrubSprite()
+                 * @param {Number} absoluteTime
+                 */
+                _applyScrubSpriteTile: function(element, sprite, absoluteTime) {
+
+                    var HypervideoModel = FrameTrail.module('HypervideoModel'),
+                        duration        = HypervideoModel.duration,
+                        ratio           = (duration > 0)
+                                            ? (absoluteTime - HypervideoModel.offsetIn) / duration
+                                            : 0;
+
+                    ratio = Math.max(0, Math.min(1, ratio));
+
+                    var tileIndex = Math.min(sprite.count - 1, Math.floor(ratio * sprite.count)),
+                        column    = tileIndex % sprite.columns,
+                        row       = Math.floor(tileIndex / sprite.columns);
+
+                    element.style.backgroundImage    = 'url("' + sprite.url + '")';
+                    element.style.backgroundSize     = (sprite.columns * 100) + '% ' + (sprite.rows * 100) + '%';
+                    element.style.backgroundPosition = (column * 100 / (sprite.columns - 1)) + '% '
+                                                     + (row * 100 / (sprite.rows - 1)) + '%';
+
+                },
+
+
+                /**
                  * I distribute the Collection Elements in the contentViewContainer, so that they
                  * match closely to the position of their related timelineElements.
                  * When they would start to overlap, I arrange them in groups.
@@ -1939,28 +2083,54 @@ FrameTrail.defineType(
                     var lastEl = self.getContentViewElementFromContentItem(activeGroups[activeGroups.length - 1].representative);
                     if (!firstEl || !lastEl) return;
 
-                    self._isProgrammaticScroll = true;
-                    if (slideAxis == 'x') {
-                        var containerWidth = FrameTrail.getState('viewSize')[0];
-                        if (containerWidth < 768 || activeGroups.length === 1) {
-                            // Small container: center only the first active element
-                            var elCenter = firstEl.offsetLeft + firstEl.offsetWidth / 2;
-                            var scrollTarget = elCenter - scrollContainer.clientWidth / 2;
-                        } else {
-                            // Large container: center the midpoint of all active elements
-                            var groupLeft = firstEl.offsetLeft;
-                            var groupRight = lastEl.offsetLeft + lastEl.offsetWidth;
-                            var groupCenter = (groupLeft + groupRight) / 2;
-                            var scrollTarget = groupCenter - scrollContainer.clientWidth / 2;
-                        }
-                        scrollContainer.scrollTo({ left: Math.max(0, scrollTarget), behavior: 'smooth' });
-                    } else {
-                        var groupTop = firstEl.offsetTop;
-                        var groupBottom = lastEl.offsetTop + lastEl.offsetHeight;
-                        var groupCenter = (groupTop + groupBottom) / 2;
-                        var scrollTarget = groupCenter - scrollContainer.clientHeight / 2;
-                        scrollContainer.scrollTo({ top: Math.max(0, scrollTarget), behavior: 'smooth' });
+                    // On a narrow viewport only the first active element is centred,
+                    // otherwise the whole active span is.
+                    if (slideAxis == 'x' && FrameTrail.getState('viewSize')[0] < 768) {
+                        lastEl = firstEl;
                     }
+
+                    self._scrollRangeIntoCenter(firstEl, lastEl);
+
+                },
+
+
+                /**
+                 * I smoothly centre the span between two elements inside my scroll
+                 * container, along whichever axis my layout area scrolls in.
+                 *
+                 * Pass the same element twice to centre a single one.
+                 *
+                 * While the smooth scroll runs I set _isProgrammaticScroll, so the
+                 * scroll listener in appendDOMElement does not mistake it for the
+                 * user scrolling and suppress the next auto-scroll.
+                 *
+                 * @method _scrollRangeIntoCenter
+                 * @private
+                 * @param {HTMLElement} firstEl
+                 * @param {HTMLElement} lastEl
+                 */
+                _scrollRangeIntoCenter: function(firstEl, lastEl) {
+
+                    var self = this,
+                        slideAxis = (self.whichArea == 'top' || self.whichArea == 'bottom') ? 'x' : 'y',
+                        scrollContainer = self.contentViewContainer.querySelector('.contentViewScroll');
+
+                    if (!scrollContainer || !firstEl || !lastEl) { return; }
+
+                    self._isProgrammaticScroll = true;
+
+                    if (slideAxis == 'x') {
+                        var rangeStart = firstEl.offsetLeft,
+                            rangeEnd   = lastEl.offsetLeft + lastEl.offsetWidth,
+                            target     = (rangeStart + rangeEnd) / 2 - scrollContainer.clientWidth / 2;
+                        scrollContainer.scrollTo({ left: Math.max(0, target), behavior: 'smooth' });
+                    } else {
+                        var rangeTop    = firstEl.offsetTop,
+                            rangeBottom = lastEl.offsetTop + lastEl.offsetHeight,
+                            target      = (rangeTop + rangeBottom) / 2 - scrollContainer.clientHeight / 2;
+                        scrollContainer.scrollTo({ top: Math.max(0, target), behavior: 'smooth' });
+                    }
+
                     // Clear flag when smooth scroll finishes
                     if (self._scrollEndHandler) {
                         scrollContainer.removeEventListener('scrollend', self._scrollEndHandler);
@@ -2198,6 +2368,7 @@ FrameTrail.defineType(
                                     +'            <div '+ (contentViewData.type == 'CustomHTML' ? 'class="active"' : '') +' data-value="CustomHTML">'+ self.labels['GenericCustomHTML'] +'</div>'
                                     +'            <div '+ (contentViewData.type == 'Transcript' ? 'class="active"' : '') +' data-value="Transcript">'+ self.labels['GenericTextTranscript'] +'</div>'
                                     +'            <div '+ (contentViewData.type == 'Timelines' ? 'class="active"' : '') +' data-value="Timelines">'+ self.labels['GenericTimelines'] +'</div>'
+                                    +'            <div '+ (contentViewData.type == 'Chapters' ? 'class="active"' : '') +' data-value="Chapters">'+ self.labels['SettingsChapters'] +'</div>'
                                     +'        </div>'
                                     +'        <div class="generic column-6">'
                                     +'            <div class="contentViewData optionCards" data-property="contentSize" data-value="'+ contentViewData.contentSize +'">'
@@ -2277,7 +2448,24 @@ FrameTrail.defineType(
                                     +'        </div>'
                                     +'    </div>'
                                     +'    <div class="typeSpecific '+ (contentViewData.type == 'Timelines' ? 'active' : '') +'" data-type="Timelines">'
+                                    +'    </div>'
+                                    +'    <div class="typeSpecific '+ (contentViewData.type == 'Chapters' ? 'active' : '') +'" data-type="Chapters">'
+                                    +'        <div class="message active">'+ self.labels['ChaptersEditHint'] +'</div>'
+                                    +'        <div class="message active chapterCountMessage">'+ self.labels['SettingsChapters'] +': <span class="chapterCounter"></span></div>'
                                     +'    </div>';
+
+                    // Chapters have no settings of their own — the panel just reports
+                    // whether this hypervideo has any, so an author who sees an empty
+                    // panel knows why.
+                    (function() {
+                        var chapterCounter = editingUI.querySelector('.chapterCounter');
+                        if (!chapterCounter) { return; }
+                        var numberOfChapters = (FrameTrail.module('HypervideoModel').chapters || []).length;
+                        chapterCounter.textContent = numberOfChapters;
+                        var chapterMessage = chapterCounter.closest('.message');
+                        chapterMessage.classList.toggle('error', numberOfChapters === 0);
+                        chapterMessage.classList.toggle('success', numberOfChapters > 0);
+                    })();
 
                     // Set textarea values programmatically to avoid HTML parsing issues
                     var htmlTextarea = editingUI.querySelector('.contentViewData[data-property="html"]');

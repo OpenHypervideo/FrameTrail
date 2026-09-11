@@ -228,6 +228,7 @@ window.FrameTrail_L10n['fr'] = {
     "MessageHintDragCodeSnippets": "Ajoutez du code personnalisé en faisant glisser des extraits de code dans la timeline active, ajoutez des règles \"CSS personnalisé\", ou réagissez aux événements en modifiant les onglets \"onReady\", \"onPlay\", \"onPause\" et \"onEnded\".",
     "MessageHintDragOverlays": "Ajoutez des overlays en faisant glisser des ressources dans la zone vidéo.",
     "MessageHintNewTranscriptsUpload": "De nouvelles transcriptions peuvent être téléversées dans l'onglet \"Paramètres\".",
+    "MessageHintNoChapters": "Cette hypervidéo n'a pas encore de chapitres. Ils peuvent être ajoutés dans l'éditeur \"Chapitres\".",
     "MessageHintTryUsingArrowKeys": "Essayez d'utiliser les touches fléchées",
     "MessageLayoutManagerDropContentViews": "Glisser-déposer des vues de contenu dans les zones de mise en page",
     "MessageNewResourceName": "Saisir un nom pour la nouvelle ressource",

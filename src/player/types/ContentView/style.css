@@ -697,6 +697,293 @@
 
 
 /*******************
+* Chapters ContentView
+*******************/
+
+/* Chapter cards are .collectionElement nodes, so they inherit the active/hover
+   states and the area-driven scroll container. The rules below only re-shape
+   them: the generic item sizes are tuned for square resource thumbnails and are
+   far too narrow to carry a chapter title.
+
+   Two shapes, one markup: a poster card (thumb above the text) in the horizontal
+   areas, a list row (thumb beside the text) in the vertical ones — the latter
+   following what TimedContent already does for left/right at medium, above.
+
+   The thumbnail always takes its **height** from a fixed value and derives its
+   width from the aspect ratio, never the other way round. Sizing it from the
+   card width is what made it grow to 250px tall in a 108px row and clip the
+   text away; it also kept the 160x90 sprite tile upscaled several times over. */
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer {
+    display: flex;
+    align-items: stretch;
+    box-sizing: border-box;
+    /* The separator between cards. renderChapterCards subtracts this from each
+       proportional width, so the gap is visible without moving any card off its
+       mark — keep the two in sync through this property. */
+    --chapter-gap: 4px;
+}
+
+/* Horizontal areas: one row of cards that fills the strip */
+
+.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="Chapters"] .chaptersContainer,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="Chapters"] .chaptersContainer {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    height: 100%;
+    width: 100%;
+}
+
+/* The contents box normally sizes to its content (width: max-content) so that
+   TimedContent can position items by time. Chapters instead spreads its cards
+   across the available width, so the box has to be the reference. */
+.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="Chapters"] .contentViewContents,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="Chapters"] .contentViewContents {
+    width: 100%;
+    min-width: 100%;
+}
+
+/* Vertical areas: a scrolling list */
+
+.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="Chapters"] .chaptersContainer,
+.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="Chapters"] .chaptersContainer {
+    flex-direction: column;
+    height: auto;
+    min-height: 100%;
+}
+
+.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="Chapters"] .contentViewContents,
+.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="Chapters"] .contentViewContents {
+    height: auto;
+    min-height: 100%;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer > .message {
+    margin: 4px;
+    align-self: flex-start;
+}
+
+/* The card */
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chapterElement {
+    float: none;
+    display: flex;
+    overflow: hidden;
+    cursor: pointer;
+    padding: 4px 7px;
+    box-sizing: border-box;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardText {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardThumb {
+    aspect-ratio: 16 / 9;
+    width: auto;
+    background-repeat: no-repeat;
+    background-color: rgba(127, 127, 127, 0.15);
+    flex-shrink: 0;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardTime {
+    font-size: 11px;
+    line-height: 1.2;
+    opacity: 0.65;
+    white-space: nowrap;
+    flex-shrink: 0;
+    color: var(--primary-fg-color);
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardTitle {
+    font-size: 12px;
+    line-height: 1.3;
+    overflow: hidden;
+    color: var(--primary-fg-color);
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardTitle.placeholder {
+    font-style: italic;
+    opacity: 0.55;
+}
+
+/* Horizontal: poster card — thumb above the text, both left aligned */
+
+.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: flex-start;
+    gap: 5px;
+    /* Grow into the free width of the strip, but never shrink below the
+       per-size minimum — past that the cards overflow and the scroll
+       container takes over. */
+    flex: 1 1 auto;
+}
+
+.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="Chapters"] .chapterCardText,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="Chapters"] .chapterCardText {
+    width: 100%;
+}
+
+.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+    min-width: 150px;
+}
+
+.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+    min-width: 180px;
+}
+
+/* At small and medium a horizontal card's width tracks its chapter's share of the
+   running time, the way the blocks on the chapter timeline do. A flex-basis of 0
+   hands the whole strip over to the grow factors, which renderChapterCards sets
+   per card from the chapter's duration; min-width above is the floor the browser
+   redistributes around, and when the floors stop fitting the strip scrolls.
+   Large keeps equal-width cards — see the comment in renderChapterCards. */
+
+/* The strip's own left padding would offset and compress the mapping, so a
+   time-mapped strip starts flush at the edge like the timeline does. */
+.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer[data-type="Chapters"] .contentViewContents,
+.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="Chapters"] .contentViewContents,
+.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .contentViewContents,
+.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .contentViewContents {
+    padding-left: 0;
+}
+
+.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+    /* The width comes from renderChapterCards as a percentage of the strip minus
+       --chapter-gap; the cards are border-box, so padding and border sit inside
+       that share. Width and margin together therefore add up to the exact share,
+       which keeps every card's left edge on its mark while leaving the separator
+       visible. They must not grow on top of it. */
+    flex: 0 1 auto;
+    margin-right: var(--chapter-gap);
+}
+
+/* Stands in for the run of video before the first chapter, so the cards line up
+   with the timeline rather than starting flush left. Inert and invisible. */
+.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardSpacer {
+    flex: 0 1 auto;
+    min-width: 0;
+    pointer-events: none;
+}
+
+.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+    min-width: 260px;
+}
+
+.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb,
+.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb {
+    height: 66px;
+}
+
+.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb,
+.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb {
+    height: 90px;
+}
+
+/* Vertical: list row — thumb beside the text */
+
+.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="Chapters"] .chapterCardText,
+.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="Chapters"] .chapterCardText {
+    flex: 1;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb,
+.layoutArea[data-area="areaRight"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb {
+    height: 66px;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb {
+    height: 89px;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardTitle,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardTitle {
+    font-size: 13px;
+}
+
+/* Small: a single line of text, never a thumbnail */
+
+.layoutArea[data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterCardText {
+    flex-direction: row;
+    align-items: baseline;
+    gap: 6px;
+    width: 100%;
+}
+
+.layoutArea[data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+    align-items: center;
+}
+
+.layoutArea[data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterCardTitle {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+/* A vertical area at "small" is only ~44px wide — far too narrow for a timecode
+   and a title side by side. The title identifies the chapter, so it keeps the
+   space and the time moves into the card's tooltip (set in renderChapterCards). */
+.layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterCardTime,
+.layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterCardTime {
+    display: none;
+}
+
+/* Chapter card sizes */
+
+.layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+    height: 32px;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaRight"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+    height: 84px;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+    height: 108px;
+}
+
+/* A large left/right ContentView shows only its active .collectionElement, one at
+   a time (see "Content View Items" above). A chapter list is the opposite: every
+   chapter stays on screen and the active one is merely highlighted. */
+
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+    position: relative;
+    top: auto;
+    display: flex;
+    border: 2px solid var(--primary-bg-color);
+}
+
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement.active,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement.active {
+    border-color: var(--primary-fg-color);
+}
+
+/*******************
 * Schematic Preview (Layout Manager)
 *******************/
 
@@ -888,6 +1175,136 @@
 
 :is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicTimelineBar:first-child {
     opacity: 0.5;
+}
+
+/* Chapters */
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard {
+    float: left;
+    box-sizing: border-box;
+    background: var(--primary-fg-color);
+    border: 1px solid rgba(127,127,127,0.25);
+    margin-right: 7px;
+    opacity: 0.5;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 3px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard.active {
+    opacity: 1;
+    border-color: var(--primary-fg-color);
+}
+
+/* Thumb beside the text in the vertical areas, above it in the horizontal ones */
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard.rowLayout {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterText {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    flex: 1;
+    min-width: 0;
+}
+
+/* Like the real cards, the thumb takes a fixed height and derives its width,
+   so it can never grow to swallow the text. */
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard .schematicChapterThumb {
+    background: rgba(127,127,127,0.2);
+    aspect-ratio: 16 / 9;
+    width: auto;
+    flex-shrink: 0;
+    border-radius: 1px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard[data-size="medium"] .schematicChapterThumb {
+    height: 14px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard[data-size="large"] .schematicChapterThumb {
+    height: 24px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard:not(.rowLayout) .schematicChapterThumb {
+    margin-bottom: 3px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard .schematicChapterTime {
+    height: 4px;
+    width: 40%;
+    background: rgba(127,127,127,0.45);
+    border-radius: 1px;
+    margin-bottom: 3px;
+    flex-shrink: 0;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard .schematicChapterTitle {
+    height: 5px;
+    background: rgba(127,127,127,0.3);
+    border-radius: 1px;
+    flex-shrink: 0;
+}
+
+/* Small has no thumb: time and title sit on one line */
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard[data-size="small"] .schematicChapterText {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard[data-size="small"] .schematicChapterTime {
+    margin-bottom: 0;
+    width: 40%;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard[data-size="small"] .schematicChapterTitle {
+    flex: 1;
+}
+
+/* Horizontal chapter card sizes */
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard[data-size="small"] {
+    width: 42px;
+    height: calc(100% - 4px);
+    margin-top: 2px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard[data-size="medium"] {
+    width: 100px;
+    height: calc(100% - 4px);
+    margin-top: 2px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard[data-size="large"] {
+    width: 150px;
+    height: calc(100% - 8px);
+    margin-top: 4px;
+}
+
+/* Vertical chapter card overrides */
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard.vertical {
+    float: none;
+    width: calc(100% - 4px);
+    margin: 0 2px 5px 2px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard.vertical[data-size="small"] {
+    height: 16px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard.vertical[data-size="medium"] {
+    height: 26px;
+}
+
+:is(.layoutManager .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard.vertical[data-size="large"] {
+    height: 36px;
 }
 
 /* Transcript Search */

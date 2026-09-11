@@ -38,6 +38,38 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
     var MAX_ZOOM = 16;
 
 
+    /*
+     * Time inside this module is always *relative* to the clip's in-point, i.e.
+     * it runs from 0 to `duration`, because that is the span the timelines draw.
+     * HypervideoController.currentTime and every item's data.start/data.end are
+     * *absolute* times (they include offsetIn). The two helpers below are the
+     * only sanctioned conversion between the two, and every boundary with the
+     * outside world has to go through one of them — on a clipped video
+     * (offsetIn > 0) mixing them up shifts the playhead, the scrub target and
+     * every item by the in-point.
+     */
+
+    /**
+     * @method toRelative
+     * @private
+     * @param {Number} absoluteTime
+     * @return {Number}
+     */
+    function toRelative(absoluteTime) {
+        return absoluteTime - FrameTrail.module('HypervideoModel').offsetIn;
+    }
+
+    /**
+     * @method toAbsolute
+     * @private
+     * @param {Number} relativeTime
+     * @return {Number}
+     */
+    function toAbsolute(relativeTime) {
+        return FrameTrail.module('HypervideoModel').offsetIn + relativeTime;
+    }
+
+
     /**
      * Get the width of the first visible registered timeline.
      * Hidden timelines (display:none) report width 0, so we skip them.
@@ -178,7 +210,7 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
     function onTimeUpdate() {
         if (!initialized || registeredTimelines.length === 0 || duration === 0) return;
 
-        var currentTime = FrameTrail.module('HypervideoController').currentTime;
+        var currentTime = toRelative(FrameTrail.module('HypervideoController').currentTime);
         var playheadPercent = (currentTime / duration) * 100;
 
         // Update playhead positions on all timelines (percentage of scroller width)
@@ -373,7 +405,9 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
             if (scrollerWidth === 0 || duration === 0) return;
             var rect = scroller.getBoundingClientRect();
             var x = e.clientX - rect.left;
-            FrameTrail.module('HypervideoController').currentTime = Math.max(0, Math.min((x / scrollerWidth) * duration, duration));
+            // Clamp in relative space, then hand an absolute time to the controller
+            var seekTime = Math.max(0, Math.min((x / scrollerWidth) * duration, duration));
+            FrameTrail.module('HypervideoController').currentTime = toAbsolute(seekTime);
         };
         var scrubStart = function(e) {
             if (e.target.closest('.timelineElement')) return;
@@ -523,16 +557,16 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
      * Set zoom level.
      * @method setZoom
      * @param {Number} level
-     * @param {Number} focusTime - Time to keep centered (optional, defaults to playhead)
+     * @param {Number} focusTime - Time to keep centered, *relative* to the clip's in-point (optional, defaults to playhead)
      */
     function setZoom(level, focusTime) {
         level = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, level));
 
         if (level === zoomLevel) return;
 
-        // Default focus to current playhead position
+        // Default focus to current playhead position (focusTime is relative)
         if (focusTime === undefined) {
-            focusTime = FrameTrail.module('HypervideoController').currentTime;
+            focusTime = toRelative(FrameTrail.module('HypervideoController').currentTime);
         }
 
         // Update container width reference
@@ -620,7 +654,7 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
     /**
      * Scroll to make a specific time visible.
      * @method scrollToTime
-     * @param {Number} time - Time in seconds
+     * @param {Number} time - Time in seconds, *relative* to the clip's in-point (0..duration)
      * @param {Boolean} center - If true, center the time
      */
     function scrollToTime(time, center) {
@@ -718,7 +752,9 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
             var rect = timeRulerElement.getBoundingClientRect();
             var x = e.clientX - rect.left + timeRulerElement.scrollLeft;
             var scrollerWidth = containerWidth * zoomLevel;
-            FrameTrail.module('HypervideoController').currentTime = Math.max(0, Math.min((x / scrollerWidth) * duration, duration));
+            // Clamp in relative space, then hand an absolute time to the controller
+            var seekTime = Math.max(0, Math.min((x / scrollerWidth) * duration, duration));
+            FrameTrail.module('HypervideoController').currentTime = toAbsolute(seekTime);
         };
         timeRulerElement.addEventListener('pointerdown', function(e) {
             if (e.button !== undefined && e.button !== 0) return;
@@ -855,7 +891,8 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
             var clickPercent = (e.clientX - rect.left) / rect.width;
             var time = clickPercent * duration;
 
-            FrameTrail.module('HypervideoController').currentTime = time;
+            // time is relative: absolute for the controller, relative for scrollToTime
+            FrameTrail.module('HypervideoController').currentTime = toAbsolute(time);
             scrollToTime(time, true);
         });
 
@@ -879,13 +916,10 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
 
         track.innerHTML = '';
 
-        var items = getAllItems();
-
-        items.forEach(function(item) {
-            var start = item.data.start;
-            var leftPercent = (start / duration) * 100;
-            var cssWidth = item.data.end
-                ? Math.max(((item.data.end - start) / duration) * 100, 0.3) + '%'
+        getMinimapRanges().forEach(function(range) {
+            var leftPercent = (range.start / duration) * 100;
+            var cssWidth = (range.end != null)
+                ? Math.max(((range.end - range.start) / duration) * 100, 0.3) + '%'
                 : '10px';
 
             var el = document.createElement('div');
@@ -940,6 +974,46 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
                 // Non-edit mode: only overlays are visible (timelines are hidden)
                 return HypervideoModel.overlays || [];
         }
+    }
+
+
+    /**
+     * Get the time spans the minimap should draw, in *relative* time.
+     *
+     * Chapters are the special case: they store only a start, and a chapter runs
+     * up to the next one's start (the last to the end of the video), so their
+     * extent has to be derived here — the same rule ChaptersController.layoutChapters
+     * and Chapter.updateTimelineElement apply. Without this they would have no
+     * end at all and get drawn as fixed-width stubs.
+     *
+     * @method getMinimapRanges
+     * @private
+     * @return {Array} array of { start, end } with end possibly null
+     */
+    function getMinimapRanges() {
+
+        if (FrameTrail.getState('editMode') === 'chapters') {
+
+            var sorted = FrameTrail.module('ChaptersController').getSortedChapters(),
+                videoEnd = FrameTrail.module('HypervideoModel').offsetIn + duration;
+
+            return sorted.map(function(chapter, index) {
+                var nextStart = (index + 1 < sorted.length) ? sorted[index + 1].data.start : videoEnd;
+                return {
+                    start: toRelative(chapter.data.start),
+                    end:   toRelative(nextStart)
+                };
+            });
+
+        }
+
+        return getAllItems().map(function(item) {
+            return {
+                start: toRelative(item.data.start),
+                end:   (item.data.end != null) ? toRelative(item.data.end) : null
+            };
+        });
+
     }
 
 

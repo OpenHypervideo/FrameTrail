@@ -29,9 +29,13 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
 
     /**
      * I return a copy of the model's chapters sorted by start time.
+     *
+     * The model array itself is only kept sorted while the chapter editor is in
+     * use (see sortChapters), so anything that renders chapters in time order
+     * must go through me rather than trusting the array order.
+     *
      * @method getSortedChapters
      * @return {Array} array of Chapter objects
-     * @private
      */
     function getSortedChapters() {
         return FrameTrail.module('HypervideoModel').chapters.slice().sort(function(a, b) {
@@ -383,6 +387,7 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
         },
 
         initController:      initController,
+        getSortedChapters:   getSortedChapters,
         layoutChapters:      layoutChapters,
         clampChapterStart:   clampChapterStart,
         renderChapterList:   renderChapterList,

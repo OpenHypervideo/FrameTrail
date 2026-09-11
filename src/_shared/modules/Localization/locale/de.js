@@ -228,6 +228,7 @@ window.FrameTrail_L10n['de'] = {
     "MessageHintDragCodeSnippets": "Füge eigenen Code hinzu, indem du Code-Bausteine per Drag & Drop in die aktive Timeline ziehst. Füge eigene \"CSS Anpassungen\" hinzu, oder reagiere auf Events indem du die \"onReady\", \"onPlay\", \"onPause\" und \"onEnded\" Tabs bearbeitest.",
     "MessageHintDragOverlays": "Füge Overlays hinzu, indem du Ressourcen per Drag & Drop auf den Videobereich ziehst.",
     "MessageHintNewTranscriptsUpload": "Neue Transkripte können unter \"Einstellungen\" hochgeladen werden.",
+    "MessageHintNoChapters": "Dieses Hypervideo hat noch keine Kapitel. Sie können im Editor unter \"Kapitel\" angelegt werden.",
     "MessageHintTryUsingArrowKeys": "Du kannst auch die Pfeiltasten verwenden",
     "MessageLayoutManagerDropContentViews": "Füge Inhalte per Drag & Drop zu den Inhaltsbereichen hinzu",
     "MessageNewResourceName": "Gib einen Namen an",
