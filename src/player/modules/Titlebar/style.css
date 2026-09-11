@@ -61,6 +61,10 @@
     opacity: .7;
 }
 
+.titlebarViewMode button[data-viewmode="overview"] .icon-collapse-all:before {
+    transform: translateX(3px) scale(1.4);
+}
+
 .titlebar .titlebarViewMode button[data-viewmode="video"] {
     margin-left: 20px;
 }
@@ -191,8 +195,92 @@
 .titlebar .titlebarActionButtonContainer .startEditButton,
 .titlebar .titlebarActionButtonContainer .leaveEditModeButton,
 .titlebar .titlebarActionButtonContainer .logoutButton,
-.titlebar .titlebarActionButtonContainer .userSettingsMenu {
+.titlebar .titlebarActionButtonContainer .userSettingsMenu,
+.titlebar .titlebarActionButtonContainer .titlebarSearch {
     float: left;
+}
+
+/* Overview search
+   The action container is flex-shrink:0 inside the flex title bar, so the field
+   opening does not push the buttons off the edge — the elastic .titlebarTitle
+   yields instead. The input is always in the DOM and animates between zero and
+   full width, which is what lets it expand and collapse rather than appear. */
+.titlebar .titlebarActionButtonContainer .titlebarSearch {
+    display: flex;
+    align-items: center;
+    max-width: 100%;
+    /* The clear button is positioned against this box rather than laid out in
+       it, so that appearing costs no width and the bar does not shift sideways
+       the moment the first character is typed. */
+    position: relative;
+}
+
+.titlebar .titlebarSearch .titlebarSearchInput {
+    width: 0;
+    margin: 0;
+    padding: 0;
+    /* Border-box, so the room reserved for the clear button below comes out of
+       the field's own width instead of adding to it. */
+    box-sizing: border-box;
+    border: none;
+    border-bottom: 1px solid transparent;
+    border-radius: 0;
+    background: transparent;
+    color: var(--primary-fg-color);
+    opacity: 0;
+    -webkit-transition: width 200ms ease, opacity 200ms ease, padding 200ms ease;
+    -moz-transition: width 200ms ease, opacity 200ms ease, padding 200ms ease;
+    -o-transition: width 200ms ease, opacity 200ms ease, padding 200ms ease;
+    transition: width 200ms ease, opacity 200ms ease, padding 200ms ease;
+}
+
+/* The underline already says where the focus is, and a ring drawn round a field
+   that has no box of its own reads as a stray rectangle in the title bar. */
+.titlebar .titlebarSearch .titlebarSearchInput:focus,
+.titlebar .titlebarSearch .titlebarSearchInput:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
+
+.titlebar .titlebarSearch.active .titlebarSearchInput {
+    width: 208px;
+    /* Right padding is the clear button's seat: the text stops before it rather
+       than running underneath it. */
+    padding: 3px 26px 3px 4px;
+    border-bottom-color: var(--primary-fg-color);
+    opacity: 1;
+}
+
+.titlebar.editActive .titlebarSearch .titlebarSearchInput {
+    color: var(--primary-bg-color);
+}
+
+.titlebar.editActive .titlebarSearch.active .titlebarSearchInput {
+    border-bottom-color: var(--primary-bg-color);
+}
+
+/* Inside the field, at its right edge — out of the flex flow entirely, so it
+   costs no width and the bar stays put when it appears and disappears. */
+.titlebar .titlebarSearch .titlebarSearchClearButton {
+    display: none;
+    position: absolute;
+    right: 2px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    font-size: 13px;
+    line-height: 1;
+    opacity: 0.7;
+}
+
+.titlebar .titlebarSearch.active.hasQuery .titlebarSearchClearButton {
+    display: block;
+}
+
+.titlebar .titlebarSearch .titlebarSearchClearButton:hover {
+    opacity: 1;
 }
 
 /* User menu

@@ -821,6 +821,13 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         layoutMemo = null;
         layoutStage();
 
+        // Pins are rebuilt for reasons of our own — entering map editing, a
+        // reload, a lock changing hands, a card action — not only when
+        // initList() asks for it. Every one of those hands back an unfiltered
+        // set, so an active search has to be laid over it again here.
+        var overview = FrameTrail.module('ViewOverview');
+        if (overview && overview.applySearchFilter) overview.applySearchFilter();
+
         if (reopenID && MarkerElements[reopenID]) {
             openPopup(reopenID);
         }
@@ -1534,6 +1541,12 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         mapEditActive = value;
 
         if (mapEditActive) {
+
+            // Arranging the map means arranging all of it. Filtered-out pins are
+            // dimmed and take no pointer events, so they could not be dragged;
+            // dropping the query hands back the whole set, and the title bar's
+            // own handler collapses the search field to match.
+            FrameTrail.changeState('overviewSearchQuery', '');
 
             if (Collaboration) {
                 // Promote the session that is already watching the library and

@@ -95,6 +95,14 @@
     color: var(--primary-fg-color);
 }
 
+/* Overview search: non-matching thumbs leave the flow entirely, so the results
+   close up into a tight grid instead of sitting in a field of gaps. The "new
+   hypervideo" tile goes with them — it is not a search result. */
+.viewOverview .overviewList .hypervideoThumb.filteredOut,
+.viewOverview.searching .overviewList .newHypervideoThumb {
+    display: none;
+}
+
 .viewOverview .emptyStateHint {
     position: absolute;
     top: 12px;

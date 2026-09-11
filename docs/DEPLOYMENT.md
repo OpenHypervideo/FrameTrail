@@ -390,6 +390,8 @@ Runtime config is in `_data/config.json`:
 - `allowUploads` — Enable file uploads
 - `alwaysForceLogin` — Make the instance **private**: require a valid login to view any content (see below)
 - `defaultTheme` — Default color theme
+- `overviewMode` — How the overview presents the hypervideos: `"grid"` (default) or `"map"`
+- `overviewShowSearchBar` — Show a search field in the title bar for filtering the overview by title (default: off). Applies to both presentations; on the map only hypervideos that have been placed can be found, since unplaced ones have no pin
 
 #### Private instances (`alwaysForceLogin`)
 

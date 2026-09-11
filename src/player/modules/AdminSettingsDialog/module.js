@@ -569,6 +569,11 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         // together in OverviewMapSettingsDialog, from map editing.
         var selectedOverviewMode = (database.config.overviewMode === 'map') ? 'map' : 'grid';
 
+        // Offered for both presentations: the grid hides what does not match,
+        // the map dims it. A missing key is the default and the pre-existing
+        // behaviour alike — no search bar.
+        var selectedOverviewShowSearchBar = !!database.config.overviewShowSearchBar;
+
         // Schematics for the two mode cards. Each mirrors the shape of the real
         // thing: the grid shows rectangular thumbs with the title inside (see
         // .hypervideoTitle), the map shows round markers with the title below
@@ -609,6 +614,12 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                         + '            </div>'
                         + '        </div>'
                         + '    </div>'
+                        + '    <div class="layoutRow mt-1">'
+                        + '        <div class="column-12 mt-1">'
+                        + '            <div class="message active">'+ labels['MessageOverviewSearchBar'] +'</div>'
+                        + '            <div class="checkboxRow"><label class="switch"><input type="checkbox" name="overviewShowSearchBar" id="overviewShowSearchBar" '+ (selectedOverviewShowSearchBar ? 'checked' : '') +'><span class="slider round"></span></label><label for="overviewShowSearchBar">'+ labels['SettingsOverviewSearchBar'] +'</label></div>'
+                        + '        </div>'
+                        + '    </div>'
                         + '</div>';
         var overviewPresentationUI = _omw.firstElementChild;
 
@@ -628,6 +639,14 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
                 configChanged = true;
             });
+        });
+
+        // This tab has no .configEditingForm around it, which is what the generic
+        // dirty tracking and the Apply sweep both key off — so, like the mode
+        // cards above, the switch reports its own changes.
+        overviewPresentationUI.querySelector('input[name="overviewShowSearchBar"]').addEventListener('change', function() {
+            selectedOverviewShowSearchBar = this.checked;
+            configChanged = true;
         });
 
         /* Global CSS Editing UI */
@@ -852,8 +871,11 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
                                 // The overview mode is picked with option cards
                                 // rather than a form field, so the generic loops
-                                // above do not read it.
+                                // above do not read it. The search bar switch
+                                // sits in the same tab, outside .configEditingForm,
+                                // and is read here for the same reason.
                                 database.config.overviewMode = selectedOverviewMode;
+                                database.config.overviewShowSearchBar = selectedOverviewShowSearchBar;
 
                                 // Apply global default theme
                                 database.config.defaultTheme = selectedThemeValue;

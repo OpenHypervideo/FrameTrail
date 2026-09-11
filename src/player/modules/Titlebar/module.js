@@ -20,12 +20,17 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
     var _tbWrapper = document.createElement('div');
     _tbWrapper.innerHTML = '<div class="titlebar">'
                             + '  <div class="titlebarViewMode">'
-                            + '      <button data-viewmode="overview" data-tooltip-bottom-left="'+ labels['GenericOverview'] +'"><span class="icon-overview"></span></button>'
+                            + '      <button data-viewmode="overview" data-tooltip-bottom-left="'+ labels['GenericOverview'] +'"><span class="icon-collapse-all"></span></button>'
                             + '      <button data-viewmode="video"><span class="icon-hypervideo"></span></button>'
                             + '  </div>'
                             + '  <div class="titlebarTitle"><button class="hypervideoEditButton" data-tooltip-bottom-right="'+ labels['SettingsHypervideoSettings'] +'"><span class="icon-pencil"></span></button><button class="hypervideoDeleteButton" data-tooltip-bottom-right="'+ labels['GenericDeleteHypervideo'] +'"><span class="icon-trash"></span></button></div>'
                             + '  <div class="titlebarActionButtonContainer">'
                             + '      <div class="collaborationPresence"></div>'
+                            + '      <div class="titlebarSearch">'
+                            + '          <button class="titlebarSearchButton" data-tooltip-bottom-right="'+ labels['GenericSearch'] +'"><span class="icon-search"></span></button>'
+                            + '          <input type="text" class="titlebarSearchInput" placeholder="'+ labels['OverviewSearchPlaceholder'] +'">'
+                            + '          <button class="titlebarSearchClearButton"><span class="icon-cancel"></span></button>'
+                            + '      </div>'
                             + '      <button class="adminSettingsButton" data-tooltip-bottom-right="'+ labels['GenericAdministration'] +'"><span class="icon-cog"></span></button>'
                             + '      <button class="manageResourcesButton resourceManagerIcon" data-tooltip-bottom-right="'+ labels['ResourcesManage'] +'"><span class="icon-folder-open"></span></button>'
                             + '      <div class="contextSelectButton userSettingsMenu">'
@@ -49,7 +54,11 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
         UserSettingsMenu        = domElement.querySelector('.userSettingsMenu'),
         UserSettingsButton      = domElement.querySelector('.userSettingsButton'),
         UserSettingsList        = domElement.querySelector('.userSettingsMenu .contextSelectList'),
-        CollaborationPresence   = domElement.querySelector('.collaborationPresence');
+        CollaborationPresence   = domElement.querySelector('.collaborationPresence'),
+        TitlebarSearch          = domElement.querySelector('.titlebarSearch'),
+        TitlebarSearchButton    = domElement.querySelector('.titlebarSearchButton'),
+        TitlebarSearchInput     = domElement.querySelector('.titlebarSearchInput'),
+        TitlebarSearchClear     = domElement.querySelector('.titlebarSearchClearButton');
 
 
     /**
@@ -315,6 +324,118 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
 
     /**
+     * I hand the typed query to whoever is showing the overview.
+     *
+     * The query lives in the 'overviewSearchQuery' state rather than in here,
+     * so that ViewOverview can filter without knowing about this bar, and so
+     * that the map can drop a filter that would be in the way of arranging it —
+     * neither of them has to reach into the title bar to do so.
+     *
+     * @method publishSearchQuery
+     * @param {String} query
+     */
+    function publishSearchQuery(query) {
+
+        TitlebarSearch.classList.toggle('hasQuery', query.length > 0);
+
+        if (FrameTrail.getState('overviewSearchQuery') !== query) {
+            FrameTrail.changeState('overviewSearchQuery', query);
+        }
+
+    }
+
+
+    /**
+     * I empty the field and collapse it back to an icon.
+     *
+     * @method clearSearch
+     */
+    function clearSearch() {
+
+        TitlebarSearchInput.value = '';
+        TitlebarSearch.classList.remove('active');
+        publishSearchQuery('');
+
+    }
+
+
+    /**
+     * I show the search control only where it does something: on the overview,
+     * and only in an instance configured to offer it.
+     *
+     * Leaving the overview for a hypervideo merely hides the bar — the query
+     * survives, so coming back finds the overview as it was left. Switching the
+     * setting off is a different thing: the filter has to go with the bar, or
+     * the overview would stay narrowed with nothing on screen to widen it again.
+     *
+     * @method updateSearchVisibility
+     */
+    function updateSearchVisibility() {
+
+        var enabled = !!((FrameTrail.module('Database').config || {}).overviewShowSearchBar);
+
+        if (!enabled && TitlebarSearchInput.value) {
+            clearSearch();
+        }
+
+        TitlebarSearch.style.display = (enabled && FrameTrail.getState('viewMode') === 'overview') ? '' : 'none';
+
+    }
+
+
+    /**
+     * I bring the field in line with a query that was changed elsewhere — the
+     * map clears it when it is about to be arranged.
+     *
+     * @method syncSearchInput
+     * @param {String} query
+     */
+    function syncSearchInput(query) {
+
+        query = query || '';
+
+        if (TitlebarSearchInput.value === query) return;
+
+        TitlebarSearchInput.value = query;
+        TitlebarSearch.classList.toggle('hasQuery', query.length > 0);
+
+        if (!query) {
+            TitlebarSearch.classList.remove('active');
+        }
+
+    }
+
+
+    TitlebarSearchButton.addEventListener('click', function() {
+        TitlebarSearch.classList.add('active');
+        TitlebarSearchInput.focus();
+    });
+
+    TitlebarSearchInput.addEventListener('input', function() {
+        publishSearchQuery(this.value);
+    });
+
+    // Only an empty field collapses, and only once it is done being typed in:
+    // deleting the last character to retype it must not shut the bar.
+    TitlebarSearchInput.addEventListener('blur', function() {
+        if (!this.value) TitlebarSearch.classList.remove('active');
+    });
+
+    TitlebarSearchInput.addEventListener('keydown', function(evt) {
+        if (evt.key !== 'Escape') return;
+        // Escape belongs to the field while the field has focus; the document
+        // handler above would otherwise also read it as "close the user menu".
+        evt.stopPropagation();
+        clearSearch();
+        this.blur();
+    });
+
+    TitlebarSearchClear.addEventListener('click', function() {
+        clearSearch();
+    });
+
+
+    /**
      * I am called from {{#crossLink "Interface/create:method"}}Interface/create(){{/crossLink}}.
      *
      * I set up my interface elements.
@@ -410,6 +531,9 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
         // just moved to. onChange takes one handler per state, so this cannot
         // be registered separately.
         renderPresence();
+
+        // Same reason: the search bar belongs to the overview only.
+        updateSearchVisibility();
 
     }
 
@@ -542,7 +666,12 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             loggedIn:       changeUserLogin,
             userColor:      changeUserColor,
             username:       changeUserColor,
-            collabState:    renderPresence
+            collabState:    renderPresence,
+            // The admin settings dialog re-reads config.json after Apply, which
+            // republishes this state — so turning the search bar on or off takes
+            // effect without the page reload that a grid/map switch needs.
+            config:              updateSearchVisibility,
+            overviewSearchQuery: syncSearchInput
         },
 
         /**

@@ -176,7 +176,8 @@
                 sidebarOpen:        false,
                 fullscreen:         false,
                 viewSize:           [0,0],
-                unsavedChanges:     false
+                unsavedChanges:     false,
+                overviewSearchQuery: ''
             };
 
             // dataPath and server are stored in state. RouteNavigation.resolveDataURL()

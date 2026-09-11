@@ -94,6 +94,17 @@
     transform: translate(-50%, -50%);
     cursor: pointer;
     z-index: 1;
+    /* Opacity only: transform is the centring translate the pin animations take
+       over, and left/top are written by layoutStage on every resize. */
+    transition: opacity 200ms ease;
+}
+
+/* Overview search: the map dims rather than hides, so the arrangement the pins
+   were placed in stays readable while it is being searched. They stop taking
+   clicks with it — a pin you cannot see is not one you meant to open. */
+.overviewMapMarker.filteredOut {
+    opacity: 0.15;
+    pointer-events: none;
 }
 
 .overviewMapMarkerBody {

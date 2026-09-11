@@ -86,7 +86,12 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
         if (!hypervideoID) return null;
 
-        return domElement.querySelector('[data-hypervideoid="' + hypervideoID + '"]');
+        // Filtered-out grid thumbs are display:none and would measure 0x0. The
+        // zoom animations call this to find something to animate from, and would
+        // spend their whole retry budget waiting for a layout that is never
+        // coming; skipping them here puts a filtered-out hypervideo on the same
+        // footing as one that is not on the map — no anchor, no animation.
+        return domElement.querySelector('[data-hypervideoid="' + hypervideoID + '"]:not(.filteredOut)');
 
     }
 
@@ -118,6 +123,50 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
         var element = getElementForHypervideo(hypervideoID);
         if (element) element.classList.add('activeHypervideo');
+
+    }
+
+
+    /**
+     * I show only the hypervideos whose title matches the current search query.
+     *
+     * One pass covers both presentations: grid thumbs and map pins alike carry
+     * data-hypervideoid, and only the stylesheets differ — the grid drops
+     * non-matches out of the flow so the results close up, while the map dims
+     * them in place, because a map that reflowed would no longer be a map.
+     *
+     * The title is read from the database rather than from the elements'
+     * data-name attribute, which is interpolated unescaped when a thumb is
+     * built and cannot be trusted to survive a quote in the title.
+     *
+     * Note what this does *not* do on the map: a hypervideo that was never
+     * placed has no pin, so it cannot be found here. That is the same bargain
+     * the map already makes by not showing it at all.
+     *
+     * @method applySearchFilter
+     */
+    function applySearchFilter() {
+
+        var query       = (FrameTrail.getState('overviewSearchQuery') || '').trim().toLowerCase(),
+            hypervideos = FrameTrail.module('Database').hypervideos;
+
+        domElement.classList.toggle('searching', query.length > 0);
+
+        domElement.querySelectorAll('[data-hypervideoid]').forEach(function(element) {
+
+            var record  = hypervideos[element.dataset.hypervideoid],
+                isMatch = !query || ((record && record.name) || '').toLowerCase().indexOf(query) !== -1;
+
+            element.classList.toggle('filteredOut', !isMatch);
+
+        });
+
+        // getElementForHypervideo() skips filtered-out elements, so the active
+        // marking has to be re-resolved once the filter changes — otherwise it
+        // stays off the hypervideo that just came back into view.
+        setActiveHypervideo(FrameTrail.module('RouteNavigation').hypervideoID);
+
+        updateEmptyStateHint();
 
     }
 
@@ -173,7 +222,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
             map.renderMarkers();
             map.toggleEditMode(editMode);
             changeViewSize();
-            updateEmptyStateHint();
+            applySearchFilter();
             return;
         }
 
@@ -274,7 +323,9 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
         changeViewSize();
         OverviewList.querySelectorAll('.hypervideoThumb').forEach(function(el) { el.style.transitionDuration = ''; });
 
-        updateEmptyStateHint();
+        // Every rebuild starts from an unfiltered list, so the filter has to be
+        // laid back over it — this also covers updateEmptyStateHint().
+        applySearchFilter();
 
     }
 
@@ -393,6 +444,16 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
      * @return
      */
     function updateEmptyStateHint() {
+
+        // A query is a temporary lens on the library, not a statement about it.
+        // Both hints below describe what has been created and what has been
+        // placed, and a filter changes neither — over an empty result they would
+        // read as "there is nothing here" when there is. A search that matches
+        // nothing says so by showing nothing.
+        if ((FrameTrail.getState('overviewSearchQuery') || '').trim()) {
+            EmptyStateHint.classList.remove('visible');
+            return;
+        }
 
         var hypervideos = FrameTrail.module('Database').hypervideos;
         var hasHypervideos = Object.keys(hypervideos).length > 0;
@@ -864,6 +925,8 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
             loggedIn:       updateUserLogin,
 
+            overviewSearchQuery: applySearchFilter,
+
             // The map deliberately registers no onChange of its own, so that
             // the order in which we and it react to a state stays explicit.
             collabState:    function() {
@@ -876,6 +939,12 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
         refreshList: refreshList,
 
         isMapMode:   isMapMode,
+
+        /**
+         * Re-applied by the map after it rebuilds its pins, which it does for
+         * reasons of its own — not only when initList() asks it to.
+         */
+        applySearchFilter: applySearchFilter,
 
         /**
          * The lazily initialized ViewOverviewMap module, or null when this
