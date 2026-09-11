@@ -800,18 +800,18 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
                     // Delay showing overview until animation completes
                     animateFullSizeToThumb(currentHypervideoID, capturedContainer, mainContainerRect, function() {
-                        FrameTrail.module('Titlebar').title = labels['GenericOverview'];
+                        FrameTrail.module('Titlebar').title = FrameTrail.module('Database').overviewTitle;
                     });
                 } else {
                     // Video view not available, just show overview
                     changeViewSize();
                     domElement.classList.add('active');
-                    FrameTrail.module('Titlebar').title = labels['GenericOverview'];
+                    FrameTrail.module('Titlebar').title = FrameTrail.module('Database').overviewTitle;
                 }
             } else {
                 changeViewSize();
                 domElement.classList.add('active');
-                FrameTrail.module('Titlebar').title = labels['GenericOverview'];
+                FrameTrail.module('Titlebar').title = FrameTrail.module('Database').overviewTitle;
             }
         } else if (viewMode === 'video' && oldViewMode === 'overview') {
             // Animate from thumb position to full size when switching from overview to video

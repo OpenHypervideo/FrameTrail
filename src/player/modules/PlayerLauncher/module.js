@@ -319,7 +319,7 @@
 
                     function initOverview() {
 
-                        FrameTrail.module('InterfaceModal').setLoadingTitle(labels['GenericOverview']);
+                        FrameTrail.module('InterfaceModal').setLoadingTitle(FrameTrail.module('Database').overviewTitle);
 
                         FrameTrail.module('Interface').create(function(){
 

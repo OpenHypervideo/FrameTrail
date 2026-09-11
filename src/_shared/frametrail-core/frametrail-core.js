@@ -42,6 +42,8 @@
      *   data-frametrail-config       — inline JSON config object
      *   data-frametrail-datapath     — base URL for _data/ (maps to dataPath option)
      *   data-frametrail-server       — base URL for _server/ (maps to server option)
+     *   data-frametrail-fullpage     — "true"/"false"; may this player name the
+     *                                  browser tab? (maps to fullPage option)
      *
      * @method autoInit
      * @param {Element|Document} [scope]  Optional root element to search within (default: document)
@@ -62,13 +64,20 @@
                     config.defaultLanguage = langAttr;
                 }
 
+                // An adopted <video> sits in a page of somebody else's making,
+                // so the auto-detection says "not the page" on its own. The
+                // attribute is here so that verdict can still be overruled.
+                var fullPageAttr = video.getAttribute('data-frametrail-fullpage');
+                var fullPage     = (fullPageAttr === null) ? undefined : (fullPageAttr !== 'false');
+
                 // No target provided — _start() will auto-create the wrapper div
                 _init({
                     videoElement: video,
                     annotations:  annotations,
                     config:       config,
                     dataPath:     video.getAttribute('data-frametrail-datapath') || null,
-                    server:       video.getAttribute('data-frametrail-server')   || null
+                    server:       video.getAttribute('data-frametrail-server')   || null,
+                    fullPage:     fullPage
                 });
             })(videos[i]);
         }
@@ -82,6 +91,55 @@
         }
 
         defs_types[name] = definition;
+
+    }
+
+
+    /**
+     * I decide whether this instance is the whole page, rather than something
+     * embedded in a page somebody else owns. Today that governs one thing: who
+     * gets to name the browser tab (see Titlebar.renderTitle).
+     *
+     * Mounting on <body> is the signal. A host that has content of its own has
+     * to pass a container target, and the auto-wrap path builds a wrapper div
+     * beside the video it adopted — so both read as "not the page", while
+     * index.html, the standalone export and a target-less init all read as
+     * "the page". Inspecting what else <body> holds would be both fussier and
+     * less reliable: dialogs, drag clones and the overview's zoom animation are
+     * appended to <body> while the application runs, so the answer would change
+     * underneath us. This one does not.
+     *
+     * The fullPage option overrides the whole thing, in either direction.
+     *
+     * @method _resolveFullPage
+     * @param {Boolean|undefined} option    the fullPage init option
+     * @param {Element|null}      targetEl  the resolved target element
+     * @return Boolean
+     * @private
+     */
+    function _resolveFullPage(option, targetEl) {
+
+        if (option === true || option === false) {
+            return option;
+        }
+
+        // A cross-origin parent throws rather than answering, which is itself
+        // the answer: we are in somebody's iframe.
+        var inIframe;
+        try {
+            inIframe = (window.self !== window.top);
+        } catch (e) {
+            inIframe = true;
+        }
+        if (inIframe) return false;
+
+        // This instance is not in the registry yet (it is pushed once _start
+        // returns), so anything in there is an instance that came first and has
+        // the better claim — same reasoning as RouteNavigation's guard on who
+        // owns the address bar.
+        if (instances.length > 0) return false;
+
+        return targetEl === document.body;
 
     }
 
@@ -152,6 +210,8 @@
             var _targetEl = (typeof resolvedTarget === 'string') ? document.querySelector(resolvedTarget) : resolvedTarget;
             if (_targetEl) _targetEl.classList.add('frametrail-body');
 
+            var _fullPage = _resolveFullPage(options.fullPage, _targetEl);
+
             state = {
                 target:             resolvedTarget,
                 fullscreenTarget:   options.fullscreenTarget || null,
@@ -167,6 +227,7 @@
                 annotations:        options.annotations  || null,
                 dataPath:           options.dataPath     || null,
                 server:             options.server       || null,
+                fullPage:           _fullPage,
 
                 loggedIn:           false,
                 username:           '',

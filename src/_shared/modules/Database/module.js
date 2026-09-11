@@ -199,6 +199,28 @@
 
 
     /**
+     * I return the name this instance gives its overview — the optional
+     * config.overviewTitle, or the localized "Overview" label when it is unset
+     * or blank.
+     *
+     * The fallback is resolved here rather than at the call sites, so an empty
+     * key and a missing one behave alike. Resolving it per call (instead of
+     * caching) also keeps it following a language switch, since the labels are
+     * a live Proxy.
+     *
+     * @method getOverviewTitle
+     * @return {String}
+     */
+    function getOverviewTitle() {
+
+        var title = ((config || {}).overviewTitle || '').trim();
+
+        return title || FrameTrail.module('Localization').labels['GenericOverview'];
+
+    }
+
+
+    /**
      * Private fetch-based AJAX helper. Delegates to the current storage adapter for
      * relative `_data/` GET requests; uses resolveServerURL() for `_server/` POST
      * requests; passes absolute URLs through as-is.
@@ -2504,6 +2526,17 @@
          * @attribute overviewMap
          */
         get overviewMap() { return getOverviewMap() },
+
+
+        /**
+         * I am the name of the overview: config.overviewTitle, or the
+         * localized "Overview" label when it is unset or blank.
+         *
+         * @attribute overviewTitle
+         * @type String
+         * @readOnly
+         */
+        get overviewTitle() { return getOverviewTitle() },
 
 
         getIdOfResource:       getIdOfResource,

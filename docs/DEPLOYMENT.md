@@ -390,6 +390,7 @@ Runtime config is in `_data/config.json`:
 - `allowUploads` — Enable file uploads
 - `alwaysForceLogin` — Make the instance **private**: require a valid login to view any content (see below)
 - `defaultTheme` — Default color theme
+- `overviewTitle` — What this instance calls its overview, e.g. a project name. Shown in the title bar and, where FrameTrail is the whole page, in the browser tab. Empty or absent (the default) uses the localized "Overview" label
 - `overviewMode` — How the overview presents the hypervideos: `"grid"` (default) or `"map"`
 - `overviewShowSearchBar` — Show a search field in the title bar for filtering the overview by title (default: off). Applies to both presentations; on the map only hypervideos that have been placed can be found, since unplaced ones have no pin
 

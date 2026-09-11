@@ -574,6 +574,10 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         // behaviour alike — no search bar.
         var selectedOverviewShowSearchBar = !!database.config.overviewShowSearchBar;
 
+        // What this instance calls its overview. Empty means the localized
+        // "Overview" label, which is what the input's placeholder shows.
+        var selectedOverviewTitle = (database.config.overviewTitle || '');
+
         // Schematics for the two mode cards. Each mirrors the shape of the real
         // thing: the grid shows rectangular thumbs with the title inside (see
         // .hypervideoTitle), the map shows round markers with the title below
@@ -601,6 +605,13 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         _omw.innerHTML = '<div class="overviewPresentationSettings">'
                         + '    <div class="layoutRow">'
                         + '        <div class="column-12">'
+                        + '            <div class="message active">'+ labels['MessageOverviewTitle'] +'</div>'
+                        + '            <label for="overviewTitle">'+ labels['SettingsOverviewTitle'] +'</label>'
+                        + '            <input type="text" name="overviewTitle" id="overviewTitle" placeholder="'+ labels['GenericOverview'] +'">'
+                        + '        </div>'
+                        + '    </div>'
+                        + '    <div class="layoutRow mt-1">'
+                        + '        <div class="column-12 mt-1">'
                         + '            <div class="message active">'+ labels['MessageOverviewMode'] +'</div>'
                         + '            <div class="overviewModeSelect optionCards" data-property="overviewMode" data-value="'+ selectedOverviewMode +'">'
                         + '                <div '+ (selectedOverviewMode === 'grid' ? 'class="active"' : '') +' data-value="grid">'
@@ -643,9 +654,19 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
         // This tab has no .configEditingForm around it, which is what the generic
         // dirty tracking and the Apply sweep both key off — so, like the mode
-        // cards above, the switch reports its own changes.
+        // cards above, the switch and the title field report their own changes.
         overviewPresentationUI.querySelector('input[name="overviewShowSearchBar"]').addEventListener('change', function() {
             selectedOverviewShowSearchBar = this.checked;
+            configChanged = true;
+        });
+
+        // Set as a property rather than interpolated into the markup above:
+        // that string is built by concatenation, and this sidesteps having to
+        // escape whatever the admin typed into an attribute.
+        var overviewTitleInput = overviewPresentationUI.querySelector('input[name="overviewTitle"]');
+        overviewTitleInput.value = selectedOverviewTitle;
+        overviewTitleInput.addEventListener('input', function() {
+            selectedOverviewTitle = this.value;
             configChanged = true;
         });
 
@@ -871,11 +892,13 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
                                 // The overview mode is picked with option cards
                                 // rather than a form field, so the generic loops
-                                // above do not read it. The search bar switch
-                                // sits in the same tab, outside .configEditingForm,
-                                // and is read here for the same reason.
+                                // above do not read it. The search bar switch and
+                                // the title field sit in the same tab, outside
+                                // .configEditingForm, and are read here for the
+                                // same reason.
                                 database.config.overviewMode = selectedOverviewMode;
                                 database.config.overviewShowSearchBar = selectedOverviewShowSearchBar;
+                                database.config.overviewTitle = selectedOverviewTitle.trim();
 
                                 // Apply global default theme
                                 database.config.defaultTheme = selectedThemeValue;

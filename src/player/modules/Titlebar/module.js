@@ -373,6 +373,90 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
 
     /**
+     * I write the title bar's text — the hypervideo's name in video mode, the
+     * overview's name in overview mode — and, where this instance owns the
+     * page, the browser tab along with it.
+     *
+     * Every title change in the application passes through here, which is why
+     * the document title needs no listener of its own: the view switches, the
+     * initial render, a rename in the hypervideo settings and a changed
+     * overview title all end up calling me.
+     *
+     * @method renderTitle
+     * @param {String} aString
+     */
+    function renderTitle(aString) {
+
+        var titleText = aString;
+        var editButton = TitlebarTitle.querySelector('.hypervideoEditButton');
+        var deleteButton = TitlebarTitle.querySelector('.hypervideoDeleteButton');
+        TitlebarTitle.innerHTML = '';
+
+        // Show folder name before title when in local storage mode
+        if (FrameTrail.getState('storageMode') === 'local') {
+            var adapter = FrameTrail.module('StorageManager').getAdapter();
+            if (adapter && adapter.folderName) {
+                var folderIndicator = document.createElement('span');
+                folderIndicator.className = 'localFolderIndicator';
+                folderIndicator.title = 'Click to change folder';
+                folderIndicator.textContent = '\ud83d\udcc2 ' + adapter.folderName;
+                folderIndicator.addEventListener('click', function() {
+                    FrameTrail.module('StorageManager').switchToLocal().then(function() {
+                        // Clear hash so we reload to overview, not a hypervideo ID from the old folder
+                        window.location.hash = '';
+                        window.location.reload();
+                    }).catch(function() {
+                        // User cancelled the folder picker
+                    });
+                });
+                TitlebarTitle.append(folderIndicator);
+            }
+        }
+
+        var titleSpan = document.createElement('span');
+        titleSpan.textContent = titleText;
+        TitlebarTitle.append(titleSpan);
+
+        if (editButton) {
+            TitlebarTitle.append(editButton);
+        }
+        if (deleteButton) {
+            TitlebarTitle.append(deleteButton);
+        }
+
+        // Only an instance that is the whole page may name the browser tab —
+        // an embedded player leaves that to its host (see the fullPage state in
+        // frametrail-core). An empty string would blank the tab, so a
+        // hypervideo without a name keeps whatever is there.
+        if (FrameTrail.getState('fullPage') && titleText) {
+            document.title = titleText;
+        }
+
+    }
+
+
+    /**
+     * I react to a changed config: the search bar can be switched on or off
+     * while the application runs, and so can the overview's title.
+     *
+     * The title needs re-rendering only where it is on screen. In video mode
+     * the title bar shows the hypervideo, and returning to the overview renders
+     * it again anyway.
+     *
+     * @method applyConfigChange
+     */
+    function applyConfigChange() {
+
+        updateSearchVisibility();
+
+        if (FrameTrail.getState('viewMode') === 'overview') {
+            renderTitle(FrameTrail.module('Database').overviewTitle);
+        }
+
+    }
+
+
+    /**
      * I bring the field in line with a query that was changed elsewhere — the
      * map clears it when it is about to be arranged.
      *
@@ -655,9 +739,10 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             username:       changeUserColor,
             collabState:    renderPresence,
             // The admin settings dialog re-reads config.json after Apply, which
-            // republishes this state — so turning the search bar on or off takes
-            // effect without the page reload that a grid/map switch needs.
-            config:              updateSearchVisibility,
+            // republishes this state — so turning the search bar on or off, or
+            // renaming the overview, takes effect without the page reload that a
+            // grid/map switch needs.
+            config:              applyConfigChange,
             overviewSearchQuery: syncSearchInput
         },
 
@@ -668,40 +753,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
          * @writeOnly
          */
         set title(aString) {
-            var titleText = aString;
-            var editButton = TitlebarTitle.querySelector('.hypervideoEditButton');
-            var deleteButton = TitlebarTitle.querySelector('.hypervideoDeleteButton');
-            TitlebarTitle.innerHTML = '';
-
-            // Show folder name before title when in local storage mode
-            if (FrameTrail.getState('storageMode') === 'local') {
-                var adapter = FrameTrail.module('StorageManager').getAdapter();
-                if (adapter && adapter.folderName) {
-                    var folderIndicator = document.createElement('span');
-                    folderIndicator.className = 'localFolderIndicator';
-                    folderIndicator.title = 'Click to change folder';
-                    folderIndicator.textContent = '\ud83d\udcc2 ' + adapter.folderName;
-                    folderIndicator.addEventListener('click', function() {
-                        FrameTrail.module('StorageManager').switchToLocal().then(function() {
-                            // Clear hash so we reload to overview, not a hypervideo ID from the old folder
-                            window.location.hash = '';
-                            window.location.reload();
-                        }).catch(function() {
-                            // User cancelled the folder picker
-                        });
-                    });
-                    TitlebarTitle.append(folderIndicator);
-                }
-            }
-
-            TitlebarTitle.insertAdjacentHTML('beforeend', '<span>' + titleText + '</span>');
-
-            if (editButton) {
-                TitlebarTitle.append(editButton);
-            }
-            if (deleteButton) {
-                TitlebarTitle.append(deleteButton);
-            }
+            renderTitle(aString);
         },
 
         /**

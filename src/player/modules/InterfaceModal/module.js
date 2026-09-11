@@ -159,7 +159,7 @@ FrameTrail.defineModule('InterfaceModal', function(FrameTrail){
      */
     function setLoadingTitle(title) {
 
-        loadingScreen.querySelector('.loadingTitle').innerHTML = title;
+        loadingScreen.querySelector('.loadingTitle').textContent = title;
 
     }
 

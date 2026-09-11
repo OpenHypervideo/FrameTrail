@@ -267,6 +267,7 @@ FrameTrail.changeState('editMode', true);
 | `annotations` | String/Array | URL string or array of W3C annotation URLs / inline objects (shorthand API) |
 | `dataPath` | String\|null | Base URL for the `_data/` directory (e.g. `'../_data/'`). `null` = auto-detect. |
 | `server` | String\|null | Base URL for the `_server/` PHP directory (e.g. `'../_server/'`). `null` = auto-detect or no server. |
+| `fullPage` | Boolean | Is this instance the whole page, and may it therefore set `document.title`? Always a boolean — resolved once at init from the `fullPage` option or, when that is omitted, by auto-detection. |
 
 ### Reactive Updates
 
@@ -544,7 +545,13 @@ FrameTrail.init({
                                     //   server: 'https://api.example.com/ft/_server/'
 
     // ── Advanced ──────────────────────────────────────────────────────────────
-    contentTargets: {}              // Custom DOM targets for content views
+    contentTargets: {},             // Custom DOM targets for content views
+    fullPage:       undefined       // May this player set document.title (to the
+                                    // overview title, or the open hypervideo's
+                                    // name)? Omit to auto-detect: true when the
+                                    // target is <body>, this is the only instance
+                                    // and the page is not in an iframe.
+                                    // Pass true/false to decide it explicitly.
 }, 'PlayerLauncher');
 ```
 
@@ -614,6 +621,9 @@ Supported data attributes:
 | `data-frametrail-annotations` | `annotations` | `"path/to/file.json"` |
 | `data-frametrail-language` | `config.defaultLanguage` | `"de"` |
 | `data-frametrail-config` | `config` (inline JSON) | `'{"autohideControls":true}'` |
+| `data-frametrail-datapath` | `dataPath` | `"../_data/"` |
+| `data-frametrail-server` | `server` | `"../_server/"` |
+| `data-frametrail-fullpage` | `fullPage` | `"true"` |
 
 In all three shorthand scenarios:
 - `storageMode` is forced to `'download'` (in-memory, no persistence needed)
