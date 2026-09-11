@@ -21,7 +21,6 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
     _tbWrapper.innerHTML = '<div class="titlebar">'
                             + '  <div class="titlebarViewMode">'
                             + '      <button data-viewmode="overview" data-tooltip-bottom-left="'+ labels['GenericOverview'] +'"><span class="icon-collapse-all"></span></button>'
-                            + '      <button data-viewmode="video"><span class="icon-hypervideo"></span></button>'
                             + '  </div>'
                             + '  <div class="titlebarTitle"><button class="hypervideoEditButton" data-tooltip-bottom-right="'+ labels['SettingsHypervideoSettings'] +'"><span class="icon-pencil"></span></button><button class="hypervideoDeleteButton" data-tooltip-bottom-right="'+ labels['GenericDeleteHypervideo'] +'"><span class="icon-trash"></span></button></div>'
                             + '  <div class="titlebarActionButtonContainer">'
@@ -44,6 +43,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
     var domElement = _tbWrapper.firstElementChild;
 
     var TitlebarViewMode        = domElement.querySelector('.titlebarViewMode'),
+        OverviewButton          = domElement.querySelector('.titlebarViewMode button[data-viewmode="overview"]'),
         TitlebarTitle           = domElement.querySelector('.titlebarTitle'),
         HypervideoEditButton    = domElement.querySelector('.hypervideoEditButton'),
         HypervideoDeleteButton  = domElement.querySelector('.hypervideoDeleteButton'),
@@ -256,22 +256,11 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
         if (evt.key === 'Escape') closeUserMenu();
     });
 
-    domElement.querySelector('.sidebarToggleButton') && domElement.querySelector('.sidebarToggleButton').addEventListener('click', function(){
-
-        FrameTrail.changeState('sidebarOpen', ! FrameTrail.getState('sidebarOpen'));
-
-    });
-
-    if (!FrameTrail.module('RouteNavigation').hypervideoID) {
-        domElement.querySelector('button[data-viewmode="video"]').style.display = 'none';
-    }
-
-    TitlebarViewMode.addEventListener('click', function(evt) {
-        var btn = evt.target.closest('button');
+    OverviewButton.addEventListener('click', function() {
         // Through RouteNavigation rather than straight to the state: this is
         // the user navigating, and the address bar has to say which of the two
         // views they are looking at.
-        if (btn) { FrameTrail.module('RouteNavigation').navigateToView(btn.getAttribute('data-viewmode')); }
+        FrameTrail.module('RouteNavigation').navigateToView('overview');
     });
 
 
@@ -445,7 +434,6 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
     function create() {
 
         toggleSidebarOpen(FrameTrail.getState('sidebarOpen'));
-        toogleUnsavedChanges(FrameTrail.getState('unsavedChanges'));
         toggleViewMode(FrameTrail.getState('viewMode'));
         toggleEditMode(FrameTrail.getState('editMode'));
 
@@ -480,17 +468,25 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
 
     /**
-     * I make changes to my CSS, when the global state "unsavedChanges" changes.
-     * @method toogleUnsavedChanges
-     * @param {Boolean} aBoolean
+     * I decide whether the way back to the overview is on screen.
+     *
+     * It is hidden in the overview itself, where it would lead nowhere, and in
+     * a library of a single hypervideo, where the overview has nothing to
+     * offer — except while editing, which is where a second one gets added.
+     *
+     * Both rules live here rather than half in CSS, which is how the edit-mode
+     * exception used to be expressed. The class was also only ever added, so a
+     * hypervideo created without a page reload left the button hidden for good.
+     *
+     * @method updateViewModeVisibility
      */
-    function toogleUnsavedChanges(aBoolean) {
+    function updateViewModeVisibility() {
 
-        if(aBoolean){
-            TitlebarViewMode.querySelector('[data-viewmode="video"]').classList.add('unsavedChanges');
-        }else{
-            TitlebarViewMode.querySelector('[data-viewmode="video"]').classList.remove('unsavedChanges');
-        }
+        var singleHypervideo = Object.keys(FrameTrail.module('Database').hypervideos).length === 1,
+            show = FrameTrail.getState('viewMode') !== 'overview'
+                    && (!singleHypervideo || !!FrameTrail.getState('editMode'));
+
+        TitlebarViewMode.classList.toggle('hidden', !show);
 
     }
 
@@ -502,19 +498,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
      */
     function toggleViewMode(viewMode) {
 
-        if (FrameTrail.module('RouteNavigation').hypervideoID) {
-            domElement.querySelector('button[data-viewmode="video"]').style.display = '';
-
-            // hide 'Overview' and 'Video' controls when there's only one hypervideo
-            if (Object.keys(FrameTrail.module('Database').hypervideos).length == 1) {
-                TitlebarViewMode.classList.add('hidden');
-            }
-
-        }
-
-        TitlebarViewMode.querySelectorAll('button').forEach(function(b) { b.classList.remove('active'); });
-
-        domElement.querySelector('[data-viewmode=' + viewMode + ']').classList.add('active');
+        updateViewModeVisibility();
 
         // Show/hide hypervideo edit/delete buttons based on view mode, edit mode, and permission
         var showHvButtons = viewMode === 'video' && FrameTrail.getState('editMode') && FrameTrail.module('RouteNavigation').hypervideoID && canEditCurrentHypervideo();
@@ -604,6 +588,10 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
         // way in it draws an empty row that the first poll then fills.
         renderPresence();
 
+        // A single-hypervideo library shows the way to the overview only while
+        // editing, so the button follows this transition too.
+        updateViewModeVisibility();
+
     }
 
 
@@ -660,7 +648,6 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
 
         onChange: {
             sidebarOpen:    toggleSidebarOpen,
-            unsavedChanges: toogleUnsavedChanges,
             viewMode:       toggleViewMode,
             editMode:       toggleEditMode,
             loggedIn:       changeUserLogin,

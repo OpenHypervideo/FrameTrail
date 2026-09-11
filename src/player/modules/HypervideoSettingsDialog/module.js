@@ -1212,7 +1212,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                     FrameTrail.module('ViewOverview').refreshList();
                     if (thisID == FrameTrail.module('RouteNavigation').hypervideoID) {
                         FrameTrail.module('RouteNavigation').hypervideoID = null;
-                        document.querySelector('.titlebar button[data-viewmode="video"]').style.display = 'none';
                         if (FrameTrail.getState('viewMode') === 'video') {
                             // Replace rather than push: the entry we are on
                             // points at a hypervideo that no longer exists, so
@@ -1265,7 +1264,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                                 FrameTrail.module('ViewOverview').refreshList();
                                 if (thisID == FrameTrail.module('RouteNavigation').hypervideoID) {
                                     FrameTrail.module('RouteNavigation').hypervideoID = null;
-                                    document.querySelector('.titlebar button[data-viewmode="video"]').style.display = 'none';
                                     if (FrameTrail.getState('viewMode') === 'video') {
                                         // Replace rather than push: the entry we
                                         // are on points at a hypervideo that no

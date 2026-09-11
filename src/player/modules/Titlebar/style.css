@@ -1,8 +1,20 @@
+/* Three columns rather than a flex row, so that the title is centred on the
+   *bar* and not merely within the gap left over between the two blocks of
+   buttons. The side columns are both 1fr, hence always the same width, which
+   puts the auto-sized middle column dead centre whenever their content fits
+   that share — and when it does not, the title shrinks instead of the buttons
+   overlapping it. The edit-mode button block is far wider than the single
+   overview button opposite it, which is what used to pull the title left.
+
+   The columns are assigned explicitly because the resource manager builds a
+   .titlebar of its own from this stylesheet with only two of the three
+   children; there, column 1 is simply empty and its title centres too. */
 .titlebar {
     order: 0;
     flex: 0 1 40px;
     align-self: auto;
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     position: relative;
     background: var(--primary-bg-color);
@@ -43,87 +55,41 @@
     color: var(--primary-bg-color);
 }
 
-.titlebarViewMode {
-    flex-shrink: 0;
+.titlebar .titlebarViewMode {
+    grid-column: 1;
+    display: flex;
+    align-items: center;
 }
 
+/* Set by Titlebar/updateViewModeVisibility(), which owns both reasons to hide
+   this: being in the overview already, and a library of a single hypervideo
+   outside edit mode. */
 .titlebarViewMode.hidden {
     display: none;
 }
 
-.titlebar.editActive .titlebarViewMode.hidden {
-    display: block;
-}
-
- .titlebarViewMode button {
-    float: left;
-    position: relative;
+.titlebarViewMode button {
     opacity: .7;
 }
 
 .titlebarViewMode button[data-viewmode="overview"] .icon-collapse-all:before {
-    transform: translateX(3px) scale(1.4);
-}
-
-.titlebar .titlebarViewMode button[data-viewmode="video"] {
-    margin-left: 20px;
-}
-
-.titlebar .titlebarViewMode button[data-viewmode="video"]:after {
-    content: ">";
-    position: absolute;
-    top: 8px;
-    left: -13px;
-    color: var(--primary-fg-color);
-    font-weight: normal;
-    font-size: 13px;
-}
-
-.titlebar.editActive .titlebarViewMode button[data-viewmode="video"]:after {
-    color: var(--primary-bg-color);
-}
-
-.titlebarViewMode button.unsavedChanges:before {
-    content: "*";
-    position: absolute;
-    top: -4px;
-    right: -5px;
-    color: #FF9900;
-    font-weight: bold;
-    font-size: 20px;
+    transform: translateX(8px) scale(1.5);
 }
 
 .titlebarViewMode button:hover {
     opacity: 1;
 }
 
-
-.titlebarViewMode button.active {
-    background-color: transparent;
-    /*color: var(--primary-fg-color);*/
-    opacity: 1;
-    pointer-events: none;
-}
-
-.titlebar.editActive .titlebarViewMode button.active {
-    opacity: 1;
-    pointer-events: none;
-}
-
-.titlebar .hypervideoActionButtonContainer {
-    position: absolute;
-    top: 0px;
-    left: 160px;
-}
-
+/* Symmetric padding: an inset on one side only would shift the centred content
+   off the bar's midpoint by half of it. */
 .titlebar .titlebarTitle {
-    flex: 1;
+    grid-column: 2;
     min-width: 0;
     display: flex;
     align-items: center;
     justify-content: center;
     height: 100%;
-    padding-left: 10px;
+    padding: 0 10px;
     color: var(--primary-fg-color);
 }
 
@@ -175,27 +141,24 @@
     opacity: 1;
 }
 
+/* A flex row rather than the floats this used to lay out with, because the two
+   size differently and the grid column depends on it: a float container is only
+   as wide as its *widest* float, so the buttons would spill out of the column
+   and over the title once the bar got narrow. A nowrap flex row measures as the
+   sum, which is what makes the column floor at the width the buttons need and
+   the title yield instead. */
 .titlebar .titlebarActionButtonContainer {
-    flex-shrink: 0;
-}
-
-/* .logoutButton is still the resource manager's own titlebar (it builds one of
-   its own and loads this stylesheet); the player's logout moved into the menu. */
-.titlebar .titlebarActionButtonContainer .manageResourcesButton,
-.titlebar .titlebarActionButtonContainer .adminSettingsButton,
-.titlebar .titlebarActionButtonContainer .startEditButton,
-.titlebar .titlebarActionButtonContainer .leaveEditModeButton,
-.titlebar .titlebarActionButtonContainer .logoutButton,
-.titlebar .titlebarActionButtonContainer .userSettingsMenu,
-.titlebar .titlebarActionButtonContainer .titlebarSearch {
-    float: left;
+    grid-column: 3;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
 }
 
 /* Overview search
-   The action container is flex-shrink:0 inside the flex title bar, so the field
-   opening does not push the buttons off the edge — the elastic .titlebarTitle
-   yields instead. The input is always in the DOM and animates between zero and
-   full width, which is what lets it expand and collapse rather than appear. */
+   The input is always in the DOM and animates between zero and full width,
+   which is what lets it expand and collapse rather than appear. The bar's
+   middle column yields to it, so opening the field does not push the buttons
+   off the edge. */
 .titlebar .titlebarActionButtonContainer .titlebarSearch {
     display: flex;
     align-items: center;
@@ -337,17 +300,15 @@
 }
 
 /* Collaboration presence
-   The siblings in this container are laid out by an explicit float rule above,
-   so this needs its own — and it is only relevant while editing, like the
-   resource manager and admin buttons. :not(:empty) keeps it out of the layout
-   entirely when nobody else is here, which is the usual case. */
+   Only relevant while editing, like the resource manager and admin buttons.
+   :not(:empty) keeps it out of the layout entirely when nobody else is here,
+   which is the usual case. */
 .titlebar .titlebarActionButtonContainer .collaborationPresence {
     display: none;
 }
 
 .titlebar.editActive .titlebarActionButtonContainer .collaborationPresence:not(:empty) {
     display: flex;
-    float: left;
     align-items: center;
     height: 40px;
     max-width: 240px;

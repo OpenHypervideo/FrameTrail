@@ -69,7 +69,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         overviewContainer      = sidebarContainer.querySelector(':scope > [data-viewmode="overview"]'),
         videoContainer         = sidebarContainer.querySelector(':scope > [data-viewmode="video"]'),
         videoContainerControls = videoContainer.querySelector(':scope > .viewmodeControls'),
-        resourcesContainer     = sidebarContainer.querySelector(':scope > [data-viewmode="resources"]'),
 
         NewHypervideoButton    = domElement.querySelectorAll('.newHypervideoButton'),
         SaveButton             = domElement.querySelector('.saveButton'),
@@ -973,14 +972,12 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         var noDirectSave = !FrameTrail.module('StorageManager').canSave();
 
         if (aBoolean) {
-            domElement.querySelectorAll('button[data-viewmode="video"]').forEach(function(el) { el.classList.add('unsavedChanges'); });
             if (noDirectSave) {
                 SaveAsButton.classList.add('unsavedChanges');
             } else {
                 SaveButton.classList.add('unsavedChanges');
             }
         } else {
-            domElement.querySelectorAll('button[data-viewmode="video"]').forEach(function(el) { el.classList.remove('unsavedChanges'); });
             domElement.querySelectorAll('button.editMode').forEach(function(el) { el.classList.remove('unsavedChanges'); });
             SaveButton.classList.remove('unsavedChanges');
             SaveAsButton.classList.remove('unsavedChanges');
