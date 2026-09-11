@@ -598,9 +598,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
     });
 
-    document.addEventListener("fullscreenchange", toggleFullscreenState, false);
-    document.addEventListener("webkitfullscreenchange", toggleFullscreenState, false);
-    document.addEventListener("mozfullscreenchange", toggleFullscreenState, false);
     Controls.querySelector('.fullscreenButton').addEventListener('click', toggleNativeFullscreenState);
 
 
@@ -990,18 +987,20 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
 
     /**
-     * I react to a change of the global state "fullscreen".
+     * I react to a change of the global state "fullscreen" by marking my own
+     * fullscreen button. The target element is marked by
+     * {{#crossLink "Interface/toggleFullscreen:method"}}Interface.toggleFullscreen{{/crossLink}},
+     * because the overview has a fullscreen button, too.
+     *
      * @method toggleFullscreen
      * @param {Boolean} aBoolean
      */
     function toggleFullscreen(aBoolean) {
 
         if (aBoolean) {
-            document.querySelector(FrameTrail.getState('target') + ' .fullscreenButton').classList.add('active');
-            document.querySelector(FrameTrail.getState('target')).classList.add('inFullscreen');
+            FullscreenButton.classList.add('active');
         } else {
-            document.querySelector(FrameTrail.getState('target') + ' .fullscreenButton').classList.remove('active');
-            document.querySelector(FrameTrail.getState('target')).classList.remove('inFullscreen');
+            FullscreenButton.classList.remove('active');
         }
 
     };
@@ -1839,71 +1838,18 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
     /**
      *  Toggle (Enter / Exit) native Fullscreen State
      *
+     *  The implementation lives in the {{#crossLink "Interface"}}Interface{{/crossLink}}
+     *  module, because the overview has a fullscreen button, too, and I am only
+     *  initialized when there is a hypervideo to show. I stay as the entry point
+     *  my existing callers know.
+     *
      * @method toggleNativeFullscreenState
      * @param {Object} evt
      * @param {String} forceState
      */
     function toggleNativeFullscreenState(evt, forceState) {
-        
-        var element = document.querySelector(FrameTrail.getState('fullscreenTarget') || FrameTrail.getState('target'));
-        
-        if (element.requestFullscreen) {
-            if ((!forceState && !document.fullscreen) || (forceState && forceState == 'open')) {
-                element.requestFullscreen().catch(function(err) {
-                    console.warn('Fullscreen request denied:', err.message);
-                });
-            } else if (!forceState || forceState == 'close') {
-                document.exitFullscreen();
-            }
-        } else if (element.mozRequestFullScreen) {
-            if ((!forceState && !document.mozFullScreen) || (forceState && forceState == 'open')) {
-                element.mozRequestFullScreen();
-            } else if (!forceState || forceState == 'close') {
-                document.mozCancelFullScreen();
-            }
-        } else if (element.webkitRequestFullScreen) {
-            if ((!forceState && !document.webkitIsFullScreen) || (forceState && forceState == 'open')) {
-                element.webkitRequestFullScreen();
-            } else if (!forceState || forceState == 'close') {
-                document.webkitCancelFullScreen();
-            }
-        }
 
-    }
-
-    /**
-     * Toggle internal Fullscreen State
-     *
-     * @method toggleFullscreenState
-     */
-    function toggleFullscreenState() {
-
-        var element = document.querySelector(FrameTrail.getState('target') + ' .mainContainer');
-
-        if (element.requestFullScreen) {
-            if (!document.fullScreen) {
-                FrameTrail.changeState('fullscreen', false);
-            } else {
-                FrameTrail.changeState('fullscreen', true);
-            }
-
-        } else if (element.mozRequestFullScreen) {
-            if (!document.mozFullScreen) {
-                FrameTrail.changeState('fullscreen', false);
-            } else {
-                FrameTrail.changeState('fullscreen', true);
-            }
-        } else if (element.webkitRequestFullScreen) {
-            if (!document.webkitIsFullScreen) {
-                FrameTrail.changeState('fullscreen', false);
-            } else {
-                FrameTrail.changeState('fullscreen', true);
-            }
-        }
-
-        setTimeout(function() {
-            window.dispatchEvent(new Event('resize'));
-        }, 1000);
+        FrameTrail.module('Interface').toggleNativeFullscreenState(evt, forceState);
 
     }
 
@@ -1972,7 +1918,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         toggleSidebarOpen:              toggleSidebarOpen,
         adjustLayout:                   adjustLayout,
         adjustHypervideo:               adjustHypervideo,
-        toggleFullscreenState:          toggleFullscreenState,
         toggleNativeFullscreenState:    toggleNativeFullscreenState,
         switchInfoTab:                  switchInfoTab,
 

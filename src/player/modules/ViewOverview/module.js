@@ -16,15 +16,25 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
     var labels = FrameTrail.module('Localization').labels;
 
     var _domWrapper = document.createElement('div');
-    _domWrapper.innerHTML = '<div class="viewOverview"><div class="overviewList"></div><div class="emptyStateHint"><span class="emptyStateHintText"></span></div></div>';
+    _domWrapper.innerHTML = '<div class="viewOverview">'
+                          + '    <div class="overviewList"></div>'
+                          + '    <div class="emptyStateHint"><span class="emptyStateHintText"></span></div>'
+                          + '    <div class="overviewFullscreenButton"><span class="icon-resize-full-alt"></span></div>'
+                          + '</div>';
     var domElement = _domWrapper.firstElementChild,
         OverviewList = domElement.querySelector('.overviewList'),
         EmptyStateHint = domElement.querySelector('.emptyStateHint'),
+        FullscreenButton = domElement.querySelector('.overviewFullscreenButton'),
 
         animationElement      = null,
         lastSelectedThumb     = null,
 
         MapModule             = null;
+
+
+    FullscreenButton.addEventListener('click', function() {
+        FrameTrail.module('Interface').toggleNativeFullscreenState();
+    });
 
 
 
@@ -507,13 +517,21 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
 
     /**
-     * Description
+     * I react to a change of the global state "fullscreen" by marking my own
+     * fullscreen button, so it always shows the same state as the one in the
+     * player's controls. The target element is marked by
+     * {{#crossLink "Interface/toggleFullscreen:method"}}Interface.toggleFullscreen{{/crossLink}}.
+     *
      * @method toggleFullscreen
-     * @param {} aBoolean
-     * @return
+     * @param {Boolean} aBoolean
      */
     function toggleFullscreen(aBoolean) {
 
+        if (aBoolean) {
+            FullscreenButton.classList.add('active');
+        } else {
+            FullscreenButton.classList.remove('active');
+        }
 
     };
 

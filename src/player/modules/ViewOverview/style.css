@@ -133,3 +133,41 @@
 .viewOverview .emptyStateHint.visible {
     display: flex;
 }
+
+/* Fullscreen control. Deliberately pinned to the spot the player's own
+   fullscreen button occupies: the last 40x40 control of the player's controls
+   bar, which in a hypervideo without a bottom layout area sits flush in the
+   bottom right corner of .mainContainer. So the control does not jump when you
+   switch between the two views. Same box in grid and in map mode; the z-index
+   clears the map's popup (10) and toolbar (11). */
+.viewOverview .overviewFullscreenButton {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    width: 40px;
+    height: 40px;
+    z-index: 12;
+    color: var(--primary-fg-color);
+    opacity: .9;
+    cursor: pointer;
+}
+
+.viewOverview .overviewFullscreenButton:hover {
+    opacity: 1;
+}
+
+/* No background panel, so the control never competes with a map background or
+   a thumb underneath it — the halo (the theme's background colour, so it
+   inverts with the glyph) is what keeps it readable on either. */
+.viewOverview .overviewFullscreenButton [class^="icon-"]::before {
+    font-size: 19px;
+    margin: 0;
+    width: 40px;
+    line-height: 40px;
+    text-shadow: 0px 0px 20px var(--primary-bg-color);
+}
+
+/* Same glyph swap as the player's fullscreen button (icon-resize-small). */
+.viewOverview .overviewFullscreenButton.active [class^="icon-"]::before {
+    content: "\e836";
+}

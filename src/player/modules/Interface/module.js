@@ -89,6 +89,7 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
         FrameTrail.module('ViewResources').create();
 
         initWindowResizeHandler();
+        initFullscreenHandler();
 
         callback.call();
 
@@ -164,6 +165,124 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
 
         // Initial measurement.
         onResize();
+
+    };
+
+
+    /**
+     * I set the event listeners which keep the global state "fullscreen" in sync
+     * with the browser's native fullscreen state.
+     *
+     * These live here, and not in ViewVideo, because the fullscreen controls exist
+     * in both views: ViewVideo is only initialized when there is a hypervideo to
+     * show, while I am initialized exactly once per launch. Registering them here
+     * also means they are not re-registered every time a hypervideo is opened,
+     * which re-runs the ViewVideo module definition.
+     *
+     * @method initFullscreenHandler
+     */
+    function initFullscreenHandler() {
+
+        document.addEventListener('fullscreenchange', syncFullscreenState, false);
+        document.addEventListener('webkitfullscreenchange', syncFullscreenState, false);
+        document.addEventListener('mozfullscreenchange', syncFullscreenState, false);
+
+    };
+
+
+    /**
+     * I tell whether the browser is currently in native fullscreen mode.
+     *
+     * @method isNativeFullscreen
+     * @return {Boolean}
+     */
+    function isNativeFullscreen() {
+
+        return !!(document.fullscreenElement
+               || document.webkitFullscreenElement
+               || document.mozFullScreenElement);
+
+    };
+
+
+    /**
+     * I enter or leave native fullscreen mode.
+     *
+     * Without a forceState I toggle, otherwise I open or close explicitly.
+     *
+     * @method toggleNativeFullscreenState
+     * @param {Event} evt (unused, so the method can be used directly as a click handler)
+     * @param {String} forceState Either 'open' or 'close'
+     */
+    function toggleNativeFullscreenState(evt, forceState) {
+
+        var element = document.querySelector(FrameTrail.getState('fullscreenTarget') || FrameTrail.getState('target')),
+            isFullscreen = isNativeFullscreen();
+
+        if (element.requestFullscreen) {
+            if ((!forceState && !isFullscreen) || (forceState && forceState == 'open')) {
+                element.requestFullscreen().catch(function(err) {
+                    console.warn('Fullscreen request denied:', err.message);
+                });
+            } else if (!forceState || forceState == 'close') {
+                document.exitFullscreen();
+            }
+        } else if (element.mozRequestFullScreen) {
+            if ((!forceState && !isFullscreen) || (forceState && forceState == 'open')) {
+                element.mozRequestFullScreen();
+            } else if (!forceState || forceState == 'close') {
+                document.mozCancelFullScreen();
+            }
+        } else if (element.webkitRequestFullScreen) {
+            if ((!forceState && !isFullscreen) || (forceState && forceState == 'open')) {
+                element.webkitRequestFullScreen();
+            } else if (!forceState || forceState == 'close') {
+                document.webkitCancelFullScreen();
+            }
+        }
+
+    };
+
+
+    /**
+     * I propagate the browser's native fullscreen state into the global state
+     * "fullscreen", so that the fullscreen controls in all views reflect it —
+     * including when the user leaves fullscreen with Esc or F11.
+     *
+     * @method syncFullscreenState
+     */
+    function syncFullscreenState() {
+
+        FrameTrail.changeState('fullscreen', isNativeFullscreen());
+
+        // Some browsers settle the fullscreen viewport well after the event fires.
+        setTimeout(function() {
+            window.dispatchEvent(new Event('resize'));
+        }, 1000);
+
+    };
+
+
+    /**
+     * I react to a change in the global state "fullscreen" by marking the target
+     * element, which is what the stylesheets key their fullscreen layout off.
+     *
+     * The individual fullscreen buttons mark themselves — see
+     * {{#crossLink "ViewVideo/toggleFullscreen:method"}}ViewVideo.toggleFullscreen{{/crossLink}}
+     * and {{#crossLink "ViewOverview/toggleFullscreen:method"}}ViewOverview.toggleFullscreen{{/crossLink}}.
+     *
+     * @method toggleFullscreen
+     * @param {Boolean} aBoolean
+     */
+    function toggleFullscreen(aBoolean) {
+
+        var targetElement = document.querySelector(FrameTrail.getState('target'));
+
+        if (aBoolean) {
+            targetElement.classList.add('inFullscreen');
+        } else {
+            targetElement.classList.remove('inFullscreen');
+        }
 
     };
 
@@ -249,9 +368,12 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
 
         create: create,
 
+        toggleNativeFullscreenState: toggleNativeFullscreenState,
+
         onChange: {
             sidebarOpen:    toggleSidebarOpen,
             editMode:       toggleEditMode,
+            fullscreen:     toggleFullscreen,
             collabState:    reflectCollaborationLock
         }
 
