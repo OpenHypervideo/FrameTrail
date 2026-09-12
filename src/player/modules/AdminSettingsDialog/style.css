@@ -1,5 +1,82 @@
-.adminSettingsDialog {
+/* Scrolling: the tab panel, not the dialog.
+   The dialog is opened at a fixed height, so something has to scroll. Left to
+   itself that is .ft-dialog-content, which scrolls the tab strip out of view
+   along with the panel and puts one scrollbar around content that is mostly
+   short enough not to need it. Instead the content area is turned into a flex
+   column and the height handed down unbroken — every ancestor needs
+   min-height: 0, or auto minimum sizing lets the chain grow past the dialog
+   instead of overflowing — until the active .ui-tabs-panel is the only thing
+   that scrolls.
 
+   Scoped to this dialog on purpose: the other tabbed dialogs are sized by
+   their content and still want .ft-dialog-content to be the scroller. */
+
+.ft-dialog-content > .adminSettingsDialog {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.ft-dialog-content:has(> .adminSettingsDialog) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    min-height: 0;
+}
+
+.adminSettingsTabs {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.adminSettingsTabs > .ui-tabs-nav {
+    flex: 0 0 auto;
+}
+
+.adminSettingsTabs > .ui-tabs-panel {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    /* Room for the scrollbar, so it never sits on top of the content. */
+    padding-right: 4px;
+}
+
+/* Theme grid.
+   .themeItem floats, and a container of nothing but floats collapses to zero
+   height — which is what cut the last row off at the bottom of the panel.
+   Laying the container out as a wrapping flex row takes the floats out of play
+   entirely (they are ignored on flex items), so no clearfix is needed. */
+
+.adminSettingsDialog .themeContainer {
+    display: flex;
+    flex-wrap: wrap;
+    align-content: flex-start;
+}
+
+.adminSettingsDialog .themeContainer > .message {
+    flex: 0 0 100%;
+}
+
+/* The CSS editor takes whatever the panel has left under its explanation,
+   rather than the fixed 400px it used to be: at that height the explanation
+   pushed it just past the panel and earned a scrollbar for a few pixels, and
+   an editor that grows with the dialog is the better use of the space anyway.
+   CodeMirror is remeasured on tab activation, so it picks the height up. */
+
+.adminSettingsDialog .globalCSSContainer {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.adminSettingsDialog .globalCSSEditingUI {
+    flex: 1 1 auto;
+    min-height: 120px;
 }
 
 .ft-dialog-buttonpane .dialogError {

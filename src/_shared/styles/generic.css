@@ -333,6 +333,19 @@ details[open] > summary {
     box-sizing: border-box;
 }
 
+/* Field hints: the quiet explanation belonging to one form control, placed
+   after it. Not a .message — a .message is an alert about the state of things,
+   a hint just says what the field above it does, so it must not shout. */
+
+.fieldHint {
+    font-size: 0.95em;
+    line-height: 1.35;
+    color: #888;
+    margin-top: 3px;
+    margin-bottom: 10px;
+    clear: both;
+}
+
 /* HypervideoPicker Grid Layout */
 .hypervideoPickerDialog .hypervideoPickerList {
     display: grid;
@@ -619,7 +632,7 @@ input:checked + .slider:before {
 
 .themeItem {
     float: left;
-    width: 88px;
+    width: 87px;
     height: 57px;
     padding: 4px 8px;
     margin: 6px;

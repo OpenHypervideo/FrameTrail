@@ -89,30 +89,61 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
         /* Configuration Editing UI */
         var configData = database.config;
+
+        // The actions a trace session can be bracketed by. UserTraces matches
+        // the start/end setting against the raw action name of a 'userAction'
+        // event, in a listener that runs before the one rewriting some of those
+        // names. So the rewritten variants (VideoJumpForward, AnnotationChangeText,
+        // …) and VideoPlay/VideoPause — which are traced from the separate
+        // play/pause events and never reach the matcher — must stay out of this
+        // list: offering them would look valid and then silently never fire.
+        var userActionNames = [
+            'UserLogin', 'UserLogout', 'VideoJumpTime',
+            'AnnotationOpen', 'AnnotationAdd', 'AnnotationChange', 'AnnotationDelete',
+            'OverlayAdd', 'OverlayChange', 'OverlayDelete',
+            'CodeSnippetAdd', 'CodeSnippetDelete',
+            'EditStart', 'EditSave', 'EditEnd'
+        ];
+
+        /**
+         * I build the <option> list for a user traces start/end action select,
+         * falling back to the given action when nothing is configured yet.
+         *
+         * @method userActionOptions
+         * @param {String} currentValue
+         * @param {String} fallbackValue
+         * @return String
+         */
+        function userActionOptions(currentValue, fallbackValue) {
+
+            var selected = currentValue || fallbackValue,
+                names = userActionNames;
+
+            // An embedder can dispatch its own 'userAction' through the public
+            // API, so a stored value outside the list is legitimate. Carry it
+            // through instead of letting the select quietly rewrite it on the
+            // next Apply.
+            if (currentValue && names.indexOf(currentValue) === -1) {
+                names = names.concat([currentValue]);
+            }
+
+            return names.map(function(name) {
+                return '<option value="'+ name +'"'+ (name === selected ? ' selected' : '') +'>'+ name +'</option>';
+            }).join('');
+
+        }
+
         var _cuw = document.createElement('div');
+        // Two groups, not one run of four equal columns: everything on the left
+        // is a plain instance option, while user action capture is a feature of
+        // its own with settings that only mean anything once it is switched on.
+        // The empty column in between is the separation — it keeps the capture
+        // block visibly apart without a divider or a second form.
+        //
+        // Explanations follow their control as .fieldHint, except the note about
+        // where traces are kept: that is a caveat about the data rather than a
+        // description of the switch, so it stays a .message.
         _cuw.innerHTML = '<div class="configEditingForm layoutRow">'
-                            +   '    <div class="column-3">'
-                            +   '        <div class="message active">'+ labels['MessageAllowFileUploads'] +'</div>'
-                            +   '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="allowUploads" id="allowUploads" '+((configData.allowUploads && configData.allowUploads.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="allowUploads">'+ labels['SettingsAllowUploads'] +'</label></div>'
-                            // Registration policy. It used to sit in the user
-                            // administration tab, but it is a config.json value
-                            // like the rest of this form, and Manage Users is a
-                            // dialog of its own now with no Apply to catch it.
-                            +   '        <div class="message active">'+ labels['MessageUserRequireConfirmation'] +'</div>'
-                            +   '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="userNeedsConfirmation" id="userNeedsConfirmation" '+((configData.userNeedsConfirmation && configData.userNeedsConfirmation.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="userNeedsConfirmation">'+ labels['SettingsOnlyConfirmedUsers'] +'</label></div>'
-                            +   '    </div>'
-                            +   '    <div class="column-3">'
-                            +   '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="captureUserTraces" id="captureUserTraces" '+((configData.captureUserTraces && configData.captureUserTraces.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="captureUserTraces">'+ labels['SettingsCaptureUserActions'] +'</label></div>'
-                            +   '        <div class="message active">'+ labels['MessageUserTraces'] +' <i>localStorage.getItem( "frametrail-traces" )</i></div>'
-                            +   '    </div>'
-                            +   '    <div class="column-3">'
-                            +   '        <div class="message active">'+ labels['MessageUserTracesStartAction'] +'</div>'
-                            +   '        <label for="userTracesStartAction">'+ labels['SettingsUserTracesStartAction'] +'</label>'
-                            +   '        <input type="text" style="margin-top: 0px; margin-bottom: 2px;" name="userTracesStartAction" id="userTracesStartAction" placeholder="'+ labels['SettingsUserTracesStartAction'] +'" value="'+ (configData.userTracesStartAction || '') +'">'
-                            +   '        <div class="message active">'+ labels['MessageUserTracesEndAction'] +'</div>'
-                            +   '        <label for="userTracesEndAction">'+ labels['SettingsUserTracesEndAction'] +'</label>'
-                            +   '        <input type="text" style="margin-top: 0px; margin-bottom: 2px;" name="userTracesEndAction" id="userTracesEndAction" placeholder="'+ labels['SettingsUserTracesEndAction'] +'" value="'+ (configData.userTracesEndAction || '') +'">'
-                            +   '    </div>'
                             +   '    <div class="column-3">'
                             +   '        <label for="defaultLanguage">'+ labels['GenericLanguage'] +'</label>'
                             +   '        <div class="custom-select">'
@@ -121,6 +152,35 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             +   '                <option value="de"'+ (configData.defaultLanguage === 'de' ? ' selected' : '') +'>Deutsch</option>'
                             +   '                <option value="fr"'+ (configData.defaultLanguage === 'fr' ? ' selected' : '') +'>Français</option>'
                             +   '            </select>'
+                            +   '        </div>'
+                            +   '        <div class="fieldHint">'+ labels['MessageDefaultLanguage'] +'</div>'
+                            +   '        <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="allowUploads" id="allowUploads" '+((configData.allowUploads && configData.allowUploads.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="allowUploads">'+ labels['SettingsAllowUploads'] +'</label></div>'
+                            +   '        <div class="fieldHint">'+ labels['MessageAllowFileUploads'] +'</div>'
+                            +   '        <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="userNeedsConfirmation" id="userNeedsConfirmation" '+((configData.userNeedsConfirmation && configData.userNeedsConfirmation.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="userNeedsConfirmation">'+ labels['SettingsOnlyConfirmedUsers'] +'</label></div>'
+                            +   '        <div class="fieldHint">'+ labels['MessageUserRequireConfirmation'] +'</div>'
+                            +   '    </div>'
+                            +   '    <div class="column-9 pl-1">'
+                            +   '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="captureUserTraces" id="captureUserTraces" '+((configData.captureUserTraces && configData.captureUserTraces.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="captureUserTraces">'+ labels['SettingsCaptureUserActions'] +'</label></div>'
+                            +   '        <div class="message active">'+ labels['MessageUserTraces'] +' <i>localStorage.getItem( "frametrail-traces" )</i></div>'
+                            +   '        <div class="layoutRow">'
+                            +   '            <div class="column-6">'
+                            +   '                <label for="userTracesStartAction">'+ labels['SettingsUserTracesStartAction'] +'</label>'
+                            +   '                <div class="custom-select">'
+                            +   '                    <select name="userTracesStartAction" id="userTracesStartAction">'
+                            +                            userActionOptions(configData.userTracesStartAction, 'UserLogin')
+                            +   '                    </select>'
+                            +   '                </div>'
+                            +   '                <div class="fieldHint">'+ labels['MessageUserTracesStartAction'] +'</div>'
+                            +   '            </div>'
+                            +   '            <div class="column-6">'
+                            +   '                <label for="userTracesEndAction">'+ labels['SettingsUserTracesEndAction'] +'</label>'
+                            +   '                <div class="custom-select">'
+                            +   '                    <select name="userTracesEndAction" id="userTracesEndAction">'
+                            +                            userActionOptions(configData.userTracesEndAction, 'UserLogout')
+                            +   '                    </select>'
+                            +   '                </div>'
+                            +   '                <div class="fieldHint">'+ labels['MessageUserTracesEndAction'] +'</div>'
+                            +   '            </div>'
                             +   '        </div>'
                             +   '    </div>'
                             +   '</div>';
@@ -159,7 +219,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         /* Change Theme UI */
         var _ctw = document.createElement('div');
         _ctw.innerHTML = '<div class="themeContainer">'
-                            + '    <div class="message active">'+ labels['SettingsSelectColorTheme'] +'</div>'
+                            + '    <div class="message active">'+ labels['SettingsSelectColorTheme'] +'. '+ labels['MessageSelectColorTheme'] +'</div>'
                             + '    <div class="themeItem" data-theme="classic">'
                             + '        <div class="themeName">Classic</div>'
                             + '        <div class="themeColorContainer">'
@@ -602,17 +662,21 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                          + '</div>';
 
         var _omw = document.createElement('div');
+        // Each explanation follows the control it belongs to, as a .fieldHint:
+        // the admin reads the setting first and the note about it second, and a
+        // quiet hint does not compete for attention with the real messages the
+        // dialog raises about locks and save failures.
         _omw.innerHTML = '<div class="overviewPresentationSettings">'
                         + '    <div class="layoutRow">'
                         + '        <div class="column-12">'
-                        + '            <div class="message active">'+ labels['MessageOverviewTitle'] +'</div>'
                         + '            <label for="overviewTitle">'+ labels['SettingsOverviewTitle'] +'</label>'
                         + '            <input type="text" name="overviewTitle" id="overviewTitle" placeholder="'+ labels['GenericOverview'] +'">'
+                        + '            <div class="fieldHint">'+ labels['MessageOverviewTitle'] +'</div>'
                         + '        </div>'
                         + '    </div>'
                         + '    <div class="layoutRow mt-1">'
-                        + '        <div class="column-12 mt-1">'
-                        + '            <div class="message active">'+ labels['MessageOverviewMode'] +'</div>'
+                        + '        <div class="column-12">'
+                        + '            <label>'+ labels['SettingsOverviewDesign'] +'</label>'
                         + '            <div class="overviewModeSelect optionCards" data-property="overviewMode" data-value="'+ selectedOverviewMode +'">'
                         + '                <div '+ (selectedOverviewMode === 'grid' ? 'class="active"' : '') +' data-value="grid">'
                         + '                    <div class="optionCardThumb">'+ gridSchematic +'</div>'
@@ -623,12 +687,13 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                         + '                    <span>'+ labels['SettingsOverviewModeMap'] +'</span>'
                         + '                </div>'
                         + '            </div>'
+                        + '            <div class="fieldHint">'+ labels['MessageOverviewMode'] +'</div>'
                         + '        </div>'
                         + '    </div>'
                         + '    <div class="layoutRow mt-1">'
-                        + '        <div class="column-12 mt-1">'
-                        + '            <div class="message active">'+ labels['MessageOverviewSearchBar'] +'</div>'
+                        + '        <div class="column-12">'
                         + '            <div class="checkboxRow"><label class="switch"><input type="checkbox" name="overviewShowSearchBar" id="overviewShowSearchBar" '+ (selectedOverviewShowSearchBar ? 'checked' : '') +'><span class="slider round"></span></label><label for="overviewShowSearchBar">'+ labels['SettingsOverviewSearchBar'] +'</label></div>'
+                        + '            <div class="fieldHint">'+ labels['MessageOverviewSearchBar'] +'</div>'
                         + '        </div>'
                         + '    </div>'
                         + '</div>';
@@ -674,12 +739,15 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         var cssText = document.head.querySelector('style.FrameTrailGlobalCustomCSS') ? document.head.querySelector('style.FrameTrailGlobalCustomCSS').innerHTML : '';
 
         var _gcw = document.createElement('div');
-        _gcw.innerHTML = '<div class="globalCSSEditingUI" style="height: 400px;">'
-                        + '    <textarea class="globalCSS">'+ cssText +'</textarea>'
+        _gcw.innerHTML = '<div class="globalCSSContainer">'
+                        + '    <div class="message active">'+ labels['MessageGlobalCSS'] +'</div>'
+                        + '    <div class="globalCSSEditingUI">'
+                        + '        <textarea class="globalCSS">'+ cssText +'</textarea>'
+                        + '    </div>'
                         + '</div>';
-        var globalCSSEditingUI = _gcw.firstElementChild;
+        var globalCSSContainer = _gcw.firstElementChild;
 
-        adminTabs.querySelector('#ChangeGlobalCSS').appendChild(globalCSSEditingUI);
+        adminTabs.querySelector('#ChangeGlobalCSS').appendChild(globalCSSContainer);
 
         // Init CodeMirror 6 editor for CSS Variables
         var textarea = adminTabs.querySelector('.globalCSS');

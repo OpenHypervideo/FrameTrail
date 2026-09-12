@@ -54,9 +54,20 @@ Events are dispatched as `CustomEvent`s; payload fields are on `evt.detail`.
 | `quizAnswered` | Viewer answered a quiz question (any question type) | `{ question, questionType, answer, correct }` — `correct` is `null` for non-scored types (freeText, rating) |
 | `annotationOpened` | Viewer opened an annotation's detail view | `{ name, type, start, end, creator }` |
 
+### `userAction` action names
+
+The full set of `evt.detail.action` values dispatched by FrameTrail:
+
+`UserLogin`, `UserLogout`, `VideoJumpTime`, `AnnotationOpen`, `AnnotationAdd`, `AnnotationChange`, `AnnotationDelete`, `OverlayAdd`, `OverlayChange`, `OverlayDelete`, `CodeSnippetAdd`, `CodeSnippetDelete`, `EditStart`, `EditSave`, `EditEnd`
+
+These are also the options offered for `config.userTracesStartAction` / `config.userTracesEndAction` in the administration dialog. Two caveats if you compare action names against stored traces:
+
+- `VideoPlay` and `VideoPause` appear in traces but are **not** `userAction` events — UserTraces derives them from the separate `play` / `pause` events, so a `userAction` listener never sees them.
+- `VideoJumpForward` / `VideoJumpBackward` and `AnnotationChangeText` / `AnnotationChangeTime` likewise appear only in traces. UserTraces narrows `VideoJumpTime` and `AnnotationChange` into them *after* dispatch, so listeners always receive the broader name.
+
 ## Related APIs
 
-- `instance.traces` — per-user session traces (see UserTraces module); capture must be enabled via `config.captureUserActions`.
+- `instance.traces` — per-user session traces (see UserTraces module); capture must be enabled via `config.captureUserTraces`.
 - `instance.overlays`, `instance.annotations`, `instance.subtitles`, `instance.codeSnippets` — read access to the current model.
 - `instance.play()`, `instance.pause()`, `instance.currentTime`, `instance.duration` — playback control.
 

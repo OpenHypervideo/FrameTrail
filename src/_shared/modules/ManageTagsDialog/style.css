@@ -98,12 +98,6 @@
     margin-bottom: 5px;
 }
 
-.tagEditDialog .fieldHint {
-    font-size: 0.85em;
-    color: #888;
-    margin-top: 3px;
-}
-
 .tagEditDialog .tagIdInput {
     width: 100%;
     box-sizing: border-box;
