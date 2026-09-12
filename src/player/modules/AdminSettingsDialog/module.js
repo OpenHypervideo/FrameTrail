@@ -154,6 +154,14 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             +   '            </select>'
                             +   '        </div>'
                             +   '        <div class="fieldHint">'+ labels['MessageDefaultLanguage'] +'</div>'
+                            +   '        <label class="mt-1" for="videoFit">'+ labels['SettingsVideoFit'] +'</label>'
+                            +   '        <div class="custom-select">'
+                            +   '            <select name="videoFit" id="videoFit">'
+                            +   '                <option value="contain"'+ (configData.videoFit === 'contain' || !configData.videoFit ? ' selected' : '') +'>'+ labels['SettingsVideoFitContain'] +'</option>'
+                            +   '                <option value="cover"'+ (configData.videoFit === 'cover' ? ' selected' : '') +'>'+ labels['SettingsVideoFitCover'] +'</option>'
+                            +   '            </select>'
+                            +   '        </div>'
+                            +   '        <div class="fieldHint">'+ labels['MessageVideoFit'] +'</div>'
                             +   '        <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="allowUploads" id="allowUploads" '+((configData.allowUploads && configData.allowUploads.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="allowUploads">'+ labels['SettingsAllowUploads'] +'</label></div>'
                             +   '        <div class="fieldHint">'+ labels['MessageAllowFileUploads'] +'</div>'
                             +   '        <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="userNeedsConfirmation" id="userNeedsConfirmation" '+((configData.userNeedsConfirmation && configData.userNeedsConfirmation.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="userNeedsConfirmation">'+ labels['SettingsOnlyConfirmedUsers'] +'</label></div>'
@@ -1048,6 +1056,13 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             var overviewModeChanged = configChanged &&
                                 (database.config.overviewMode || 'grid') !== (initialConfig.overviewMode || 'grid');
 
+                            // videoFit, by contrast, is re-read inside
+                            // adjustHypervideo() on every call, so one re-fit is
+                            // enough — no reload. Without this the new fit would
+                            // not show until the next resize.
+                            var videoFitChanged = configChanged &&
+                                (database.config.videoFit || 'contain') !== (initialConfig.videoFit || 'contain');
+
                             if (configChanged) {
                                 FrameTrail.module('Database').saveConfig(function(result) {
                                     if (!result.success) {
@@ -1070,6 +1085,15 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                         adminDialogCtrl.close();
                                         window.location.reload();
                                         return;
+                                    }
+                                    if (videoFitChanged) {
+                                        var viewVideo = FrameTrail.module('ViewVideo');
+                                        // Absent in the overview, where there is
+                                        // no video to re-fit; one opened later is
+                                        // built with the new config anyway.
+                                        if (viewVideo && FrameTrail.getState('viewMode') === 'video') {
+                                            viewVideo.adjustHypervideo();
+                                        }
                                     }
                                     checkSaveComplete();
                                 });

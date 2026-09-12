@@ -973,6 +973,25 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         _video.style.height = scaledHeight + 'px';
         _video.style.width = scaledWidth + 'px';
 
+        // Captions are player chrome, not video-anchored content, so they must
+        // stay inside the visible container even when 'cover' scales .hypervideo
+        // past its edges — anchored at bottom:0 of that overflowing box they
+        // would otherwise sit below the clipped area and vanish. Overlays are
+        // deliberately not treated this way: they belong to video coordinates
+        // and are meant to crop along with the video. Both overhangs are 0 under
+        // 'contain', so this single path serves both fits.
+        if (CaptionContainer) {
+
+            var captionOverhangX = Math.max(0, (scaledWidth - VideoContainer.offsetWidth) / 2),
+                captionOverhangY = Math.max(0, (scaledHeight - _vcH) / 2);
+
+            CaptionContainer.style.bottom = captionOverhangY + 'px';
+            CaptionContainer.style.left   = captionOverhangX + 'px';
+            CaptionContainer.style.right  = captionOverhangX + 'px';
+            CaptionContainer.style.width  = 'auto';
+
+        }
+
         if (animate) {
             window.setTimeout(function() {
                 FrameTrail.module('OverlaysController').rescaleOverlays();
