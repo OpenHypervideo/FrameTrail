@@ -14,7 +14,7 @@ body.ft-dragging * {
     scrollbar-width: thin;
 }
 
-/* Minimal CSS Reset (replaces html5reset) */
+/* Minimal CSS Reset */
 
 html, body, div, span, object, iframe,
 h1, h2, h3, h4, h5, h6, p, blockquote, pre,
@@ -660,8 +660,6 @@ input:checked + .slider:before {
 }
 
 /* Option Cards */
-/* Visual radio-style picker: a wrapper carries data-property and the currently
-   picked data-value, its direct div[data-value] children are the cards. */
 
 .optionCards > div[data-value] {
     display: inline-flex;
@@ -807,8 +805,7 @@ input:checked + .slider:before {
     width: auto;
     height: auto;
     max-width: none;
-    overflow: visible;      /* let the ::after arrow show outside the bubble */
-    /* appearance (matches the former data-tooltip bubble) */
+    overflow: visible;
     background-color: var(--tooltip-bg-color);
     color: #333333;
     border-radius: 5px;
@@ -817,7 +814,7 @@ input:checked + .slider:before {
     line-height: 18px;
     padding: 3px 5px;
     white-space: nowrap;
-    pointer-events: none;   /* never intercept hover */
+    pointer-events: none;
 }
 
 .ftTooltip::after {
@@ -828,7 +825,6 @@ input:checked + .slider:before {
     border: 4px solid transparent;
 }
 
-/* Bubble above the host -> arrow points down from the bubble's bottom edge */
 .ftTooltip[data-placement="top"]::after,
 .ftTooltip[data-placement^="above"]::after {
     top: 100%;
@@ -839,7 +835,6 @@ input:checked + .slider:before {
 .ftTooltip[data-placement="above-left"]::after  { left: 12px; }
 .ftTooltip[data-placement="above-right"]::after { right: 12px; }
 
-/* Bubble below the host -> arrow points up from the bubble's top edge */
 .ftTooltip[data-placement^="below"]::after {
     bottom: 100%;
     border-bottom-color: var(--tooltip-bg-color);
@@ -848,7 +843,6 @@ input:checked + .slider:before {
 .ftTooltip[data-placement="below-left"]::after  { left: 12px; }
 .ftTooltip[data-placement="below-right"]::after { right: 12px; }
 
-/* Bubble to the right of the host -> arrow points left */
 .ftTooltip[data-placement="right"]::after {
     right: 100%;
     top: 7px;
@@ -856,7 +850,6 @@ input:checked + .slider:before {
     border-left-width: 0;
 }
 
-/* Bubble to the left of the host -> arrow points right */
 .ftTooltip[data-placement="left"]::after {
     left: 100%;
     top: 7px;
@@ -864,9 +857,6 @@ input:checked + .slider:before {
     border-right-width: 0;
 }
 
-/* Variant: resource-title labels (e.g. the ContentView small strip). These were
-   formerly the hover-revealed .resourceTitle overlays and keep that appearance,
-   distinct from the app UI-hint tooltips above. */
 .ftTooltip[data-variant="resourceTitle"] {
     background-color: var(--primary-bg-color);
     color: var(--primary-fg-color);
@@ -878,7 +868,7 @@ input:checked + .slider:before {
     padding: 1px 4px 0 4px;
     box-sizing: border-box;
 }
-/* recolor the arrow to match, for whichever placement the tooltip uses */
+
 .ftTooltip[data-variant="resourceTitle"][data-placement="top"]::after,
 .ftTooltip[data-variant="resourceTitle"][data-placement^="above"]::after {
     border-top-color: var(--primary-bg-color);
@@ -1186,11 +1176,6 @@ input:checked + .slider:before {
     opacity: 1;
 }
 
-/* Collaboration presence avatars
-   A round avatar carrying up to two initials. The fill and the initials' colour
-   are set inline from the user's own colour; the full name lives in the
-   tooltip, so this stays a fixed size no matter how long the name is.
-   Unscoped, because the titlebar and the settings dialogs all render it. */
 .collaborationChip {
     display: inline-flex;
     align-items: center;
@@ -1211,15 +1196,10 @@ input:checked + .slider:before {
     cursor: default;
 }
 
-/* The lock holder — the one person whose edits are actually landing. */
 .collaborationChip.editing {
     box-shadow: 0 0 0 2px var(--primary-bg-color);
 }
 
-/* Presence inside a dialog's title bar: avatars sit at the right, and the
-   status message is centred in the title row. Both are title-level metadata
-   about the document rather than actions, so they live here and not in the
-   button pane. Absent entirely when there is nothing to say. */
 .collaborationPresence.dialogPresence {
     display: none;
 }
@@ -1232,9 +1212,6 @@ input:checked + .slider:before {
     margin-right: 8px;
 }
 
-/* Pull the close button out of its corner pin and into the title row, so it
-   lines up with the avatars. Scoped to bars that actually carry presence, so
-   every other dialog keeps its existing close-button placement. */
 .ft-dialog-titlebar.hasCollabPresence .ft-dialog-titlebar-close {
     position: static;
     display: flex;
@@ -1243,9 +1220,6 @@ input:checked + .slider:before {
     padding: 0;
 }
 
-/* Another user holds this scope's edit lock: the form is readable but inert.
-   Only the content wrapper — the title bar keeps the avatars, the message
-   naming the holder, and a working close button at full opacity. */
 .ft-dialog.collabLocked .ft-dialog-content {
     opacity: .5;
     pointer-events: none;
@@ -1322,14 +1296,14 @@ input:checked + .slider:before {
     color: #666;
 }
 
-/* SortableJS drag ghost placeholder (replaces jQuery UI ui-state-highlight) */
+/* SortableJS drag ghost placeholder */
 .sortable-placeholder {
     background: var(--semi-transparent-fg-color, rgba(255,255,255,0.15));
     border: 1px dashed var(--primary-fg-color, #fff);
     opacity: 0.5;
 }
 
-/* interact.js drag source placeholder — the element left in place while the clone is dragged */
+/* interact.js drag source placeholder */
 .dragPlaceholder {
     background: var(--secondary-fg-color) !important;
     background-image: none !important;
@@ -1358,22 +1332,7 @@ input:checked + .slider:before {
 }
 
 
-/* ------------------------------------------------------------------------
- * Resize handles
- *
- * Every editing surface injects the same markup — a `.ui-resizable-handle`
- * carrying a direction class — so the appearance lives here once instead of
- * being restated per widget. See Overlay/type.js (canvas + timeline),
- * Annotation/type.js (timeline) and ViewOverviewMap/module.js (map pins).
- *
- * Only the corner handles are styled here, because only the canvases inject
- * them; timelines inject `e`/`w` handles and render those as edge bars, which
- * they style themselves.
- *
- * Handles sit just outside the element's bounding box, so they stay clear of
- * its content and of the element's own `move` cursor. Each context only has to
- * decide when they are visible.
- * --------------------------------------------------------------------- */
+/* Resize handles */
 
 .ui-resizable-handle {
     position: absolute;

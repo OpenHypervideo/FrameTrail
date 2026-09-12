@@ -23,10 +23,8 @@ body > .contentViewPreview,
     /* Derived — static fallback for browsers without color-mix() */
     --semi-transparent-bg-color: rgba(47, 50, 58, .8);
     --semi-transparent-bg-color: color-mix(in srgb, var(--primary-bg-color) 80%, transparent);
-
     --semi-transparent-fg-color: rgba(255, 255, 255, .3);
     --semi-transparent-fg-color: color-mix(in srgb, var(--primary-fg-color) 30%, transparent);
-
     --semi-transparent-fg-highlight-color: rgba(255, 255, 255, .4);
     --semi-transparent-fg-highlight-color: color-mix(in srgb, var(--primary-fg-color) 40%, transparent);
 
@@ -35,25 +33,8 @@ body > .contentViewPreview,
     --highlight-color: #D8D3AD;
     --tooltip-bg-color: #D8D3AD;
     --video-background-color: #000;
-
-    /* Editing affordances — intentionally theme-independent.
-       Buttons that act on the document rather than present it read as part of
-       the editing chrome, and the editing chrome does not follow the theme:
-       .titlebar.editActive and .sidebar.editActive keep these colours whatever
-       theme the instance uses, because the theme overrides below only rebind
-       the primary and secondary colours inside .mainContainer.
-
-       The overview map's toolbar and the thumbnail option buttons live inside
-       .mainContainer, so there those names mean the theme's colours and cannot
-       express "the editing colours" — hence a pair of their own, matching the
-       chrome: a light surface with dark text, inverted on hover. */
     --editing-bg-color: rgba(220, 220, 220, 1);
     --editing-fg-color: rgba(47, 50, 58, 1);
-
-    /* Thumbnail image overlays — intentionally theme-independent.
-       These elements sit on top of arbitrary background images (thumbnails can
-       be anything — dark, bright, colourful). They must stay readable in every
-       theme without relying on the theme's fg/bg colours. */
     --thumb-title-bg: rgba(0, 0, 0, .58);
     --thumb-title-color: rgba(255, 255, 255, .93);
     --thumb-title-shadow: 1px 1px 3px rgba(0, 0, 0, .9);
