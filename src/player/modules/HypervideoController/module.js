@@ -238,7 +238,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorYouTubeRequiresHTTP']);
                 return;
             }
-            var yt_options = 'autoplay=0&controls=0&rel=0&disablekb=1&enablejsapi=1&fs=0&modestbranding=1&playsinline=1&color=white&origin='+ window.location.origin;
+            var yt_options = 'autoplay=0&controls=0&rel=0&disablekb=1&enablejsapi=1&fs=0&modestbranding=1&playsinline=1&color=white&cc_load_policy=0&iv_load_policy=3&origin='+ window.location.origin;
             var yt_iframe = document.createElement('iframe');
             yt_iframe.id = lastYoutubePlayerID;
             yt_iframe.className = 'player_youtube';
@@ -263,8 +263,27 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                     }
                 });
                 
+                /**
+                 * YouTube renders its own captions and annotations inside the iframe.
+                 * We never want them: the iframe's own controls are hidden (controls=0),
+                 * so the viewer would have no way to switch them off again.
+                 * cc_load_policy=0 is not honoured reliably (YouTube falls back to the
+                 * viewer's account/device preference), so unload the captions module too.
+                 * YouTube can re-load it when playback starts, hence this runs on every play.
+                 */
+                function disableYoutubeCaptions(player) {
+                    try {
+                        player.unloadModule('captions'); // HTML5 player
+                        player.unloadModule('cc');       // legacy module name
+                    } catch (exception) {
+                        // no captions module present – nothing to unload
+                    }
+                }
+
                 function onPlayerReady(event) {
-                    
+
+                    disableYoutubeCaptions(event.target);
+
                     var HypervideoModel = FrameTrail.module('HypervideoModel');
                     HypervideoModel.offsetOut = (HypervideoModel.offsetOut) ? HypervideoModel.offsetOut : event.target.getDuration();
                     HypervideoModel.durationFull = event.target.getDuration();
@@ -325,6 +344,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                             break;
                         case 1:
                             // playing
+                            disableYoutubeCaptions(event.target);
                             _play();
                             onPlaySuccess();
                             FrameTrail.changeState('videoWorking', false);

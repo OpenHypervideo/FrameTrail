@@ -55,7 +55,7 @@ FrameTrail.defineType(
                     var _iframeWrapper = document.createElement('div');
                     _iframeWrapper.innerHTML = '<iframe frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" webkitAllowFullScreen mozallowfullscreen allowFullScreen src="'
                         +   uri
-                        +   '?enablejsapi=1&rel=0&theme=light&color=white&showinfo=0&modestbranding=1&autohide=1&start='+ timecode +'">'
+                        +   '?enablejsapi=1&rel=0&theme=light&color=white&showinfo=0&modestbranding=1&autohide=1&cc_load_policy=0&iv_load_policy=3&start='+ timecode +'">'
                         +    '</iframe>';
                     var iframeEl = _iframeWrapper.firstElementChild;
                     iframeEl.addEventListener('error', function() { return true; });
