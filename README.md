@@ -98,6 +98,8 @@ Open `http://localhost:8080` and follow the setup wizard. The image builds the m
 5. **Save** — In server/local mode, Ctrl+S saves directly. As a guest, use Save As to export your changes as JSON.
 6. **Share** — Copy the URL or export and share your hypervideo
 
+(see also the [FrameTrail-Examples](https://github.com/OpenHypervideo/FrameTrail-Examples) repository) 
+
 ---
 
 ## Development
