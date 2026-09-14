@@ -32,7 +32,10 @@ FrameTrail is an open source software that lets you experience, manage and edit 
 
 - **Multimedia Annotations** — Add supplementing materials at certain points of time and decide how they should be displayed in the player using the interactive layout editor. 
 
-- **Multimedia Annotations** — 
+### Dynamic Design
+
+- The way you use, arrange and display the different components of FrameTrail is up to you and the affordances of your project. From just using FrameTrail as a full-site video player up to using it as a highly interactive hypervideo solution, the **player layout is dynamically configurable**. 
+- Multiple hypervideos can be connected via a **customizable overview map** or **grid view**, which serves as an entry point to a project and allows easy navigation. 
 
 ### Data & Portability
 
