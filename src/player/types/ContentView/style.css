@@ -758,11 +758,6 @@
     min-height: 100%;
 }
 
-.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer > .message {
-    margin: 4px;
-    align-self: flex-start;
-}
-
 /* The card */
 
 .layoutArea .contentViewContainer[data-type="Chapters"] .chapterElement {

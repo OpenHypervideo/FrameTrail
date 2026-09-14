@@ -1726,11 +1726,10 @@ FrameTrail.defineType(
                     // open, so a hand-edited hypervideo.json can arrive out of order.
                     var chapters = FrameTrail.module('ChaptersController').getSortedChapters();
 
+                    // A hypervideo without chapters simply shows an empty area — this is
+                    // the viewer-facing side, where a hint about the chapter editor would
+                    // be noise. The edit dialog is where authors are told about it.
                     if ( chapters.length == 0 ) {
-                        var emptyMessage = document.createElement('div');
-                        emptyMessage.className = 'message active';
-                        emptyMessage.textContent = self.labels['MessageHintNoChapters'];
-                        container.appendChild(emptyMessage);
                         return;
                     }
 
@@ -2450,21 +2449,19 @@ FrameTrail.defineType(
                                     +'    <div class="typeSpecific '+ (contentViewData.type == 'Timelines' ? 'active' : '') +'" data-type="Timelines">'
                                     +'    </div>'
                                     +'    <div class="typeSpecific '+ (contentViewData.type == 'Chapters' ? 'active' : '') +'" data-type="Chapters">'
-                                    +'        <div class="message active">'+ self.labels['ChaptersEditHint'] +'</div>'
-                                    +'        <div class="message active chapterCountMessage">'+ self.labels['SettingsChapters'] +': <span class="chapterCounter"></span></div>'
+                                    +'        <div class="message active chaptersHintMessage"></div>'
                                     +'    </div>';
 
-                    // Chapters have no settings of their own — the panel just reports
-                    // whether this hypervideo has any, so an author who sees an empty
-                    // panel knows why.
+                    // Chapters have no settings of their own — the panel only says where
+                    // chapters are actually edited, and points out an empty chapter list,
+                    // which is the one thing that would make this ContentView render blank.
                     (function() {
-                        var chapterCounter = editingUI.querySelector('.chapterCounter');
-                        if (!chapterCounter) { return; }
+                        var chaptersHint = editingUI.querySelector('.chaptersHintMessage');
+                        if (!chaptersHint) { return; }
                         var numberOfChapters = (FrameTrail.module('HypervideoModel').chapters || []).length;
-                        chapterCounter.textContent = numberOfChapters;
-                        var chapterMessage = chapterCounter.closest('.message');
-                        chapterMessage.classList.toggle('error', numberOfChapters === 0);
-                        chapterMessage.classList.toggle('success', numberOfChapters > 0);
+                        chaptersHint.textContent = (numberOfChapters === 0)
+                            ? self.labels['MessageHintNoChapters']
+                            : self.labels['MessageHintChaptersEditor'];
                     })();
 
                     // Set textarea values programmatically to avoid HTML parsing issues
