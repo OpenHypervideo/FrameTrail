@@ -52,7 +52,13 @@
         unsavedChapters         = false,
         unsavedLayout           = false,
 
-        autoSaveTimeout         = null;
+        autoSaveTimeout         = null,
+
+        // Two writes must never be in flight at once. Both would carry the
+        // baseVersion loaded from disk, so the second to land would lose the
+        // server's compare-and-swap and report a conflict — with ourselves.
+        saveInFlight            = false,
+        pendingSaves            = [];
 
     // Long enough that a burst of edits coalesces into one write, short enough
     // that a collaborator's refresh shows recent work.
@@ -184,6 +190,10 @@
         // module no-ops when there is no server or nobody is logged in, and
         // re-targets itself when the hypervideo changes.
         window.clearTimeout(autoSaveTimeout);
+        // A save deferred behind an in-flight one belongs to the model we are
+        // replacing; flushing it after the swap would report a save of data
+        // this init has just discarded.
+        pendingSaves = [];
         if (FrameTrail.module('Collaboration')) {
             FrameTrail.module('Collaboration').start('hypervideo', FrameTrail.module('RouteNavigation').hypervideoID);
         }
@@ -1092,6 +1102,46 @@
 
 
     /**
+     * Hand the write lane back once a save has returned.
+     *
+     * A user-initiated save that arrived while that one was running was
+     * deferred rather than dropped, because it owes the user feedback — so it
+     * starts here. By then the unsaved-flags are usually already clean, in
+     * which case it completes immediately and just reports success, which is
+     * exactly what somebody who pressed Save expects to see.
+     *
+     * After a failed save the deferred ones are discarded instead: they would
+     * run into the same error and stack a second dialog on top of the first.
+     *
+     * @method releaseSave
+     * @param {Boolean} runDeferred
+     */
+    function releaseSave(runDeferred) {
+
+        saveInFlight = false;
+
+        var deferred = pendingSaves;
+        pendingSaves = [];
+
+        if (!runDeferred || !deferred.length) return;
+
+        save(
+            function() {
+                for (var i = 0; i < deferred.length; i++) {
+                    if (deferred[i].callback) deferred[i].callback.call();
+                }
+            },
+            function() {
+                for (var i = 0; i < deferred.length; i++) {
+                    if (deferred[i].callbackCancel) deferred[i].callbackCancel.call();
+                }
+            }
+        );
+
+    }
+
+
+    /**
      * I am the central function for saving changes back to the server.
      *
      * I save only, what is necessary (overlays, annotations, codeSnippets).
@@ -1109,6 +1159,30 @@
      * @param {Function} callbackCancel
      */
     function save(callback, callbackCancel, silent) {
+
+        // A save must never be trailed by the auto-save timer firing into the
+        // middle of it. The debounce is armed from the last edit, so ~10s later
+        // is precisely when somebody reaches for the Save button.
+        window.clearTimeout(autoSaveTimeout);
+
+        if (saveInFlight) {
+
+            if (silent) {
+                // An automatic save has nothing to add to a write that is
+                // already running. Re-arm the debounce instead, so edits made
+                // while it was in flight are still picked up afterwards.
+                scheduleAutoSave();
+                return;
+            }
+
+            // A user-initiated save owes the user an answer, so it is deferred
+            // rather than dropped, and runs once the current write returns.
+            pendingSaves.push({ callback: callback, callbackCancel: callbackCancel });
+            return;
+
+        }
+
+        saveInFlight = true;
 
         var saveRequests     = [],
             callbackReturns  = [],
@@ -1153,6 +1227,7 @@
             },
 
             function(){
+                releaseSave(false);
                 if (callbackCancel) {
                     callbackCancel.call();
                 }
@@ -1180,6 +1255,7 @@
                     } else {
                         showSaveConflictDialog(result.conflict);
                     }
+                    releaseSave(false);
                     return;
                 }
 
@@ -1187,6 +1263,7 @@
                     if (!silent) {
                         FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] +' ('+ result.error +': '+ result.code +')');
                     }
+                    releaseSave(false);
                     return;
                 }
 
@@ -1223,6 +1300,8 @@
             FrameTrail.triggerEvent('userAction', {
                 action: 'EditSave'
             });
+
+            releaseSave(true);
 
             if (callback) {
                 callback.call();
