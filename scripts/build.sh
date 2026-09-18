@@ -197,6 +197,7 @@ JS_FILES=(
     "player/modules/InteractionController/module.js"
     "player/modules/Interface/module.js"
     "player/modules/InterfaceModal/module.js"
+    "player/modules/SignInWall/module.js"
     "player/modules/OverlaysController/module.js"
     "player/modules/Sidebar/module.js"
     "player/modules/SubtitlesController/module.js"

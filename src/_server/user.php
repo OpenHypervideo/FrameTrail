@@ -253,9 +253,41 @@ function userLogin($mail, $passwd) {
  * 1 = success for all projects
 
  */
+/**
+ * I end the session completely: the data, the file, and the cookie.
+ *
+ * session_destroy() on its own leaves $_SESSION populated for the rest of the
+ * request, and leaves the browser holding an id for a session that no longer
+ * exists — which it will present again, and which PHP will happily adopt. On a
+ * host that gives every project a sibling subdomain, an id that survives a
+ * logout is exactly the thing ftExternalLoginEstablish() regenerates against.
+ *
+ * Terminal by intent: the caller answers and stops.
+ */
+function ftSessionEnd() {
+
+    $_SESSION = array();
+
+    if (ini_get("session.use_cookies")) {
+        $params = session_get_cookie_params();
+        setcookie(session_name(), '', array(
+            "expires"  => time() - 42000,
+            "path"     => $params["path"],
+            "domain"   => $params["domain"],
+            "secure"   => $params["secure"],
+            "httponly" => $params["httponly"],
+            "samesite" => isset($params["samesite"]) ? $params["samesite"] : "Lax"
+        ));
+    }
+
+    session_destroy();
+
+}
+
+
 function userLogout() {
     $return["status"] = "success";
-    session_destroy();
+    ftSessionEnd();
     $return["code"] = 1;
     $return["string"] = "Logout successful";
 
@@ -301,6 +333,19 @@ function userCheckLogin($userRole = false) {
         $return["code"] = 1;
         $return["string"] = "User logged in";
         $return["session_lifetime"] = $conf["server"]["session_lifetime"];
+
+        // How long this session may still live, when a platform established it
+        // rather than a password. The client puts its next heartbeat just past
+        // this instead of a whole session_lifetime later, so a session that has
+        // stopped being valid is noticed in seconds rather than minutes.
+        //
+        // The check itself is not here: ftExternalSessionEnforce() runs from
+        // config.php ahead of every entry point, so by the time this function
+        // is reached the session has already been vouched for.
+        $expiresIn = ftExternalSessionExpiresIn();
+        if ($expiresIn !== null) {
+            $return["session_expires_in"] = $expiresIn;
+        }
 
         if ($_SESSION["ohv"]["user"]["active"] == 0) {
             $return["status"] = "success";
@@ -772,12 +817,22 @@ function ftExternalLoginEstablish($identity) {
 
     unset($user["passwd"]);
 
+    // "psid" is the platform's session generation as it stood at this moment.
+    // Every later request compares it to the cookie still on the browser, which
+    // is how signing out over there ends this session without anyone having to
+    // deliver a message: the cookie is simply not there any more. A platform
+    // that sets no such cookie leaves this null and is bounded only by age.
+    $cookieName = ftExternalSessionCookieName();
+
     $_SESSION["ohv"]["login"] = 1;
     $_SESSION["ohv"]["user"]  = $user;
     $_SESSION["ohv"]["auth"]  = array(
         "provider" => $identity["provider"],
         "sub"      => $identity["sub"],
-        "at"       => time()
+        "at"       => time(),
+        "psid"     => ($cookieName !== null && isset($_COOKIE[$cookieName]))
+                        ? (string)$_COOKIE[$cookieName]
+                        : null
     );
 
     return array("code" => 0, "string" => "Login successful");

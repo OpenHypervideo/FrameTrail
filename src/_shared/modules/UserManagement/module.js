@@ -25,6 +25,14 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         userColorCollection     = [],
         userSessionLifetime     = 0,
         userSessionTimeout      = null,
+        // How long the server says this session may still live, when a platform
+        // established it. Null whenever the question does not apply — a local
+        // password session, or one with no absolute bound. The heartbeat aims
+        // at whichever of this and the idle lifetime comes first.
+        userSessionExpiresIn    = null,
+        // Set while a silent re-auth frame is in flight, so a heartbeat that
+        // lands in the middle of one does not start a second.
+        silentRenewInFlight     = false,
         isGuestMode             = false,
         forceLoginRequired      = false,
         // The platform's own description of itself, when this instance defers
@@ -413,6 +421,144 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
     }
 
 
+    // Where an interrupted intention waits out the round trip to the platform.
+    // Session-scoped, so it cannot outlive the tab that formed it.
+    var AUTH_INTENT_KEY = 'frametrail.authIntent';
+
+    // An intention older than this is not one any more — somebody left the tab
+    // open, came back, and would be startled to find it acting on a decision
+    // they no longer remember making.
+    var AUTH_INTENT_MAX_AGE = 5 * 60 * 1000;
+
+
+    /**
+     * I write down what somebody was trying to do, in case it costs a page.
+     *
+     * Session storage rather than the return URL: a link someone shares should
+     * not push a stranger into edit mode, and the address bar should stay
+     * readable. Stamped, because an intent recovered an hour later has stopped
+     * describing anything anyone remembers wanting.
+     *
+     * Called before the attempt, not during the navigation, because by the time
+     * we know a navigation is needed the caller's own context is gone.
+     *
+     * @method rememberIntent
+     * @param {String} intent
+     */
+    function rememberIntent(intent) {
+
+        try {
+            window.sessionStorage.setItem(AUTH_INTENT_KEY, JSON.stringify({
+                intent: intent,
+                at: Date.now()
+            }));
+        } catch (e) {
+            // Private windows and blocked site data both land here. The round
+            // trip still works; it just forgets what it was for.
+        }
+
+    }
+
+
+    /**
+     * I drop a remembered intention that turned out not to need remembering.
+     *
+     * The common path now: the frame answered, nothing navigated, and the thing
+     * happened immediately. Leaving the note behind would have the next reload
+     * act on it a second time.
+     *
+     * @method forgetIntent
+     */
+    function forgetIntent() {
+
+        try {
+            window.sessionStorage.removeItem(AUTH_INTENT_KEY);
+        } catch (e) {}
+
+    }
+
+
+    /**
+     * I take back the intention that was interrupted by a sign-in, once.
+     *
+     * Reading it clears it, whether or not it was still fresh: an intent that
+     * survives into a second page load has stopped describing anything real.
+     *
+     * @method consumeAuthIntent
+     * @return {String|null}
+     */
+    function consumeAuthIntent() {
+
+        var raw = null;
+
+        try {
+            raw = window.sessionStorage.getItem(AUTH_INTENT_KEY);
+            window.sessionStorage.removeItem(AUTH_INTENT_KEY);
+        } catch (e) {
+            return null;
+        }
+
+        if (!raw) return null;
+
+        try {
+            var stored = JSON.parse(raw);
+
+            if (!stored || typeof stored.at !== 'number') return null;
+            if ((Date.now() - stored.at) > AUTH_INTENT_MAX_AGE) return null;
+
+            return stored.intent || null;
+        } catch (e) {
+            return null;
+        }
+
+    }
+
+
+    /**
+     * I am the way out to the platform, when there is something to lose.
+     *
+     * Where goToExternalLogin() simply goes, this asks first — on this project's
+     * own domain, where the person already is. That matters more than it
+     * sounds: a page that answers a click by silently becoming
+     * linkedvideo.local/manage/login reads as a broken link or a phish, and
+     * gives no way back. The wall says whose sign-in this is and what it is
+     * for, and the navigation happens when somebody chooses it.
+     *
+     * Falls through to the bare navigation wherever the wall cannot be drawn —
+     * the resource manager, which never initialises player modules.
+     *
+     * @method requestExternalLogin
+     * @param {Boolean} disallowCancel
+     * @private
+     */
+    function requestExternalLogin(disallowCancel, onCancel, reason) {
+
+        var wall = FrameTrail.module('SignInWall');
+
+        if (wall) {
+
+            // Being signed in already is the case that used to be handled
+            // worst: the box said "sign in", the only button led out to the
+            // platform, and the platform sent them back to be told something
+            // this browser could have said a screen earlier. When the platform
+            // names the reason, say it here and offer the one thing that
+            // actually helps.
+            var variant = (reason === 'noaccess')
+                            ? 'denied'
+                            : (isPrivateInstance() ? 'private' : 'signin');
+
+            wall.show(variant, {
+                disallowCancel: disallowCancel,
+                onCancel: onCancel
+            });
+            return;
+        }
+
+        goToExternalLogin();
+
+    }
+
+
     /**
      * I hand the browser back to the platform, carrying where to return to.
      *
@@ -464,33 +610,103 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
      *
      * If the user aborted the offer to login, an optional cancelCallback can be called.
      *
+     * On a platform-backed instance the first answer to "there is no session"
+     * is no longer "leave the page". It is to ask the platform quietly, in a
+     * frame, and carry on if it says yes — which it usually does, because
+     * somebody working in a project generally still has a session open next
+     * door. That single step is what makes clicking Edit take one click
+     * instead of two: nothing navigates, so this callback is never lost.
+     *
+     * When the quiet route fails, what happens next depends on who asked and
+     * on what is at stake. The governing rule, and the reason for the
+     * `background` option:
+     *
+     *     nothing navigates away while editMode is set and there are
+     *     unsaved changes, and nothing initiated by a timer navigates at all.
+     *
+     * Handing that decision to the browser — which is what an unguarded
+     * redirect does — produces a generic "Leave site?" whose Leave loses the
+     * work and whose Stay strands the person with no explanation.
+     *
      * @method ensureAuthenticated
      * @param {Function} callback
      * @param {Function} callbackCancel (optional)
      * @param {Boolean} disallowCancel (optional)
+     * @param {Object} options (optional)
+     *            background: true when a timer asked, not a person. Such a call
+     *            may repair a session silently but must never navigate and must
+     *            never raise a dialog: the work stays dirty, and leaveEditMode()
+     *            remains the backstop it was always meant to be.
      */
-    function ensureAuthenticated(callback, callbackCancel, disallowCancel){
+    function ensureAuthenticated(callback, callbackCancel, disallowCancel, options){
+
+        var background = !!(options && options.background);
 
         isLoggedIn(function(loginStatus) {
 
             if (loginStatus) {
 
                 callback.call();
+                return;
 
-            } else if (externalAuth && externalAuth.mode === 'transparent') {
+            }
 
-                // There is nothing to ask. Identity is the platform's to give,
-                // and a box offering a choice this instance cannot honour would
-                // only be a dead end — so go straight back and return signed.
-                goToExternalLogin();
+            // Ask the platform without moving the page. Free when there is
+            // nothing to ask — silentRenew() answers false immediately unless
+            // this instance defers to a platform that offered a renewUrl.
+            silentRenew(function(renewed, identityChanged, reason) {
 
-            } else {
+                if (renewed) {
+                    callback.call();
+                    return;
+                }
+
+                // Signed in as somebody else next door. Never silently, even
+                // for a timer: the next save would be attributed to a person
+                // who did not do the work.
+                if (identityChanged) {
+                    if (!background) {
+                        showAccountChangedDialog(!!FrameTrail.getState('unsavedChanges'));
+                    }
+                    if (callbackCancel) callbackCancel.call();
+                    return;
+                }
+
+                if (background) {
+                    // A timer asked. Answering it with a dialog or a
+                    // navigation would be answering a question nobody posed.
+                    if (callbackCancel) callbackCancel.call();
+                    return;
+                }
+
+                if (externalAuth && externalAuth.mode === 'transparent') {
+
+                    // Identity is the platform's to give, so there is nothing
+                    // to ask here — but leaving is still a decision, and it is
+                    // only ours to make when nothing would be lost by it.
+                    if (FrameTrail.getState('editMode') && FrameTrail.getState('unsavedChanges')) {
+                        showSessionEndedDialog(true);
+                        if (callbackCancel) callbackCancel.call();
+                        return;
+                    }
+
+                    // The cancel is handed to the wall rather than fired now:
+                    // the box is a question, and answering it for the caller
+                    // before anybody has looked at it would unwind the very
+                    // thing it is asking about.
+                    requestExternalLogin(disallowCancel, function() {
+                        if (callbackCancel) callbackCancel.call();
+                    }, reason);
+
+                    return;
+
+                }
 
                 userBoxCallback = callback;
                 userBoxCallbackCancel = callbackCancel;
                 showLoginBox(disallowCancel);
 
-            }
+            });
 
         });
 
@@ -562,12 +778,44 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                 // follows the provider's logoutUrl, would bounce an anonymous
                 // visitor off the page before it ever finished loading.
                 case 0:
-                    logout(true);
+                    // Everything the decision below needs has to be read first:
+                    // resetLocalSession() clears loggedIn and editMode.
+                    var endedUnderUs   = FrameTrail.getState('loggedIn') && !isGuestMode,
+                        wasEditing     = !!FrameTrail.getState('editMode'),
+                        hadUnsavedWork = !!FrameTrail.getState('unsavedChanges');
+
+                    // Not logout(): there is nothing to tell the server, which
+                    // has just finished saying there is no session. Posting
+                    // userLogout here would be a request racing the silent
+                    // re-auth below — and it would win often enough to matter,
+                    // destroying the session the frame had just established.
+                    resetLocalSession();
+
+                    // A session that was here a moment ago and is not any more
+                    // is not the ordinary anonymous case above — somebody
+                    // signed out on the platform, signed in as somebody else,
+                    // or the bound ran out. Worth doing something about, and
+                    // worth announcing; an anonymous visitor's page load is not.
+                    if (endedUnderUs) {
+
+                        FrameTrail.triggerEvent('userAction', {
+                            action: 'UserLogout'
+                        });
+
+                        if (externalAuth) {
+                            handleSessionEnded(wasEditing, hadUnsavedWork);
+                        }
+
+                    }
+
                     callback.call(window, false);
                     break;
 
                 case 1:
                     userSessionLifetime = parseInt(response.session_lifetime);
+                    userSessionExpiresIn = (typeof response.session_expires_in === 'number')
+                                            ? response.session_expires_in
+                                            : null;
                     login(response.response);
                     callback.call(window, true);
                     break;
@@ -709,6 +957,9 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         userRole = '';
         userMail = '';
         userRegistrationDate = '';
+        // Belongs to the session that just ended; leaving it behind would have
+        // the next heartbeat aim at a deadline that no longer means anything.
+        userSessionExpiresIn = null;
 
         FrameTrail.changeState({
             editMode: false,
@@ -751,16 +1002,27 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             resetLocalSession();
         }
 
+        // On a platform-backed instance, leaving means leaving the platform's
+        // session too — staying here would only show a login box that cannot
+        // sign anyone in.
+        //
+        // One navigation, not two steps. sso.php ends this session and then
+        // hands the browser to the platform, which ends its own and clears the
+        // cookie every other open project is watching. Done as an ajax call
+        // followed by a redirect, either half could succeed alone — and the
+        // redirect only ever ran from the fetch's success path, so a failed
+        // request left the person signed in with nothing on screen to say so.
+        //
+        // externalAuth.logoutUrl is the *signal* that there is a platform to
+        // return to, not the target: the target is our own sso.php, which reads
+        // that URL server-side as its second hop.
+        if (!silent && externalAuth && externalAuth.logoutUrl) {
+            leaveToPlatform(null);
+            return;
+        }
+
         _serverPost(new URLSearchParams({ a: 'userLogout' }))
         .then(function(data) {
-
-            // On a platform-backed instance, leaving means leaving the platform's
-            // session too — staying here would only show a login box that cannot
-            // sign anyone in.
-            if (!silent && externalAuth && externalAuth.logoutUrl) {
-                window.location.href = externalAuth.logoutUrl;
-                return;
-            }
 
             if (userID != '' && !silent) {
                 var _lodw = document.createElement('div');
@@ -799,6 +1061,399 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                     action: 'UserLogout'
                 });
 
+        })
+        // A logout that could not reach the server is still a logout as far as
+        // this tab is concerned; leaving the interface showing an identity
+        // nobody is standing behind would be the worse of the two answers.
+        .catch(function() {
+            resetLocalSession();
+        });
+
+    }
+
+
+    /**
+     * I hand the browser to our own sso.php, which ends both sessions in turn.
+     *
+     * One navigation, not two steps: sso.php ends this project's session and
+     * then hands the browser to the platform, which ends its own and clears the
+     * cookie every other open project is watching. Done as an ajax call
+     * followed by a redirect, either half could succeed alone — and the
+     * redirect only ever ran from the fetch's success path, so a failed request
+     * left the person signed in with nothing on screen to say so.
+     *
+     * externalAuth.logoutUrl is the *signal* that there is a platform to return
+     * to, not the target: the target is our own sso.php, which reads that URL
+     * server-side as its second hop.
+     *
+     * @method leaveToPlatform
+     * @param {String|null} then  what to ask the platform to do afterwards.
+     *            'login' means "and bring them back signed in"; null means
+     *            "just leave", which returns to this project signed out.
+     * @private
+     */
+    function leaveToPlatform(then) {
+
+        FrameTrail.triggerEvent('userAction', {
+            action: 'UserLogout'
+        });
+
+        window.location.href = FrameTrail.module('RouteNavigation')
+                                         .resolveServerURL('sso.php')
+                             + '?a=logout'
+                             + (then === 'login' ? '&then=login' : '');
+
+    }
+
+
+    /**
+     * I sign out of everything and go straight to signing back in.
+     *
+     * Distinct from logout(), which ends the session and gives the project
+     * back. That is right for somebody leaving, and wrong for somebody who
+     * pressed a button that already said they want to be a different person:
+     * returning them to a page they cannot use, so they can ask again for the
+     * thing they just asked for, is two clicks that decide nothing.
+     *
+     * The hint travels to the platform and is spent there, because it is the
+     * platform that knows where its own sign-in is — and the project's loginUrl
+     * is a platform route precisely so that signing in comes back here.
+     *
+     * @method switchAccount
+     */
+    function switchAccount() {
+
+        // Nothing to switch away from: no platform holds this identity, so the
+        // ordinary logout is the whole of what can be done.
+        if (isGuestMode
+            || FrameTrail.getState('storageMode') !== 'server'
+            || !externalAuth
+            || !externalAuth.logoutUrl) {
+            logout();
+            return;
+        }
+
+        leaveToPlatform('login');
+
+    }
+
+
+    /**
+     * I decide what to do about a session that ended without anyone asking.
+     *
+     * Three ways this happens, and they are indistinguishable from here: the
+     * platform session was signed out, somebody signed in over there as a
+     * different person, or the absolute bound ran out. All three mean the same
+     * thing — the platform is no longer standing behind this session.
+     *
+     * Try to fix it invisibly first. If the platform still knows this browser,
+     * a frame can fetch a new session without the page moving, and nothing
+     * about the next few seconds is ever noticed. Only when that fails does
+     * anybody need to be told, and what to tell them depends on what they would
+     * lose by being sent away.
+     *
+     * @method handleSessionEnded
+     * @param {Boolean} wasEditing      whether edit mode was open when it ended
+     * @param {Boolean} hadUnsavedWork  whether there were changes worth keeping
+     * @private
+     */
+    function handleSessionEnded(wasEditing, hadUnsavedWork) {
+
+        silentRenew(function(renewed, identityChanged) {
+
+            if (identityChanged) {
+                showAccountChangedDialog(hadUnsavedWork);
+                return;
+            }
+
+            if (renewed) {
+                // The good case, and the reason the frame exists: the page is
+                // where it was, the work is where it was, and the only trace is
+                // a request in the network panel.
+                return;
+            }
+
+            if (wasEditing) {
+                showSessionEndedDialog(hadUnsavedWork);
+                return;
+            }
+
+            if (isPrivateInstance()) {
+                // Nothing on this page is readable without a session anyway, so
+                // there is nothing to preserve by staying.
+                goToExternalLogin();
+                return;
+            }
+
+            // A public instance simply has an anonymous visitor again, which is
+            // a perfectly good state to be in. Say so, because an avatar
+            // vanishing without explanation is a small mystery, and leave it:
+            // the next thing that needs a session routes through
+            // ensureAuthenticated() and heals this without any help from here.
+            var modal = FrameTrail.module('InterfaceModal');
+
+            if (modal) {
+                modal.showStatusMessage(labels['MessageSessionEnded']);
+                modal.hideMessage(5000);
+            }
+
+        });
+
+    }
+
+
+    /**
+     * I ask the platform for a new session without moving the page.
+     *
+     * A hidden frame walks the same hand-off a normal launch walks: the
+     * platform mints a token, redirects the frame to our own sso.php, and that
+     * establishes the session — a first-party cookie for this very origin,
+     * because by the last hop the frame is on it. Then it says so, and we are
+     * signed in again with nothing on screen having changed.
+     *
+     * This works only because a project lives at a subdomain of the platform's
+     * own domain. Same site, so the frame is first-party and the cookies each
+     * hop needs are actually sent. Against an unrelated domain the frame would
+     * silently get nowhere, which is exactly what the timeout is for.
+     *
+     * Strictly a fast path. Every caller must be able to carry on when this
+     * answers false, because it will: a platform that has genuinely signed out
+     * answers false by design, and that is the common case rather than the
+     * exception.
+     *
+     * @method silentRenew
+     * @param {Function} done  called with true only if there is a session again
+     * @private
+     */
+    function silentRenew(done) {
+
+        if (silentRenewInFlight
+            || FrameTrail.getState('storageMode') !== 'server'
+            || !externalAuth
+            || !externalAuth.renewUrl) {
+            done(false);
+            return;
+        }
+
+        silentRenewInFlight = true;
+
+        var frame    = document.createElement('iframe'),
+            timer    = null,
+            finished = false,
+            // Who this session belonged to before the frame went out. A renew
+            // is only a continuation if it comes back as the same person.
+            previousUserID = userID;
+
+        function finish(renewed, identityChanged, reason) {
+
+            if (finished) return;
+            finished = true;
+
+            window.clearTimeout(timer);
+            window.removeEventListener('message', onMessage);
+
+            if (frame.parentNode) {
+                frame.parentNode.removeChild(frame);
+            }
+
+            silentRenewInFlight = false;
+            done(renewed, !!identityChanged, reason || null);
+
+        }
+
+        // Two origins may legitimately answer, because the two answers are
+        // given in different places. A success walks all the way back to our
+        // own sso.php, so it speaks from this origin. A failure is decided by
+        // the platform before it ever mints anything, so it speaks from there —
+        // and refusing that message is not a safe default, it just leaves the
+        // page waiting out the timeout for an answer that already arrived.
+        //
+        // The platform's origin is taken from the renewUrl in the config, which
+        // is written server-side and is exactly as trusted as the rest of it.
+        var platformOrigin = null;
+
+        try {
+            platformOrigin = new URL(externalAuth.renewUrl, window.location.href).origin;
+        } catch (e) {}
+
+        function onMessage(event) {
+
+            if (event.origin !== window.location.origin
+                && (platformOrigin === null || event.origin !== platformOrigin)) {
+                return;
+            }
+
+            if (!event.data || event.data.frametrail !== 'sso') return;
+
+            if (!event.data.ok) {
+                // Why it failed, when the platform said. 'nosession' and
+                // 'noaccess' need opposite things offered to them, and asking
+                // the person to find out for themselves — by sending them to
+                // the platform and back — is what this is here to avoid.
+                finish(false, false, event.data.reason);
+                return;
+            }
+
+            // Never take the frame's word for it. The worst way for this to
+            // fail is to look like it worked and be discovered at save time, so
+            // the session is confirmed from the server before anyone relies on
+            // it — and isLoggedIn() also puts the interface back together.
+            isLoggedIn(function(loggedIn) {
+
+                if (!loggedIn) {
+                    finish(false);
+                    return;
+                }
+
+                // A session, but somebody else's: signed in as a different
+                // person at the platform since this one started. Emphatically
+                // not a continuation — carrying on would write whatever is
+                // unsaved here into the new person's annotation file under
+                // their name. Report failure, and let the caller decide what to
+                // say; the work stays in memory either way.
+                if (previousUserID !== '' && userID !== previousUserID) {
+                    finish(false, true);
+                    return;
+                }
+
+                finish(true);
+
+            });
+
+        }
+
+        window.addEventListener('message', onMessage);
+
+        // Ten seconds is long enough for two redirects and a token exchange on
+        // a bad connection, and short enough that a frame which will never
+        // answer — the wrong domain, a platform that is down — does not leave
+        // somebody staring at an interface that has quietly stopped saving.
+        timer = window.setTimeout(function() {
+            finish(false);
+        }, 10000);
+
+        frame.setAttribute('aria-hidden', 'true');
+        frame.style.display = 'none';
+        frame.src = externalAuth.renewUrl;
+
+        document.body.appendChild(frame);
+
+    }
+
+
+    /**
+     * I tell somebody who was editing that their session is over.
+     *
+     * A dialog rather than the redirect the other cases get, because
+     * goToExternalLogin() is a whole page load and would take unsaved work with
+     * it. Edit mode has already closed by the time this runs — resetLocalSession()
+     * saw to that, and it is honest: there is no session to edit against. But
+     * the in-memory model is untouched, so the export below still has
+     * everything, and it is the one way to get work out of a tab that can no
+     * longer save.
+     *
+     * @method showSessionEndedDialog
+     * @param {Boolean} hadUnsavedWork
+     * @private
+     */
+    function showSessionEndedDialog(hadUnsavedWork) {
+
+        var label   = externalAuth ? externalAuth.label : '',
+            wrapper = document.createElement('div'),
+            buttons = {};
+
+        wrapper.className = 'sessionEndedDialog';
+        wrapper.innerHTML = '<div class="message active">'
+            + labels['UserSessionEndedText'].replace('%s', label)
+            + (hadUnsavedWork ? ' ' + labels['UserSessionEndedUnsavedWarning'] : '')
+            + '</div>';
+
+        if (hadUnsavedWork) {
+            buttons[labels['GenericExport']] = function() {
+                dialogCtrl.close();
+                FrameTrail.module('HypervideoModel').saveAs();
+            };
+        }
+
+        buttons[labels['UserSignInAgain']] = function() {
+            dialogCtrl.close();
+            goToExternalLogin();
+        };
+
+        buttons[labels['GenericNotNow']] = function() {
+            dialogCtrl.close();
+        };
+
+        var dialogCtrl = Dialog({
+            resizable: false,
+            modal: true,
+            title: labels['UserSessionEndedTitle'],
+            content: wrapper,
+            close: function() {
+                dialogCtrl.destroy();
+            },
+            buttons: buttons
+        });
+
+    }
+
+
+    /**
+     * I say that the person at the platform is no longer the person who was
+     * working here.
+     *
+     * Distinct from the session simply ending, and worth its own words: there
+     * *is* a valid session next door, it just belongs to somebody else. Taking
+     * it would be the easy thing and the wrong one — whatever is unsaved on
+     * this page was authored by the previous account, and saving it now would
+     * file it under the new one's name, in the new one's annotation file.
+     *
+     * So nothing is adopted until it is chosen. Continuing reloads the page
+     * under the new identity, which is honest about what it costs; the export
+     * is offered first, because it is the only way the previous account's work
+     * leaves this tab intact.
+     *
+     * @method showAccountChangedDialog
+     * @param {Boolean} hadUnsavedWork
+     * @private
+     */
+    function showAccountChangedDialog(hadUnsavedWork) {
+
+        var label   = externalAuth ? externalAuth.label : '',
+            wrapper = document.createElement('div'),
+            buttons = {};
+
+        wrapper.className = 'sessionEndedDialog';
+        wrapper.innerHTML = '<div class="message active">'
+            + labels['UserAccountChangedText'].replace('%s', label)
+            + (hadUnsavedWork ? ' ' + labels['UserSessionEndedUnsavedWarning'] : '')
+            + '</div>';
+
+        if (hadUnsavedWork) {
+            buttons[labels['GenericExport']] = function() {
+                dialogCtrl.close();
+                FrameTrail.module('HypervideoModel').saveAs();
+            };
+        }
+
+        buttons[labels['UserContinueAsNewAccount']] = function() {
+            dialogCtrl.close();
+            window.location.reload();
+        };
+
+        buttons[labels['GenericNotNow']] = function() {
+            dialogCtrl.close();
+        };
+
+        var dialogCtrl = Dialog({
+            resizable: false,
+            modal: true,
+            title: labels['UserAccountChangedTitle'],
+            content: wrapper,
+            close: function() {
+                dialogCtrl.destroy();
+            },
+            buttons: buttons
         });
 
     }
@@ -1029,12 +1684,19 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
      */
     function startSessionTimeout() {
 
-        // session lifetime minus 30 seconds
-        var timeoutDuration = (userSessionLifetime-30) * 1000;
-        //console.log('Starting Session Timeout at: ' + Math.floor( (userSessionLifetime-30) / 60 ) + ' minutes');
+        // The heartbeat is here to renew the PHP session, so it normally lands
+        // just before the idle lifetime runs out. A session a platform
+        // established also has an absolute deadline that no amount of renewing
+        // moves — and landing a whole lifetime after that one would leave
+        // somebody looking at an interface that has quietly stopped being able
+        // to save. When the server names that deadline, aim just past it.
+        var renewAt  = (userSessionLifetime - 30) * 1000,
+            expireAt = (userSessionExpiresIn === null)
+                        ? Infinity
+                        : (userSessionExpiresIn + 2) * 1000,
+            timeoutDuration = Math.max(5000, Math.min(renewAt, expireAt));
+
         userSessionTimeout = setTimeout(function() {
-            // Renew Session
-            //console.log('Renewing Session ...');
             isLoggedIn(function(){});
         }, timeoutDuration);
 
@@ -1073,6 +1735,12 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
         isLoggedIn:             isLoggedIn,
         ensureAuthenticated:    ensureAuthenticated,
+        switchAccount:          switchAccount,
+        consumeAuthIntent:      consumeAuthIntent,
+        rememberIntent:         rememberIntent,
+        forgetIntent:           forgetIntent,
+        goToExternalLogin:      goToExternalLogin,
+        silentRenew:            silentRenew,
         logout:                 logout,
         isGuestMode:            function() { return isGuestMode; },
         isForceLogin:           function() { return forceLoginRequired; },

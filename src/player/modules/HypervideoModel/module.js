@@ -1194,6 +1194,14 @@
             };
 
 
+        // `silent` is also how this save knows nobody asked for it: the only
+        // silent save is the one the autosave timer schedules. That matters
+        // here more than it does below — a background call may repair a lapsed
+        // session in a frame, but it must never answer a timer by navigating
+        // the page away from unsaved work, or by raising a dialog over it.
+        // When it cannot proceed the changes simply stay dirty, and
+        // leaveEditMode()'s prompt is the backstop, exactly as scheduleAutoSave
+        // already assumes.
         FrameTrail.module('UserManagement').ensureAuthenticated(
 
             function(){
@@ -1231,7 +1239,11 @@
                 if (callbackCancel) {
                     callbackCancel.call();
                 }
-            }
+            },
+
+            false,
+
+            { background: !!silent }
 
         );
 

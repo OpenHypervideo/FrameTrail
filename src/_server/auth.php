@@ -146,10 +146,204 @@ function ftExternalAuthPublic() {
         "loginUrl"       => isset($config["loginUrl"]) ? (string)$config["loginUrl"] : "",
         "logoutUrl"      => isset($config["logoutUrl"]) ? (string)$config["logoutUrl"] : "",
         "manageUsersUrl" => isset($config["manageUsersUrl"]) ? (string)$config["manageUsersUrl"] : "",
+        "renewUrl"       => isset($config["renewUrl"]) ? (string)$config["renewUrl"] : "",
         "canLogout"      => isset($config["canLogout"]) ? (bool)$config["canLogout"] : true
     );
 
+    // sessionCookie and maxSessionAge are deliberately absent. They are
+    // enforced here, on every request, not honoured out there — handing the
+    // browser the rules it is being judged by invites a client that thinks it
+    // knows better, and buys nothing it cannot already observe.
+
     return $public;
+
+}
+
+
+/**
+ * I am the name of the cookie that says a platform session still exists.
+ *
+ * Optional: a provider that cannot set a cookie this instance would receive —
+ * anything not hosted as a sibling of it — simply omits the key, and the
+ * generation check below becomes inert. The absolute bound still applies.
+ *
+ * @method ftExternalSessionCookieName
+ * @return String|null
+ */
+function ftExternalSessionCookieName() {
+
+    $config = ftExternalAuthConfig();
+
+    if ($config === null || empty($config["sessionCookie"])) {
+        return null;
+    }
+
+    $name = (string)$config["sessionCookie"];
+
+    // A cookie name, not an arbitrary string: this is used as an array key into
+    // $_COOKIE and nothing good comes of accepting whatever is in the file.
+    return preg_match('/^[A-Za-z0-9_.-]{1,64}$/', $name) ? $name : null;
+
+}
+
+
+/**
+ * I am how long a session established by a platform may live, in seconds.
+ *
+ * Counted from when it was established, never from the last request — that is
+ * the whole point. A FrameTrail tab renews its PHP session for as long as it is
+ * open, so idle expiry alone means a token minted to be valid for one minute
+ * becomes a session that outlives everything that authorised it.
+ *
+ * There is a default even when the config names none, so an instance
+ * provisioned before this existed is bounded anyway; a re-sync of its config is
+ * then a correction rather than a prerequisite. An explicit 0 disables it.
+ *
+ * @method ftExternalSessionMaxAge
+ * @return Number  seconds, or 0 for unbounded
+ */
+function ftExternalSessionMaxAge() {
+
+    static $maxAge = null;
+
+    if ($maxAge !== null) {
+        return $maxAge;
+    }
+
+    $config = ftExternalAuthConfig();
+
+    if ($config === null || !isset($config["maxSessionAge"])) {
+        $maxAge = 86400;
+        return $maxAge;
+    }
+
+    $value = (int)$config["maxSessionAge"];
+
+    if ($value === 0) {
+        $maxAge = 0;
+        return $maxAge;
+    }
+
+    // Five minutes is the floor at which the client's heartbeat still makes
+    // sense of it; thirty days the ceiling past which "bounded" stops meaning
+    // anything.
+    $maxAge = max(300, min(2592000, $value));
+
+    return $maxAge;
+
+}
+
+
+/**
+ * I am how long this session has left, for a client that wants to know.
+ *
+ * Null whenever the question does not apply: a local password session, or an
+ * unbounded one. The client uses it to put its next heartbeat just past the
+ * deadline instead of up to a full session lifetime after it.
+ *
+ * @method ftExternalSessionExpiresIn
+ * @return Number|null  seconds
+ */
+function ftExternalSessionExpiresIn() {
+
+    if (!isset($_SESSION["ohv"]["auth"]["at"])) {
+        return null;
+    }
+
+    $maxAge = ftExternalSessionMaxAge();
+
+    if ($maxAge === 0) {
+        return null;
+    }
+
+    return max(0, ((int)$_SESSION["ohv"]["auth"]["at"] + $maxAge) - time());
+
+}
+
+
+/**
+ * I end a session that the platform no longer stands behind.
+ *
+ * Two questions, both asked on every single request, because config.php calls
+ * this before anything has read $_SESSION:
+ *
+ * Is there still a session over there? The platform sets a cookie on the parent
+ * domain when it signs someone in and throws it away when they sign out. We
+ * recorded its value at hand-off; if it is gone or different, whoever we are
+ * holding a session for has signed out, signed in as somebody else, or had
+ * their session expire — all of which end this one. That is the whole of the
+ * propagation mechanism: no back-channel to deliver, nothing to retry.
+ *
+ * Has it simply gone on too long? The absolute bound, for everything the cookie
+ * cannot see — a provider that sets none, a cookie cleared by hand.
+ *
+ * Only ever applies to sessions a platform established. A local password
+ * session has no "auth" key and is never touched by any of this.
+ *
+ * @method ftExternalSessionEnforce
+ */
+function ftExternalSessionEnforce() {
+
+    if (!isset($_SESSION["ohv"]["auth"])) {
+        return;
+    }
+
+    $auth   = $_SESSION["ohv"]["auth"];
+    $cookie = ftExternalSessionCookieName();
+
+    if ($cookie !== null && isset($auth["psid"]) && is_string($auth["psid"]) && $auth["psid"] !== "") {
+
+        $present = isset($_COOKIE[$cookie]) ? (string)$_COOKIE[$cookie] : "";
+
+        if ($present === "" || !hash_equals($auth["psid"], $present)) {
+            ftExternalSessionAbandon();
+            return;
+        }
+
+    }
+
+    $maxAge = ftExternalSessionMaxAge();
+
+    if ($maxAge === 0) {
+        return;
+    }
+
+    // A missing or unreadable stamp counts as expired. It can only come from a
+    // session written by something other than ftExternalLoginEstablish(), and
+    // the safe way to be wrong about that is to end it.
+    if (!isset($auth["at"]) || !is_numeric($auth["at"])) {
+        ftExternalSessionAbandon();
+        return;
+    }
+
+    if (((int)$auth["at"] + $maxAge) < time()) {
+        ftExternalSessionAbandon();
+    }
+
+}
+
+
+/**
+ * I empty the session without destroying it.
+ *
+ * Deliberately not session_destroy(). This runs ahead of every entry point,
+ * sso.php among them, and a destroyed session makes the
+ * session_regenerate_id(true) inside ftExternalLoginEstablish() a no-op — so a
+ * hand-off arriving a second after the old session lapsed would verify a
+ * perfectly good token and then silently fail to sign anyone in.
+ *
+ * Emptying and regenerating leaves an active, anonymous session that a fresh
+ * hand-off can write straight into, and the new id means the lapsed one cannot
+ * be presented again. Which is what makes the silent re-auth possible at all:
+ * the frame that arrives moments later is signing in, not resurrecting.
+ *
+ * @method ftExternalSessionAbandon
+ */
+function ftExternalSessionAbandon() {
+
+    $_SESSION = array();
+
+    @session_regenerate_id(true);
 
 }
 

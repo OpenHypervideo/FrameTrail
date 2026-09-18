@@ -58,4 +58,16 @@ $conf["server"]["session_lifetime"] = ini_get('session.gc_maxlifetime');
 require_once("functions.incl.php");
 require_once(__DIR__ . "/auth.php");
 
+// One chokepoint, before anything has read $_SESSION. Every entry point comes
+// through this file — the ajax dispatcher, the gated _data reader, the sign-in
+// landing — so putting the check here is what makes it impossible to add an
+// endpoint that forgets it. requireLogin() and userCheckLogin() inherit it and
+// deliberately do not repeat it; userGet() and userChange() read the session
+// directly, so a check in requireLogin() alone would have missed them.
+//
+// It has to come after the block above: the bound and the cookie name are read
+// from the config.json in $conf["dir"]["data"], which the dataPath override
+// just finished deciding.
+ftExternalSessionEnforce();
+
 ?>

@@ -108,11 +108,16 @@
     FrameTrail.initModule('Localization');
     var labels = FrameTrail.module('Localization').labels;
 
+    // Set by handleAuthMarkers() when the platform sent word on the way back,
+    // and acted on once the interface exists to act on it with.
+    var authNoticeOnBoot = null;
+
     // Set up Tooltips (top-layer via Popover API — escapes overflow clipping)
     FrameTrail.initModule('Tooltip');
 
     // Set up Overlay interface
     FrameTrail.initModule('InterfaceModal');
+    FrameTrail.initModule('SignInWall');
     FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateLoadingData']);
 
     // Set up the various data models
@@ -160,13 +165,147 @@
         // Sync login state now that storageMode is known.
         // UserManagement.isLoggedIn() ran at module-init time before storageMode
         // was set, so loggedIn may be stale (false) for local/download modes.
-        FrameTrail.module('UserManagement').isLoggedIn(function() {
-            continueLoading();
+        FrameTrail.module('UserManagement').isLoggedIn(function(loggedIn) {
+
+            handleAuthMarkers();
+
+            // Ask the platform, once, before deciding anything. A project and
+            // the platform keep separate sessions, so arriving here without one
+            // says nothing about whether there is one next door — and there
+            // usually is, for anybody who got here by following a link from it.
+            //
+            // Asking costs a request and answers invisibly; not asking costs a
+            // whole page: either a redirect out to the platform and back, or a
+            // wall shown to somebody who did not need to see it. So the probe
+            // runs first, and everything downstream gets to assume the login
+            // state it sees is the true one.
+            if (loggedIn || !shouldProbeOnBoot()) {
+                continueLoading();
+                return;
+            }
+
+            FrameTrail.module('UserManagement').silentRenew(function() {
+                // The result needs no inspection: isLoggedIn() inside the probe
+                // has already put the state and the interface where they belong,
+                // whichever way it went.
+                continueLoading();
+            });
+
         });
 
     });
 
+
+    /**
+     * I finish what a sign-in interrupted.
+     *
+     * Two loose ends, both of them things the person already decided and should
+     * not have to decide again: a notice the platform asked us to show, and an
+     * intention that was formed before the page had to be given up.
+     *
+     * Taking it back is a one-shot read — an intention that survived into a
+     * second load has stopped describing anything anybody remembers wanting.
+     *
+     * @method resumeAfterAuth
+     * @private
+     */
+    function resumeAfterAuth() {
+
+        if (authNoticeOnBoot === 'signedout') {
+            authNoticeOnBoot = null;
+            FrameTrail.module('InterfaceModal').showStatusMessage(labels['SignInWallSignedOut']);
+            FrameTrail.module('InterfaceModal').hideMessage(5000);
+        }
+
+        var intent = FrameTrail.module('UserManagement').consumeAuthIntent();
+
+        if (intent === 'edit' && FrameTrail.getState('loggedIn')) {
+
+            FrameTrail.changeState('editMode', 'preview');
+
+            FrameTrail.triggerEvent('userAction', {
+                action: 'EditStart'
+            });
+
+        }
+
+    }
+
+
+    /**
+     * Whether it is worth asking the platform before drawing anything.
+     *
+     * Only on a server instance that defers to a platform which offered a way
+     * to ask. Everywhere else — local folders, downloads, a plain FrameTrail
+     * with its own passwords — there is nothing on the other end and the probe
+     * would be a request into the dark.
+     *
+     * @method shouldProbeOnBoot
+     * @return {Boolean}
+     * @private
+     */
+    function shouldProbeOnBoot() {
+
+        if (FrameTrail.getState('storageMode') !== 'server') {
+            return false;
+        }
+
+        var externalAuth = FrameTrail.module('UserManagement').externalAuth();
+
+        return !!(externalAuth && externalAuth.renewUrl);
+
+    }
+
+
+    /**
+     * I act on what the platform said on the way back here, then forget it.
+     *
+     * The platform cannot draw anything on this domain, so when it has to
+     * report something about a project — you are signed out, that account
+     * cannot open this one — it says so in the URL and lets the project say it
+     * properly. Both markers are cleared with replaceState immediately: a
+     * reload, or a link somebody shares, should not replay a message about a
+     * moment that has passed.
+     *
+     * @method handleAuthMarkers
+     * @private
+     */
+    function handleAuthMarkers() {
+
+        var params = new URLSearchParams(window.location.search),
+            denied = params.has('ft_denied'),
+            signedOut = params.has('ft_signedout');
+
+        if (!denied && !signedOut) {
+            return;
+        }
+
+        params.delete('ft_denied');
+        params.delete('ft_signedout');
+
+        var query = params.toString();
+
+        window.history.replaceState({}, '', window.location.pathname
+            + (query ? '?' + query : '')
+            + window.location.hash);
+
+        if (denied) {
+            FrameTrail.module('SignInWall').show('denied');
+            return;
+        }
+
+        authNoticeOnBoot = 'signedout';
+
+    }
+
     function continueLoading() {
+
+        // A wall is an answer, not a wait. Loading on underneath it would only
+        // produce requests that are going to be refused, and a spinner arguing
+        // with the question on screen.
+        if (FrameTrail.module('SignInWall').isVisible) {
+            return;
+        }
 
         // Private server instance (config.alwaysForceLogin): the _data files are
         // gated behind a valid session, so we must authenticate BEFORE loading
@@ -174,10 +313,23 @@
         // response (available before Database.config is loaded). After a
         // successful login the session cookie is set and continueLoading() reruns
         // — this time loggedIn is true, so it proceeds to load.
+        //
+        // By the time this runs the platform has already been asked, so being
+        // here means there genuinely is no session and somebody has to be told.
+        // ensureAuthenticated() draws the wall rather than navigating; what used
+        // to happen — becoming the platform's login page without a word — is
+        // the thing this whole path exists to stop.
         if (FrameTrail.getState('storageMode') === 'server'
                 && FrameTrail.module('UserManagement').isForceLogin()
                 && !FrameTrail.getState('loggedIn')) {
             FrameTrail.module('InterfaceModal').hideMessage();
+
+            if (authNoticeOnBoot === 'signedout') {
+                authNoticeOnBoot = null;
+                FrameTrail.module('SignInWall').show('signedout');
+                return;
+            }
+
             FrameTrail.module('UserManagement').ensureAuthenticated(function() {
                 continueLoading();
             }, function() {}, true);
@@ -233,6 +385,8 @@
 
                                                 var hvVid = document.querySelector(FrameTrail.getState('target') + ' .hypervideo video.video');
                                                 if (hvVid) { hvVid.classList.remove('nocolor', 'dark'); }
+
+                                                resumeAfterAuth();
 
                                             },
 

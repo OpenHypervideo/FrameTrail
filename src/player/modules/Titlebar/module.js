@@ -105,8 +105,17 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'open');
         }
 
+        // Named so it survives a sign-in that has to leave the page: whoever
+        // comes back gets what they asked for rather than an unchanged page and
+        // a second click. Harmless when nothing navigates, which — now that
+        // ensureAuthenticated asks the platform in a frame first — is the usual
+        // case.
+        FrameTrail.module('UserManagement').rememberIntent('edit');
+
         FrameTrail.module('UserManagement').ensureAuthenticated(
             function(){
+
+                FrameTrail.module('UserManagement').forgetIntent();
 
                 FrameTrail.changeState('editMode', 'preview');
 
