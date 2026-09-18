@@ -11,6 +11,16 @@ session_set_cookie_params([
     'samesite' => 'Lax',
     'secure'   => $_isHttps,
 ]);
+
+// Scope the cookie's *name* to this host, not just its domain. A cookie set for
+// a parent domain is sent to every subdomain under it, and PHP takes the first
+// value it sees — so on a platform that gives each project its own subdomain,
+// one project could otherwise plant a session id that another one adopts. The
+// name is derived, not configured, so nothing has to be kept in sync.
+// Note: this invalidates sessions in flight at upgrade time; people are asked
+// to sign in once more, and nothing else changes.
+session_name('FTSESS' . substr(sha1(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost'), 0, 8));
+
 session_start();
 
 // Directories — default data path (sibling of _server/)
@@ -46,5 +56,6 @@ $conf["server"]["session_lifetime"] = ini_get('session.gc_maxlifetime');
 //$conf["server"]["session_lifetime"] = 40;
 
 require_once("functions.incl.php");
+require_once(__DIR__ . "/auth.php");
 
 ?>

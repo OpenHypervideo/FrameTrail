@@ -179,6 +179,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
         var UserManagement = FrameTrail.module('UserManagement'),
             isGuest        = UserManagement.isGuestMode(),
             isAdmin        = UserManagement.userRole === 'admin' && !isGuest,
+            external       = UserManagement.externalAuth(),
             entries        = [];
 
         var username = FrameTrail.getState('username') || '';
@@ -193,17 +194,31 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             }});
         }
 
-        if (isAdmin && FrameTrail.module('ManageUsersDialog')) {
+        // The roster belongs to whoever owns the accounts. On a platform-backed
+        // instance that is the platform, so this becomes a way out to its own
+        // page — and disappears entirely if it named none, because then there is
+        // nothing here to open.
+        if (isAdmin && (external ? !!external.manageUsersUrl : !!FrameTrail.module('ManageUsersDialog'))) {
             entries.push({ label: labels['UserAdministration'], icon: 'icon-users', action: function() {
+                if (external) {
+                    window.open(external.manageUsersUrl, '_blank', 'noopener');
+                    return;
+                }
                 FrameTrail.module('ManageUsersDialog').open();
             }});
         }
 
-        entries.push({ label: labels['UserLogout'], icon: 'icon-logout', className: 'userMenuLogout', action: function() {
-            // Not logout() directly: this is the path that offers to save
-            // unsaved work before the session ends.
-            FrameTrail.module('HypervideoModel').leaveEditMode(true);
-        }});
+        // Logout used to be unconditional — it is the reason this control is
+        // shown to guests at all. But when the platform signs people in
+        // transparently there is nothing to sign back in with, so the entry
+        // would strand whoever used it: leaving means going back to the platform.
+        if (!external || external.canLogout !== false) {
+            entries.push({ label: labels['UserLogout'], icon: 'icon-logout', className: 'userMenuLogout', action: function() {
+                // Not logout() directly: this is the path that offers to save
+                // unsaved work before the session ends.
+                FrameTrail.module('HypervideoModel').leaveEditMode(true);
+            }});
+        }
 
         UserSettingsList.innerHTML = '';
 

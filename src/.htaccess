@@ -16,9 +16,11 @@
 </Files>
 ########################################################
 # Deny access to ephemeral collaboration state (_data/.collab)
+# and to external-auth state (_data/.auth)
 ########################################################
 <IfModule mod_rewrite.c>
 	RewriteRule (^|/)\.collab(/|$) - [F,L]
+	RewriteRule (^|/)\.auth(/|$) - [F,L]
 </IfModule>
 ########################################################
 # Add Mime Types

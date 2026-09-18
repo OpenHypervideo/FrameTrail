@@ -57,6 +57,15 @@ FrameTrail.defineModule('ManageUsersDialog', function(FrameTrail){
             return;
         }
 
+        // Every write this dialog makes is refused server-side when the accounts
+        // are the platform's, so opening it could only show a list that cannot
+        // be edited. The title bar routes past me to the platform's own page;
+        // this is here for any other caller.
+        if (FrameTrail.module('UserManagement').externalAuth()) {
+            console.error('User accounts are managed by the platform hosting this instance');
+            return;
+        }
+
         if (dialogCtrl) return;   // modal — only ever one of me
 
         changed   = false;

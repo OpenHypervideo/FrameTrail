@@ -54,7 +54,7 @@ switch($_REQUEST["a"]) {
 
     case "userChange":
         include_once("user.php");
-        $return = userChange($_REQUEST["userID"],$_REQUEST["mail"],$_REQUEST["name"],$_REQUEST["passwd"],$_REQUEST["color"],$_REQUEST["role"],$_REQUEST["active"]);
+        $return = userChange($_REQUEST["userID"],$_REQUEST["mail"],$_REQUEST["name"],$_REQUEST["passwd"],$_REQUEST["color"],$_REQUEST["role"],$_REQUEST["active"],$_REQUEST["avatar"]);
         break;
 
 
@@ -618,6 +618,11 @@ switch($_REQUEST["a"]) {
                 if (basename($relativePath) === "users.json") { continue; }
                 // Collaboration presence/lock state is ephemeral and never part of the portable payload.
                 if (strpos(str_replace(DIRECTORY_SEPARATOR, "/", $relativePath), ".collab/") === 0) { continue; }
+                // Neither is external-auth state. SKIP_DOTS skips "." and ".." only,
+                // not dot-directories, and this export is public on an instance that
+                // does not force login — so without this line an .auth/config.php
+                // holding an HMAC secret would be handed to anyone who asked.
+                if (strpos(str_replace(DIRECTORY_SEPARATOR, "/", $relativePath), ".auth/") === 0) { continue; }
                 $zip->addFile($file->getPathname(), "_data/" . str_replace(DIRECTORY_SEPARATOR, "/", $relativePath));
             }
         }

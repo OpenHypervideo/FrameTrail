@@ -25,8 +25,11 @@ function userGet($userID) {
     // must keep working on a public instance — so this stays reachable without
     // a session, but an anonymous caller gets only what that rendering needs.
     // Anything else (mail, role, active, lastLogin) requires being logged in.
+    // avatar belongs here with name and color: it is part of drawing an author,
+    // and showing anonymous viewers initials where members see a photo would be
+    // a difference with no meaning behind it.
     $isLoggedIn = (isset($_SESSION["ohv"]["login"]) && $_SESSION["ohv"]["login"] == 1);
-    $publicFields = array("name", "color");
+    $publicFields = array("name", "color", "avatar");
 
     foreach ($uDB["user"] as $k=>$u) {
         unset($uDB["user"][$k]["passwd"]);
@@ -59,6 +62,17 @@ function userGet($userID) {
  */
 function userRegister($name, $mail, $passwd) {
     global $conf;
+
+    // Accounts belong to the platform when one is configured. Registering here
+    // would create a credential that can never be used to log in, and a person
+    // the platform has never heard of.
+    if (ftExternalAuthEnabled()) {
+        $return["status"] = "fail";
+        $return["code"] = 4;
+        $return["string"] = "Accounts are managed by the platform hosting this instance.";
+        return $return;
+    }
+
     $tmpFirstUser = false;
     $json = file_get_contents($conf["dir"]["data"]."/config.json");
     $configDB = json_decode($json, true);
@@ -135,10 +149,21 @@ function userRegister($name, $mail, $passwd) {
  * 3 = Password incorrect
  * 4 = Could not find user-database // Project is missing
  * 5 = User is not active
+ * 6 = Password login is disabled — this instance authenticates externally
 
  */
 function userLogin($mail, $passwd) {
     global $conf;
+
+    // A new code rather than reusing one of the above: the client's existing
+    // switch handles 1-5, so an older client meeting a newer server falls
+    // through to no message at all rather than to a confidently wrong one.
+    if (ftExternalAuthEnabled()) {
+        $return["status"] = "fail";
+        $return["code"] = 6;
+        $return["string"] = "Password sign-in is disabled on this instance.";
+        return $return;
+    }
 
     $userFile = $conf["dir"]["data"]."/users.json";
 
@@ -191,6 +216,12 @@ function userLogin($mail, $passwd) {
         return $return;
     }
 
+
+    // Never carry a pre-login session id across the privilege change. Anyone who
+    // can set a cookie on a sibling subdomain — and on a host that gives every
+    // project its own subdomain, that is every project — can otherwise plant an
+    // id here and inherit the session it becomes.
+    session_regenerate_id(true);
 
     $_SESSION["ohv"]["login"] = 1;
     $_SESSION["ohv"]["user"] = $user;
@@ -302,6 +333,13 @@ function userCheckLogin($userRole = false) {
         $return["forceLogin"] = (isset($cfg["alwaysForceLogin"]) && $cfg["alwaysForceLogin"] === true);
     }
 
+    // Rides along for the same reason forceLogin does: the client has to know
+    // whether a login box can do anything at all, and it has to know before
+    // config.json is loadable — which on a private instance it is not, until
+    // after authenticating. A whitelist, so a key added to the config file
+    // downstream cannot leak through here.
+    $return["externalAuth"] = ftExternalAuthPublic();
+
     return $return;
 }
 
@@ -321,7 +359,7 @@ function userCheckLogin($userRole = false) {
  * 3 = All data has been saved but mail was not updated because it's not valid — old mail address will still be used
 
  */
-function userChange($userID,$mail,$name,$passwd,$color,$role,$active) {
+function userChange($userID,$mail,$name,$passwd,$color,$role,$active,$avatar = null) {
     global $conf;
     $userFile = $conf["dir"]["data"]."/users.json";
 
@@ -356,21 +394,40 @@ function userChange($userID,$mail,$name,$passwd,$color,$role,$active) {
         } else {
             if ($userdb["user"][$userID]) {
                 $return["code"] = 0;
-                if (!filter_var($mail, FILTER_VALIDATE_EMAIL)) {
-                    $mail = strtolower($userdb["user"][$userID]["mail"]);
-                    $return["code"] = 3;
+
+                if (ftExternalAuthEnabled()) {
+
+                    // Name, mail, role and active are the platform's, and the next
+                    // sign-in rewrites them from the token regardless — so accepting
+                    // an edit to them here would only produce a change that silently
+                    // reverts. Colour and avatar are the person's own: the upsert
+                    // leaves an existing choice alone.
+                    $userdb["user"][$userID]["color"]  = ($color !== null && $color !== "") ? $color : $userdb["user"][$userID]["color"];
+                    $userdb["user"][$userID]["avatar"] = ($avatar !== null && $avatar !== "")
+                                                       ? ftNormalizeAvatar($avatar)
+                                                       : (isset($userdb["user"][$userID]["avatar"]) ? $userdb["user"][$userID]["avatar"] : "");
+                    $userdb["user"][$userID] = ftAssertNoPasswd($userdb["user"][$userID]);
+
                 } else {
-                    $mail = strtolower($mail);
+
+                    if (!filter_var($mail, FILTER_VALIDATE_EMAIL)) {
+                        $mail = strtolower($userdb["user"][$userID]["mail"]);
+                        $return["code"] = 3;
+                    } else {
+                        $mail = strtolower($mail);
+                    }
+                    $userdb["user"][$userID]["role"] = ((($role) && ($_SESSION["ohv"]["user"]["role"] == "admin")) ? $role : $userdb["user"][$userID]["role"]);
+                    // Only overwrite what was actually submitted. role, active and
+                    // passwd already work this way; name and color did not, so any
+                    // caller that omitted them silently wiped the stored value.
+                    $userdb["user"][$userID]["name"] = ($name !== null && $name !== "") ? $name : $userdb["user"][$userID]["name"];
+                    $userdb["user"][$userID]["mail"] = $mail;
+                    $userdb["user"][$userID]["color"] = ($color !== null && $color !== "") ? $color : $userdb["user"][$userID]["color"];
+                    $userdb["user"][$userID]["active"] = ((($active==="1" || $active==="0") && (($_SESSION["ohv"]["user"]["role"] == "admin"))) ? $active*1 : $userdb["user"][$userID]["active"]*1);
+                    $userdb["user"][$userID]["passwd"] = ($passwd) ? password_hash($passwd, PASSWORD_DEFAULT) : $userdb["user"][$userID]["passwd"];
+
                 }
-                $userdb["user"][$userID]["role"] = ((($role) && ($_SESSION["ohv"]["user"]["role"] == "admin")) ? $role : $userdb["user"][$userID]["role"]);
-                // Only overwrite what was actually submitted. role, active and
-                // passwd already work this way; name and color did not, so any
-                // caller that omitted them silently wiped the stored value.
-                $userdb["user"][$userID]["name"] = ($name !== null && $name !== "") ? $name : $userdb["user"][$userID]["name"];
-                $userdb["user"][$userID]["mail"] = $mail;
-                $userdb["user"][$userID]["color"] = ($color !== null && $color !== "") ? $color : $userdb["user"][$userID]["color"];
-                $userdb["user"][$userID]["active"] = ((($active==="1" || $active==="0") && (($_SESSION["ohv"]["user"]["role"] == "admin"))) ? $active*1 : $userdb["user"][$userID]["active"]*1);
-                $userdb["user"][$userID]["passwd"] = ($passwd) ? password_hash($passwd, PASSWORD_DEFAULT) : $userdb["user"][$userID]["passwd"];
+
                 $file->write(json_encode($userdb, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
 
                 include_once("collaboration.php");
@@ -420,6 +477,16 @@ function userDelete($userID) {
     global $conf;
 
     if ($err = requireLogin("admin")) return $err;
+
+    // Membership is the platform's to end. Deleting here would leave the two
+    // sides disagreeing until the next push put the record straight back.
+    if (ftExternalAuthEnabled()) {
+        return array(
+            "status" => "fail",
+            "code"   => 6,
+            "string" => "Accounts are managed by the platform hosting this instance."
+        );
+    }
 
     $userID = (string)$userID;
 
@@ -532,4 +599,187 @@ function getUserColors() {
     }
 
     return $return;
+}
+
+
+/**
+ * I find or create the local record standing for an externally-authenticated
+ * person, and return it with its id.
+ *
+ * The map key stays a small integer, exactly as it has always been, and the
+ * external subject lives in a field. That is not merely conservative: the user
+ * id becomes a *filename* — annotationfiles.php names a person's annotation
+ * file after it, and files.php puts it in upload names — and an OIDC subject is
+ * an opaque string that may legally contain a slash or a dot-dot. Keeping the
+ * subject out of the path is what makes a second provider safe to add. It also
+ * means an existing instance can adopt a platform by writing an `external`
+ * block onto an account that already has annotations, which is account linking
+ * for free.
+ *
+ * Name, mail, role and active are the platform's and are rewritten on every
+ * sign-in. Colour and avatar are the person's: the platform may seed them, but
+ * a choice made here survives.
+ *
+ * @method ftPrincipalUpsert
+ * @param {Array} $identity  normalized
+ * @return Array|null  the record, with "id"
+ */
+function ftPrincipalUpsert($identity) {
+
+    global $conf;
+
+    $userFile = $conf["dir"]["data"]."/users.json";
+    $file     = new sharedFile($userFile);
+    $userDB   = json_decode($file->read(), true);
+
+    if (!is_array($userDB) || !isset($userDB["user"]) || !is_array($userDB["user"])) {
+        $userDB = array("user-increment" => 0, "user" => array());
+    }
+
+    $key = null;
+    foreach ($userDB["user"] as $k => $u) {
+        if (isset($u["external"]["provider"], $u["external"]["sub"])
+            && $u["external"]["provider"] === $identity["provider"]
+            && (string)$u["external"]["sub"] === $identity["sub"]) {
+            $key = (string)$k;
+            break;
+        }
+    }
+
+    if ($key === null) {
+
+        // Step past every numeric key in use, not just the stored increment: a
+        // directory that also holds legacy password accounts must not hand out
+        // a key that is already one of them.
+        $highest = isset($userDB["user-increment"]) ? (int)$userDB["user-increment"] : 0;
+        foreach (array_keys($userDB["user"]) as $existing) {
+            if (ctype_digit((string)$existing) && (int)$existing > $highest) {
+                $highest = (int)$existing;
+            }
+        }
+
+        $key = (string)($highest + 1);
+        $userDB["user-increment"] = (int)$key;
+        $userDB["user"][$key] = array(
+            "name"             => "",
+            "mail"             => "",
+            "registrationDate" => time(),
+            "role"             => "user",
+            "active"           => 1,
+            "lastLogin"        => "",
+            "color"            => "",
+            "avatar"           => ""
+        );
+
+    }
+
+    $record = $userDB["user"][$key];
+
+    $record["name"]      = $identity["name"];
+    $record["mail"]      = $identity["mail"];
+    $record["role"]      = $identity["role"];
+    $record["active"]    = $identity["active"];
+    $record["lastLogin"] = time();
+
+    if (empty($record["color"])) {
+        if ($identity["color"] !== "") {
+            $record["color"] = $identity["color"];
+        } else {
+            $colors = getUserColors();
+            $record["color"] = is_array($colors["freeColors"]) ? $colors["freeColors"][0] : $colors["freeColors"];
+        }
+    }
+
+    if ($identity["avatar"] !== "") {
+        $record["avatar"] = $identity["avatar"];
+    } elseif (!isset($record["avatar"])) {
+        $record["avatar"] = "";
+    }
+
+    $record["external"] = array(
+        "provider" => $identity["provider"],
+        "sub"      => $identity["sub"],
+        "syncedAt" => time()
+    );
+
+    $record = ftAssertNoPasswd($record);
+
+    $userDB["user"][$key] = $record;
+
+    // A marker on the file itself, so a password write is refused even if
+    // config.json were swapped out from under us.
+    $userDB["externalAuth"] = array("provider" => $identity["provider"]);
+
+    $written = $file->writeClose(json_encode($userDB, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
+
+    if ($written === false) {
+        return null;
+    }
+
+    $record["id"] = $key;
+
+    return $record;
+
+}
+
+
+/**
+ * I establish a session for an externally-authenticated identity.
+ *
+ * This is the only seam between any provider and the session, which is the
+ * point: the array I leave in $_SESSION["ohv"]["user"] has exactly the shape
+ * userLogin() has always left there, so requireLogin(), every admin gate, the
+ * annotation file naming and the whole collaboration layer cannot tell the
+ * difference — and a future provider will not have to touch any of them.
+ *
+ * Returning codes:
+ * 0 = success
+ * 1 = this instance does not use external authentication
+ * 2 = the account exists but is not active
+ * 3 = the user directory could not be written
+ * 4 = the identity was unusable
+ *
+ * @method ftExternalLoginEstablish
+ * @param {Array} $identity
+ * @return Array
+ */
+function ftExternalLoginEstablish($identity) {
+
+    if (!ftExternalAuthEnabled()) {
+        return array("code" => 1, "string" => "This instance does not use external authentication.");
+    }
+
+    $identity = ftNormalizeIdentity($identity);
+
+    if ($identity === null) {
+        return array("code" => 4, "string" => "The sign-in did not describe a usable identity.");
+    }
+
+    $user = ftPrincipalUpsert($identity);
+
+    if ($user === null) {
+        return array("code" => 3, "string" => "Could not write the user directory.");
+    }
+
+    if ((int)$user["active"] !== 1) {
+        return array("code" => 2, "string" => "This account is not active.");
+    }
+
+    // The session id that arrived may have been planted by a page on a sibling
+    // subdomain — and a host that gives every project its own subdomain makes
+    // that a page it serves itself. Never keep it across a privilege change.
+    session_regenerate_id(true);
+
+    unset($user["passwd"]);
+
+    $_SESSION["ohv"]["login"] = 1;
+    $_SESSION["ohv"]["user"]  = $user;
+    $_SESSION["ohv"]["auth"]  = array(
+        "provider" => $identity["provider"],
+        "sub"      => $identity["sub"],
+        "at"       => time()
+    );
+
+    return array("code" => 0, "string" => "Login successful");
+
 }

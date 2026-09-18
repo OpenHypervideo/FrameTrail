@@ -1,0 +1,425 @@
+<?php
+/**
+ * External (platform / LMS) authentication — the provider seam.
+ *
+ * When an instance is hosted by a platform, identity stops being FrameTrail's
+ * to establish. The platform authenticates, and FrameTrail is handed a signed
+ * assertion about who arrived. This file is the one place that knows that; the
+ * session it produces is byte-identical in shape to the one userLogin() has
+ * always produced, which is why every write gate, and the whole collaboration
+ * layer, keep working without a line changed.
+ *
+ * Three provider shapes are anticipated and the interface is sized for all of
+ * them: a signed-token bridge that lands once with its credential in the query
+ * (implemented in authtoken.php), an OIDC relying party that must *start* a
+ * redirect and come back to a callback, and an LTI 1.3 tool whose launch is a
+ * cross-site form POST. Adding either of the latter two must not require
+ * touching requireLogin(), the session code, or any client module.
+ *
+ * Server mode only, by construction — a provider needs PHP to verify anything.
+ */
+
+require_once(__DIR__ . "/jws.php");
+
+
+/**
+ * One external identity provider.
+ *
+ * beginLogin() is what a redirect-initiating protocol needs and a token bridge
+ * does not, so it is allowed to answer "none".
+ */
+interface AuthProvider {
+
+    /** @return string  stable id, also the provider tag stored on a principal */
+    public function name();
+
+    /** @return bool  whether a Login button inside FrameTrail can enter this provider */
+    public function supportsInteractiveLogin();
+
+    /**
+     * @param  array $req  merged $_GET + $_POST
+     * @param  array $ctx  ["origin", "next", "dataPath"]
+     * @return array ["action"=>"redirect","url"=>...] | ["action"=>"none"] | ["action"=>"fail","string"=>...]
+     */
+    public function beginLogin($req, $ctx);
+
+    /**
+     * @return array ["status"=>"success","identity"=>array,"next"=>string|null]
+     *             | ["status"=>"fail","string"=>string]
+     */
+    public function handleCallback($req, $ctx);
+
+    /** @return string|null  where Logout should send the browser afterwards */
+    public function logoutUrl($ctx);
+
+}
+
+
+/**
+ * I return the effective external-auth config for the current data directory,
+ * or null when this instance authenticates locally.
+ *
+ * Merge order, later winning: the `externalAuth` object in config.json, then
+ * <dataDir>/.auth/config.php if present.
+ *
+ * config.json is world-readable over HTTP — the client fetches it that way —
+ * so nothing secret may live in it. With the shipping EdDSA provider nothing
+ * secret needs to: FrameTrail holds only a public key. The .auth/config.php
+ * overlay exists for the HS256 option, where a shared secret is unavoidable;
+ * being PHP rather than JSON, it is executed rather than served even if a
+ * misconfigured web server tries to hand it out.
+ *
+ * @method ftExternalAuthConfig
+ * @return Array|null
+ */
+function ftExternalAuthConfig() {
+
+    global $conf;
+    static $cache = false;
+
+    if ($cache !== false) {
+        return $cache;
+    }
+
+    $cache  = null;
+    $config = array();
+
+    $configFile = $conf["dir"]["data"] . "/config.json";
+    if (file_exists($configFile)) {
+        $json = json_decode(file_get_contents($configFile), true);
+        if (is_array($json) && isset($json["externalAuth"]) && is_array($json["externalAuth"])) {
+            $config = $json["externalAuth"];
+        }
+    }
+
+    $secretFile = $conf["dir"]["data"] . "/.auth/config.php";
+    if (file_exists($secretFile)) {
+        $overlay = @include($secretFile);
+        if (is_array($overlay)) {
+            $config = array_merge($config, $overlay);
+        }
+    }
+
+    if (!empty($config["mode"]) && !empty($config["provider"])) {
+        $cache = $config;
+    }
+
+    return $cache;
+
+}
+
+
+/**
+ * I am the guard that turns off local password authentication.
+ *
+ * @method ftExternalAuthEnabled
+ * @return Boolean
+ */
+function ftExternalAuthEnabled() {
+
+    return ftExternalAuthConfig() !== null;
+
+}
+
+
+/**
+ * I return the subset of the config the browser is allowed to see.
+ *
+ * A whitelist rather than a blacklist, on purpose: adding a key to the config
+ * file must never be able to leak it, and the next provider will bring keys
+ * nobody has thought about yet.
+ *
+ * @method ftExternalAuthPublic
+ * @return Array|null
+ */
+function ftExternalAuthPublic() {
+
+    $config = ftExternalAuthConfig();
+    if ($config === null) {
+        return null;
+    }
+
+    $public = array(
+        "mode"           => ($config["mode"] === "interactive") ? "interactive" : "transparent",
+        "provider"       => (string)$config["provider"],
+        "label"          => isset($config["label"]) ? (string)$config["label"] : "",
+        "loginUrl"       => isset($config["loginUrl"]) ? (string)$config["loginUrl"] : "",
+        "logoutUrl"      => isset($config["logoutUrl"]) ? (string)$config["logoutUrl"] : "",
+        "manageUsersUrl" => isset($config["manageUsersUrl"]) ? (string)$config["manageUsersUrl"] : "",
+        "canLogout"      => isset($config["canLogout"]) ? (bool)$config["canLogout"] : true
+    );
+
+    return $public;
+
+}
+
+
+/**
+ * I instantiate the configured provider, or return null.
+ *
+ * Lazily required: an ordinary save through ajaxServer.php must not pay for
+ * parsing provider code it will never call.
+ *
+ * @method ftAuthProvider
+ * @return AuthProvider|null
+ */
+function ftAuthProvider() {
+
+    static $cache = false;
+
+    if ($cache !== false) {
+        return $cache;
+    }
+
+    $cache  = null;
+    $config = ftExternalAuthConfig();
+
+    if ($config === null) {
+        return null;
+    }
+
+    // Whitelist, not a file path derived from config: `provider` comes from a
+    // file the platform writes, and turning it into a require() target would
+    // make a config edit into code execution.
+    if ($config["provider"] === "token") {
+        require_once(__DIR__ . "/authtoken.php");
+        $cache = new ftAuthProviderToken($config);
+    }
+
+    return $cache;
+
+}
+
+
+/**
+ * I clamp a provider's claims into the shape the rest of FrameTrail expects.
+ *
+ * The role clamp is the single structural reason a provider cannot invent a
+ * third role: whatever arrives, only "admin" or "user" can ever reach disk, so
+ * every requireLogin("admin") gate keeps its existing meaning.
+ *
+ * @method ftNormalizeIdentity
+ * @param {Array} $raw
+ * @return Array|null  null when the identity is unusable
+ */
+function ftNormalizeIdentity($raw) {
+
+    if (!is_array($raw) || empty($raw["provider"]) || !isset($raw["sub"]) || $raw["sub"] === '') {
+        return null;
+    }
+
+    $name = isset($raw["name"]) ? trim((string)$raw["name"]) : '';
+    if ($name === '') {
+        return null;
+    }
+
+    $mail = isset($raw["mail"]) ? strtolower(trim((string)$raw["mail"])) : '';
+    if ($mail !== '' && !filter_var($mail, FILTER_VALIDATE_EMAIL)) {
+        $mail = '';
+    }
+
+    $color = isset($raw["color"]) ? ltrim(trim((string)$raw["color"]), '#') : '';
+    if (!preg_match('/^[0-9a-fA-F]{6}$/', $color)) {
+        $color = '';
+    }
+
+    return array(
+        "provider" => (string)$raw["provider"],
+        "sub"      => (string)$raw["sub"],
+        "name"     => mb_substr($name, 0, 200),
+        "mail"     => $mail,
+        "role"     => (isset($raw["role"]) && $raw["role"] === "admin") ? "admin" : "user",
+        "color"    => $color,
+        "avatar"   => ftNormalizeAvatar(isset($raw["avatar"]) ? $raw["avatar"] : ''),
+        "active"   => (isset($raw["active"]) && (int)$raw["active"] === 0) ? 0 : 1
+    );
+
+}
+
+
+/**
+ * I validate an avatar reference: either an absolute https URL or a path
+ * relative to the data directory, the same two shapes a resource src may take.
+ *
+ * Anything else — data:, javascript:, plain http, protocol-relative, traversal
+ * — becomes the empty string, which renders as initials.
+ *
+ * @method ftNormalizeAvatar
+ * @param {String} $avatar
+ * @return String
+ */
+function ftNormalizeAvatar($avatar) {
+
+    $avatar = trim((string)$avatar);
+
+    if ($avatar === '' || strlen($avatar) > 512 || strpos($avatar, '..') !== false) {
+        return '';
+    }
+
+    if (strncmp($avatar, 'https://', 8) === 0) {
+        return $avatar;
+    }
+
+    if (preg_match('#^resources/[A-Za-z0-9._/-]{1,180}$#', $avatar)) {
+        return $avatar;
+    }
+
+    return '';
+
+}
+
+
+/**
+ * I strip credential material before any users.json write.
+ *
+ * Belt and braces with the caller: in external mode there is no password to
+ * verify, so a `passwd` key can only ever be a mistake or an attempt, and in
+ * either case it must not reach disk.
+ *
+ * @method ftAssertNoPasswd
+ * @param {Array} $record
+ * @return Array
+ */
+function ftAssertNoPasswd($record) {
+
+    if (ftExternalAuthEnabled() && is_array($record) && array_key_exists("passwd", $record)) {
+        trigger_error("FrameTrail: refusing to write passwd while external auth is configured", E_USER_WARNING);
+        unset($record["passwd"]);
+    }
+
+    return $record;
+
+}
+
+
+/**
+ * I am the directory holding ephemeral auth state — currently only the replay
+ * store. Treated exactly like .collab/: not secret, but never served and never
+ * exported.
+ *
+ * @method ftAuthStateDir
+ * @return String
+ */
+function ftAuthStateDir() {
+
+    global $conf;
+    return $conf["dir"]["data"] . "/.auth";
+
+}
+
+
+/**
+ * I burn a token id, returning true the first time and false on every replay.
+ *
+ * An exclusive create is the whole mechanism: on a POSIX filesystem exactly one
+ * caller can win an O_CREAT|O_EXCL open, which is precisely what one-time-use
+ * means. No lock, no database, no window between checking and claiming.
+ *
+ * A failure to write is a failure to claim, so a full or read-only disk makes
+ * logins fail closed rather than become replayable.
+ *
+ * @method ftReplayClaim
+ * @param {String} $jti
+ * @param {Number} $expiresAt
+ * @return Boolean
+ */
+function ftReplayClaim($jti, $expiresAt) {
+
+    if (!preg_match('/^[A-Za-z0-9._-]{16,128}$/', (string)$jti)) {
+        return false;
+    }
+
+    $hash = hash('sha256', $jti);
+    $dir  = ftAuthStateDir() . "/jti/" . substr($hash, 0, 2);
+
+    if (!is_dir($dir) && !@mkdir($dir, 0700, true) && !is_dir($dir)) {
+        return false;
+    }
+
+    $handle = @fopen($dir . "/" . $hash, 'x');
+    if ($handle === false) {
+        return false;
+    }
+
+    fwrite($handle, (string)(int)$expiresAt);
+    fclose($handle);
+
+    // Swept rarely and opportunistically — the store is only ever a few minutes
+    // deep, so a scheduled job would be more machinery than the problem needs.
+    if (mt_rand(1, 50) === 1) {
+        ftReplayGarbageCollect();
+    }
+
+    return true;
+
+}
+
+
+/**
+ * I delete replay records that can no longer protect anything, because the
+ * tokens they name have expired and would now be refused on their own.
+ *
+ * @method ftReplayGarbageCollect
+ * @return void
+ */
+function ftReplayGarbageCollect() {
+
+    $root   = ftAuthStateDir() . "/jti";
+    $cutoff = time() - 900;
+
+    if (!is_dir($root)) {
+        return;
+    }
+
+    foreach ((array)glob($root . "/*", GLOB_ONLYDIR) as $shard) {
+        foreach ((array)glob($shard . "/*") as $file) {
+            if (@filemtime($file) < $cutoff) {
+                @unlink($file);
+            }
+        }
+    }
+
+}
+
+
+/**
+ * I sanitise a post-login return target.
+ *
+ * Only a same-origin path is ever acceptable. Accepting an absolute URL here —
+ * or reflecting the Referer — would turn the login landing into an open
+ * redirect, which is exactly the shape phishing wants: a link that really does
+ * start at the platform's own trusted domain.
+ *
+ * @method ftSafeNext
+ * @param {String} $next
+ * @return String|null
+ */
+function ftSafeNext($next) {
+
+    if (!is_string($next) || $next === '' || strlen($next) > 512) {
+        return null;
+    }
+
+    // A leading "//" is a protocol-relative URL, and a backslash is normalised
+    // to a slash by some browsers — both would leave the origin. A "..", while
+    // it cannot leave the origin, would climb out of the installation the token
+    // authenticated into, which on a host serving more than one app under one
+    // domain is a distinction that matters.
+    if ($next[0] !== '/' || strncmp($next, '//', 2) === 0
+        || strpos($next, '\\') !== false || strpos($next, '..') !== false) {
+        return null;
+    }
+
+    // Delimited with / and the inner slashes escaped, because the allowed set
+    // has to include '#' for a fragment — and a '#' delimiter would end the
+    // pattern right there, leaving preg_match to fail and every return path to
+    // be discarded without a word.
+    if (!preg_match('/^\/[A-Za-z0-9._~!$&\'()*+,;=:@%\/?#=&-]{0,511}$/', $next)) {
+        return null;
+    }
+
+    return $next;
+
+}
+
+?>

@@ -27,6 +27,10 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         userSessionTimeout      = null,
         isGuestMode             = false,
         forceLoginRequired      = false,
+        // The platform's own description of itself, when this instance defers
+        // authentication to one. Captured from userCheckLogin rather than from
+        // the config, because it has to be known before config.json is loadable.
+        externalAuth            = null,
         userDialogCtrl          = null,
 
         userBoxCallback         = null,
@@ -91,6 +95,14 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         + '             <div class="guestEditHint">'+ labels['UserGuestEditNote'] +'</div>'
         + '             <input type="text" class="guestNameInput" placeholder="'+ labels['UserGuestName'] +'">'
         + '             <button type="button" class="guestContinueButton">'+ labels['UserEditAsGuest'] +'</button>'
+        + '             <button type="button" class="loginBoxCancelButton">'+ labels['GenericCancel'] +'</button>'
+        + '        </div>'
+        // Shown instead of all three of the above when the instance defers to a
+        // platform: there are no local credentials to offer, so there is nothing
+        // to choose between and the box collapses to a single way out.
+        + '        <div class="userTabExternal">'
+        + '             <div class="guestEditHint externalLoginHint"></div>'
+        + '             <button type="button" class="externalLoginButton"></button>'
         + '             <button type="button" class="loginBoxCancelButton">'+ labels['GenericCancel'] +'</button>'
         + '        </div>'
         + '    </div>'
@@ -219,6 +231,10 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
     loginBox.querySelector('.guestNameInput').addEventListener('keypress', function(e) {
         if (e.which === 13) { loginBox.querySelector('.guestContinueButton').click(); }
+    });
+
+    loginBox.querySelector('.externalLoginButton').addEventListener('click', function() {
+        goToExternalLogin();
     });
 
     loginBox.querySelectorAll('.loginBoxCancelButton').forEach(function(btn) {
@@ -375,6 +391,47 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 
     /**
+     * I hand the browser back to the platform, carrying where to return to.
+     *
+     * The return path is the whole of the current location below the origin, so
+     * a link straight into a hypervideo at a timecode survives the round trip
+     * and the person lands where they were going rather than at the overview.
+     *
+     * @method goToExternalLogin
+     * @private
+     */
+    function goToExternalLogin() {
+
+        if (!externalAuth || !externalAuth.loginUrl) {
+
+            // Guarded because this module is shared: the resource manager loads
+            // InterfaceModal's script but never initialises it, so module() hands
+            // back undefined there and an unguarded call would turn a missing
+            // configuration into a crash.
+            var message = labels['ErrorExternalAuthFailed']
+                            .replace('%s', externalAuth ? externalAuth.label : '');
+            var modal   = FrameTrail.module('InterfaceModal');
+
+            if (modal) {
+                modal.showErrorMessage(message);
+            } else {
+                console.error(message);
+            }
+
+            return;
+
+        }
+
+        var next = window.location.pathname + window.location.search + window.location.hash;
+
+        window.location.href = externalAuth.loginUrl
+            + (externalAuth.loginUrl.indexOf('?') === -1 ? '?' : '&')
+            + 'next=' + encodeURIComponent(next);
+
+    }
+
+
+    /**
      * Sometimes a routine should only execute, if we can ensure the user is logged in at this point.
      *
      * I serve this purpose, by checking wether the user has already logged in, and if not provide him the chance
@@ -396,6 +453,13 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             if (loginStatus) {
 
                 callback.call();
+
+            } else if (externalAuth && externalAuth.mode === 'transparent') {
+
+                // There is nothing to ask. Identity is the platform's to give,
+                // and a box offering a choice this instance cannot honour would
+                // only be a dead end — so go straight back and return signed.
+                goToExternalLogin();
 
             } else {
 
@@ -462,10 +526,20 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             // to authenticate before loading gated _data.
             forceLoginRequired = !!response.forceLogin;
 
+            // Rides along for the same reason, and is needed at the same moment:
+            // whether a login box can do anything at all has to be known before
+            // any UI offers one.
+            externalAuth = response.externalAuth || null;
+
             switch(response.code){
 
+                // "You have no session" — which is the ordinary answer for every
+                // visitor who has not signed in, not something they asked for.
+                // It must stay silent: a logout that announces itself, or that
+                // follows the provider's logoutUrl, would bounce an anonymous
+                // visitor off the page before it ever finished loading.
                 case 0:
-                    logout();
+                    logout(true);
                     callback.call(window, false);
                     break;
 
@@ -486,12 +560,20 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                     callback.call(window, false);
                     break;
 
+                // Both of these mean the session is over: the account has been
+                // deactivated, removed, or had its role changed out from under
+                // it. They used to only log and fall through, which left
+                // loggedIn true, the avatar on screen, the keepalive never
+                // rescheduled, and — because the callback never fired — any
+                // ensureAuthenticated() waiting on this call hanging forever.
+                // Terminating here is what makes revocation from outside work
+                // at all: the platform removes the record, and the next
+                // heartbeat ends the session.
                 case 3:
-                    console.error(labels['ErrorNotActivated']);
-                    break;
-
                 case 4:
-                    console.error(labels['ErrorWrongRole']);
+                    console.error(labels[response.code === 3 ? 'ErrorNotActivated' : 'ErrorWrongRole']);
+                    logout(true);
+                    callback.call(window, false);
                     break;
 
             }
@@ -586,34 +668,75 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 
     /**
+     * I drop every trace of the signed-in person from this tab.
+     *
+     * Factored out because three paths need exactly this and nothing else: a
+     * guest or offline logout, a session revoked elsewhere, and the tail of a
+     * normal server logout.
+     *
+     * @method resetLocalSession
+     * @private
+     */
+    function resetLocalSession() {
+
+        isGuestMode = false;
+        userID = '';
+        userRole = '';
+        userMail = '';
+        userRegistrationDate = '';
+
+        FrameTrail.changeState({
+            editMode: false,
+            loggedIn: false,
+            username: '',
+            userColor: ''
+        });
+
+        document.querySelector(FrameTrail.getState('target')).classList.remove('loggedIn');
+        updateView(false);
+
+    }
+
+
+    /**
      * I am called to close the login session and update my local and global state.
      *
      * @method logout
+     * @param {Boolean} silent  no confirmation dialog and no redirect — used when
+     *                          the session ended elsewhere (the account was
+     *                          deactivated or removed) rather than by request,
+     *                          where announcing a logout nobody asked for, or
+     *                          navigating away mid-call, would both be wrong.
      */
-    function logout() {
+    function logout(silent) {
 
         // Guest / local / download logout: clear in-memory state, no server call needed.
         if (isGuestMode || FrameTrail.getState('storageMode') !== 'server') {
-            isGuestMode = false;
-            userID = '';
-            userRole = '';
-            userMail = '';
-            userRegistrationDate = '';
-            FrameTrail.changeState({
-                editMode: false,
-                loggedIn: false,
-                username: '',
-                userColor: ''
-            });
-            document.querySelector(FrameTrail.getState('target')).classList.remove('loggedIn');
-            updateView(false);
+            resetLocalSession();
             return;
+        }
+
+        // A silent logout is a session that has already ended somewhere else, so
+        // the local state must go now rather than a round trip later. Otherwise
+        // whoever was told "you are signed out" — the isLoggedIn callback — sees
+        // loggedIn still true when it acts on that, and the interface keeps
+        // showing an identity the server has already stopped honouring.
+        if (silent) {
+            resetLocalSession();
         }
 
         _serverPost(new URLSearchParams({ a: 'userLogout' }))
         .then(function(data) {
 
-            if (userID != '') {
+            // On a platform-backed instance, leaving means leaving the platform's
+            // session too — staying here would only show a login box that cannot
+            // sign anyone in.
+            if (!silent && externalAuth && externalAuth.logoutUrl) {
+                window.location.href = externalAuth.logoutUrl;
+                return;
+            }
+
+            if (userID != '' && !silent) {
                 var _lodw = document.createElement('div');
                 _lodw.innerHTML = '<div class="loggedOutDialog"><div class="message success active">'+ labels['MessageUserLoggedOut'] +'</div></div>';
                 var loggedOutDialog = _lodw.firstElementChild;
@@ -642,21 +765,9 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                     });
                 }
 
-                userID    = '';
-                userRole  = '';
-                userMail  = '';
-                userRegistrationDate = '';
-
-                FrameTrail.changeState({
-                    editMode: false,
-                    loggedIn: false,
-                    username: '',
-                    userColor: ''
-                });
-
-                document.querySelector(FrameTrail.getState('target')).classList.remove('loggedIn');
-
-                updateView(false);
+                // Idempotent, so running it again after a silent logout already
+                // did costs nothing.
+                resetLocalSession();
 
                 FrameTrail.triggerEvent('userAction', {
                     action: 'UserLogout'
@@ -712,6 +823,16 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         domElement.querySelector('#SettingsForm_passwd').value = '';
         domElement.querySelector('#SettingsForm_userID').value = userID;
 
+        // Name, mail and password belong to the platform, and the next sign-in
+        // rewrites the first two from its token regardless — so offering them
+        // here would only invite an edit that silently reverts. The colour is
+        // the one thing on this form that is genuinely the person's own.
+        if (externalAuth) {
+            ['#SettingsForm_name', '#SettingsForm_mail', '#SettingsForm_passwd'].forEach(function(sel) {
+                domElement.querySelector(sel).style.display = 'none';
+            });
+        }
+
     }
 
 
@@ -745,8 +866,38 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             } catch(e) {}
         }
 
-        // In non-server mode, show only the Edit as Guest tab
         var storageMode = FrameTrail.getState('storageMode');
+
+        // Platform-backed: there are no local credentials on this instance, in
+        // either mode — the password and register tabs are not merely hidden,
+        // there is nothing behind them — and guest editing would bypass exactly
+        // the identity the platform exists to establish. So the box has one row.
+        if (externalAuth) {
+
+            loginBox.querySelector('.loginTabButton').style.display = 'none';
+            loginBox.querySelector('.createAccountTabButton').style.display = 'none';
+            loginBox.querySelector('.editAsGuestTabButton').style.display = 'none';
+            loginBox.querySelectorAll('.loginBoxOrDivider').forEach(function(el) { el.style.display = 'none'; });
+
+            loginBox.querySelector('.userTabLogin').style.display = 'none';
+            loginBox.querySelector('.userTabRegister').style.display = 'none';
+            loginBox.querySelector('.userTabGuest').style.display = 'none';
+            loginBox.querySelector('.userTabExternal').style.display = 'block';
+
+            var _label = externalAuth.label || '';
+            loginBox.querySelector('.externalLoginHint').textContent =
+                labels['UserExternalAccountNote'].replace('%s', _label);
+            loginBox.querySelector('.externalLoginButton').textContent =
+                labels['UserLoginWithProvider'].replace('%s', _label);
+
+            loginBox.style.display = 'block';
+            return;
+
+        }
+
+        loginBox.querySelector('.userTabExternal').style.display = 'none';
+
+        // In non-server mode, show only the Edit as Guest tab
         if (storageMode !== 'server') {
             loginBox.querySelector('.loginTabButton').style.display = 'none';
             loginBox.querySelector('.createAccountTabButton').style.display = 'none';
@@ -893,6 +1044,13 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         logout:                 logout,
         isGuestMode:            function() { return isGuestMode; },
         isForceLogin:           function() { return forceLoginRequired; },
+
+        /**
+         * The platform's public description of itself, or null when this
+         * instance authenticates locally. Consumers use its presence to decide
+         * whether an affordance belongs to FrameTrail or to the platform.
+         */
+        externalAuth:           function() { return externalAuth; },
 
         /**
          * The current userID or an empty String.
