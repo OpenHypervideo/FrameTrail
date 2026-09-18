@@ -158,6 +158,11 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             UserSettingsButton.style.color = '';
         }
 
+        // Cleared first: this runs again whenever the name or colour changes,
+        // and a picture left over from a previous identity would outlive it.
+        UserSettingsButton.style.backgroundImage = '';
+        Collaboration.applyChipAvatar(UserSettingsButton, FrameTrail.getState('userAvatar'));
+
     }
 
 

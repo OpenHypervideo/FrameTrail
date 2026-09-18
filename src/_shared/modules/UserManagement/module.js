@@ -50,6 +50,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         + '             <input type="text" name="name" id="SettingsForm_name" placeholder="'+ labels['UserName'] +'">'
         + '             <input type="text" name="mail" id="SettingsForm_mail" placeholder="'+ labels['UserMail'] +'"><br>'
         + '             <div class="userColor"></div>'
+        + '             <input type="text" name="avatar" id="SettingsForm_avatar" placeholder="'+ labels['UserAvatarUrl'] +'">'
         + '             <input type="password" name="passwd" id="SettingsForm_passwd" placeholder="'+ labels['UserNewPassword'] +'"><br>'
         + '             <br>'
         + '             <input type="hidden" name="a" value="userChange">'
@@ -129,6 +130,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                     FrameTrail.module('Database').users[FrameTrail.module('UserManagement').userID].color = response.response.color;
                     FrameTrail.changeState('username', response.response.name);
                     FrameTrail.changeState('userColor', response.response.color);
+                    FrameTrail.changeState('userAvatar', response.response.avatar || '');
                     _st.classList.remove('error'); _st.classList.add('active', 'success'); _st.textContent = labels['MessageSettingsChanged'];
                     break;
                 case 1:
@@ -391,6 +393,27 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 
     /**
+     * Whether this instance renders profile pictures at all. Mirrors
+     * ftAvatarMode() server-side; anything but 'off' means a picture can appear.
+     *
+     * @method avatarsEnabled
+     * @return {Boolean}
+     * @private
+     */
+    function avatarsEnabled() {
+
+        try {
+            var config = FrameTrail.module('Database').config;
+
+            return !!config && config.userAvatars && config.userAvatars !== 'off';
+        } catch (e) {
+            return false;
+        }
+
+    }
+
+
+    /**
      * I hand the browser back to the platform, carrying where to return to.
      *
      * The return path is the whole of the current location below the origin, so
@@ -610,6 +633,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
         FrameTrail.changeState('username', userData.name);
         FrameTrail.changeState('userColor', userData.color);
+        FrameTrail.changeState('userAvatar', userData.avatar || '');
         FrameTrail.changeState('loggedIn', true);
 
         document.querySelector(FrameTrail.getState('target')).classList.add('loggedIn');
@@ -645,6 +669,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
         FrameTrail.changeState('username', name);
         FrameTrail.changeState('userColor', '#666666');
+        FrameTrail.changeState('userAvatar', '');
         FrameTrail.changeState('loggedIn', true);
 
         document.querySelector(FrameTrail.getState('target')).classList.add('loggedIn');
@@ -689,7 +714,8 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             editMode: false,
             loggedIn: false,
             username: '',
-            userColor: ''
+            userColor: '',
+            userAvatar: ''
         });
 
         document.querySelector(FrameTrail.getState('target')).classList.remove('loggedIn');
@@ -822,6 +848,12 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         //domElement.querySelector('#SettingsForm_color').value  = userColor;
         domElement.querySelector('#SettingsForm_passwd').value = '';
         domElement.querySelector('#SettingsForm_userID').value = userID;
+
+        // Offered only where a picture would be rendered at all — a field whose
+        // value is never drawn is worse than no field.
+        var _avatarField = domElement.querySelector('#SettingsForm_avatar');
+        _avatarField.value = FrameTrail.getState('userAvatar') || '';
+        _avatarField.style.display = avatarsEnabled() ? '' : 'none';
 
         // Name, mail and password belong to the platform, and the next sign-in
         // rewrites the first two from its token regardless — so offering them

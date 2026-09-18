@@ -129,6 +129,118 @@ function ftJwsEd25519RawKey($key) {
 
 
 /**
+ * I return a compact JWS's header without verifying anything.
+ *
+ * Needed because a key sometimes has to be chosen before the signature can be
+ * checked: a provider publishes several and the header's `kid` says which one
+ * signed this token. Nothing in here may be trusted — it is the untrusted half
+ * of an unverified document, and is only ever used to *look up* a key, never to
+ * decide whether one is acceptable.
+ *
+ * @method ftJwsHeader
+ * @param {String} $jws
+ * @return Array
+ */
+function ftJwsHeader($jws) {
+
+    $parts = explode('.', (string)$jws);
+
+    if (count($parts) !== 3) {
+        throw new ftJwsException("Token is not a compact JWS");
+    }
+
+    $header = json_decode(ftJwsB64uDecode($parts[0]), true);
+
+    if (!is_array($header)) {
+        throw new ftJwsException("Token header is not a JSON object");
+    }
+
+    return $header;
+
+}
+
+
+/**
+ * I turn a JSON Web Key into a PEM public key openssl_verify() can use.
+ *
+ * OIDC providers publish their signing keys as JWKs, and PHP has no built-in
+ * conversion, so the DER is assembled here: an RSA public key is a SEQUENCE of
+ * the algorithm identifier and a BIT STRING wrapping a SEQUENCE of the modulus
+ * and exponent. Only RSA is handled — every provider signs with RS256 unless
+ * told otherwise, and an EC key would silently produce a PEM that never
+ * verifies, so an unsupported type says so instead.
+ *
+ * @method ftJwkToPem
+ * @param {Array} $jwk
+ * @return String  PEM
+ */
+function ftJwkToPem($jwk) {
+
+    if (!isset($jwk['kty']) || $jwk['kty'] !== 'RSA' || !isset($jwk['n'], $jwk['e'])) {
+        throw new ftJwsException("Only RSA JSON Web Keys are supported");
+    }
+
+    $modulus  = ftJwsB64uDecode($jwk['n']);
+    $exponent = ftJwsB64uDecode($jwk['e']);
+
+    $der = ftDerSequence(
+        ftDerSequence(
+            // OID 1.2.840.113549.1.1.1 rsaEncryption, then NULL.
+            "\x06\x09\x2a\x86\x48\x86\xf7\x0d\x01\x01\x01" . "\x05\x00"
+        )
+        . ftDerBitString(
+            ftDerSequence(ftDerInteger($modulus) . ftDerInteger($exponent))
+        )
+    );
+
+    return "-----BEGIN PUBLIC KEY-----\n"
+         . chunk_split(base64_encode($der), 64, "\n")
+         . "-----END PUBLIC KEY-----\n";
+
+}
+
+
+/** DER length prefix: short form below 128, long form above. */
+function ftDerLength($length) {
+
+    if ($length < 128) {
+        return chr($length);
+    }
+
+    $bytes = '';
+    while ($length > 0) {
+        $bytes = chr($length & 0xff) . $bytes;
+        $length >>= 8;
+    }
+
+    return chr(0x80 | strlen($bytes)) . $bytes;
+
+}
+
+function ftDerSequence($contents) {
+    return "\x30" . ftDerLength(strlen($contents)) . $contents;
+}
+
+function ftDerBitString($contents) {
+    // The leading zero is the count of unused bits in the final byte.
+    return "\x03" . ftDerLength(strlen($contents) + 1) . "\x00" . $contents;
+}
+
+function ftDerInteger($bytes) {
+
+    $bytes = ltrim($bytes, "\x00");
+
+    // DER integers are signed, so a leading bit of 1 would read as negative.
+    if ($bytes === '' || (ord($bytes[0]) & 0x80)) {
+        $bytes = "\x00" . $bytes;
+    }
+
+    return "\x02" . ftDerLength(strlen($bytes)) . $bytes;
+
+}
+
+
+/**
  * I verify a compact JWS and return its decoded claims.
  *
  * The header's own `alg` is used *only to select* from the caller's allowlist,

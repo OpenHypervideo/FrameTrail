@@ -460,7 +460,11 @@ switch($_REQUEST["a"]) {
                 "allowUploads"=> true,
                 "defaultTheme"=> "",
                 "videoFit"=> "contain",
-                "defaultLanguage"=> "en"
+                "defaultLanguage"=> "en",
+                // Off by default: the modes that render a picture at all are a
+                // decision about whose servers a visitor's browser talks to, and
+                // that is not a default anyone should inherit by accident.
+                "userAvatars"=> "off"
             );
             // Apply optional config overrides sent by the setup wizard
             $configOverrides = array("userNeedsConfirmation",

@@ -871,6 +871,45 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
 
     /**
+     * I paint a photo into a chip without ever costing it its initials.
+     *
+     * The chip is drawn with initials on a colour fill first and always. The
+     * image is decoded off-document, and only if that succeeds does it become
+     * the chip's background and the glyphs turn transparent. So a 404, a slow
+     * host, a blocked request, a broken file or an offline reload all resolve to
+     * the same thing — the initials that were already there — instead of to an
+     * empty circle that appears for a moment or forever.
+     *
+     * @method applyChipAvatar
+     * @param {HTMLElement} chip
+     * @param {String} avatar  an absolute https URL, or a path inside _data
+     * @private
+     */
+    function applyChipAvatar(chip, avatar) {
+
+        if (!chip || !avatar) return;
+
+        var url = /^https?:\/\//.test(avatar)
+                ? avatar
+                : FrameTrail.module('RouteNavigation').resolveDataURL(avatar);
+
+        var probe = new Image();
+
+        // The chip may be drawing someone whose picture is hosted elsewhere;
+        // that host has no business learning which hypervideo it was seen on.
+        probe.referrerPolicy = 'no-referrer';
+
+        probe.onload = function() {
+            chip.style.backgroundImage = 'url("' + url.replace(/"/g, '%22') + '")';
+            chip.style.color = 'transparent';
+        };
+
+        probe.src = url;
+
+    }
+
+
+    /**
      * Render one avatar per other participant in a scope into a container.
      * The lock holder is ringed; the full name lives in the tooltip.
      *
@@ -938,6 +977,10 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
                 chip.style.backgroundColor = color;
                 chip.style.color = readableTextColor(color);
             }
+
+            // After the colour, never instead of it: the fill is what the chip
+            // falls back to if the picture never arrives.
+            applyChipAvatar(chip, participant.avatar);
 
             container.appendChild(chip);
 
@@ -1158,6 +1201,9 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
         initialsOf:         initialsOf,
         readableTextColor:  readableTextColor,
+        // Exported because the title bar draws its own chip for the signed-in
+        // person rather than going through renderAvatars, which draws others.
+        applyChipAvatar:    applyChipAvatar,
         renderAvatars:      renderAvatars,
         mountDialogPresence: mountDialogPresence,
 

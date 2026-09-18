@@ -1201,6 +1201,12 @@ input:checked + .slider:before {
     overflow: hidden;
     border-radius: 50%;
     background: var(--secondary-bg-color);
+    /* A profile picture is painted as this element's own background rather than
+       as a child image, so the initials underneath stay the layout and remain
+       whenever the picture does not load. */
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     color: var(--primary-bg-color);
     font-size: 11px;
     font-weight: 600;

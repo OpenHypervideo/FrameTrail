@@ -488,6 +488,7 @@ window.FrameTrail_L10n['de'] = {
     "UserActive": "Aktiv",
     "UserAdd": "Nutzer:in hinzufügen",
     "UserAdministration": "Nutzer:innen verwalten",
+    "UserAvatarUrl": "Profilbild (URL oder Datei in diesem Projekt)",
     "UserChangeMySettings": "Meine Einstellungen ändern",
     "UserChangeSettings": "Einstellungen ändern",
     "UserColor": "Nutzer:innen-Farbe",

@@ -285,6 +285,7 @@ function _collabResponse($state, $scope, $scopeId, $knownVersion) {
             "id"       => (string)$id,
             "name"     => $participant["name"],
             "color"    => $participant["color"],
+            "avatar"   => isset($participant["avatar"]) ? $participant["avatar"] : "",
             "editing"  => !empty($participant["editing"]),
             "lastSeen" => $participant["lastSeen"]
         );
@@ -356,7 +357,7 @@ function collabRecordWrite($scope, $scopeId, $userId, $userName) {
  * @param string $userColor
  * @param int    $now
  */
-function _collabSyncOne($d, $userId, $userName, $userColor, $now) {
+function _collabSyncOne($d, $userId, $userName, $userColor, $userAvatar, $now) {
 
     global $conf;
 
@@ -415,6 +416,7 @@ function _collabSyncOne($d, $userId, $userName, $userColor, $now) {
     $state["participants"][$userId] = array(
         "name"     => $userName,
         "color"    => $userColor,
+        "avatar"   => $userAvatar,
         "editing"  => !empty($d["editing"]),
         "lastSeen" => $now
     );
@@ -453,6 +455,8 @@ function collabSync($sessionDescriptors, $legacySingle = false) {
     $userId    = (string)$_SESSION["ohv"]["user"]["id"];
     $userName  = $_SESSION["ohv"]["user"]["name"];
     $userColor = isset($_SESSION["ohv"]["user"]["color"]) ? $_SESSION["ohv"]["user"]["color"] : "";
+    $userAvatar = isset($_SESSION["ohv"]["user"]["avatar"]) ? $_SESSION["ohv"]["user"]["avatar"] : "";
+    $userAvatar = isset($_SESSION["ohv"]["user"]["avatar"]) ? $_SESSION["ohv"]["user"]["avatar"] : "";
 
     // Nothing below touches the session; release it so a user's other requests
     // are not serialised behind this poll by PHP's session file lock.
@@ -471,7 +475,7 @@ function collabSync($sessionDescriptors, $legacySingle = false) {
         if (!is_array($d)) continue;
 
         $key = (isset($d["scope"]) ? $d["scope"] : "?").":".(isset($d["scopeId"]) ? $d["scopeId"] : "?");
-        $one = _collabSyncOne($d, $userId, $userName, $userColor, $now);
+        $one = _collabSyncOne($d, $userId, $userName, $userColor, $userAvatar, $now);
 
         if (isset($one["error"])) {
             $errors[$key] = $one["error"];
@@ -534,6 +538,7 @@ function collabLock($scope, $scopeId, $op) {
     $state["participants"][$userId] = array(
         "name"     => $userName,
         "color"    => $userColor,
+        "avatar"   => $userAvatar,
         "editing"  => ($op !== "release"),
         "lastSeen" => $now
     );

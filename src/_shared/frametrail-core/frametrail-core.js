@@ -231,6 +231,7 @@
 
                 loggedIn:           false,
                 username:           '',
+                userAvatar:         '',
                 viewMode:           'video',
                 editMode:           false,
                 slidePosition:      'middle',

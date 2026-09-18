@@ -180,10 +180,14 @@ function ftAuthProvider() {
 
     // Whitelist, not a file path derived from config: `provider` comes from a
     // file the platform writes, and turning it into a require() target would
-    // make a config edit into code execution.
+    // make a config edit into code execution. This is the one place a new
+    // provider has to be named — nothing else in the codebase learns about it.
     if ($config["provider"] === "token") {
         require_once(__DIR__ . "/authtoken.php");
         $cache = new ftAuthProviderToken($config);
+    } elseif ($config["provider"] === "oidc") {
+        require_once(__DIR__ . "/authoidc.php");
+        $cache = new ftAuthProviderOidc($config);
     }
 
     return $cache;
@@ -238,6 +242,49 @@ function ftNormalizeIdentity($raw) {
 
 
 /**
+ * I report how this instance handles profile pictures.
+ *
+ *   off     no pictures anywhere; initials only. The default.
+ *   local   pictures, but only ones stored in this instance's own _data.
+ *   cache   as local, and a provider-supplied picture is fetched once,
+ *           server-side, and stored here.
+ *   remote  as local, and a provider-supplied picture is rendered straight
+ *           from wherever it lives.
+ *
+ * The ladder is about origins, not features. Only `remote` makes a visitor's
+ * browser talk to a third party, which for some hosts is a published promise
+ * rather than a preference — so it is opt-in, never inherited.
+ *
+ * @method ftAvatarMode
+ * @return String
+ */
+function ftAvatarMode() {
+
+    global $conf;
+    static $cache = null;
+
+    if ($cache !== null) {
+        return $cache;
+    }
+
+    $cache = 'off';
+    $file  = $conf["dir"]["data"] . "/config.json";
+
+    if (file_exists($file)) {
+        $config = json_decode(file_get_contents($file), true);
+        $mode   = isset($config["userAvatars"]) ? (string)$config["userAvatars"] : 'off';
+
+        if (in_array($mode, array('off', 'local', 'cache', 'remote'), true)) {
+            $cache = $mode;
+        }
+    }
+
+    return $cache;
+
+}
+
+
+/**
  * I validate an avatar reference: either an absolute https URL or a path
  * relative to the data directory, the same two shapes a resource src may take.
  *
@@ -251,13 +298,25 @@ function ftNormalizeIdentity($raw) {
 function ftNormalizeAvatar($avatar) {
 
     $avatar = trim((string)$avatar);
+    $mode   = ftAvatarMode();
 
-    if ($avatar === '' || strlen($avatar) > 512 || strpos($avatar, '..') !== false) {
+    if ($mode === 'off' || $avatar === '' || strlen($avatar) > 512 || strpos($avatar, '..') !== false) {
         return '';
     }
 
     if (strncmp($avatar, 'https://', 8) === 0) {
-        return $avatar;
+
+        // Fetched once and kept here, so no visitor's browser ever asks the
+        // provider for it. Falls back to the URL only where the instance has
+        // said it is willing to load one.
+        if ($mode === 'cache') {
+            $local = ftCacheAvatar($avatar);
+
+            return $local !== '' ? $local : '';
+        }
+
+        return ($mode === 'remote') ? $avatar : '';
+
     }
 
     if (preg_match('#^resources/[A-Za-z0-9._/-]{1,180}$#', $avatar)) {
@@ -265,6 +324,173 @@ function ftNormalizeAvatar($avatar) {
     }
 
     return '';
+
+}
+
+
+/**
+ * I fetch a provider's picture once and keep it here, returning the local
+ * reference — or an empty string, which renders as initials.
+ *
+ * This is a server-side fetch of a URL that ultimately came from outside, which
+ * is the shape of an SSRF: a token claiming `picture: http://169.254.169.254/…`
+ * would otherwise have this instance read its own cloud metadata and store the
+ * result where anyone can fetch it. Hence: https only, the resolved address
+ * must be a public one, one redirect at most, a byte cap, and the response has
+ * to actually decode as an image.
+ *
+ * The image is re-encoded rather than copied, because a file can be a valid
+ * image and a valid script at once; decoding and re-encoding keeps the pixels
+ * and discards everything else.
+ *
+ * @method ftCacheAvatar
+ * @param {String} $url
+ * @return String  a _data-relative path, or ''
+ */
+function ftCacheAvatar($url) {
+
+    global $conf;
+
+    if (!function_exists('curl_init') || !function_exists('imagecreatefromstring')) {
+        return '';
+    }
+
+    $name = 'avatars/' . hash('sha256', $url) . '.jpg';
+    $path = $conf["dir"]["data"] . '/resources/' . $name;
+
+    // One fetch per picture per week: a provider's URL rarely changes, and the
+    // point of caching is not to ask them on every sign-in.
+    if (file_exists($path) && (time() - filemtime($path)) < 604800) {
+        return 'resources/' . $name;
+    }
+
+    $host = parse_url($url, PHP_URL_HOST);
+    if (!$host || !ftIsPublicHost($host)) {
+        return '';
+    }
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, array(
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_MAXREDIRS      => 1,
+        CURLOPT_TIMEOUT        => 5,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_PROTOCOLS      => CURLPROTO_HTTPS,
+        CURLOPT_REDIR_PROTOCOLS => CURLPROTO_HTTPS,
+        CURLOPT_USERAGENT      => 'FrameTrail',
+        // Stop reading rather than trust a Content-Length nobody has to send.
+        CURLOPT_BUFFERSIZE     => 16384,
+        CURLOPT_NOPROGRESS     => false,
+        CURLOPT_PROGRESSFUNCTION => function ($res, $expected, $got) {
+            return ($got > 2097152) ? 1 : 0;
+        },
+    ));
+
+    $body = curl_exec($ch);
+    $type = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    $code = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $final = (string)curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+    curl_close($ch);
+
+    if ($body === false || $code !== 200 || strncmp($type, 'image/', 6) !== 0) {
+        return '';
+    }
+
+    // A redirect can leave the allowlist the first request satisfied.
+    $finalHost = parse_url($final, PHP_URL_HOST);
+    if (!$finalHost || !ftIsPublicHost($finalHost)) {
+        return '';
+    }
+
+    $image = @imagecreatefromstring($body);
+    if ($image === false) {
+        return '';
+    }
+
+    $square = ftSquareImage($image, 128);
+    imagedestroy($image);
+
+    if (!is_dir(dirname($path)) && !@mkdir(dirname($path), 0755, true) && !is_dir(dirname($path))) {
+        imagedestroy($square);
+
+        return '';
+    }
+
+    $ok = imagejpeg($square, $path, 82);
+    imagedestroy($square);
+
+    return $ok ? 'resources/' . $name : '';
+
+}
+
+
+/**
+ * I answer whether a hostname resolves to an address on the public internet.
+ *
+ * Resolved rather than pattern-matched: "localhost" and "127.0.0.1" are the
+ * obvious spellings, but a hostname an attacker controls can simply have an A
+ * record pointing at a private address, so the name tells us nothing and the
+ * answer does.
+ *
+ * @method ftIsPublicHost
+ * @param {String} $host
+ * @return Boolean
+ */
+function ftIsPublicHost($host) {
+
+    $addresses = array();
+
+    foreach (array(DNS_A, DNS_AAAA) as $type) {
+        foreach ((array)@dns_get_record($host, $type) as $record) {
+            if (isset($record['ip']))   $addresses[] = $record['ip'];
+            if (isset($record['ipv6'])) $addresses[] = $record['ipv6'];
+        }
+    }
+
+    if (!$addresses) {
+        // A literal address rather than a name, or a name that does not resolve.
+        $addresses = array($host);
+    }
+
+    foreach ($addresses as $address) {
+        if (!filter_var($address, FILTER_VALIDATE_IP,
+                FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return false;
+        }
+    }
+
+    return true;
+
+}
+
+
+/**
+ * I crop an image to a centred square and scale it, so a chip 26 pixels across
+ * is not asked to letterbox a panorama.
+ *
+ * @method ftSquareImage
+ * @param {resource} $image
+ * @param {Number} $size
+ * @return resource
+ */
+function ftSquareImage($image, $size) {
+
+    $width  = imagesx($image);
+    $height = imagesy($image);
+    $side   = min($width, $height);
+
+    $square = imagecreatetruecolor($size, $size);
+
+    imagecopyresampled(
+        $square, $image,
+        0, 0,
+        (int)(($width - $side) / 2), (int)(($height - $side) / 2),
+        $size, $size,
+        $side, $side
+    );
+
+    return $square;
 
 }
 

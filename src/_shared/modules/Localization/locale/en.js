@@ -488,6 +488,7 @@ window.FrameTrail_L10n['en'] = {
     "UserActive": "Active",
     "UserAdd": "Add user",
     "UserAdministration": "Manage Users",
+    "UserAvatarUrl": "Profile picture (URL or file in this project)",
     "UserChangeMySettings": "Change my Settings",
     "UserChangeSettings": "Change Settings",
     "UserColor": "User Color",
