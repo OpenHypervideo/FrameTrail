@@ -1,13 +1,11 @@
 /* Generic Application CSS */
 
-/* Prevent text selection during drag operations */
 body.ft-dragging,
 body.ft-dragging * {
     user-select: none !important;
     -webkit-user-select: none !important;
 }
 
-/* Native thin scrollbars */
 .overviewList,
 .transcriptContainer,
 .hypervideoPickerList {
@@ -232,7 +230,6 @@ details[open] > summary {
 }
 
 /* CSS Grid system with 12 columns and Bootstrap-like breakpoints */
-/* Gap of 15px (7.5px on each side) */
 
 .layoutRow {
     display: grid;
@@ -241,13 +238,11 @@ details[open] > summary {
     box-sizing: border-box;
 }
 
-/* All direct children of layoutRow are grid items */
 .layoutRow > * {
     box-sizing: border-box;
     min-width: 0; /* Prevents grid overflow */
 }
 
-/* Default (xs): Base column classes apply their spans at all sizes */
 .layoutRow > .column-1 { grid-column: span 1; }
 .layoutRow > .column-2 { grid-column: span 2; }
 .layoutRow > .column-3 { grid-column: span 3; }
@@ -261,7 +256,6 @@ details[open] > summary {
 .layoutRow > .column-11 { grid-column: span 11; }
 .layoutRow > .column-12 { grid-column: span 12; }
 
-/* Small devices (≥576px) */
 @media (min-width: 576px) {
     .layoutRow > .column-sm-1 { grid-column: span 1; }
     .layoutRow > .column-sm-2 { grid-column: span 2; }
@@ -277,7 +271,6 @@ details[open] > summary {
     .layoutRow > .column-sm-12 { grid-column: span 12; }
 }
 
-/* Medium devices (≥768px) */
 @media (min-width: 768px) {
     .layoutRow > .column-md-1 { grid-column: span 1; }
     .layoutRow > .column-md-2 { grid-column: span 2; }
@@ -293,7 +286,6 @@ details[open] > summary {
     .layoutRow > .column-md-12 { grid-column: span 12; }
 }
 
-/* Large devices (≥992px) */
 @media (min-width: 992px) {
     .layoutRow > .column-lg-1 { grid-column: span 1; }
     .layoutRow > .column-lg-2 { grid-column: span 2; }
@@ -309,7 +301,6 @@ details[open] > summary {
     .layoutRow > .column-lg-12 { grid-column: span 12; }
 }
 
-/* Extra large devices (≥1200px) */
 @media (min-width: 1200px) {
     .layoutRow > .column-xl-1 { grid-column: span 1; }
     .layoutRow > .column-xl-2 { grid-column: span 2; }
@@ -325,7 +316,6 @@ details[open] > summary {
     .layoutRow > .column-xl-12 { grid-column: span 12; }
 }
 
-/* Inputs in layoutRow children should be full width */
 .layoutRow > * input[type="text"], 
 .layoutRow > * textarea,
 .layoutRow > * select {
@@ -474,7 +464,6 @@ input:checked + .slider:before {
   transform: translateX(13px);
 }
 
-/* Rounded sliders */
 .slider.round {
   border-radius: 34px;
 }
@@ -904,15 +893,6 @@ input:checked + .slider:before {
     width: 100%;
     height: 100%;
     background: var(--primary-bg-color);
-    /*
-    background: -moz-radial-gradient(center, ellipse cover,  var(--primary-bg-color) 1%, rgb(126, 126, 126) 100%);
-    background: -webkit-gradient(radial, center center, 0px, center center, 100%, color-stop(1%,var(--primary-bg-color)), color-stop(100%,rgb(126, 126, 126)));
-    background: -webkit-radial-gradient(center, ellipse cover,  var(--primary-bg-color) 1%,rgb(126, 126, 126) 100%);
-    background: -o-radial-gradient(center, ellipse cover,  var(--primary-bg-color) 1%,rgb(126, 126, 126) 100%);
-    background: -ms-radial-gradient(center, ellipse cover,  var(--primary-bg-color) 1%,rgb(126, 126, 126) 100%);
-    background: radial-gradient(ellipse at center,  var(--primary-bg-color) 1%,rgb(126, 126, 126) 100%);
-    filter: progid:DXImageTransform.Microsoft.gradient( startColorstr='var(--primary-bg-color)', endColorstr='rgb(126, 126, 126)',GradientType=1 );
-    */
     z-index: 100000;
 }
 
@@ -969,6 +949,11 @@ input:checked + .slider:before {
 
 .ui-blocking-overlay .ui-overlay-box .buttonRow > .secondary {
     flex: 0 0 auto;
+}
+
+.ui-blocking-overlay .ui-overlay-box .message + .buttonRow,
+.ui-blocking-overlay .ui-overlay-box .guestEditHint + .buttonRow {
+    margin-top: 14px;
 }
 
 .ui-blocking-overlay .ui-overlay-box button:hover, .ui-blocking-overlay .ui-overlay-box input[type="submit"]:hover {
