@@ -924,6 +924,8 @@ input:checked + .slider:before {
     left: 50%;
     margin-top: -150px;
     margin-left: -175px;
+    color: var(--primary-fg-color);
+    text-align: center;
 }
 
 .ui-blocking-overlay .ui-overlay-box .boxTitle {
@@ -946,6 +948,27 @@ input:checked + .slider:before {
     width: 100%;
     padding: 7px 10px;
     box-sizing: border-box;
+    text-align: left;
+}
+
+/* Buttons in an overlay box share one row: together they span its full width,
+   and the action button takes whatever the (content-sized) cancel button
+   leaves — so a row with only an action button spans the whole box. */
+.ui-blocking-overlay .ui-overlay-box .buttonRow {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.ui-blocking-overlay .ui-overlay-box .buttonRow > button,
+.ui-blocking-overlay .ui-overlay-box .buttonRow > input[type="submit"] {
+    flex: 1 1 auto;
+    margin-top: 0;
+    text-align: center;
+}
+
+.ui-blocking-overlay .ui-overlay-box .buttonRow > .secondary {
+    flex: 0 0 auto;
 }
 
 .ui-blocking-overlay .ui-overlay-box button:hover, .ui-blocking-overlay .ui-overlay-box input[type="submit"]:hover {

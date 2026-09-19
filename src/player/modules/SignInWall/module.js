@@ -24,9 +24,9 @@
  * What it may say is limited by what a project will tell a stranger. On a
  * private instance config.json is gated, so the project's *name* is not
  * available and should not be — it would tell anyone who guesses a subdomain
- * what is behind it. The hostname is not a secret (the visitor typed it) and
- * the platform's label rides along on userCheckLogin, ungated. Those two are
- * enough to say where you are and whose sign-in this is.
+ * what is behind it. The platform's label rides along on userCheckLogin,
+ * ungated, and that is enough to say whose sign-in this is; the address the
+ * visitor typed is already in the address bar, so the wall does not repeat it.
  *
  * @class SignInWall
  * @static
@@ -58,7 +58,6 @@ FrameTrail.defineModule('SignInWall', function(FrameTrail){
         var UserManagement = FrameTrail.module('UserManagement'),
             externalAuth   = UserManagement ? UserManagement.externalAuth() : null,
             platform       = (externalAuth && externalAuth.label) ? externalAuth.label : '',
-            host           = window.location.host,
             title          = '',
             text           = '',
             actions        = [];
@@ -135,7 +134,8 @@ FrameTrail.defineModule('SignInWall', function(FrameTrail){
 
         // The same overlay the login box uses, for the same reason: it is the
         // one thing on screen and the page behind it must not be reachable.
-        // Reused rather than restyled — this needs no stylesheet of its own.
+        // Reused rather than restyled — the box, its message blocks and its
+        // button row are all shared, so this needs no stylesheet of its own.
         var wrapper = document.createElement('div');
         wrapper.className = 'signInWall ui-blocking-overlay';
 
@@ -147,14 +147,6 @@ FrameTrail.defineModule('SignInWall', function(FrameTrail){
         titleEl.textContent = title;
         box.appendChild(titleEl);
 
-        // The address the visitor typed, shown back to them. The one piece of
-        // context that costs nothing to give and answers "am I in the right
-        // place?" before anything else does.
-        var hostEl = document.createElement('div');
-        hostEl.className = 'guestEditHint';
-        hostEl.textContent = host;
-        box.appendChild(hostEl);
-
         if (variant === 'signedout') {
             var noticeEl = document.createElement('div');
             noticeEl.className = 'message success active';
@@ -163,16 +155,19 @@ FrameTrail.defineModule('SignInWall', function(FrameTrail){
         }
 
         var textEl = document.createElement('div');
-        textEl.className = 'guestEditHint';
+        textEl.className = 'message active';
         textEl.textContent = text;
         box.appendChild(textEl);
 
         var buttonRow = document.createElement('div');
+        buttonRow.className = 'buttonRow';
 
         actions.forEach(function(entry) {
             var button = document.createElement('button');
             button.type = 'button';
-            button.className = entry.primary ? 'primary' : '';
+            // The row hands its spare width to the action button; anything
+            // else here (only ever Cancel) keeps the width of its own label.
+            button.className = entry.primary ? 'primary' : 'secondary';
             button.textContent = entry.label;
             button.addEventListener('click', entry.action);
             buttonRow.appendChild(button);

@@ -2,10 +2,6 @@
     display: none;
 }
 
-.userLoginOverlay .loginBoxCancelButton {
-    margin-left: 10px;
-}
-
 .userLoginOverlay .loginBoxTabButton {
     transition-property: font-size;
     transition-duration: 0.2s;
