@@ -112,17 +112,27 @@ function ftSsoSilentAnswer($ok) {
 /**
  * I send the browser on, always to a path inside this installation.
  *
- * `next` is resolved against the app base rather than the document root, so a
+ * `next` is confined to the app base rather than the document root, so a
  * hand-off can only ever land somewhere in the app it authenticated into.
  *
  * @param {String|null} $next
  */
 function ftSsoRedirect($next) {
 
-    $target = ftAppBaseUrl();
+    $base   = ftAppBaseUrl();
+    $target = $base;
 
     if ($next !== null && $next !== '') {
-        $target .= ltrim($next, '/');
+
+        // ftSafeNext() guarantees a root-relative path, and the client sends
+        // one: window.location.pathname already carries the app's base. So a
+        // `next` that starts with the base is where it wants to go, and only
+        // one that does not needs confining to the app — prefixing both would
+        // double the base on every install below the document root.
+        $target = (strncmp($next, $base, strlen($base)) === 0)
+                ? $next
+                : $base . ltrim($next, '/');
+
     }
 
     header("Referrer-Policy: no-referrer");

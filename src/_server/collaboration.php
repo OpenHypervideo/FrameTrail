@@ -456,7 +456,6 @@ function collabSync($sessionDescriptors, $legacySingle = false) {
     $userName  = $_SESSION["ohv"]["user"]["name"];
     $userColor = isset($_SESSION["ohv"]["user"]["color"]) ? $_SESSION["ohv"]["user"]["color"] : "";
     $userAvatar = isset($_SESSION["ohv"]["user"]["avatar"]) ? $_SESSION["ohv"]["user"]["avatar"] : "";
-    $userAvatar = isset($_SESSION["ohv"]["user"]["avatar"]) ? $_SESSION["ohv"]["user"]["avatar"] : "";
 
     // Nothing below touches the session; release it so a user's other requests
     // are not serialised behind this poll by PHP's session file lock.
@@ -512,6 +511,7 @@ function collabLock($scope, $scopeId, $op) {
     $userId    = (string)$_SESSION["ohv"]["user"]["id"];
     $userName  = $_SESSION["ohv"]["user"]["name"];
     $userColor = isset($_SESSION["ohv"]["user"]["color"]) ? $_SESSION["ohv"]["user"]["color"] : "";
+    $userAvatar = isset($_SESSION["ohv"]["user"]["avatar"]) ? $_SESSION["ohv"]["user"]["avatar"] : "";
 
     session_write_close();
 
