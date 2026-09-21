@@ -380,6 +380,19 @@ The hash fragment records **which view is on screen**, not just which hypervideo
 
 `routeHasChanged()` listens on both `popstate` (history traversal) and `hashchange` (a fragment written by something else, e.g. the `jumpToHypervideo` action). `pushState`/`replaceState` fire neither, so the module's own writes cannot re-enter it.
 
+## External Authentication
+
+An instance can defer identity to a hosting platform (LMS, portal) or an institutional identity provider. Server mode only — a provider needs PHP to verify anything. User-facing documentation is [docs/INTEGRATION.md](docs/INTEGRATION.md); the configuration reference is in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#external-authentication-externalauth).
+
+- **Provider seam:** `src/_server/auth.php` defines `interface AuthProvider`. Two implementations: `authtoken.php` (a platform mints a short-lived compact JWS) and `authoidc.php` (OIDC relying party, code + PKCE). `jws.php` is verify-only — FrameTrail never signs anything. `ftAuthProvider()` is a hard-coded whitelist; a config value is never turned into a `require()` path. LTI 1.3 is anticipated in the interface but not implemented.
+- **`sso.php` is a navigation endpoint, not an ajax action.** No `ajaxServer.php` switch cases were added. Entry points: `?token=`, `?token=…&silent=1` (hidden-frame renewal, answers by `postMessage`), `?a=start`, `?a=callback`, `?a=logout[&then=login]`.
+- **Split config:** the public half is `config.json` → `externalAuth`, the secret half is `_data/.auth/config.php` (PHP, so it is executed rather than served), merged with the latter winning. `ftExternalAuthPublic()` is a **whitelist** of what the browser may see — adding a key to the config file must never be able to leak it. `sessionCookie` and `maxSessionAge` are deliberately absent from it.
+- **`externalAuth` is never an init option.** The client discovers it at runtime from the `userCheckLogin` response, alongside `forceLogin` and `session_expires_in`. There is no `data-frametrail-*` attribute for it.
+- **One session shape:** `ftExternalLoginEstablish()` writes a `$_SESSION["ohv"]["user"]` array byte-identical to the one `userLogin()` produces, which is why `requireLogin()`, annotation file naming and the collaboration layer needed no changes. The extra `["auth"]` key (provider, sub, at, psid) is what `ftExternalSessionEnforce()` reads — called from `config.php` before anything else touches the session, so every entry point inherits it.
+- **Role clamping:** `ftNormalizeIdentity()` maps anything that is not literally `"admin"` to `"user"`, so a provider cannot invent a third role and every `requireLogin("admin")` keeps its meaning.
+- **`users.json` keys stay small integers** even for external accounts, because the user id becomes a filename (annotation files, uploads) while an OIDC `sub` may contain `/` or `..`. Lookup is by `external.provider` + `external.sub`.
+- When external auth is on, `userRegister`, `userLogin` (code **6**, deliberately new) and `userDelete` are refused, `userChange` accepts only `color` and `avatar`, and `ManageUsersDialog` refuses to open.
+
 ## Overlay Scaling Mechanism
 
 Overlays containing text-like content are scaled so they always render at a comfortable reading width regardless of how small the overlay is on screen. This is a **JS-driven transform**, not a CSS media query or container query.

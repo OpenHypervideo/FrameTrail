@@ -33,6 +33,8 @@ Then open `http://localhost:8080`. No Apache, no XAMPP needed if PHP is installe
 5. Follow the setup wizard to create an admin account
 6. The wizard creates the `_data/` directory with initial configuration
 
+Server mode is also the only mode that can defer identity to a surrounding system — an LMS, a portal, or an institutional identity provider — instead of keeping its own accounts. See [docs/INTEGRATION.md](INTEGRATION.md).
+
 **What's in the release zip:**
 - `frametrail.min.js` + `frametrail.min.css` — Minified bundles
 - `frametrail.js` + `frametrail.css` — Unminified bundles (for debugging)
@@ -92,7 +94,7 @@ No server, no file system access required. FrameTrail automatically falls back t
 
 **How it works:**
 
-The `StorageAdapterDownload` holds all data in memory. Hypervideo data is passed via init options at startup (see [Inline on a Page](#inline-on-a-page) below). Viewing is always available. For editing, a login dialog prompts for a display name (guest mode — no account needed). The Save button is disabled (no persistent target); use **Save As** to export your work.
+The `StorageAdapterDownload` holds all data in memory. Hypervideo data is passed via init options at startup (see [Inline on a Page](#inline-on-a-page-full-data-no-server) below). Viewing is always available. For editing, a login dialog prompts for a display name (guest mode — no account needed). The Save button is disabled (no persistent target); use **Save As** to export your work.
 
 **Limitations:**
 - No persistence — changes are lost on page reload unless exported via Save As
@@ -393,6 +395,8 @@ Runtime config is in `_data/config.json`:
 - `overviewTitle` — What this instance calls its overview, e.g. a project name. Shown in the title bar and, where FrameTrail is the whole page, in the browser tab. Empty or absent (the default) uses the localized "Overview" label
 - `overviewMode` — How the overview presents the hypervideos: `"grid"` (default) or `"map"`
 - `overviewShowSearchBar` — Show a search field in the title bar for filtering the overview by title (default: off). Applies to both presentations; on the map only hypervideos that have been placed can be found, since unplaced ones have no pin
+- `externalAuth` — Defer identity to a hosting platform or identity provider instead of keeping local passwords (see below)
+- `userAvatars` — Whether profile pictures are shown, and where they may come from (default: `off`, see below)
 
 #### Private instances (`alwaysForceLogin`)
 
@@ -411,6 +415,87 @@ How activation works:
 - If `config.json` is written by an external process (not through FrameTrail's PHP), that process must create/delete `_data/.htaccess` itself with the correct base path — otherwise the gate will not activate. When turning **private**, create `_data/.htaccess` **before** (or together with) setting `alwaysForceLogin=true` to avoid a brief window where private content is still served statically.
 
 When `alwaysForceLogin` is `false`, `_data/.htaccess` is absent and `_data/**` is served statically (no PHP overhead).
+
+#### External authentication (`externalAuth`)
+
+When FrameTrail runs inside a larger system — a learning management system, a portal, your own platform — it can defer identity to that system instead of keeping its own passwords. Two providers ship: a **signed token bridge** for a platform that already knows who the visitor is, and an **OpenID Connect relying party** for an institution that runs its own identity provider. See [docs/INTEGRATION.md](INTEGRATION.md) for the flow, the platform-side contract and worked walkthroughs; this section is the configuration reference.
+
+Configuration is split across two files. Both halves are merged, with the second winning:
+
+- **`_data/config.json` → `externalAuth`** — the public half. The browser fetches this file over HTTP, so **nothing secret may live in it**.
+- **`_data/.auth/config.php`** — the secret half. A PHP file returning an array, so a misconfigured web server executes it rather than serving it.
+
+External authentication is active only when **both** `mode` and `provider` are set.
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `mode` | — | `interactive` (FrameTrail shows a sign-in wall) or `transparent` (identity is the platform's to give). Required |
+| `provider` | — | `token` or `oidc`. Required |
+| `providerId` | provider name | `^[a-z0-9_-]{1,32}$`. Tags the accounts this provider creates and namespaces their subjects |
+| `label` | `""` | The platform's name, interpolated into every sign-in string the visitor sees |
+| `loginUrl` | `""` | Where a Login button leads. For OIDC, point it at `/_server/sso.php?a=start` |
+| `logoutUrl` | `""` | Second hop after `sso.php?a=logout`. For OIDC, discovery supplies this if the provider publishes one |
+| `manageUsersUrl` | `""` | The platform's user roster; replaces FrameTrail's user management dialog for admins |
+| `renewUrl` | `""` | Platform URL loaded in a hidden frame for silent re-authentication. Same-site only — omit it otherwise |
+| `canLogout` | `true` | `false` removes the Logout menu entry |
+| `sessionCookie` | — | **Never sent to the browser.** Name of the platform's session cookie (`^[A-Za-z0-9_.-]{1,64}$`), pinned at hand-off and compared on every request. This is the whole of logout propagation |
+| `maxSessionAge` | `86400` | **Never sent to the browser.** Absolute session bound in seconds, counted from establishment. Clamped to 300…2592000; `0` disables it |
+| `algs` | `["RS256"]` | Accepted signature algorithms. Available here: `RS256` (openssl), `EdDSA` (libsodium), `HS256` |
+
+Token provider only:
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `issuer` | — | Exact-match against the token's `iss`. Required |
+| `audience` | — | Exact-match against the token's `aud`. Required. Never derived from the Host header |
+| `publicKey` | — | PEM public key, used for both `RS256` and `EdDSA`. Not secret — may stay in `config.json` |
+| `hmacSecret` | — | `HS256` only. **Belongs in `.auth/config.php`** |
+| `skewSeconds` | `60` | Tolerated clock skew |
+| `maxAgeSeconds` | `120` | Maximum permitted token lifetime (`exp - iat`), regardless of what the issuer asked for |
+
+OIDC provider only:
+
+| Key | Default | Notes |
+|-----|---------|-------|
+| `issuer` | — | Discovery base; `<issuer>/.well-known/openid-configuration` is fetched from it |
+| `clientId` | — | Required |
+| `clientSecret` | — | **Belongs in `.auth/config.php`** |
+| `redirectUri` | derived | Register and configure it explicitly — the fallback derives it from the request's Host header |
+| `scope` | `openid profile email` | |
+| `adminClaim` / `adminValue` | — | Which claim, and which membership in it, means admin. Without both, everyone is a user |
+| `cacheSeconds` | `21600` | Discovery and JWKS cache lifetime |
+
+Which keys the browser may see is a whitelist (`ftExternalAuthPublic()` in [`src/_server/auth.php`](../src/_server/auth.php)), not a blacklist — adding a key to the config file can never leak it.
+
+#### Securing an external-auth install
+
+- **Nothing secret in `config.json`.** The browser fetches it over HTTP. Secrets go in `_data/.auth/config.php`. With an asymmetric algorithm there is no secret at all on the FrameTrail side.
+- **Protect `_data/.auth/`.** The shipped [`src/.htaccess`](../src/.htaccess) denies it — **Apache only**, like the private-instance gate above. On nginx + PHP-FPM add your own `location` rule denying any path containing `/.auth`.
+- **Register `redirectUri` explicitly** with your provider and set it in the config. The Host-header fallback is a convenience, not a configuration.
+- **HTTPS throughout.** Behind a reverse proxy, `X-Forwarded-Proto` must be set, or the session cookie ships without its `Secure` flag.
+- **`_data/` must stay writable.** The replay store under `_data/.auth/jti/` is fail-closed: a full or read-only disk makes logins fail rather than letting tokens become replayable.
+- **Backups now contain secrets.** The `dataExport` ZIP endpoint skips `.auth/`, but a filesystem `cp -r _data/` does not. Treat those backups accordingly, and check any external export tooling excludes `.auth/` as well.
+- **Preserve the keys on external writes.** Anything that rewrites `config.json` wholesale must carry `externalAuth` and `userAvatars` through, or the instance silently reverts to local passwords.
+
+#### User avatars (`userAvatars`)
+
+Profile pictures are off by default and turned on with `userAvatars` in `_data/config.json`. The ladder is about **origins**, not features:
+
+| Value | Behaviour |
+|-------|-----------|
+| `off` | No pictures anywhere; initials only. The default |
+| `local` | Pictures, but only ones stored in this instance's own `_data/resources/` |
+| `cache` | As `local`, and a picture supplied by an identity provider is fetched once, server-side, and stored here |
+| `remote` | As `local`, and a provider-supplied picture is loaded by the visitor's browser from wherever it lives |
+
+Only `remote` makes a visitor's browser talk to a third party, which for some hosts is a published promise rather than a preference — so it is opt-in and never inherited.
+
+Two consequences worth deciding deliberately:
+
+- **Avatars are public data.** The user lookup returns `avatar` alongside `name` and `color` in its public fields, so anonymous visitors see every user's avatar reference. In `remote` mode that means their browsers contact the provider; FrameTrail sends no referrer, so the third party does not learn which hypervideo, but the request happens.
+- **Cached avatars live in `_data/resources/avatars/`**, and are therefore served like any other resource — world-readable on a public instance, and included in `dataExport` ZIPs.
+
+Caching is hardened against SSRF: HTTPS only, DNS resolution checked against private and reserved ranges before and after a redirect, one redirect maximum, a five-second timeout, a 2 MB cap, an `image/*` content type requirement, and a decode-and-re-encode through GD rather than a byte copy. That is a reason to be comfortable with `cache`, not a reason to skip the decision between `cache` and `remote`.
 
 ### File Permissions
 

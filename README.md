@@ -139,6 +139,8 @@ This creates a `build/` directory with concatenated and minified JS/CSS bundles.
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Module system, state management, storage modes, data model
 - [docs/EXTENDING.md](docs/EXTENDING.md) — Adding resource types, modules, localization
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Server deployment, local usage, building, releasing
+- [docs/INTEGRATION.md](docs/INTEGRATION.md) — Running FrameTrail inside an LMS or platform: external authentication (OIDC, signed tokens)
+- [docs/EVENTS.md](docs/EVENTS.md) — The player event API for host pages and analytics
 
 ---
 
