@@ -182,6 +182,10 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             // would have an Apply turn uploads off by accident.
                             +   '        <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="allowUploads" id="allowUploads" '+((configData.allowUploads === false || String(configData.allowUploads) === "false") ? "" : "checked")+'><span class="slider round"></span></label><label for="allowUploads">'+ labels['SettingsAllowUploads'] +'</label></div>'
                             +   '        <div class="fieldHint">'+ labels['MessageAllowFileUploads'] +'</div>'
+                            // Checked only when the value is literally true: the server treats an instance as private on === true alone. Server mode only, because the gate is serve.php behind _data/.htaccess, which every save re-syncs; elsewhere the switch would promise privacy nothing enforces. Not rendered, so Apply leaves the stored value alone.
+                            +   (FrameTrail.getState('storageMode') !== 'server' ? '' :
+                                '        <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="alwaysForceLogin" id="alwaysForceLogin" '+((configData.alwaysForceLogin === true) ? "checked" : "")+'><span class="slider round"></span></label><label for="alwaysForceLogin">'+ labels['SettingsAlwaysForceLogin'] +'</label></div>'
+                            +   '        <div class="fieldHint">'+ labels['MessageAlwaysForceLogin'] +'</div>')
                             // Confirmation applies to FrameTrail's own
                             // registration, which external authentication
                             // refuses; the switch would change nothing. Not

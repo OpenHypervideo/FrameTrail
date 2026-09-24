@@ -408,6 +408,22 @@
             line-height: 1.45;
         }
 
+        /* --- Step 4: Theme (.themeItem comes from generic.css) --- */
+        /* Four rows of theme cards and a sliver of the fifth, so the list reads as scrolling and the step's buttons stay in view. */
+        .setup-wizard .themeContainer {
+            display: flex;
+            flex-wrap: wrap;
+            max-height: 360px;
+            overflow-y: auto;
+        }
+
+        /* --- Step 5: Overview (.optionCards comes from generic.css) --- */
+        /* The wizard is light behind the cards, the overview is not: give each card the theme's own background, so its label reads the way it will there. */
+        .setup-wizard .optionCards > div[data-value] {
+            background: var(--primary-bg-color);
+            color: var(--primary-fg-color);
+        }
+
         /* --- Done panel --- */
         .done-icon {
             font-size: 80px;
@@ -539,6 +555,16 @@
         <div class="step-item" data-step="3">
             <div class="step-bubble">3</div>
             <div class="step-label">Configuration</div>
+        </div>
+        <div class="step-connector" id="connector-3-4"></div>
+        <div class="step-item" data-step="4">
+            <div class="step-bubble">4</div>
+            <div class="step-label">Theme</div>
+        </div>
+        <div class="step-connector" id="connector-4-5"></div>
+        <div class="step-item" data-step="5">
+            <div class="step-bubble">5</div>
+            <div class="step-label">Overview</div>
         </div>
     </nav>
 
@@ -702,6 +728,51 @@
             </div>
         </div>
 
+        <!-- Step 4: Theme -->
+        <div class="step-panel" id="panel-4">
+            <h2>Choose a Theme</h2>
+            <p class="step-subtitle">The color theme everyone sees in your installation. It can be changed later in the admin panel.</p>
+
+            <!-- Filled from THEMES below -->
+            <div class="themeContainer" id="cfg-theme"></div>
+        </div>
+
+        <!-- Step 5: Overview -->
+        <div class="step-panel" id="panel-5">
+            <h2>Choose an Overview</h2>
+            <p class="step-subtitle">How the overview presents your hypervideos. It can be changed later in the admin panel.</p>
+
+            <div class="setup-field">
+                <!-- The same schematics as the admin dialog's Overview tab, drawn in the theme chosen on step 4 -->
+                <div class="optionCards" id="cfg-overviewmode">
+                    <div class="active" data-value="grid">
+                        <div class="optionCardThumb">
+                            <div class="schematicOverview schematicOverviewGrid">
+                                <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
+                                <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
+                                <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
+                                <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
+                                <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
+                            </div>
+                        </div>
+                        <span>Grid</span>
+                    </div>
+                    <div data-value="map">
+                        <div class="optionCardThumb">
+                            <div class="schematicOverview schematicOverviewMap">
+                                <div class="schematicOverviewMarker" style="left:20%; top:26%; width:17px;"><span class="schematicOverviewTitle"></span></div>
+                                <div class="schematicOverviewMarker" style="left:52%; top:18%; width:13px;"><span class="schematicOverviewTitle"></span></div>
+                                <div class="schematicOverviewMarker" style="left:74%; top:45%; width:15px;"><span class="schematicOverviewTitle"></span></div>
+                                <div class="schematicOverviewMarker" style="left:38%; top:60%; width:11px;"><span class="schematicOverviewTitle"></span></div>
+                            </div>
+                        </div>
+                        <span>Map</span>
+                    </div>
+                </div>
+                <div class="fieldHint">The map shows your hypervideos as pins on a background image, which you choose after setup.</div>
+            </div>
+        </div>
+
         <!-- Done -->
         <div class="step-panel" id="panel-done">
             <div class="done-icon icon-ok"></div>
@@ -795,6 +866,12 @@
         document.getElementById('connector-2-3').classList.toggle(
             'filled', n === 'done' || n > 2
         );
+        document.getElementById('connector-3-4').classList.toggle(
+            'filled', n === 'done' || n > 3
+        );
+        document.getElementById('connector-4-5').classList.toggle(
+            'filled', n === 'done' || n > 4
+        );
 
         showPanel(n === 'done' ? 'panel-done' : 'panel-' + n);
         updateFooter();
@@ -807,8 +884,8 @@
         }
         footer.style.display = '';
         btnBack.style.display  = (currentStep === 1) ? 'none' : '';
-        btnSkip.style.display  = (currentStep === 3) ? '' : 'none';
-        btnNext.innerHTML    = (currentStep === 3) ? 'Save \u0026 Finish' : 'Continue <span class="icon-right-open-big"></span>';
+        btnSkip.style.display  = (currentStep >= 3) ? '' : 'none';
+        btnNext.innerHTML    = (currentStep === 5) ? 'Save \u0026 Finish' : 'Continue <span class="icon-right-open-big"></span>';
         refreshNextButton();
     }
 
@@ -833,13 +910,16 @@
             goToStep(2);
         } else if (currentStep === 2) {
             if (validateStep2()) goToStep(3);
-        } else if (currentStep === 3) {
-            submitSetup(false);
+        } else if (currentStep === 3 || currentStep === 4) {
+            goToStep(currentStep + 1);
+        } else if (currentStep === 5) {
+            submitSetup(5);
         }
     });
 
+    // Defaults for this step and any after it; what was set on the steps before is kept.
     btnSkip.addEventListener('click', function () {
-        submitSetup(true);
+        submitSetup(currentStep - 1);
     });
 
     document.getElementById('open-frametrail').addEventListener('click', function () {
@@ -1005,9 +1085,73 @@
         label.style.color     = color || '';
     }
 
+    // ── Steps 4 and 5: theme and overview ─────────────────────────
+
+    // In the admin dialog's order, so the two read the same.
+    var THEMES = [
+        'classic', 'bright', 'dark', 'midnight', 'slate', 'studio', 'lagoon', 'dusk',
+        'nordic', 'obsidian', 'jungle', 'carbon', 'aurora', 'terra', 'eclipse', 'parchment',
+        'neon', 'navy', 'blue', 'grey', 'plum', 'crimson', 'ocean', 'forest',
+        'emerald', 'green', 'coral', 'violet', 'sunset', 'coffee', 'mocha', 'sand',
+        'rose', 'arctic', 'sage', 'mint', 'sky', 'steel', 'lavender', 'peach',
+        'blush', 'lemon', 'turquoise', 'grape', 'tangerine', 'tomato', 'orange'
+    ];
+
+    var themeContainer    = document.getElementById('cfg-theme');
+    var overviewModeCards = document.getElementById('cfg-overviewmode');
+
+    THEMES.forEach(function (theme) {
+        var item = document.createElement('div');
+        item.className = 'themeItem' + (theme === 'classic' ? ' active' : '');
+        item.setAttribute('data-theme', theme);
+        item.innerHTML = '<div class="themeName">' + theme.charAt(0).toUpperCase() + theme.slice(1) + '</div>'
+                       + '<div class="themeColorContainer">'
+                       + '<div class="primary-fg-color"></div>'
+                       + '<div class="secondary-bg-color"></div>'
+                       + '<div class="secondary-fg-color"></div>'
+                       + '</div>';
+        item.addEventListener('click', function () {
+            selectTheme(item);
+        });
+        themeContainer.appendChild(item);
+    });
+
+    function selectTheme(item) {
+        themeContainer.querySelectorAll('.themeItem').forEach(function (t) {
+            t.classList.remove('active');
+        });
+        item.classList.add('active');
+
+        // Draw the overview cards in the chosen theme. variables.css themes .themeItem[data-theme] itself, so the card's own computed colours are the theme's.
+        var style = getComputedStyle(item);
+        ['--primary-bg-color', '--primary-fg-color', '--secondary-bg-color', '--secondary-fg-color'].forEach(function (name) {
+            overviewModeCards.style.setProperty(name, style.getPropertyValue(name));
+        });
+    }
+
+    overviewModeCards.querySelectorAll(':scope > div[data-value]').forEach(function (card) {
+        card.addEventListener('click', function () {
+            overviewModeCards.querySelectorAll(':scope > div[data-value]').forEach(function (c) {
+                c.classList.remove('active');
+            });
+            card.classList.add('active');
+        });
+    });
+
+    function selectedTheme() {
+        var active = themeContainer.querySelector('.themeItem.active');
+        return active ? active.getAttribute('data-theme') : 'classic';
+    }
+
+    function selectedOverviewMode() {
+        var active = overviewModeCards.querySelector(':scope > div.active');
+        return active ? active.getAttribute('data-value') : 'grid';
+    }
+
     // ── Setup submission ──────────────────────────────────────────
 
-    function submitSetup(skipConfig) {
+    // appliedThrough is the last step whose choices are sent. Anything after it is left to setupInit's defaults.
+    function submitSetup(appliedThrough) {
         btnNext.disabled = true;
         btnSkip.disabled = true;
 
@@ -1018,7 +1162,7 @@
         params.set('name',   document.getElementById('field-name').value.trim());
         params.set('passwd', document.getElementById('field-password').value);
 
-        if (!skipConfig) {
+        if (appliedThrough >= 3) {
             params.set('userNeedsConfirmation',
                 document.getElementById('cfg-confirmation').checked ? 'true' : 'false');
             params.set('alwaysForceLogin',
@@ -1027,6 +1171,14 @@
                 document.getElementById('cfg-uploads').checked ? 'true' : 'false');
             params.set('defaultLanguage',
                 document.getElementById('cfg-language').value);
+        }
+
+        if (appliedThrough >= 4) {
+            params.set('defaultTheme', selectedTheme());
+        }
+
+        if (appliedThrough >= 5) {
+            params.set('overviewMode', selectedOverviewMode());
         }
 
         fetch('_server/ajaxServer.php', {
@@ -1069,7 +1221,7 @@
         document.getElementById('preflight-list').style.display   = 'none';
         document.getElementById('noserver-message').style.display = 'block';
         // Dim unavailable steps
-        document.querySelectorAll('[data-step="2"],[data-step="3"],.step-connector')
+        document.querySelectorAll('[data-step="2"],[data-step="3"],[data-step="4"],[data-step="5"],.step-connector')
             .forEach(function (el) {
                 el.style.opacity      = '0.3';
                 el.style.pointerEvents = 'none';

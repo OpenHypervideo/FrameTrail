@@ -9,6 +9,9 @@ require_once("./config.php");
 function userGet($userID) {
     global $conf;
 
+    // The roster stays open below so a public instance can draw annotation authors. A private one shows nothing without a session, and who its members are is part of that.
+    if (ftInstanceIsPrivate() && ($err = requireLogin())) return $err;
+
     $userFile = $conf["dir"]["data"]."/users.json";
     if (!file_exists($userFile)) {
         $return["status"] = "fail";

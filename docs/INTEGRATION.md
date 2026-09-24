@@ -312,6 +312,7 @@ The keys the dialog used to write, with what FrameTrail does when a key is missi
 | `defaultLanguage` | `"en"`, `"de"`, `"fr"` | `en` | on reload |
 | `videoFit` | `"contain"`, `"cover"` | `contain` | at once |
 | `allowUploads` | boolean | **allowed** | at once |
+| `alwaysForceLogin` | boolean | public | at once, once `_data/.htaccess` routes `_data/**` through `serve.php` — the platform writes that rule too, see [Private instances](DEPLOYMENT.md#private-instances-alwaysforcelogin) |
 | `captureUserTraces` | boolean | off | on reload |
 | `userTracesStartAction`, `userTracesEndAction` | a user action, e.g. `"UserLogin"`, `"UserLogout"` | **no trace ever starts** | on reload |
 | `userNeedsConfirmation` | boolean | off | has no effect under external authentication |

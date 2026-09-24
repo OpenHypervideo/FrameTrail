@@ -476,12 +476,14 @@ switch($_REQUEST["a"]) {
             // Apply optional config overrides sent by the setup wizard
             $configOverrides = array("userNeedsConfirmation",
                                      "alwaysForceLogin", "allowUploads", "defaultTheme",
-                                     "defaultLanguage");
+                                     "defaultLanguage", "overviewMode");
             foreach ($configOverrides as $key) {
                 if (isset($_REQUEST[$key])) {
                     $val = $_REQUEST[$key];
                     if ($val === "true")  $val = true;
                     if ($val === "false") $val = false;
+                    // overviewMode: only the two presentations the overview knows. Anything else leaves the key out, which means grid.
+                    if ($key === "overviewMode" && $val !== "grid" && $val !== "map") { continue; }
                     // Sanitize theme: allow only safe identifier characters
                     if ($key === "defaultTheme") { $val = preg_replace('/[^a-z0-9_-]/', '', strtolower((string)$val)); }
                     // Sanitize defaultLanguage: allow only 2-character lowercase codes

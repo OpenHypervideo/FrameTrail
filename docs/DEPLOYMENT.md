@@ -392,7 +392,7 @@ Server-side config is in `src/_server/config.php`:
 Runtime config is in `_data/config.json`:
 - `userNeedsConfirmation` — Require admin approval for new accounts
 - `allowUploads` — Enable file uploads
-- `alwaysForceLogin` — Make the instance **private**: require a valid login to view any content (see below)
+- `alwaysForceLogin` — Make the instance **private**: require a valid login to view any content (see below). Set in the setup wizard, and afterwards under Administration → Configuration
 - `defaultTheme` — Default color theme
 - `overviewTitle` — What this instance calls its overview, e.g. a project name. Shown in the title bar and, where FrameTrail is the whole page, in the browser tab. Empty or absent (the default) uses the localized "Overview" label
 - `overviewMode` — How the overview presents the hypervideos: `"grid"` (default) or `"map"`
@@ -407,7 +407,7 @@ When `alwaysForceLogin` is `true`, FrameTrail turns the instance into a real acc
 
 - Every file under `_data/**` is served through a session gate (`_server/serve.php`) instead of statically, so unauthenticated requests get `403`. Authenticated media requests keep full HTTP `Range` support for seeking. Uploaded media, JSON, subtitles, etc. are all covered; `users.json` is never served.
 - The guest ("Edit as Guest") bypass is disabled — a real account is required to view or edit.
-- The `dataExport` ZIP endpoint requires a valid session.
+- The `dataExport` ZIP endpoint requires a valid session, and so do the two actions that read `_data` on the server's side: `userGet` (on a public instance it answers anonymous callers with each user's name, colour and avatar, so annotation authors can be drawn) and `fileGetByFilter` (the resource index).
 - The client authenticates first, then loads data.
 
 How activation works:

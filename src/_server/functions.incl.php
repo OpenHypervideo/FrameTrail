@@ -60,6 +60,23 @@ function sanitize($string, $force_lowercase = true, $anal = true)
 }
 
 /**
+ * Whether this instance is private (config.alwaysForceLogin), so that nothing in it may be read without a session. Strict, like every other reader of the key: only a real true counts.
+ *
+ * @return bool
+ */
+function ftInstanceIsPrivate() {
+    global $conf;
+
+    $configFile = $conf["dir"]["data"] . "/config.json";
+    if (!file_exists($configFile)) {
+        return false;
+    }
+    $cfg = json_decode(file_get_contents($configFile), true);
+
+    return isset($cfg["alwaysForceLogin"]) && $cfg["alwaysForceLogin"] === true;
+}
+
+/**
  * Synchronise the "FrameTrail Private" access gate with config.alwaysForceLogin.
  *
  * The gate lives entirely inside the data directory as `_data/.htaccess`, an

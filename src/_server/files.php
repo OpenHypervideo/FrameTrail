@@ -651,6 +651,8 @@ function fileUpdate($resourcesID, $name, $licenseType, $licenseAttribution) {
  */
 function fileGetByFilter($key,$condition,$values) {
     global $conf;
+    // On a public instance the resource index is a static file anyway. On a private one that file is gated, and this must not be the way around it.
+    if (ftInstanceIsPrivate() && ($err = requireLogin())) return $err;
     if ((!$key) || (!$condition) || (!$values)) {
         $return["status"] = "fail";
         $return["code"] = 1;
