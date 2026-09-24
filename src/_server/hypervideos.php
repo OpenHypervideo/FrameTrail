@@ -4,6 +4,20 @@ require_once("./config.php");
 require_once("./user.php");
 
 /**
+ * I say whether a request value may name a subtitle file: a language code,
+ * since it becomes "<key>.vtt" inside the hypervideo's subtitles/ folder, and
+ * "../" there would reach any other hypervideo, or beyond.
+ *
+ * @param $key
+ * @return Boolean
+ */
+function ftIsSubtitleKey($key) {
+
+    return (is_string($key) || is_int($key)) && preg_match('/^[A-Za-z0-9_-]{1,32}$/', (string)$key) === 1;
+
+}
+
+/**
  * @param $src
  * @param $subtitles
  * @return mixed
@@ -68,6 +82,8 @@ function hypervideoAdd($src, $subtitles = false) {
 
     if ($subtitles) {
         foreach ($subtitles["name"] as $subtitleKey=>$subtitleName) {
+            // The key is a language code and becomes the file name.
+            if (!ftIsSubtitleKey($subtitleKey)) continue;
             move_uploaded_file($subtitles["tmp_name"][$subtitleKey], $newHVdir."/subtitles/".$subtitleKey.".vtt");
         }
     }
@@ -160,6 +176,8 @@ function hypervideoClone($hypervideoID, $src) {
         $oldAnnotationfiles = $annotationfiles["annotationfiles"];
         $newAnnotationfile = array();
         foreach ($oldAnnotationfiles as $k=>$v) {
+            // A key is a user id and becomes a file name below.
+            if (!preg_match('/^[A-Za-z0-9_-]+$/', (string)$k)) continue;
             if ($v["ownerId"] == $_SESSION["ohv"]["user"]["id"]) {
                 $tmpFound = 1;
                 $newAnnotationfile["1"] = $v;
@@ -178,7 +196,12 @@ function hypervideoClone($hypervideoID, $src) {
         }
     } else {
 
-        foreach ($newHV["annotationfiles"] as $k=>$v) {
+        // Drop every other user's annotation file from the clone: the new index
+        // below lists "1" only. Walk the annotations index, which the server
+        // writes, not hypervideo.json, which the author does — its keys once
+        // reached this unlink() as paths.
+        foreach ((array)$annotationfiles["annotationfiles"] as $k=>$v) {
+            if (!preg_match('/^[A-Za-z0-9_-]+$/', (string)$k)) continue;
             if ($k != 1) {
                 unlink($conf["dir"]["data"] . "/hypervideos/" . $hvi["hypervideo-increment"] . "/annotations/" . $k . ".json");
             }
@@ -352,9 +375,15 @@ function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subt
         return $return;
     }
 
+    // The folder the index names, like the hypervideo.json path above.
+    $hypervideoDir = $conf["dir"]["data"]."/hypervideos/".$hvi["hypervideos"][$hypervideoID];
+
     if ($subtitlesToDelete) {
-        foreach($subtitlesToDelete as $sd) {
-            unlink($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/subtitles/".$sd.".vtt");
+        foreach((array)$subtitlesToDelete as $sd) {
+            if (!ftIsSubtitleKey($sd)) continue;
+            if (file_exists($hypervideoDir."/subtitles/".$sd.".vtt")) {
+                unlink($hypervideoDir."/subtitles/".$sd.".vtt");
+            }
             /*foreach ($hv["subtitles"] as $sk=>$s) {
                 if ($sd == $s["srclang"]) {
                     unlink($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/subtitles/".$s["src"]);
@@ -363,11 +392,12 @@ function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subt
         }
     }
     if ($subtitles) {
-        if (!is_dir($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/subtitles")) {
-            mkdir($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/subtitles");
+        if (!is_dir($hypervideoDir."/subtitles")) {
+            mkdir($hypervideoDir."/subtitles");
         }
 
         foreach ($subtitles["name"] as $subtitleKey=>$subtitleName) {
+            if (!ftIsSubtitleKey($subtitleKey)) continue;
             /*$tmpFound = 0;
             foreach($hv["subtitles"] as $k=>$v) {
                 if ($v["srclang"] == $subtitleKey) {
@@ -379,7 +409,7 @@ function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subt
                 $tmpObj["srclang"] = $subtitleKey;
                 $hv["subtitles"][] = $tmpObj;
             }*/
-            move_uploaded_file($subtitles["tmp_name"][$subtitleKey], $conf["dir"]["data"]."/hypervideos/".$hypervideoID."/subtitles/".$subtitleKey.".vtt");
+            move_uploaded_file($subtitles["tmp_name"][$subtitleKey], $hypervideoDir."/subtitles/".$subtitleKey.".vtt");
         }
     }
 

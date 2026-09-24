@@ -23,6 +23,26 @@
 	RewriteRule (^|/)\.auth(/|$) - [F,L]
 </IfModule>
 ########################################################
+# No script runs outside _server/, whatever lands in a
+# data directory (a private _data/.htaccess replaces these
+# rules there, and routes everything to serve.php, which
+# refuses PHP itself)
+########################################################
+<IfModule mod_rewrite.c>
+	RewriteCond %{REQUEST_URI} !/_server/[^/]+\.php$
+	RewriteRule \.(php[0-9]?|phtml|phar|pht|phps)$ - [F,NC,L]
+</IfModule>
+########################################################
+# Uploaded SVGs are documents that can carry script. Drawn
+# through <img> or CSS this header changes nothing; opened
+# directly, they render without running any of it
+########################################################
+<IfModule mod_headers.c>
+	<FilesMatch "\.svgz?$">
+		Header set Content-Security-Policy "sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:"
+	</FilesMatch>
+</IfModule>
+########################################################
 # Add Mime Types
 ########################################################
 AddType video/ogg .ogm

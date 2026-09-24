@@ -46,33 +46,28 @@ class OpenGraph implements Iterator
   static public function fetch($URI) {
 
       try {
-          $curl = curl_init($URI);
-          if ($curl === false) {
-              throw new Exception('failed to initialize');
+          // FrameTrail: fetched through ftFetchPublicUrl() (functions.incl.php),
+          // which follows redirects itself and allows only public http(s)
+          // addresses on every hop. This endpoint needs no login, so a plain
+          // curl here let anyone reach the server's own network and file system.
+          $fetched = ftFetchPublicUrl($URI, 15, 5 * 1024 * 1024,
+                                      isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : 'FrameTrail/1.0');
+          if ($fetched === null) {
+              throw new Exception('URL not allowed or not reachable');
+          }
+          if ($fetched["status"] >= 400) {
+              throw new Exception('The requested URL returned error: ' . $fetched["status"], $fetched["status"]);
           }
 
-
-          curl_setopt($curl, CURLOPT_FAILONERROR, true);
-          curl_setopt($curl, CURLOPT_FOLLOWLOCATION, true);
-          curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-          curl_setopt($curl, CURLOPT_TIMEOUT, 15);
-          curl_setopt($curl, CURLOPT_SSL_VERIFYHOST, false);
-          curl_setopt($curl, CURLOPT_SSL_VERIFYPEER, false);
-          curl_setopt($curl, CURLOPT_USERAGENT, $_SERVER['HTTP_USER_AGENT']);
-
-          $response = curl_exec($curl);
-          if ($response === false) {
-              throw new Exception(curl_error($curl), curl_errno($curl));
-          }
-
-          $contentType = curl_getinfo($curl, CURLINFO_CONTENT_TYPE);
-          curl_close($curl);
+          $response = $fetched["body"];
+          $contentType = $fetched["contentType"];
 
           if (!empty($response)) {
               $return["status"] = "success";
               $return["code"] = 0;
               $return["string"] = "see result";
               $return["result"] = self::_parse($response, $URI, $contentType);
+              $return["headers"] = $fetched["headers"];
               return $return;
           } else {
               $return["status"] = "error";

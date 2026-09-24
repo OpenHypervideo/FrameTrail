@@ -95,11 +95,18 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
     switch ($type) {
         case "url":
             $urlAttr = json_decode($attributes, true);
-            if (!$urlAttr["src"] || $urlAttr["src"] == "") {
+            // A URL resource points somewhere else, never at a file here: src
+            // must carry a scheme (the client always adds one), and a thumb that
+            // is not a URL is dropped. fileDelete() unlinks src and thumb, so a
+            // bare name — or "../config.json" — would otherwise be deleted.
+            if (!is_string($urlAttr["src"]) || !preg_match('#^[a-z][a-z0-9+.-]*://#i', $urlAttr["src"])) {
                 $return["status"] = "fail";
                 $return["code"] = 11;
                 $return["string"] = "Empty field: URL.";
                 return $return;
+            }
+            if (!is_string($urlAttr["thumb"]) || !preg_match('#^(https?:)?//#i', $urlAttr["thumb"])) {
+                unset($urlAttr["thumb"]);
             }
             $newResource["src"] = $urlAttr["src"];
             $newResource["type"] = $urlAttr["type"];
@@ -145,8 +152,13 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
                 return $return;
             }
 
-            $fileparts = preg_split("/\./", $uploadedFile["name"]);
-            $filetype = array_pop($fileparts);
+            $filetype = imageUploadExtension($uploadedFile);
+            if ($filetype === null) {
+                $return["status"] = "fail";
+                $return["code"] = 9;
+                $return["string"] = "Unsupported image type";
+                return $return;
+            }
             $filename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_".sanitize($name), 0, 90).".".$filetype;
             $finalPath = $conf["dir"]["data"]."/resources/".$filename;
             $tempPath = $uploadedFile["tmp_name"];
@@ -192,9 +204,9 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
                 return $return;
             }
 
-            $fileparts = preg_split("/\./", $uploadedFile["name"]);
-            $filetype = array_pop($fileparts);
-            $filename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_".sanitize($name), 0, 90).".".$filetype;
+            // Always .pdf: the extension decides how the web server treats the
+            // file, and the client's file name is not ours to trust.
+            $filename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_".sanitize($name), 0, 90).".pdf";
             move_uploaded_file($uploadedFile["tmp_name"], $conf["dir"]["data"]."/resources/".$filename);
             $newResource["src"] = $filename;
             $newResource["type"] = "pdf";
@@ -312,9 +324,13 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
             // Handle subtitle files if provided
             if (!empty($files["subtitles"]["name"]) && is_array($files["subtitles"]["name"])) {
                 foreach ($files["subtitles"]["name"] as $k => $v) {
-                    $subparts = preg_split("/\./", $v);
-                    $subtype = array_pop($subparts);
-                    $subFilename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_".sanitize($name), 0, 90)."_sub_".$k.".".$subtype;
+                    // WebVTT only, keyed by a language code: both end up in the
+                    // file name.
+                    if (strtolower(pathinfo((string)$v, PATHINFO_EXTENSION)) !== "vtt"
+                        || !preg_match('/^[A-Za-z0-9_-]{1,32}$/', (string)$k)) {
+                        continue;
+                    }
+                    $subFilename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_".sanitize($name), 0, 90)."_sub_".$k.".vtt";
                     move_uploaded_file($files["subtitles"]["tmp_name"][$k], $conf["dir"]["data"]."/resources/".$subFilename);
                     $newResource["subtitles"][$k] = $subFilename;
                 }
@@ -547,30 +563,17 @@ function fileDelete($resourcesID) {
         return $return;
     }
 
-    if ($res["resources"][$resourcesID]["type"] == "video") {
-        if (file_exists($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["src"])) {
-            unlink($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["src"]);
-        }
-        if (file_exists($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["thumb"])) {
-            unlink($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["thumb"]);
-        }
-    } else if ($res["resources"][$resourcesID]["type"] == "image") {
-        if (file_exists($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["src"])) {
-            unlink($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["src"]);
-        }
-        if (file_exists($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["thumb"])) {
-            unlink($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["thumb"]);
-        }
-    } else if ($res["resources"][$resourcesID]["type"] == "pdf") {
-        if (file_exists($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["src"])) {
-            unlink($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["src"]);
-        }
-        if (file_exists($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["thumb"])) {
-            unlink($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["thumb"]);
-        }
-    } else {
-        if (file_exists($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["thumb"])) {
-            unlink($conf["dir"]["data"]."/resources/".$res["resources"][$resourcesID]["thumb"]);
+    // Uploaded types own their src file; every type may own a thumb. Each name
+    // goes through ftResourceFilePath(): a resource entry is data a user wrote,
+    // and only a plain file directly inside resources/ may be deleted for it.
+    $ownedFiles = array("thumb");
+    if (in_array($res["resources"][$resourcesID]["type"], array("video", "image", "pdf"), true)) {
+        $ownedFiles[] = "src";
+    }
+    foreach ($ownedFiles as $field) {
+        $path = isset($res["resources"][$resourcesID][$field]) ? ftResourceFilePath($res["resources"][$resourcesID][$field]) : null;
+        if ($path !== null) {
+            unlink($path);
         }
     }
     unset($res["resources"][$resourcesID]);
@@ -708,27 +711,14 @@ function downloadAndCacheThumbnail($imageUrl, $resourceName) {
         return ['error' => 'Invalid image URL'];
     }
 
-    $scheme = parse_url($imageUrl, PHP_URL_SCHEME);
-    if (!in_array($scheme, ['http', 'https'])) {
-        return ['error' => 'Invalid URL scheme'];
-    }
+    // Public http(s) addresses only, checked on every redirect hop.
+    $fetched = ftFetchPublicUrl($imageUrl, 15, 10 * 1024 * 1024);
+    $httpCode = $fetched === null ? 0 : $fetched['status'];
 
-    $ch = curl_init($imageUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'FrameTrail/1.0');
-    curl_setopt($ch, CURLOPT_MAXFILESIZE, 10 * 1024 * 1024);
-
-    $imageData = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($imageData === false || $httpCode !== 200) {
+    if ($fetched === null || $httpCode !== 200) {
         return ['error' => 'Failed to download image (HTTP ' . $httpCode . ')'];
     }
+    $imageData = $fetched['body'];
 
     $tempPath = tempnam(sys_get_temp_dir(), 'ft_thumb_');
     file_put_contents($tempPath, $imageData);
@@ -868,28 +858,24 @@ function fileGetUrlInfo($url) {
         return fileGetWikipediaInfo($url);
     }
 
+    // One request for both the page and its framing headers, made only to a
+    // public http(s) address (ftFetchPublicUrl() via OpenGraph::fetch).
+    // Header names arrive lowercased.
     $siteInfo = OpenGraph::fetch($url);
-
-    stream_context_set_default( [
-      'ssl' => [
-          'verify_peer' => false,
-          'verify_peer_name' => false,
-      ],
-    ]);
-    $headers = get_headers($url, 1);
+    $headers = isset($siteInfo["headers"]) ? $siteInfo["headers"] : array();
 
     $embedForbidden = false;
 
-    if (isset($headers["X-Frame-Options"])) {
-        $xfo = is_array($headers["X-Frame-Options"]) ? end($headers["X-Frame-Options"]) : $headers["X-Frame-Options"];
+    if (isset($headers["x-frame-options"])) {
+        $xfo = is_array($headers["x-frame-options"]) ? end($headers["x-frame-options"]) : $headers["x-frame-options"];
         $xfo = strtolower((string)$xfo);
         if ($xfo === 'sameorigin' || $xfo === 'deny') {
             $embedForbidden = true;
         }
     }
 
-    if (!$embedForbidden && isset($headers["Content-Security-Policy"])) {
-        $csp = is_array($headers["Content-Security-Policy"]) ? implode(' ', $headers["Content-Security-Policy"]) : $headers["Content-Security-Policy"];
+    if (!$embedForbidden && isset($headers["content-security-policy"])) {
+        $csp = is_array($headers["content-security-policy"]) ? implode(' ', $headers["content-security-policy"]) : $headers["content-security-policy"];
         // If frame-ancestors is present and not set to *, embedding is restricted to specific origins
         if (preg_match('/frame-ancestors\s+([^;]+)/i', $csp, $m) && trim($m[1]) !== '*') {
             $embedForbidden = true;
@@ -1546,6 +1532,37 @@ function validateFileSize($fileSize) {
 }
 
 /**
+ * The extension an uploaded image is stored under, or null to refuse it.
+ *
+ * Never the client's file name as such: the extension decides how the web
+ * server treats the file once it sits in _data/resources/, and "x.php" sent as
+ * image/png would otherwise be stored — and executed — as PHP. The name's
+ * extension is kept when it is an image one, else the MIME type picks one.
+ *
+ * @param array $uploadedFile An entry of $_FILES
+ * @return string|null
+ */
+function imageUploadExtension($uploadedFile) {
+    $allowed = array("jpg", "jpeg", "png", "gif", "webp", "avif", "svg");
+    $byMime  = array(
+        "image/jpeg"    => "jpg",
+        "image/png"     => "png",
+        "image/gif"     => "gif",
+        "image/webp"    => "webp",
+        "image/avif"    => "avif",
+        "image/svg+xml" => "svg"
+    );
+
+    $ext = strtolower(pathinfo((string)$uploadedFile["name"], PATHINFO_EXTENSION));
+    if (in_array($ext, $allowed, true)) {
+        return $ext;
+    }
+
+    $mime = strtolower((string)$uploadedFile["type"]);
+    return isset($byMime[$mime]) ? $byMime[$mime] : null;
+}
+
+/**
  * Format bytes to human-readable format
  *
  * @param int $bytes
@@ -1738,7 +1755,8 @@ function fileDownloadFromUrl($url, $name, $licenseType, $licenseAttribution) {
         return ["status" => "fail", "code" => 8, "string" => "URL and name are required"];
     }
 
-    // Validate scheme to prevent SSRF
+    // Validate scheme to prevent SSRF (the host, on every hop, is checked by
+    // ftFetchPublicUrl() below)
     $parsed = parse_url($url);
     $scheme = strtolower($parsed['scheme'] ?? '');
     if (!$parsed || !in_array($scheme, ['http', 'https'])) {
@@ -1751,12 +1769,12 @@ function fileDownloadFromUrl($url, $name, $licenseType, $licenseAttribution) {
         return ["status" => "fail", "code" => 20, "string" => "User not allowed to upload files"];
     }
 
-    // Download image
-    $context = stream_context_create([
-        'http'  => ['timeout' => 30, 'user_agent' => 'FrameTrail/1.0', 'method' => 'GET'],
-        'https' => ['timeout' => 30, 'user_agent' => 'FrameTrail/1.0'],
-    ]);
-    $imageData = @file_get_contents($url, false, $context);
+    // Download image, abandoning it past the upload limit (0 means no limit).
+    $maxBytes = fileGetMaxUploadSize();
+    $maxBytes = ($maxBytes['maxuploadbytes'] > 0) ? $maxBytes['maxuploadbytes'] : PHP_INT_MAX;
+    $fetched = ftFetchPublicUrl($url, 30, $maxBytes);
+    $imageData = ($fetched !== null && $fetched['status'] === 200) ? $fetched['body'] : false;
+    unset($fetched);
     if ($imageData === false || strlen($imageData) === 0) {
         return ["status" => "fail", "code" => 4, "string" => "Could not download image from URL"];
     }

@@ -170,6 +170,124 @@ function copyr($source, $dest) {
 }
 
 /**
+ * I return the absolute path of a file in resources/, or null.
+ *
+ * Resource entries name their files (src, thumb), and those names end up in
+ * unlink() when a resource is deleted. So a name is only trusted as a plain
+ * file name that resolves to a file directly inside resources/ — never a path,
+ * a dotfile or the resource index itself.
+ *
+ * @param $name
+ * @return String|null
+ */
+function ftResourceFilePath($name) {
+
+    global $conf;
+
+    if (!is_string($name) || $name === "" || $name !== basename($name)
+        || strpos($name, "\\") !== false || $name[0] === "." || $name === "_index.json") {
+        return null;
+    }
+
+    $dir  = realpath($conf["dir"]["data"]."/resources");
+    $path = ($dir === false) ? false : realpath($dir."/".$name);
+
+    if ($path === false || dirname($path) !== $dir || !is_file($path)) {
+        return null;
+    }
+
+    return $path;
+
+}
+
+/**
+ * I fetch an http(s) URL on behalf of a request, and only from the public
+ * internet.
+ *
+ * Redirects are followed here rather than by curl, so every hop is checked the
+ * same way: http or https, and a host that resolves to public addresses only
+ * (ftIsPublicHost() in auth.php). Otherwise any URL a visitor can type would
+ * reach whatever this server can — localhost, the private network, a cloud
+ * metadata endpoint — or, through curl's other protocols, the file system.
+ *
+ * @param $url
+ * @param $timeout      seconds per hop
+ * @param $maxBytes     the body is abandoned beyond this
+ * @param $userAgent
+ * @return Array|null   { status, body, contentType, headers, url } for the
+ *                      final hop (header names lowercased), or null
+ */
+function ftFetchPublicUrl($url, $timeout = 15, $maxBytes = 10485760, $userAgent = 'FrameTrail/1.0') {
+
+    for ($hop = 0; $hop <= 5; $hop++) {
+
+        $scheme = strtolower((string)parse_url($url, PHP_URL_SCHEME));
+        $host   = parse_url($url, PHP_URL_HOST);
+
+        if (!in_array($scheme, array("http", "https"), true) || !$host || !ftIsPublicHost($host)) {
+            return null;
+        }
+
+        $headers = array();
+
+        $ch = curl_init($url);
+        curl_setopt_array($ch, array(
+            CURLOPT_RETURNTRANSFER  => true,
+            CURLOPT_FOLLOWLOCATION  => false,
+            CURLOPT_PROTOCOLS       => CURLPROTO_HTTP | CURLPROTO_HTTPS,
+            CURLOPT_TIMEOUT         => $timeout,
+            CURLOPT_CONNECTTIMEOUT  => min(5, $timeout),
+            CURLOPT_SSL_VERIFYPEER  => false,
+            CURLOPT_SSL_VERIFYHOST  => false,
+            CURLOPT_USERAGENT       => $userAgent,
+            CURLOPT_HEADERFUNCTION  => function ($ch, $line) use (&$headers) {
+                $parts = explode(":", $line, 2);
+                if (count($parts) === 2) {
+                    $name  = strtolower(trim($parts[0]));
+                    $value = trim($parts[1]);
+                    if (isset($headers[$name])) {
+                        $headers[$name] = array_merge((array)$headers[$name], array($value));
+                    } else {
+                        $headers[$name] = $value;
+                    }
+                }
+                return strlen($line);
+            },
+            CURLOPT_NOPROGRESS       => false,
+            CURLOPT_PROGRESSFUNCTION => function ($res, $expected, $got) use ($maxBytes) {
+                return ($got > $maxBytes) ? 1 : 0;
+            },
+        ));
+
+        $body   = curl_exec($ch);
+        $status = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $type   = (string)curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+        $next   = (string)curl_getinfo($ch, CURLINFO_REDIRECT_URL);
+        curl_close($ch);
+
+        if ($body === false) {
+            return null;
+        }
+
+        if ($status >= 300 && $status < 400 && $next !== "") {
+            $url = $next;
+            continue;
+        }
+
+        return array(
+            "status"      => $status,
+            "body"        => $body,
+            "contentType" => $type,
+            "headers"     => $headers,
+            "url"         => $url
+        );
+    }
+
+    return null;
+
+}
+
+/**
  * sharedFile class
  * @class           sharedFile
  * @file            shared/sharedFile.class.php

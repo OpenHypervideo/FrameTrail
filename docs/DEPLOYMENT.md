@@ -20,6 +20,8 @@ Then open `http://localhost:8080`. No Apache, no XAMPP needed if PHP is installe
 
 **Public / production server:** Use Apache (`.htaccess` included and handles security rules) or nginx + PHP-FPM (add a deny rule for `_data/` in your nginx config).
 
+Among those rules, two keep uploaded files inert, and on nginx both need an equivalent of their own: no `.php` (or `.phtml`, `.phar`, …) is executed anywhere except directly in `_server/`, and `.svg` files are served with `Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:`, so an SVG opened directly cannot run script on the instance's origin. With nginx, make sure your `location ~ \.php$` block only matches `_server/`, and add the header in a `location ~* \.svgz?$` block.
+
 **Steps:**
 
 1. Download the [latest release](https://github.com/OpenHypervideo/FrameTrail/releases) zip
