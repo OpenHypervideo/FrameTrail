@@ -4,6 +4,46 @@ require_once("./config.php");
 require_once("./user.php");
 
 /**
+ * I return the folder of a hypervideo the index knows, or null.
+ *
+ * The id arrives in the request and would otherwise go straight into a path —
+ * "../../somewhere" made annotation files, and the directories to hold them,
+ * wherever the web server could write. So it is looked up instead of trusted:
+ * only a key of hypervideos/_index.json maps to a folder, and the folder name
+ * is the index's, never the request's. The same lookup hypervideoClone() and
+ * hypervideoDelete() make.
+ *
+ * @param $hypervideoID
+ * @return String|null
+ */
+function ftAnnotationHypervideoDir($hypervideoID) {
+
+    global $conf;
+
+    $index = json_decode((string)@file_get_contents($conf["dir"]["data"]."/hypervideos/_index.json"), true);
+
+    if (!is_array($index) || !isset($index["hypervideos"]) || !is_array($index["hypervideos"])) {
+        return null;
+    }
+
+    $key = (string)$hypervideoID;
+    if ($key === "" || !array_key_exists($key, $index["hypervideos"])) {
+        return null;
+    }
+
+    // The index stores "./<id>"; anything else is not a folder it created.
+    $folder = preg_replace('#^\./#', '', (string)$index["hypervideos"][$key]);
+    if (!preg_match('/^[A-Za-z0-9_-]+$/', $folder)) {
+        return null;
+    }
+
+    $dir = $conf["dir"]["data"]."/hypervideos/".$folder;
+
+    return is_dir($dir) ? $dir : null;
+
+}
+
+/**
  * @param $hypervideoID
  * @param $annotationfileID
  * @param $action
@@ -20,6 +60,7 @@ require_once("./user.php");
  * 5       =   failed. Name (min 3 chars) or description have not been submitted.
  * 6       =   failed. On save only — annotation with $id has not been found (in DB or as file).
  * 7       =   Permission denied. On save only — you are not the annotation's owner and not an administrator.
+ * 8       =   failed. hypervideoID is not a hypervideo of this instance.
  */
 function annotationfileSave($hypervideoID, $annotationfileID, $action, $name, $description, $hidden, $src) {
     global $conf;
@@ -27,6 +68,14 @@ function annotationfileSave($hypervideoID, $annotationfileID, $action, $name, $d
     if ($err = requireLogin()) return $err;
 
     $annotationfileID = $_SESSION["ohv"]["user"]["id"];
+
+    $hypervideoDir = ftAnnotationHypervideoDir($hypervideoID);
+    if ($hypervideoDir === null) {
+        $return["status"] = "fail";
+        $return["code"] = 8;
+        $return["string"] = "hypervideoID is not a hypervideo of this instance.";
+        return $return;
+    }
 
 
     if (($action != "save") && ($action != "saveAs")) {
@@ -43,21 +92,21 @@ function annotationfileSave($hypervideoID, $annotationfileID, $action, $name, $d
         return $return;
     }
 
-    if (!is_dir($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/")) {
-        mkdir($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/");
+    if (!is_dir($hypervideoDir."/annotations/")) {
+        mkdir($hypervideoDir."/annotations/");
     }
-    if (!file_exists($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/_index.json")) {
+    if (!file_exists($hypervideoDir."/annotations/_index.json")) {
         $tmp["mainAnnotation"] = $_SESSION["ohv"]["user"]["id"];
         $tmp["annotationfiles"] = (object)array();
         $annotationfileID = $_SESSION["ohv"]["user"]["id"];
-        file_put_contents($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/_index.json", json_encode($tmp,$conf["settings"]["json_flags"]));
+        file_put_contents($hypervideoDir."/annotations/_index.json", json_encode($tmp,$conf["settings"]["json_flags"]));
     }
 
-    $file = new sharedFile($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/_index.json");
+    $file = new sharedFile($hypervideoDir."/annotations/_index.json");
     $json = $file->read();
     $an = json_decode($json,true);
 
-    // if (($action == "save") && ((!is_array($an["annotationfiles"][$annotationfileID])) || (!file_exists($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/".$annotationfileID.".json")))) {
+    // if (($action == "save") && ((!is_array($an["annotationfiles"][$annotationfileID])) || (!file_exists($hypervideoDir."/annotations/".$annotationfileID.".json")))) {
     //  $return["status"] = "fail";
     //  $return["code"] = 6;
     //  $return["string"] = "Annotation with id=".$annotationfileID." has not been found.";
@@ -100,7 +149,7 @@ function annotationfileSave($hypervideoID, $annotationfileID, $action, $name, $d
 
     $file->writeClose(json_encode($an, $conf["settings"]["json_flags"]));
 
-    $fileStr = $conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/".$anID.".json";
+    $fileStr = $hypervideoDir."/annotations/".$anID.".json";
     if (($action == "saveAs") && (!file_exists($fileStr))) {
         file_put_contents($fileStr, "");
     }
@@ -137,14 +186,17 @@ function annotationfileDelete($hypervideoID,$annotationfileID) {
 
     $annotationfileID = $_SESSION["ohv"]["user"];
 
-    if (!is_dir($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations")) {
+    // Same lookup as annotationfileSave(): an unknown id has no folder.
+    $hypervideoDir = ftAnnotationHypervideoDir($hypervideoID);
+
+    if ($hypervideoDir === null || !is_dir($hypervideoDir."/annotations")) {
         $return["status"] = "fail";
         $return["code"] = 3;
         $return["string"] = "Could not find the annotations folder";
         return $return;
     }
 
-    $file = new sharedFile($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/_index.json");
+    $file = new sharedFile($hypervideoDir."/annotations/_index.json");
     $hvannotationsIndexJson = $file->read();
     $hvannotationsIndex = json_decode($hvannotationsIndexJson,true);
 
@@ -156,7 +208,7 @@ function annotationfileDelete($hypervideoID,$annotationfileID) {
         return $return;
     }
 
-    if ((!is_array($hvannotationsIndex["annotationfiles"][$annotationfileID])) || (!file_exists($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/".$annotationfileID.".json"))) {
+    if ((!is_array($hvannotationsIndex["annotationfiles"][$annotationfileID])) || (!file_exists($hypervideoDir."/annotations/".$annotationfileID.".json"))) {
         $return["status"] = "fail";
         $return["code"] = 5;
         $return["string"] = "Annotation with id=".$annotationfileID." has not been found.";
@@ -174,7 +226,7 @@ function annotationfileDelete($hypervideoID,$annotationfileID) {
     //  return $return;
     // }
 
-    unlink($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/".$annotationfileID.".json");
+    unlink($hypervideoDir."/annotations/".$annotationfileID.".json");
     unset($hvannotationsIndex["annotationfiles"][$annotationfileID]);
 
     $file->writeClose(json_encode($hvannotationsIndex, $conf["settings"]["json_flags"]));
@@ -208,9 +260,13 @@ function updateAnnotationSources($hypervideoID, $newSourcePath) {
 
     if ($err = requireLogin()) return $err;
 
+    // Resolved through the index like annotationfileSave(), not built from the
+    // request: the files rewritten below are whatever this folder holds.
+    $hypervideoDir = ftAnnotationHypervideoDir($hypervideoID);
+
     // Check if user is admin or hypervideo owner
-    $hvFile = $conf["dir"]["data"]."/hypervideos/".$hypervideoID."/hypervideo.json";
-    if (!file_exists($hvFile)) {
+    $hvFile = $hypervideoDir === null ? null : $hypervideoDir."/hypervideo.json";
+    if ($hvFile === null || !file_exists($hvFile)) {
         $return["status"] = "fail";
         $return["code"] = 3;
         $return["string"] = "Hypervideo not found";
@@ -225,7 +281,7 @@ function updateAnnotationSources($hypervideoID, $newSourcePath) {
         return $return;
     }
 
-    $annotationsDir = $conf["dir"]["data"]."/hypervideos/".$hypervideoID."/annotations/";
+    $annotationsDir = $hypervideoDir."/annotations/";
 
     if (!is_dir($annotationsDir)) {
         // No annotations directory - that's okay, nothing to update

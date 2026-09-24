@@ -393,6 +393,16 @@ An instance can defer identity to a hosting platform (LMS, portal) or an institu
 - **`users.json` keys stay small integers** even for external accounts, because the user id becomes a filename (annotation files, uploads) while an OIDC `sub` may contain `/` or `..`. Lookup is by `external.provider` + `external.sub`.
 - When external auth is on, `userRegister`, `userLogin` (code **6**, deliberately new) and `userDelete` are refused, `userChange` accepts only `color` and `avatar`, and `ManageUsersDialog` refuses to open.
 
+## External Settings
+
+An instance can hand its settings to the platform hosting it, the companion of external authentication. User-facing documentation is [docs/INTEGRATION.md](docs/INTEGRATION.md#handing-the-instance-settings-to-the-platform).
+
+- **The key:** `config.json` → `externalSettings` (`providerId`, `label`, `manageUrl`). On whenever it is an object. `src/_server/externalsettings.php` holds the helpers: `ftExternalSettingsConfig()`, `ftExternalSettingsEnabled()`, `ftExternalSettingsPublic()` (a **whitelist**; `manageUrl` only if http(s) or root-relative), `ftExternalSettingsRefusal()` (code **8**) and `ftReservedConfigKeys()`.
+- **Self-protecting, no overlay:** the guard reads the file on disk, and `updateConfigFile()` is the only in-instance writer of `config.json` after setup, so refusing it while the key is present keeps the key present. `updateCSSFile()` is refused the same way.
+- **Reserved keys:** even with the switch off, `updateConfigFile()` copies `externalAuth` and `externalSettings` from disk over whatever the request carried (and drops them if the disk has none), and refuses anything that does not decode to a JSON object — it used to write back a config holding only `lastchanged`.
+- **Client:** learned from `userCheckLogin` (`UserManagement.externalSettings()`), on every heartbeat. `Titlebar.updateAdminSettingsButton()` is the one rule for the gear; the user menu gets an "Administration" link to `manageUrl` and "Manage Tags". `AdminSettingsDialog.open()` refuses; a dialog that meets code 8 or notices the takeover closes via `closeAsManaged()`. `Sidebar.refreshSettings()` also reloads `custom.css`, which is how a platform's CSS change reaches an open page.
+- Setup (`setupCheckDetailed`, `setupInit`) treats an instance under either switch as already set up.
+
 ## Overlay Scaling Mechanism
 
 Overlays containing text-like content are scaled so they always render at a comfortable reading width regardless of how small the overlay is on screen. This is a **JS-driven transform**, not a CSS media query or container query.

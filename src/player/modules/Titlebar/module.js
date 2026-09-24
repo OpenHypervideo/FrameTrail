@@ -194,6 +194,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             isGuest        = UserManagement.isGuestMode(),
             isAdmin        = UserManagement.userRole === 'admin' && !isGuest,
             external       = UserManagement.externalAuth(),
+            settingsOwner  = UserManagement.externalSettings(),
             entries        = [];
 
         var username = FrameTrail.getState('username') || '';
@@ -220,6 +221,23 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                 }
                 FrameTrail.module('ManageUsersDialog').open();
             }});
+        }
+
+        // The same for the settings, when the platform owns them: the dialog is
+        // gone, so the way to them is a link to the platform's page for this
+        // instance — and nothing at all if it named none. Tag management used
+        // to be reached only through that dialog, so it moves here with it.
+        if (isAdmin && settingsOwner) {
+            if (settingsOwner.manageUrl) {
+                entries.push({ label: labels['GenericAdministration'], icon: 'icon-cog', action: function() {
+                    window.open(settingsOwner.manageUrl, '_blank', 'noopener');
+                }});
+            }
+            if (FrameTrail.module('ManageTagsDialog')) {
+                entries.push({ label: labels['SettingsManageTags'], icon: 'icon-tag', action: function() {
+                    FrameTrail.module('ManageTagsDialog').open();
+                }});
+            }
         }
 
         // Logout used to be unconditional — it is the reason this control is
@@ -659,11 +677,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                     HypervideoDeleteButton.classList.add('active');
                 }
 
-                // Show admin settings button if server-authenticated admin (not guest)
-                if (FrameTrail.module('UserManagement').userRole === 'admin' &&
-                    !FrameTrail.module('UserManagement').isGuestMode()) {
-                    AdminSettingsButton.style.display = '';
-                }
+                updateAdminSettingsButton();
 
                 // Show the user menu for every logged-in user, guests included:
                 // it carries Logout, which a guest needs as much as anyone. The
@@ -686,7 +700,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             ManageResourcesButton.style.display = 'none';
             HypervideoEditButton.classList.remove('active');
             HypervideoDeleteButton.classList.remove('active');
-            AdminSettingsButton.style.display = 'none';
+            updateAdminSettingsButton();
 
             // Hide the user menu when leaving edit mode
             closeUserMenu();
@@ -724,20 +738,42 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                 renderUserChip();
             }
 
-            // Show admin settings button if server-authenticated admin and in edit mode
-            if (FrameTrail.module('UserManagement').userRole === 'admin' &&
-                !FrameTrail.module('UserManagement').isGuestMode() &&
-                FrameTrail.getState('editMode')) {
-                AdminSettingsButton.style.display = '';
-            }
-
         } else {
 
             closeUserMenu();
             UserSettingsMenu.style.display = 'none';
-            AdminSettingsButton.style.display = 'none';
 
         }
+
+        // Also on every heartbeat that re-confirms the session: that is how a
+        // platform taking over the settings reaches an instance already open.
+        updateAdminSettingsButton();
+
+    }
+
+
+    /**
+     * I show the settings button exactly when it can do something: in edit
+     * mode, for a server-authenticated administrator, on an instance that
+     * manages its own settings. Under externalSettings the platform owns them
+     * and the button is not drawn at all — the user menu links there instead.
+     *
+     * One place, because the button used to be shown from two state handlers
+     * with two copies of the rule, and a third condition would have had to be
+     * added to both.
+     *
+     * @method updateAdminSettingsButton
+     */
+    function updateAdminSettingsButton() {
+
+        var UserManagement = FrameTrail.module('UserManagement'),
+            show           = !!FrameTrail.getState('loggedIn')
+                          && !!FrameTrail.getState('editMode')
+                          && UserManagement.userRole === 'admin'
+                          && !UserManagement.isGuestMode()
+                          && !UserManagement.externalSettings();
+
+        AdminSettingsButton.style.display = show ? '' : 'none';
 
     }
 

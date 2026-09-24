@@ -1918,8 +1918,13 @@
                     delete config.overviewMap;
                     // Best effort: a refused write just means the stale key is
                     // cleaned up the next time round, and it is ignored either
-                    // way now that the index has a map.
-                    saveConfig(function() {});
+                    // way now that the index has a map. Not attempted at all
+                    // when the platform owns config.json: it would only be
+                    // refused, and the platform's next write drops the key.
+                    var UserManagement = FrameTrail.module('UserManagement');
+                    if (!(UserManagement && UserManagement.externalSettings && UserManagement.externalSettings())) {
+                        saveConfig(function() {});
+                    }
                 }
             }
             callback.call(window, result);

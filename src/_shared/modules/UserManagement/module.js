@@ -39,6 +39,11 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         // authentication to one. Captured from userCheckLogin rather than from
         // the config, because it has to be known before config.json is loadable.
         externalAuth            = null,
+        // Whether the platform hosting this instance owns its settings, and
+        // where they are edited instead. Captured from userCheckLogin on every
+        // heartbeat, so a settings button drawn before the platform took them
+        // over goes away without a reload.
+        externalSettings        = null,
         userDialogCtrl          = null,
 
         userBoxCallback         = null,
@@ -777,6 +782,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             // whether a login box can do anything at all has to be known before
             // any UI offers one.
             externalAuth = response.externalAuth || null;
+            externalSettings = response.externalSettings || null;
 
             switch(response.code){
 
@@ -1759,6 +1765,14 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
          * whether an affordance belongs to FrameTrail or to the platform.
          */
         externalAuth:           function() { return externalAuth; },
+
+        /**
+         * The platform's public description of who owns this instance's
+         * settings ({ providerId, label, manageUrl }), or null when the
+         * instance manages them itself. While it is set, the settings dialog
+         * does not open and its button is not drawn.
+         */
+        externalSettings:       function() { return externalSettings; },
 
         /**
          * The current userID or an empty String.

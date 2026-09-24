@@ -1012,13 +1012,18 @@ function parse_size($size) {
  * 0    =   Success. Config file saved.
  * 1    =   failed. User is not logged in or is inactive or not admin (see resp["string"])
  * 2    =   failed. Config file not found or not writable
- * 3    =   failed. Config string must be > 3 characters
+ * 3    =   failed. Config string must be > 3 characters, and a JSON object
+ * 7    =   failed. Config was changed by someone else since baseVersion
+ * 8    =   failed. Settings are managed by the platform hosting this instance (externalsettings.php)
  *
  */
 function updateConfigFile($configstring, $baseVersion = null) {
 
     global $conf;
     if ($err = requireLogin("admin")) return $err;
+
+    // The platform owns the settings: nothing inside the instance writes them.
+    if (ftExternalSettingsEnabled()) return ftExternalSettingsRefusal();
 
     if (!is_writable($conf["dir"]["data"]."/config.json")) {
         $return["status"] = "fail";
@@ -1031,6 +1036,17 @@ function updateConfigFile($configstring, $baseVersion = null) {
         $return["status"] = "fail";
         $return["code"] = 3;
         $return["string"] = "Config string length must be > 3 characters.";
+        return $return;
+    }
+
+    // Anything that does not decode to an object is refused before the file is
+    // touched. It used to decode to null and be written back as a config
+    // holding nothing but a timestamp — externalAuth and every setting gone.
+    $src = json_decode($configstring, true);
+    if (!is_array($src) || (count($src) > 0 && array_values($src) === $src)) {
+        $return["status"] = "fail";
+        $return["code"] = 3;
+        $return["string"] = "Config must be a JSON object.";
         return $return;
     }
 
@@ -1049,7 +1065,18 @@ function updateConfigFile($configstring, $baseVersion = null) {
         return $return;
     }
 
-    $src = json_decode($configstring, true);
+    // The integrator's keys are the file's, not the request's: whatever arrived
+    // is replaced by what is on disk, and dropped if the disk has none. So a
+    // settings save — or a crafted request — can neither remove external
+    // authentication nor switch on external settings.
+    foreach (ftReservedConfigKeys() as $reservedKey) {
+        if (is_array($current) && array_key_exists($reservedKey, $current)) {
+            $src[$reservedKey] = $current[$reservedKey];
+        } else {
+            unset($src[$reservedKey]);
+        }
+    }
+
     $src["lastchanged"] = round(microtime(true) * 1000);
     $jsonsrc = json_encode($src,$conf["settings"]["json_flags"]);
     $file->writeClose($jsonsrc);
@@ -1085,12 +1112,17 @@ function updateConfigFile($configstring, $baseVersion = null) {
  * 0    =   Success. CSS file saved.
  * 1    =   failed. User is not logged in or is inactive or not admin (see resp["string"])
  * 2    =   failed. CSS file not found or not writable
+ * 7    =   failed. Global CSS was changed by someone else since baseVersion
+ * 8    =   failed. Settings are managed by the platform hosting this instance (externalsettings.php)
  *
  */
 function updateCSSFile($cssstring, $baseVersion = null) {
 
     global $conf;
     if ($err = requireLogin("admin")) return $err;
+
+    // custom.css is a setting like any other once the platform owns them.
+    if (ftExternalSettingsEnabled()) return ftExternalSettingsRefusal();
 
     if (!is_writable($conf["dir"]["data"]."/custom.css")) {
         $return["status"] = "fail";

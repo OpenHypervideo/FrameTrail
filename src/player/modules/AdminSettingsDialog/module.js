@@ -29,7 +29,13 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
     var presenceContainer = null,
         lockMessageEl     = null,
         applyButton       = null,
-        reloadButton      = null;
+        reloadButton      = null,
+        // The open dialog, so it can be closed from outside a button handler
+        // when the platform takes the settings over underneath it.
+        openDialogCtrl    = null,
+        // One look at the server per opening, on the first sign that the
+        // settings moved: enough to notice a takeover, not a poll of its own.
+        managedRecheckDone = false;
 
     /**
      * I open the admin settings dialog.
@@ -42,6 +48,14 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         // Check if user is admin
         if (FrameTrail.module('UserManagement').userRole !== 'admin') {
             console.error('Admin access required');
+            return;
+        }
+
+        // The platform hosting this instance owns its settings, and every write
+        // this dialog makes would be refused (code 8). The title bar does not
+        // draw its button; this is here for any other caller.
+        if (FrameTrail.module('UserManagement').externalSettings()) {
+            console.error('Settings are managed by the platform hosting this instance');
             return;
         }
 
@@ -162,10 +176,19 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             +   '            </select>'
                             +   '        </div>'
                             +   '        <div class="fieldHint">'+ labels['MessageVideoFit'] +'</div>'
-                            +   '        <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="allowUploads" id="allowUploads" '+((configData.allowUploads && configData.allowUploads.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="allowUploads">'+ labels['SettingsAllowUploads'] +'</label></div>'
+                            // Checked unless the value is literally false: the
+                            // server refuses uploads only on === false, so a
+                            // missing key means allowed, and showing it as off
+                            // would have an Apply turn uploads off by accident.
+                            +   '        <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="allowUploads" id="allowUploads" '+((configData.allowUploads === false || String(configData.allowUploads) === "false") ? "" : "checked")+'><span class="slider round"></span></label><label for="allowUploads">'+ labels['SettingsAllowUploads'] +'</label></div>'
                             +   '        <div class="fieldHint">'+ labels['MessageAllowFileUploads'] +'</div>'
-                            +   '        <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="userNeedsConfirmation" id="userNeedsConfirmation" '+((configData.userNeedsConfirmation && configData.userNeedsConfirmation.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="userNeedsConfirmation">'+ labels['SettingsOnlyConfirmedUsers'] +'</label></div>'
-                            +   '        <div class="fieldHint">'+ labels['MessageUserRequireConfirmation'] +'</div>'
+                            // Confirmation applies to FrameTrail's own
+                            // registration, which external authentication
+                            // refuses; the switch would change nothing. Not
+                            // rendered, so Apply leaves the stored value alone.
+                            +   (FrameTrail.module('UserManagement').externalAuth() ? '' :
+                                '        <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="userNeedsConfirmation" id="userNeedsConfirmation" '+((configData.userNeedsConfirmation && configData.userNeedsConfirmation.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="userNeedsConfirmation">'+ labels['SettingsOnlyConfirmedUsers'] +'</label></div>'
+                            +   '        <div class="fieldHint">'+ labels['MessageUserRequireConfirmation'] +'</div>')
                             +   '    </div>'
                             +   '    <div class="column-9 pl-1">'
                             +   '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="captureUserTraces" id="captureUserTraces" '+((configData.captureUserTraces && configData.captureUserTraces.toString() == "true") ? "checked" : "")+'><span class="slider round"></span></label><label for="captureUserTraces">'+ labels['SettingsCaptureUserActions'] +'</label></div>'
@@ -917,6 +940,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                 lockMessageEl     = null;
                 applyButton       = null;
                 reloadButton      = null;
+                openDialogCtrl    = null;
                 adminDialogCtrl.destroy();
             },
             buttons: [
@@ -998,6 +1022,10 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             var saveCount = 0;
                             var saveTotal = (configChanged ? 1 : 0) + (globalCSSChanged ? 1 : 0);
                             var saveError = null;
+                            // Set when either write came back as code 8: the
+                            // platform took the settings over while this dialog
+                            // was open. Not an error to retry — a reason to go.
+                            var settingsManaged = false;
                             // Highest post-write mtime across both files — the
                             // 'settings' version spans them, so whichever we
                             // wrote last is the one the poll will report.
@@ -1016,7 +1044,9 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                     saveClosed = true;
                                     FrameTrail.module('InterfaceModal').hideMessage(500);
                                     if (saveError) {
-                                        FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingSettings'] || 'Error saving settings');
+                                        if (!settingsManaged) {
+                                            FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingSettings'] || 'Error saving settings');
+                                        }
                                         console.error('Error saving admin settings:', saveError);
                                         // Revert changes on error
                                         if (configChanged) {
@@ -1043,6 +1073,11 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                         FrameTrail.module('Collaboration').acknowledgeVersion(savedVersion, 'settings', 'global');
                                     }
 
+                                    if (settingsManaged) {
+                                        closeAsManaged();
+                                        return;
+                                    }
+
                                     adminDialogCtrl.close();
                                 }
                             }
@@ -1067,6 +1102,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                 FrameTrail.module('Database').saveConfig(function(result) {
                                     if (!result.success) {
                                         saveError = result.error;
+                                        if (result.code === 8) settingsManaged = true;
                                         checkSaveComplete();
                                         return;
                                     }
@@ -1103,6 +1139,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                 FrameTrail.module('Database').saveGlobalCSS(function(result) {
                                     if (!result.success) {
                                         saveError = result.error;
+                                        if (result.code === 8) settingsManaged = true;
                                     } else {
                                         noteSavedVersion(result);
                                     }
@@ -1138,11 +1175,42 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
             ]
         });
 
+        openDialogCtrl     = adminDialogCtrl;
+        managedRecheckDone = false;
+
         // config.json and custom.css are single shared files written whole, so
         // two admins in here would silently erase each other. Claim the
         // 'settings' scope for as long as the dialog is open. This runs
         // alongside the hypervideo scope, not instead of it.
         claimSettingsLock(adminDialogCtrl);
+    }
+
+
+    /**
+     * I close the dialog because the platform hosting this instance has taken
+     * its settings over (externalSettings), and say where they live now.
+     *
+     * The session is re-checked on the way out rather than assumed: that is
+     * what brings externalSettings into UserManagement, and the title bar,
+     * which listens for the login state, drops the settings button with it.
+     *
+     * @method closeAsManaged
+     */
+    function closeAsManaged() {
+
+        var UserManagement = FrameTrail.module('UserManagement');
+
+        if (openDialogCtrl) {
+            openDialogCtrl.close();
+        }
+
+        UserManagement.isLoggedIn(function() {
+            var owner = UserManagement.externalSettings();
+            FrameTrail.module('InterfaceModal').showErrorMessage(
+                labels['MessageSettingsManagedExternally'].replace('%s', (owner && owner.label) ? owner.label : '')
+            );
+        });
+
     }
 
 
@@ -1239,6 +1307,19 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
         if (applyButton)  applyButton.disabled  = blocked;
         if (reloadButton) reloadButton.style.display = (!blocked && stale) ? '' : 'none';
+
+        // The files moved underneath an open dialog. Usually another admin; but
+        // it may be the platform taking the settings over, in which case there
+        // is nothing to reload into. One look, the first time only.
+        if (stale && !managedRecheckDone && openDialogCtrl) {
+            managedRecheckDone = true;
+            var UserManagement = FrameTrail.module('UserManagement');
+            UserManagement.isLoggedIn(function() {
+                if (UserManagement.externalSettings() && openDialogCtrl) {
+                    closeAsManaged();
+                }
+            });
+        }
 
         // Grey out the form itself. The title bar sits outside .ft-dialog-content,
         // so the avatars and the "X is editing…" message stay fully legible, and

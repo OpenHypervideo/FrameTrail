@@ -260,6 +260,7 @@ window.FrameTrail_L10n['fr'] = {
     "MessageSelectResourcesToDelete": "Sélectionner les ressources à supprimer",
     "MessageSessionEnded": "Votre session est terminée. Reconnectez-vous pour continuer à éditer.",
     "MessageSettingsChanged": "Les paramètres ont été modifiés avec succès.",
+    "MessageSettingsManagedExternally": "Les paramètres de cette instance sont gérés dans %s.",
     "MessageSettingsSavedExceptMail": "Les paramètres ont été enregistrés, sauf l'adresse e-mail car elle n'était pas valide !",
     "MessageStateLoading": "Chargement ...",
     "MessageStateLoadingData": "Chargement des données ...",

@@ -57,6 +57,7 @@ $conf["server"]["session_lifetime"] = ini_get('session.gc_maxlifetime');
 
 require_once("functions.incl.php");
 require_once(__DIR__ . "/auth.php");
+require_once(__DIR__ . "/externalsettings.php");
 
 // One chokepoint, before anything has read $_SESSION. Every entry point comes
 // through this file — the ajax dispatcher, the gated _data reader, the sign-in

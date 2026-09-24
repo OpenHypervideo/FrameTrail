@@ -1,6 +1,6 @@
 # Integrating FrameTrail into an existing platform
 
-FrameTrail can run as a component of a larger system — a learning management system, a research portal, a media archive — rather than as a standalone site. This guide covers the part that is hardest to get right: **identity**. When a platform hosts FrameTrail, the platform already knows who the visitor is, and FrameTrail should not ask them again.
+FrameTrail can run as a component of a larger system — a learning management system, a research portal, a media archive — rather than as a standalone site. This guide covers the part that is hardest to get right: **identity**. When a platform hosts FrameTrail, the platform already knows who the visitor is, and FrameTrail should not ask them again. A platform that also decides an instance's settings — whether it is private, whether uploads are allowed — can take those over as well; see [Handing the Instance Settings to the Platform](#handing-the-instance-settings-to-the-platform).
 
 Getting the player onto a page is a separate question, covered in [docs/DEPLOYMENT.md](DEPLOYMENT.md#player-initialization); nothing here depends on how you embed it.
 
@@ -270,6 +270,64 @@ A session established by a platform is bounded from **when it was established**,
 - **`sessionCookie`** names the platform's own session cookie. FrameTrail records its value at hand-off and compares it on every request: if the cookie is gone or different, the person has signed out, signed in as somebody else, or had their platform session expire — all of which end the FrameTrail session too. This is the whole of the propagation mechanism; there is no back channel. It requires the cookie to actually reach FrameTrail, so it is a same-site arrangement. Omit the key and only the absolute bound applies. Also never sent to the browser.
 
 The client puts its next heartbeat just past the known deadline rather than a full session lifetime after it, so an expiry is noticed within seconds.
+
+## Handing the Instance Settings to the Platform
+
+A platform that provisions instances for other people usually has to decide some of what the settings dialog decides: whether an instance may be private is part of what a customer pays for, and uploads are switched off while an account is over its storage limit. A settings dialog that any instance administrator can use undoes those decisions with one click — or with one crafted request, since `configChange` writes whatever it is sent. So an instance can hand **all** of its settings to the platform:
+
+```json
+"externalSettings": {
+    "providerId": "linkedvideo",
+    "label":      "Linked.Video",
+    "manageUrl":  "https://platform.example.org/projects/42"
+}
+```
+
+The key lives in `_data/config.json`, next to `externalAuth`. The switch is on whenever it holds an object, even an empty one, so a malformed value locks the dialog rather than leaving it open. It needs no secret half and no overlay file: the guard reads the file on disk, and `configChange` is the only thing in FrameTrail that writes `config.json` after setup — so refusing it while the key is present is what keeps the key present.
+
+External settings is independent of external authentication, but they are meant to go together: a platform that owns the accounts and not the settings leaves every decision it makes about an instance one dialog away from being reversed.
+
+### What Changes Once External Settings Are On
+
+- **The settings dialog is gone.** Its title bar button is not drawn, and the dialog refuses to open for any other caller. A dialog already open when the platform takes over closes itself, on the first change it notices or on its next save.
+- **`configChange` and `globalCSSChange` are refused** with code `8` ("Settings are managed by the platform hosting this instance"). The public block rides along in `response.externalSettings`. An older client shows its generic save error, which is still true.
+- **The user menu links to `manageUrl`** for administrators, labelled "Administration", in a new tab — the same pattern as `manageUsersUrl`. Omit `manageUrl` and there is no link. "Manage Tags", which used to be reached only through the dialog, moves into the same menu.
+- **The platform is the only writer** of `config.json`, of `custom.css`, and of the privacy gate in `_data/.htaccess`: `ftSyncPrivacyRules()` used to run after every settings save, and there are none now. A platform that makes an instance private writes that rule itself.
+- **Setup counts as done.** `setupCheckDetailed` and `setupInit` treat an instance with either `externalSettings` or `externalAuth` as already set up, whatever files it has, because setup rewrites `custom.css` and the indexes.
+
+What stays with the instance: per-hypervideo themes and CSS (in each `hypervideo.json`), the overview map's content (in `hypervideos/_index.json`), tag definitions, and — unless external authentication is also on — the user accounts.
+
+`manageUrl` reaches the browser only if it starts with `https://`, `http://` or a single `/`; anything else is replaced with an empty string rather than drawn as a link. What the browser learns is a whitelist, `ftExternalSettingsPublic()` in [`src/_server/externalsettings.php`](../src/_server/externalsettings.php).
+
+### Writing the Settings
+
+The keys the dialog used to write, with what FrameTrail does when a key is missing:
+
+| Key | Values | Missing means | Takes effect |
+|-----|--------|---------------|--------------|
+| `defaultTheme` | a theme id, `""` | `classic` | at once |
+| `overviewTitle` | any string, shown as text | the localized "Overview" | at once |
+| `overviewMode` | `"grid"`, `"map"` | grid | on reload |
+| `overviewShowSearchBar` | boolean | off | at once |
+| `defaultLanguage` | `"en"`, `"de"`, `"fr"` | `en` | on reload |
+| `videoFit` | `"contain"`, `"cover"` | `contain` | at once |
+| `allowUploads` | boolean | **allowed** | at once |
+| `captureUserTraces` | boolean | off | on reload |
+| `userTracesStartAction`, `userTracesEndAction` | a user action, e.g. `"UserLogin"`, `"UserLogout"` | **no trace ever starts** | on reload |
+| `userNeedsConfirmation` | boolean | off | has no effect under external authentication |
+| `custom.css` | a file, not a key | empty | at once |
+
+Three traps worth knowing:
+
+- **`allowUploads` and `alwaysForceLogin` are strict.** The server refuses uploads only on `=== false` and treats an instance as private only on `=== true`. Write real booleans, never `"false"`.
+- **An empty trace action matches nothing.** Write both actions explicitly, as setup does.
+- **Write atomically and keep unknown keys.** FrameTrail reads `config.json` while you write it, and a newer release may add keys yours does not know. Read, change what you own, write to a temporary file and rename it over the old one.
+
+Pages that are already open pick changes up through the collaboration poll on the `settings` scope, which watches both files: an administrator sees the usual "settings have changed" notice with Refresh, which re-reads the config and reloads `custom.css`. Keys marked "on reload" need a page load to show.
+
+### Detecting Support
+
+A release supports external settings if it ships `_server/externalsettings.php`. On a running instance, an anonymous `userCheckLogin` that answers with a non-null `externalSettings` proves the deployed code honours the key. Older releases ignore it: their dialog keeps working and keeps writing, so a platform has to treat those instances as settings-owned-by-FrameTrail until they are upgraded.
 
 ## Notes for Specific Platforms
 

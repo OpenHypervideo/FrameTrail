@@ -396,6 +396,7 @@ Runtime config is in `_data/config.json`:
 - `overviewMode` — How the overview presents the hypervideos: `"grid"` (default) or `"map"`
 - `overviewShowSearchBar` — Show a search field in the title bar for filtering the overview by title (default: off). Applies to both presentations; on the map only hypervideos that have been placed can be found, since unplaced ones have no pin
 - `externalAuth` — Defer identity to a hosting platform or identity provider instead of keeping local passwords (see below)
+- `externalSettings` — Hand every setting in this list, and `custom.css`, to the hosting platform: the settings dialog disappears and `configChange` / `globalCSSChange` are refused (see below)
 - `userAvatars` — Whether profile pictures are shown, and where they may come from (default: `off`, see below)
 
 #### Private instances (`alwaysForceLogin`)
@@ -475,7 +476,11 @@ Which keys the browser may see is a whitelist (`ftExternalAuthPublic()` in [`src
 - **HTTPS throughout.** Behind a reverse proxy, `X-Forwarded-Proto` must be set, or the session cookie ships without its `Secure` flag.
 - **`_data/` must stay writable.** The replay store under `_data/.auth/jti/` is fail-closed: a full or read-only disk makes logins fail rather than letting tokens become replayable.
 - **Backups now contain secrets.** The `dataExport` ZIP endpoint skips `.auth/`, but a filesystem `cp -r _data/` does not. Treat those backups accordingly, and check any external export tooling excludes `.auth/` as well.
-- **Preserve the keys on external writes.** Anything that rewrites `config.json` wholesale must carry `externalAuth` and `userAvatars` through, or the instance silently reverts to local passwords.
+- **Preserve the keys on external writes.** Anything that rewrites `config.json` wholesale must carry `externalAuth`, `externalSettings` and `userAvatars` through, or the instance silently reverts to local passwords. FrameTrail's own `configChange` does this for the first two whatever the request carries: they are copied from the file on disk, and dropped if the disk has none.
+
+#### External settings (`externalSettings`)
+
+`{ "providerId": …, "label": …, "manageUrl": … }` in `_data/config.json`. While it is present the platform is the only writer of `config.json`, `custom.css` and the privacy rule in `_data/.htaccess`; the settings dialog is not drawn, and both settings writes are refused with code `8`. See [docs/INTEGRATION.md](INTEGRATION.md#handing-the-instance-settings-to-the-platform) for what changes, the keys and their defaults, and how to detect support.
 
 #### User avatars (`userAvatars`)
 

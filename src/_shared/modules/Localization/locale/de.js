@@ -260,6 +260,7 @@ window.FrameTrail_L10n['de'] = {
     "MessageSelectResourcesToDelete": "Wähle die Ressourcen aus, die du löschen möchtest",
     "MessageSessionEnded": "Deine Sitzung ist beendet. Melde dich erneut an, um weiter zu bearbeiten.",
     "MessageSettingsChanged": "Einstellungen wurden erfolgreich geändert.",
+    "MessageSettingsManagedExternally": "Die Einstellungen dieser Instanz werden in %s verwaltet.",
     "MessageSettingsSavedExceptMail": "Einstellungen wurden erfolgreich geändert (außer der E-Mail Adresse, weil sie nicht gültig war)!",
     "MessageStateLoading": "Wird geladen ...",
     "MessageStateLoadingData": "Lade Inhalte ...",

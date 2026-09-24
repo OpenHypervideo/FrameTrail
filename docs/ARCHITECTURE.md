@@ -507,8 +507,10 @@ All AJAX requests go through `src/_server/ajaxServer.php`:
 | `hypervideoDelete` | Remove hypervideo |
 | `resourcesAdd` | Upload resource |
 | `resourcesDelete` | Remove resource |
-| `configChange` | Update config |
-| `annotationfileSave` | Save user annotations |
+| `configChange` | Update config (admin; refused with code 8 under `externalSettings`) |
+| `configVersions` | Read the compare-and-swap tokens for `config.json` and `custom.css` |
+| `globalCSSChange` | Update `custom.css` (admin; refused with code 8 under `externalSettings`) |
+| `annotationfileSave` | Save user annotations (the hypervideo id is looked up in the index, never used as a path) |
 
 ### Sessions
 

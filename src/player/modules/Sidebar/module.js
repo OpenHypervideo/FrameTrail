@@ -1124,6 +1124,44 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             FrameTrail.module('Collaboration').acknowledgeVersion(null, 'settings', 'global');
         }, function() {});
 
+        reloadGlobalCSS();
+
+    }
+
+
+    /**
+     * I bring custom.css up to date on a page that is already open.
+     *
+     * The 'settings' scope spans config.json and custom.css, but only the first
+     * was ever re-read here: the second was refreshed by the settings dialog,
+     * which reads the file when it opens. When the platform hosting the
+     * instance owns the settings there is no dialog, so this is the only way a
+     * stylesheet changed there reaches an open page.
+     *
+     * Whichever of the two carriers is in the head gets the new text: the
+     * <style> the dialog creates, or the <link> the page loaded with.
+     *
+     * @method reloadGlobalCSS
+     */
+    function reloadGlobalCSS() {
+
+        if (FrameTrail.getState('storageMode') !== 'server') return;
+
+        var styleEl = document.head.querySelector('style.FrameTrailGlobalCustomCSS'),
+            linkEl  = document.head.querySelector('link[href*="custom.css"]');
+
+        if (styleEl) {
+            fetch(FrameTrail.module('RouteNavigation').resolveDataURL('custom.css'), { cache: 'no-cache' })
+                .then(function(r) { return r.ok ? r.text() : Promise.reject(new Error('HTTP ' + r.status)); })
+                .then(function(cssString) { styleEl.textContent = cssString; })
+                .catch(function() {});
+            return;
+        }
+
+        if (linkEl) {
+            linkEl.setAttribute('href', linkEl.getAttribute('href').split('?')[0] + '?v=' + Date.now());
+        }
+
     }
 
 

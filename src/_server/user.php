@@ -385,6 +385,11 @@ function userCheckLogin($userRole = false) {
     // downstream cannot leak through here.
     $return["externalAuth"] = ftExternalAuthPublic();
 
+    // Whether the settings are the platform's, on every heartbeat, so a
+    // settings button drawn before the platform took them over disappears
+    // without a reload. Also a whitelist.
+    $return["externalSettings"] = ftExternalSettingsPublic();
+
     return $return;
 }
 

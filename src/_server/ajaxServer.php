@@ -316,10 +316,14 @@ switch($_REQUEST["a"]) {
 
     case "setupCheckDetailed":
 
-        // Only available before setup is complete
-        $alreadySetup = file_exists($conf["dir"]["data"]."/users.json")
+        // Only available before setup is complete. An instance a platform has
+        // taken over counts as set up whatever files it has: setup would
+        // rewrite custom.css and the indexes, which are the platform's now.
+        $alreadySetup = (file_exists($conf["dir"]["data"]."/users.json")
                      && file_exists($conf["dir"]["data"]."/config.json")
-                     && file_exists($conf["dir"]["data"]."/tagdefinitions.json");
+                     && file_exists($conf["dir"]["data"]."/tagdefinitions.json"))
+                     || ftExternalSettingsEnabled()
+                     || ftExternalAuthEnabled();
 
         if ($alreadySetup) {
             $return["status"] = "success";
@@ -405,10 +409,13 @@ switch($_REQUEST["a"]) {
         break;
 
     case "setupInit":
-        // Guard: reject if setup has already been completed
-        $alreadySetup = file_exists($conf["dir"]["data"]."/users.json")
+        // Guard: reject if setup has already been completed, or if a platform
+        // manages this instance (see setupCheckDetailed).
+        $alreadySetup = (file_exists($conf["dir"]["data"]."/users.json")
                      && file_exists($conf["dir"]["data"]."/config.json")
-                     && file_exists($conf["dir"]["data"]."/tagdefinitions.json");
+                     && file_exists($conf["dir"]["data"]."/tagdefinitions.json"))
+                     || ftExternalSettingsEnabled()
+                     || ftExternalAuthEnabled();
         if ($alreadySetup) {
             $return["status"] = "fail";
             $return["code"]   = 0;
