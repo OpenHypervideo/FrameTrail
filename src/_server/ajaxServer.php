@@ -344,20 +344,10 @@ switch($_REQUEST["a"]) {
                 : "PHP " . phpversion() . " found — 7.4+ required"
         );
 
-        // Root directory writable (needed to create _data/)
-        $rootWritable = file_exists($conf["dir"]["data"]) || is_writable("../");
-        $checks["root_writable"] = array(
-            "pass"   => $rootWritable,
-            "label"  => "Root Directory",
-            "detail" => $rootWritable
-                ? "Writable"
-                : "Not writable. Run: chmod 755 " . realpath("../")
-        );
-
-        // Data directory writable (if it already exists)
+        // Data directory: writable if it exists already (a Docker volume, a folder made by hand), otherwise creatable, which means its parent is writable.
         if (file_exists($conf["dir"]["data"])) {
             $dataWritable = is_writable($conf["dir"]["data"]);
-            $checks["data_writable"] = array(
+            $checks["data_dir"] = array(
                 "pass"   => $dataWritable,
                 "label"  => "Data Directory",
                 "detail" => $dataWritable
@@ -365,10 +355,13 @@ switch($_REQUEST["a"]) {
                     : "Not writable. Run: chmod -R 775 " . realpath($conf["dir"]["data"])
             );
         } else {
-            $checks["data_writable"] = array(
-                "pass"   => true,
+            $rootWritable = is_writable("../");
+            $checks["data_dir"] = array(
+                "pass"   => $rootWritable,
                 "label"  => "Data Directory",
-                "detail" => "Will be created during setup"
+                "detail" => $rootWritable
+                    ? "Will be created during setup"
+                    : "Cannot be created. Run: chmod 755 " . realpath("../")
             );
         }
 

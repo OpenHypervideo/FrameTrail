@@ -409,6 +409,7 @@ When `alwaysForceLogin` is `true`, FrameTrail turns the instance into a real acc
 - The guest ("Edit as Guest") bypass is disabled — a real account is required to view or edit.
 - The `dataExport` ZIP endpoint requires a valid session, and so do the two actions that read `_data` on the server's side: `userGet` (on a public instance it answers anonymous callers with each user's name, colour and avatar, so annotation authors can be drawn) and `fileGetByFilter` (the resource index).
 - The client authenticates first, then loads data.
+- The setup wizard (a "Private Instances" row on its first step, and a hint at its privacy switch) and the admin settings (under the privacy switch) check whether the server applies rewrite rules from `.htaccess`, using the probe in `_server/privacyprobe/`, and warn when it ignores them (PHP's built-in server, nginx) or refuses them (Apache without the needed `AllowOverride` or `FollowSymLinks`). Setup is never blocked by it: an nginx rule written by hand protects `_data` where the probe cannot see it.
 
 How activation works:
 

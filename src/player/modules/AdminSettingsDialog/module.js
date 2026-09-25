@@ -223,6 +223,19 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
         adminTabs.querySelector('#Configuration').appendChild(configurationUI);
 
+        // Whether this server can deliver what the privacy switch promises. Said on every opening, private or not: on a private instance it is the only sign that the files are readable anyway.
+        var privacySwitch = configurationUI.querySelector('#alwaysForceLogin');
+        if (privacySwitch) {
+            probePrivacySupport(function(result) {
+                var labelKey = { ignored: 'MessagePrivacyNotEnforced', refused: 'MessagePrivacyBlocked' }[result];
+                if (!labelKey) return;
+                var privacyMessage = document.createElement('div');
+                privacyMessage.className = 'message active' + (result === 'refused' ? ' error' : '');
+                privacyMessage.textContent = labels[labelKey];
+                privacySwitch.closest('.checkboxRow').nextElementSibling.after(privacyMessage);
+            });
+        }
+
         /**
          * Mark the dialog dirty when any config control changes. Defined here
          * but called after every tab's content exists — config controls live in
@@ -1187,6 +1200,37 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         // 'settings' scope for as long as the dialog is open. This runs
         // alongside the hypervideo scope, not instead of it.
         claimSettingsLock(adminDialogCtrl);
+    }
+
+
+    /**
+     * I ask _server/privacyprobe whether this server applies rewrite rules from .htaccess, which the _data/.htaccess gate of a private instance depends on. The answer is 'supported', 'ignored' (PHP's built-in server, nginx), 'refused' (Apache rejects the rules, so the gate would lock everyone out) or 'unknown'. The setup wizard reads the same probe the same way.
+     *
+     * @method probePrivacySupport
+     * @param {Function} callback
+     * @private
+     */
+    function probePrivacySupport(callback) {
+
+        var url = FrameTrail.module('RouteNavigation').resolveServerURL('privacyprobe/probe.txt');
+        if (!url) {
+            callback('unknown');
+            return;
+        }
+
+        fetch(url, { cache: 'no-store' })
+            .then(function(r) {
+                // Apache answers 500 when overrides may not rewrite, and 403 when FollowSymLinks is off.
+                if (r.status === 403 || r.status === 500) return 'refused';
+                if (!r.ok) return 'unknown';
+                return r.text().then(function(text) {
+                    text = text.trim();
+                    return text === 'rewritten' ? 'supported' : (text === 'static' ? 'ignored' : 'unknown');
+                });
+            })
+            .catch(function() { return 'unknown'; })
+            .then(callback);
+
     }
 
 

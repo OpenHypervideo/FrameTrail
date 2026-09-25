@@ -1,0 +1,5 @@
+# Probe for the private-instance gate. The setup wizard and the admin settings fetch probe.txt and read which file answers: "rewritten" means this server applies rewrite rules from .htaccess, which is what the _data/.htaccess gate of a private instance needs. "static" means it ignores them, and an error means Apache refuses them.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^probe\.txt$ rewritten.txt [L]
+</IfModule>

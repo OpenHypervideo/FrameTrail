@@ -417,9 +417,23 @@
             overflow-y: auto;
         }
 
-        /* --- Step 5: Overview (.optionCards comes from generic.css) --- */
-        /* The wizard is light behind the cards, the overview is not: give each card the theme's own background, so its label reads the way it will there. */
+        /* --- Step 3: overview cards on the left, the other options stacked on the right (.optionCards comes from generic.css) --- */
+        .setup-wizard .layoutRow > .config-overview {
+            padding: 16px 28px 16px 0;
+            border-right: 1px solid var(--secondary-bg-color);
+        }
+
+        .setup-wizard .layoutRow > .config-options {
+            padding-left: 28px;
+        }
+
+        .config-overview .optionCards {
+            margin-top: 8px;
+        }
+
+        /* The wizard is light behind the cards, the overview is not: give each card the theme's own background, so its label reads the way it will there. Narrower than generic.css draws them, so both fit side by side in half the wizard. */
         .setup-wizard .optionCards > div[data-value] {
+            width: 124px;
             background: var(--primary-bg-color);
             color: var(--primary-fg-color);
         }
@@ -514,6 +528,12 @@
                 padding-left: 0;
             }
             .setup-wizard .layoutRow > .toggle-setting:last-of-type { border-bottom: none; }
+            .setup-wizard .layoutRow > .config-overview {
+                padding-right: 0;
+                border-right: none;
+                border-bottom: 1px solid var(--secondary-bg-color);
+            }
+            .setup-wizard .layoutRow > .config-options { padding-left: 0; }
         }
     </style>
 </head>
@@ -561,11 +581,6 @@
             <div class="step-bubble">4</div>
             <div class="step-label">Theme</div>
         </div>
-        <div class="step-connector" id="connector-4-5"></div>
-        <div class="step-item" data-step="5">
-            <div class="step-bubble">5</div>
-            <div class="step-label">Overview</div>
-        </div>
     </nav>
 
     <!-- Step panels -->
@@ -584,14 +599,7 @@
                         <div class="preflight-detail">Checking&#8230;</div>
                     </div>
                 </li>
-                <li class="preflight-item column-6" id="check-root_writable">
-                    <div class="preflight-icon"><span class="preflight-spinner"></span></div>
-                    <div class="preflight-details">
-                        <div class="preflight-label">Root Directory</div>
-                        <div class="preflight-detail">Checking&#8230;</div>
-                    </div>
-                </li>
-                <li class="preflight-item column-6" id="check-data_writable">
+                <li class="preflight-item column-6" id="check-data_dir">
                     <div class="preflight-icon"><span class="preflight-spinner"></span></div>
                     <div class="preflight-details">
                         <div class="preflight-label">Data Directory</div>
@@ -602,6 +610,13 @@
                     <div class="preflight-icon"><span class="preflight-spinner"></span></div>
                     <div class="preflight-details">
                         <div class="preflight-label">Upload Limits</div>
+                        <div class="preflight-detail">Checking&#8230;</div>
+                    </div>
+                </li>
+                <li class="preflight-item column-6" id="check-privacy">
+                    <div class="preflight-icon"><span class="preflight-spinner"></span></div>
+                    <div class="preflight-details">
+                        <div class="preflight-label">Private Instances</div>
                         <div class="preflight-detail">Checking&#8230;</div>
                     </div>
                 </li>
@@ -681,49 +696,65 @@
             <p class="step-subtitle">Sensible defaults are already selected. Everything here can be changed later in the admin panel.</p>
 
             <div class="layoutRow">
-                <div class="toggle-setting column-6">
+                <div class="config-overview column-6">
                     <div class="toggle-text">
-                        <strong>Require approval for new accounts</strong>
-                        <span>New registrations must be approved by an admin before they can log in</span>
+                        <strong>Overview</strong>
+                        <span>How the overview presents your hypervideos</span>
                     </div>
-                    <label class="switch" title="Require admin approval">
-                        <input type="checkbox" id="cfg-confirmation" checked>
-                        <span class="slider round"></span>
-                    </label>
+                    <!-- The same schematics as the admin dialog's Overview tab, drawn in the theme chosen on step 4 for whoever comes back here -->
+                    <div class="optionCards" id="cfg-overviewmode">
+                        <div class="active" data-value="grid">
+                            <div class="optionCardThumb">
+                                <div class="schematicOverview schematicOverviewGrid">
+                                    <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
+                                    <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
+                                    <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
+                                    <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
+                                    <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
+                                </div>
+                            </div>
+                            <span>Grid</span>
+                        </div>
+                        <div data-value="map">
+                            <div class="optionCardThumb">
+                                <div class="schematicOverview schematicOverviewMap">
+                                    <div class="schematicOverviewMarker" style="left:20%; top:26%; width:17px;"><span class="schematicOverviewTitle"></span></div>
+                                    <div class="schematicOverviewMarker" style="left:52%; top:18%; width:13px;"><span class="schematicOverviewTitle"></span></div>
+                                    <div class="schematicOverviewMarker" style="left:74%; top:45%; width:15px;"><span class="schematicOverviewTitle"></span></div>
+                                    <div class="schematicOverviewMarker" style="left:38%; top:60%; width:11px;"><span class="schematicOverviewTitle"></span></div>
+                                </div>
+                            </div>
+                            <span>Map</span>
+                        </div>
+                    </div>
+                    <div class="fieldHint">The map shows your hypervideos as pins on a background image, which you choose after setup.</div>
                 </div>
 
-                <div class="toggle-setting column-6">
-                    <div class="toggle-text">
-                        <strong>Require login to view content</strong>
-                        <span>Visitors must be logged in to access any hypervideo</span>
+                <div class="config-options column-6">
+                    <div class="toggle-setting">
+                        <div class="toggle-text">
+                            <strong>Private instance</strong>
+                            <span>Visitors must be logged in to access any contents</span>
+                            <!-- Filled by probePrivacy() when this server cannot enforce it -->
+                            <div class="preflight-detail warn" id="cfg-forcelogin-warning" hidden></div>
+                        </div>
+                        <label class="switch" title="Private instance">
+                            <input type="checkbox" id="cfg-forcelogin">
+                            <span class="slider round"></span>
+                        </label>
                     </div>
-                    <label class="switch" title="Require login">
-                        <input type="checkbox" id="cfg-forcelogin">
-                        <span class="slider round"></span>
-                    </label>
-                </div>
 
-                <div class="toggle-setting column-6">
-                    <div class="toggle-text">
-                        <strong>Allow file uploads</strong>
-                        <span>Users can upload images, audio, and video files</span>
+                    <div class="toggle-setting">
+                        <div class="toggle-text">
+                            <strong>Interface Language</strong>
+                            <span>The language used for all menus, buttons, and messages</span>
+                        </div>
+                        <select id="cfg-language">
+                            <option value="en">English</option>
+                            <option value="de">Deutsch</option>
+                            <option value="fr">Français</option>
+                        </select>
                     </div>
-                    <label class="switch" title="Allow uploads">
-                        <input type="checkbox" id="cfg-uploads" checked>
-                        <span class="slider round"></span>
-                    </label>
-                </div>
-
-                <div class="toggle-setting column-6">
-                    <div class="toggle-text">
-                        <strong>Interface Language</strong>
-                        <span>The language used for all menus, buttons, and messages</span>
-                    </div>
-                    <select id="cfg-language">
-                        <option value="en">English</option>
-                        <option value="de">Deutsch</option>
-                        <option value="fr">Français</option>
-                    </select>
                 </div>
             </div>
         </div>
@@ -735,42 +766,6 @@
 
             <!-- Filled from THEMES below -->
             <div class="themeContainer" id="cfg-theme"></div>
-        </div>
-
-        <!-- Step 5: Overview -->
-        <div class="step-panel" id="panel-5">
-            <h2>Choose an Overview</h2>
-            <p class="step-subtitle">How the overview presents your hypervideos. It can be changed later in the admin panel.</p>
-
-            <div class="setup-field">
-                <!-- The same schematics as the admin dialog's Overview tab, drawn in the theme chosen on step 4 -->
-                <div class="optionCards" id="cfg-overviewmode">
-                    <div class="active" data-value="grid">
-                        <div class="optionCardThumb">
-                            <div class="schematicOverview schematicOverviewGrid">
-                                <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
-                                <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
-                                <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
-                                <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
-                                <div class="schematicOverviewTile"><span class="schematicOverviewTitle"></span></div>
-                            </div>
-                        </div>
-                        <span>Grid</span>
-                    </div>
-                    <div data-value="map">
-                        <div class="optionCardThumb">
-                            <div class="schematicOverview schematicOverviewMap">
-                                <div class="schematicOverviewMarker" style="left:20%; top:26%; width:17px;"><span class="schematicOverviewTitle"></span></div>
-                                <div class="schematicOverviewMarker" style="left:52%; top:18%; width:13px;"><span class="schematicOverviewTitle"></span></div>
-                                <div class="schematicOverviewMarker" style="left:74%; top:45%; width:15px;"><span class="schematicOverviewTitle"></span></div>
-                                <div class="schematicOverviewMarker" style="left:38%; top:60%; width:11px;"><span class="schematicOverviewTitle"></span></div>
-                            </div>
-                        </div>
-                        <span>Map</span>
-                    </div>
-                </div>
-                <div class="fieldHint">The map shows your hypervideos as pins on a background image, which you choose after setup.</div>
-            </div>
         </div>
 
         <!-- Done -->
@@ -869,9 +864,6 @@
         document.getElementById('connector-3-4').classList.toggle(
             'filled', n === 'done' || n > 3
         );
-        document.getElementById('connector-4-5').classList.toggle(
-            'filled', n === 'done' || n > 4
-        );
 
         showPanel(n === 'done' ? 'panel-done' : 'panel-' + n);
         updateFooter();
@@ -885,7 +877,7 @@
         footer.style.display = '';
         btnBack.style.display  = (currentStep === 1) ? 'none' : '';
         btnSkip.style.display  = (currentStep >= 3) ? '' : 'none';
-        btnNext.innerHTML    = (currentStep === 5) ? 'Save \u0026 Finish' : 'Continue <span class="icon-right-open-big"></span>';
+        btnNext.innerHTML    = (currentStep === 4) ? 'Save \u0026 Finish' : 'Continue <span class="icon-right-open-big"></span>';
         refreshNextButton();
     }
 
@@ -910,10 +902,10 @@
             goToStep(2);
         } else if (currentStep === 2) {
             if (validateStep2()) goToStep(3);
-        } else if (currentStep === 3 || currentStep === 4) {
-            goToStep(currentStep + 1);
-        } else if (currentStep === 5) {
-            submitSetup(5);
+        } else if (currentStep === 3) {
+            goToStep(4);
+        } else if (currentStep === 4) {
+            submitSetup(4);
         }
     });
 
@@ -958,7 +950,7 @@
     }
 
     function runPreflight() {
-        ['php', 'root_writable', 'data_writable', 'upload_limits'].forEach(function (k) {
+        ['php', 'data_dir', 'upload_limits', 'privacy'].forEach(function (k) {
             setCheckState(k, 'loading');
         });
         document.getElementById('recheck-btn').style.display = 'none';
@@ -987,9 +979,10 @@
             preflightOk = allPass;
             btnNext.disabled = !allPass;
             if (!allPass) document.getElementById('recheck-btn').style.display = 'block';
+            probePrivacy();
         })
         .catch(function () {
-            ['php', 'root_writable', 'data_writable', 'upload_limits'].forEach(function (k) {
+            ['php', 'data_dir', 'upload_limits', 'privacy'].forEach(function (k) {
                 setCheckState(k, 'fail', 'Could not reach the server');
             });
             document.getElementById('recheck-btn').style.display = 'block';
@@ -997,6 +990,38 @@
     }
 
     document.getElementById('recheck-btn').addEventListener('click', runPreflight);
+
+    // ── Private instances ─────────────────────────────────────────
+
+    // A private instance is only private where the server applies the rewrite rule in _data/.htaccess. _server/privacyprobe asks the same of this server with a rule of its own. Never a reason to stop: PHP's built-in server is a fine way to try FrameTrail, and a hand-written nginx rule protects _data where this probe cannot see it.
+    var PRIVACY_TEXTS = {
+        supported: 'Supported: a private instance\u2019s files can only be read after signing in',
+        ignored:   'Not enforced: this server ignores .htaccess (PHP\u2019s built-in server, nginx). A private instance would show a sign-in wall, but its files stay readable by URL.',
+        refused:   'Blocked: Apache refuses the rewrite rules in .htaccess. Making the instance private would make its files unreachable for everyone.',
+        unknown:   'Could not be checked'
+    };
+
+    function probePrivacy() {
+        fetch('_server/privacyprobe/probe.txt', { cache: 'no-store' })
+        .then(function (r) {
+            // Apache answers 500 when overrides may not rewrite, and 403 when FollowSymLinks is off: either way the gate would lock everyone out.
+            if (r.status === 403 || r.status === 500) return 'refused';
+            if (!r.ok) return 'unknown';
+            return r.text().then(function (text) {
+                text = text.trim();
+                return text === 'rewritten' ? 'supported' : (text === 'static' ? 'ignored' : 'unknown');
+            });
+        })
+        .catch(function () { return 'unknown'; })
+        .then(function (result) {
+            setCheckState('privacy', result === 'supported' ? 'pass' : 'warn', PRIVACY_TEXTS[result]);
+
+            // The same warning where the decision is made, whatever the switch says.
+            var hint = document.getElementById('cfg-forcelogin-warning');
+            hint.textContent = PRIVACY_TEXTS[result];
+            hint.hidden = !(result === 'ignored' || result === 'refused');
+        });
+    }
 
     // ── Step 2 validation ──────────────────────────────────────────
 
@@ -1085,7 +1110,7 @@
         label.style.color     = color || '';
     }
 
-    // ── Steps 4 and 5: theme and overview ─────────────────────────
+    // ── Overview (step 3) and theme (step 4) ──────────────────────
 
     // In the admin dialog's order, so the two read the same.
     var THEMES = [
@@ -1122,7 +1147,7 @@
         });
         item.classList.add('active');
 
-        // Draw the overview cards in the chosen theme. variables.css themes .themeItem[data-theme] itself, so the card's own computed colours are the theme's.
+        // Draw the overview cards in the chosen theme, for whoever goes back to step 3. variables.css themes .themeItem[data-theme] itself, so the card's own computed colours are the theme's.
         var style = getComputedStyle(item);
         ['--primary-bg-color', '--primary-fg-color', '--secondary-bg-color', '--secondary-fg-color'].forEach(function (name) {
             overviewModeCards.style.setProperty(name, style.getPropertyValue(name));
@@ -1163,22 +1188,15 @@
         params.set('passwd', document.getElementById('field-password').value);
 
         if (appliedThrough >= 3) {
-            params.set('userNeedsConfirmation',
-                document.getElementById('cfg-confirmation').checked ? 'true' : 'false');
+            params.set('overviewMode', selectedOverviewMode());
             params.set('alwaysForceLogin',
                 document.getElementById('cfg-forcelogin').checked ? 'true' : 'false');
-            params.set('allowUploads',
-                document.getElementById('cfg-uploads').checked ? 'true' : 'false');
             params.set('defaultLanguage',
                 document.getElementById('cfg-language').value);
         }
 
         if (appliedThrough >= 4) {
             params.set('defaultTheme', selectedTheme());
-        }
-
-        if (appliedThrough >= 5) {
-            params.set('overviewMode', selectedOverviewMode());
         }
 
         fetch('_server/ajaxServer.php', {
@@ -1221,7 +1239,7 @@
         document.getElementById('preflight-list').style.display   = 'none';
         document.getElementById('noserver-message').style.display = 'block';
         // Dim unavailable steps
-        document.querySelectorAll('[data-step="2"],[data-step="3"],[data-step="4"],[data-step="5"],.step-connector')
+        document.querySelectorAll('[data-step="2"],[data-step="3"],[data-step="4"],.step-connector')
             .forEach(function (el) {
                 el.style.opacity      = '0.3';
                 el.style.pointerEvents = 'none';
