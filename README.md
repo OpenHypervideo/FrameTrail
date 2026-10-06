@@ -2,7 +2,7 @@
 
 [![Build](https://github.com/OpenHypervideo/FrameTrail/actions/workflows/build.yml/badge.svg)](https://github.com/OpenHypervideo/FrameTrail/actions/workflows/build.yml)
 [![Release](https://img.shields.io/github/v/release/OpenHypervideo/FrameTrail)](https://github.com/OpenHypervideo/FrameTrail/releases)
-[![License](https://img.shields.io/badge/license-MIT%20%2F%20GPL%20v3-blue)](LICENSE.md)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE.md)
 
 ## Create, Annotate & Remix Interactive Videos
 
@@ -152,6 +152,6 @@ Joscha Jäger, Michael J. Zeder, Michael Morgenstern, Olivier Aubert, Philo van 
 
 ## License
 
-FrameTrail is dual licensed under [MIT](http://www.opensource.org/licenses/mit-license.php) and [GPL v3](http://www.gnu.org/licenses/gpl-3.0.html).
+FrameTrail is licensed under [MIT](http://www.opensource.org/licenses/mit-license.php).
 
-See [LICENSE.md](LICENSE.md) for details, and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for code ported from third-party projects.
+See [LICENSE.md](LICENSE.md) for details, and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for the third-party libraries, fonts and ported code FrameTrail includes.

@@ -10,8 +10,8 @@ BUILD_DIR="$(cd "$(dirname "$0")/.." && pwd)/build"
 VERSION="${1:-dev}"
 NPM_VERSION="${VERSION#v}"  # Strip leading 'v' (npm requires plain semver)
 
-BANNER_MULTI="/*!\n * FrameTrail ${VERSION} — Open Hypervideo Environment\n * https://github.com/OpenHypervideo/FrameTrail\n * MIT OR GPL-3.0-or-later\n */"
-BANNER_SINGLE="/*! FrameTrail ${VERSION} | https://github.com/OpenHypervideo/FrameTrail | MIT OR GPL-3.0-or-later */"
+BANNER_MULTI="/*!\n * FrameTrail ${VERSION} — Open Hypervideo Environment\n * https://github.com/OpenHypervideo/FrameTrail\n * MIT\n */"
+BANNER_SINGLE="/*! FrameTrail ${VERSION} | https://github.com/OpenHypervideo/FrameTrail | MIT */"
 
 # ──────────────────────────────────────────────
 #  Clean & prepare
@@ -484,7 +484,7 @@ https://github.com/OpenHypervideo/FrameTrail
 
 ## License
 
-FrameTrail is dual licensed under MIT and GPL v3. See LICENSE.md for details, and THIRD-PARTY-NOTICES.md for code ported from third-party projects.
+FrameTrail is licensed under MIT. See LICENSE.md for details, and THIRD-PARTY-NOTICES.md for the third-party libraries, fonts and ported code FrameTrail includes.
 README
 sed -i.bak "s/__VERSION__/${VERSION}/" "$BUILD_DIR/README.md"
 rm -f "$BUILD_DIR/README.md.bak"
@@ -502,7 +502,7 @@ cat > "$BUILD_DIR/package.json" << PKGJSON
   "version": "${NPM_VERSION}",
   "description": "Open Hypervideo Environment",
   "keywords": ["hypervideo", "annotation", "video", "interactive", "overlay"],
-  "license": "MIT OR GPL-3.0-or-later",
+  "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/OpenHypervideo/FrameTrail.git"

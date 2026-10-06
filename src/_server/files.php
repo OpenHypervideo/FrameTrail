@@ -928,35 +928,56 @@ function isAbsoluteUrl($url) {
 
 
 /**
+ * The upload limit as a status response, for callers that check
+ * $response["maxuploadbytes"].
  *
- * Returns a file size limit in bytes based on the PHP upload_max_filesize and post_max_size
- * Credits: Drupal Developers, GPL license v2 or later
- *
- * @return int
- *
+ * @return array
  */
 function fileGetMaxUploadSize() {
-    global $conf;
 
-    static $max_size = -1;
-
-    if ($max_size < 0) {
-        // Start with post_max_size.
-        $max_size = parse_size(ini_get('post_max_size'));
-
-        // If upload_max_size is less, then reduce. Except if upload_max_size is
-        // zero, which indicates no limit.
-        $upload_max = parse_size(ini_get('upload_max_filesize'));
-        if ($upload_max > 0 && $upload_max < $max_size) {
-            $max_size = $upload_max;
-        }
-    }
-
-    $return["maxuploadbytes"] = $max_size;
+    $return["maxuploadbytes"] = ftUploadLimitBytes();
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Max Upload Bytes received";
     return $return;
+
+}
+
+/**
+ * The largest upload PHP accepts, in bytes: the smaller of upload_max_filesize
+ * and post_max_size. A value of 0 sets no limit and is left out, so the result
+ * is 0 only when neither setting limits uploads.
+ *
+ * @return int
+ */
+function ftUploadLimitBytes() {
+
+    $limits = array_filter(array(
+        ftIniBytes(ini_get("upload_max_filesize")),
+        ftIniBytes(ini_get("post_max_size"))
+    ), function($bytes) { return $bytes > 0; });
+
+    return $limits ? min($limits) : 0;
+
+}
+
+/**
+ * A php.ini size such as "400M", "64k" or "1048576", in bytes. PHP knows the
+ * suffixes K, M and G; anything it cannot read counts as 0.
+ *
+ * @param string $value
+ * @return int
+ */
+function ftIniBytes($value) {
+
+    if (!preg_match('/^\s*(\d+)\s*([kmg]?)/i', (string)$value, $match)) {
+        return 0;
+    }
+
+    $exponent = array("" => 0, "k" => 1, "m" => 2, "g" => 3);
+
+    return (int)$match[1] * pow(1024, $exponent[strtolower($match[2])]);
+
 }
 
 /**
@@ -966,30 +987,12 @@ function fileGetMaxUploadSize() {
  * @return array Capabilities response
  */
 function fileGetCapabilities() {
-    $max_size = parse_size(ini_get('post_max_size'));
-    $upload_max = parse_size(ini_get('upload_max_filesize'));
-    if ($upload_max > 0 && $upload_max < $max_size) {
-        $max_size = $upload_max;
-    }
-
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Capabilities retrieved";
-    $return["maxUploadBytes"] = $max_size;
+    $return["maxUploadBytes"] = ftUploadLimitBytes();
     $return["ffmpegAvailable"] = (detectFFmpegPath() !== null);
     return $return;
-}
-
-function parse_size($size) {
-    $unit = preg_replace('/[^bkmgtpezy]/i', '', $size); // Remove the non-unit characters from the size.
-    $size = preg_replace('/[^0-9\.]/', '', $size); // Remove the non-numeric characters from the size.
-    
-    if ($unit) {
-        // Find the position of the unit in the ordered string which is the power of magnitude to multiply a kilobyte by.
-        return round($size * pow(1024, stripos('bkmgtpezy', $unit[0])));
-    } else {
-        return round($size);
-    }
 }
 
 /**

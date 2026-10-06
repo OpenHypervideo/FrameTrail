@@ -268,4 +268,4 @@ When reporting bugs, please include:
 
 ## License
 
-By contributing to FrameTrail, you agree that your contributions will be licensed under the project's dual MIT/GPL v3 license.
+By contributing to FrameTrail, you agree that your contributions will be licensed under the project's MIT license.

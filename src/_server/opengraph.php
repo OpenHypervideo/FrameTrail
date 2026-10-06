@@ -12,6 +12,7 @@
    limitations under the License.
    
     Original can be found at https://github.com/scottmac/opengraph/blob/master/OpenGraph.php
+    Modified for FrameTrail.
    
 */
 class OpenGraph implements Iterator

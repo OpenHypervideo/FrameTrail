@@ -305,157 +305,184 @@ function ftFetchPublicUrl($url, $timeout = 15, $maxBytes = 10485760, $userAgent 
 }
 
 /**
- * sharedFile class
- * @class           sharedFile
- * @file            shared/sharedFile.class.php
- * @brief           This class handles reading/writing a file with an exclusive lock
- * @version         0.1
- * @date            2012-06-28
- * @copyright       OpenSource : LGPLv3
+ * A file held under an exclusive lock for a read-modify-write cycle.
  *
- * This class handles reading/writing a file with an exclusive lock
+ * Opening takes the lock — creating the file first if it does not exist — and
+ * keeps it until close(), writeClose() or the end of the object, so whatever is
+ * read can be written back without losing a change made in between. The lock is
+ * advisory (flock): it only excludes other writers that use this class, which is
+ * why every shared data file is written through it.
+ *
+ * Writes replace the content in place (truncate, then write) instead of writing
+ * a temporary file and renaming it over the old one: a rename would swap the
+ * file out from under a process that is still waiting for the old file's lock.
  */
-class sharedFile{
-    private $file;
-    private $filename;
-    private $fileExist;
-    private $locked;
+class sharedFile {
+
+    /** @var resource|null */
+    private $handle = null;
+
+    /** @var string */
+    private $path;
+
+    /** @var bool Whether the file was there before it was opened here. */
+    private $existed;
+
+    /** @var bool */
+    private $locked = false;
 
     /**
-     * Constructor
-     * @param string $file The file to read
+     * Open the file, creating it if needed, and wait for its exclusive lock.
+     *
+     * @param string $path
      */
-    public function __construct($file){
-        $this->locked = false;
-        $this->filename = $file;
-        $this->fileExist = file_exists($file);
+    public function __construct($path) {
 
-        //Trying to create file
-        if($this->fileExist === false){
-            touch($file);
+        $this->path    = $path;
+        $this->existed = file_exists($path);
+
+        if (!$this->existed) {
+            @touch($path);
         }
 
-        $this->file = @fopen($file, "rb+");
-        if($this->file !== false){
-            $this->locked = flock($this->file, LOCK_EX);
+        $handle = @fopen($path, "rb+");
+        if ($handle !== false) {
+            $this->handle = $handle;
+            $this->locked = flock($handle, LOCK_EX);
         }
+
     }
 
-    /**
-     * Destructor : Perform a lock release if needed
-     */
-    public function __destruct(){
+    public function __destruct() {
         $this->close();
     }
 
     /**
-     * Get the existence state of the file
-     * @return boolean True if the file exists, false otherwise
+     * @return bool Whether the file existed before this object opened it
      */
-    public function exists(){
-        return $this->fileExist;
+    public function exists() {
+        return $this->existed;
     }
 
     /**
-     * Get the filename of the current watched file
-     * @return string The filename
+     * @return string
      */
-    public function getFilename(){
-        return $this->filename;
+    public function getFilename() {
+        return $this->path;
     }
 
     /**
-     * Get the file content (alias of read function)
-     * @return mixed False if there is an open or locked error, a string if the content was fully read
+     * @return bool Whether the exclusive lock is held
      */
-    public function get(){
-        return $this->read();
-    }
-
-    /**
-     * Get the file content
-     * @return mixed False if there is an open or locked error, a string if the content was fully read
-     */
-    public function read(){
-        if($this->file === false && $this->locked !== true){
-            return false;
-        }
-
-        //Start from beginning
-        fseek($this->file, 0);
-        $result = "";
-        //Read data
-        while(!feof($this->file)){
-            $result .= fgets($this->file, 4096);
-        }
-        return $result;
-    }
-
-    /**
-     * Set the file content (alias of write function)
-     * @param string $data The data to store into file
-     * @return boolean True if the data were saved, false otherwise.
-     */
-    public function set($data){
-        return $this->write($data);
-    }
-
-    /**
-     * Set the file content
-     * @param string $data The data to store into file
-     * @return boolean True if the data were saved, false otherwise.
-     */
-    public function write($data){
-        if($this->file === false  && $this->locked !== true){
-            return false;
-        }
-
-        //Clearing content and go back to first characters
-        ftruncate($this->file, 0);
-        rewind($this->file);
-
-        //Save data (in UTF8 if possible)
-        if(!mb_detect_encoding($data, "UTF-8", true)){
-            fwrite($this->file, utf8_encode($data));
-        }else{
-            fwrite($this->file, $data);
-        }
-        fflush($this->file);
-        return true;
-    }
-
-    /**
-     * Write data to file, and close, send back the write state result
-     * @param string $data The data to store into file
-     * @return boolean True if the data were saved, false otherwise.
-     */
-    public function writeClose($data){
-        $tmp = $this->write($data);
-        $this->close();
-        return $tmp;
-    }
-
-    /**
-     * Get the lock state of the file
-     * @return boolean True if the file is locked, false if the lock failed
-     */
-    public function isLocked(){
+    public function isLocked() {
         return $this->locked;
     }
 
     /**
-     * Close the opened file and release the lock
+     * The whole content of the file.
+     *
+     * @return string|false false when the file could not be opened
      */
-    public function close(){
-        if($this->locked === true){
-            flock($this->file, LOCK_UN);
-        }
-        $this->locked = false;
+    public function read() {
 
-        if(($this->file !== false) && (get_resource_type($this->file) === "stream")){
-            fclose($this->file);
+        if ($this->handle === null) {
+            return false;
         }
+
+        rewind($this->handle);
+
+        return stream_get_contents($this->handle);
+
     }
+
+    /**
+     * Same as read().
+     *
+     * @return string|false
+     */
+    public function get() {
+        return $this->read();
+    }
+
+    /**
+     * Replace the whole content of the file. Text that is not valid UTF-8 is
+     * read as ISO-8859-1 and converted, so the data files stay UTF-8.
+     *
+     * @param string $data
+     * @return bool Whether all of it was written
+     */
+    public function write($data) {
+
+        if ($this->handle === null) {
+            return false;
+        }
+
+        $data = (string)$data;
+        if (!mb_check_encoding($data, "UTF-8")) {
+            $data = mb_convert_encoding($data, "UTF-8", "ISO-8859-1");
+        }
+
+        if (!ftruncate($this->handle, 0) || !rewind($this->handle)) {
+            return false;
+        }
+
+        $length  = strlen($data);
+        $written = 0;
+        while ($written < $length) {
+            $bytes = fwrite($this->handle, substr($data, $written));
+            if (!$bytes) {
+                return false;
+            }
+            $written += $bytes;
+        }
+
+        fflush($this->handle);
+
+        return true;
+
+    }
+
+    /**
+     * Same as write().
+     *
+     * @param string $data
+     * @return bool
+     */
+    public function set($data) {
+        return $this->write($data);
+    }
+
+    /**
+     * Write, then release the file.
+     *
+     * @param string $data
+     * @return bool Whether all of it was written
+     */
+    public function writeClose($data) {
+        $written = $this->write($data);
+        $this->close();
+        return $written;
+    }
+
+    /**
+     * Release the lock and the file. Safe to call more than once.
+     */
+    public function close() {
+
+        if ($this->handle === null) {
+            return;
+        }
+
+        if ($this->locked) {
+            flock($this->handle, LOCK_UN);
+            $this->locked = false;
+        }
+
+        fclose($this->handle);
+        $this->handle = null;
+
+    }
+
 }
 
 
