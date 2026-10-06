@@ -133,3 +133,20 @@ a.hotspot-element {
 .hotspotEditorContainer .innerSizeWrapper span {
     font-weight: normal;
 }
+
+/* SVG outline (arrow / underline / freeform shapes, Draw entrance and exit) */
+.hotspot-svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    z-index: 3;
+}
+
+.hotspot-svg .hotspot-stroke {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+}

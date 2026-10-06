@@ -329,7 +329,7 @@ FrameTrail.defineType(
                                 }
                                 mapContainer.remove();
                             }
-                            el.overlayElement.prepend(el.resourceItem.renderContent());
+                            (el.getContentHost ? el.getContentHost() : el.overlayElement).prepend(el.resourceItem.renderContent());
                         } else {
                             (el.contentViewDetailElements || []).forEach(function(item) {
                                 var cvItem = item.jquery ? item[0] : item;

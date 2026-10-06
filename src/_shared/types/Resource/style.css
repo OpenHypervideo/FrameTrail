@@ -314,7 +314,8 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
     color: var(--primary-bg-color);
 }
 
-.editPropertiesContainer input[type="number"] {
+.editPropertiesContainer .timeControls input[type="number"],
+.editPropertiesContainer .positionControls input[type="number"] {
     border: var(--input-border-width) solid var(--primary-bg-color);
     background: var(--primary-fg-color);
     margin: 0px 2px 0px 2px;

@@ -109,6 +109,7 @@ FrameTrail.defineModule('ModuleName', function(FrameTrail) {
 | `HypervideoFormBuilder` | Hypervideo creation/edit forms |
 | `UserTraces` | User activity tracking |
 | `UndoManager` | Undo/redo for editing operations |
+| `AnimationLibrary` | Overlay animation data and math: ease and preset registries, timing windows, box-motion keyframe math, text splitting |
 
 #### Player Modules (`src/player/modules/`)
 
@@ -118,7 +119,9 @@ FrameTrail.defineModule('ModuleName', function(FrameTrail) {
 | `HypervideoModel` | Current hypervideo data model |
 | `HypervideoController` | Playback control, timing |
 | `AnnotationsController` | Annotation lifecycle management |
-| `OverlaysController` | Overlay lifecycle management |
+| `OverlaysController` | Overlay lifecycle management, Custom Overlay gallery |
+| `OverlayAnimator` | Runs overlay animations (CSS, video-synced): transitions, emphasis, text reveals, content animations, box motion |
+| `OverlayAnimationEditor` | Animation tab of the overlay properties panel, keyframe easing menu |
 | `SubtitlesController` | Subtitle loading and display |
 | `CodeSnippetsController` | Code snippet execution at timestamps |
 | `InteractionController` | Drag/drop, resize for editing |

@@ -5,6 +5,7 @@ FrameTrail is dual licensed under the terms of the MIT license (below) and the [
 #### Library Licenses:
 
 * For licenses of included libraries, please check the "_/lib" folder in the repository.
+* Some files contain code ported from third-party projects under other licenses (HyperFrames, Apache-2.0); see [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
 ---
 

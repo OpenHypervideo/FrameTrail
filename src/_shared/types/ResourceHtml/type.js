@@ -284,7 +284,10 @@ FrameTrail.defineType(
 
                                     if (overlayOrAnnotation.overlayElement) {
 
-                                        overlayOrAnnotation.overlayElement.querySelector('.resourceDetail').innerHTML = newHtml;
+                                        // Write into the content wrapper so the license block survives
+                                        var htmlDetail = overlayOrAnnotation.overlayElement.querySelector('.resourceDetail');
+                                        (htmlDetail.querySelector('.resourceContent') || htmlDetail).innerHTML = newHtml;
+                                        if (overlayOrAnnotation.contentChanged) { overlayOrAnnotation.contentChanged(); }
                                         FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 
                                         if (window.oldTextContent != overlayOrAnnotation.data.attributes.text) {

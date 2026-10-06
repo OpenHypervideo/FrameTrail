@@ -167,3 +167,23 @@
     content: attr(data-value) !important;
 }
 
+
+/* Optional title and card style (attributes.title / attributes.box) */
+
+.resourceDetail[data-type="text"] .textOverlayTitle {
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.15;
+    margin-bottom: 0.45em;
+    color: var(--ft-text-title-color, inherit);
+}
+
+.resourceDetail[data-type="text"] .resourceContent.textOverlayCard {
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* Let a card's shadow show outside the overlay box (the card clips its text) */
+.resourceDetail[data-type="text"]:has(> .resourceContent.textOverlayCard) {
+    overflow: visible;
+}

@@ -40,6 +40,7 @@ CSS_FILES=(
     "_shared/styles/frametrail-icons.css"
     "_shared/styles/generic.css"
     "_lib/dialog/dialog.css"
+    "_shared/modules/AnimationLibrary/presets.css"
 
     # Type styles (player types)
     "player/types/Annotation/style.css"
@@ -71,6 +72,9 @@ CSS_FILES=(
     "_shared/types/ResourceUrlPreview/style.css"
     "_shared/types/ResourceMastodon/style.css"
     "_shared/types/ResourceSpotify/style.css"
+    "_shared/types/ResourceCursor/style.css"
+    "_shared/types/ResourceCounter/style.css"
+    "_shared/types/ResourceChart/style.css"
 
     # Type styles (remaining player types)
     "player/types/Subtitle/style.css"
@@ -157,6 +161,9 @@ JS_FILES=(
     "_shared/types/ResourceUrlPreview/type.js"
     "_shared/types/ResourceMastodon/type.js"
     "_shared/types/ResourceSpotify/type.js"
+    "_shared/types/ResourceCursor/type.js"
+    "_shared/types/ResourceCounter/type.js"
+    "_shared/types/ResourceChart/type.js"
     "player/types/Subtitle/type.js"
     "player/types/CodeSnippet/type.js"
     "player/types/Chapter/type.js"
@@ -188,6 +195,7 @@ JS_FILES=(
     "_shared/modules/UserTraces/module.js"
     "_shared/modules/UndoManager/module.js"
     "_shared/modules/Collaboration/module.js"
+    "_shared/modules/AnimationLibrary/module.js"
 
     # Player modules
     "player/modules/AnnotationsController/module.js"
@@ -199,6 +207,8 @@ JS_FILES=(
     "player/modules/InterfaceModal/module.js"
     "player/modules/SignInWall/module.js"
     "player/modules/OverlaysController/module.js"
+    "player/modules/OverlayAnimator/module.js"
+    "player/modules/OverlayAnimationEditor/module.js"
     "player/modules/Sidebar/module.js"
     "player/modules/SubtitlesController/module.js"
     "player/modules/Titlebar/module.js"
@@ -441,6 +451,7 @@ cp -r "$SRC_DIR/_server" "$BUILD_DIR/_server"
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cp "$REPO_ROOT/LICENSE.md" "$BUILD_DIR/"
+cp "$REPO_ROOT/THIRD-PARTY-NOTICES.md" "$BUILD_DIR/"
 
 cat > "$BUILD_DIR/README.md" << 'README'
 # FrameTrail __VERSION__ — Open Hypervideo Environment
@@ -471,7 +482,7 @@ https://github.com/OpenHypervideo/FrameTrail
 
 ## License
 
-FrameTrail is dual licensed under MIT and GPL v3. See LICENSE.md for details.
+FrameTrail is dual licensed under MIT and GPL v3. See LICENSE.md for details, and THIRD-PARTY-NOTICES.md for code ported from third-party projects.
 README
 sed -i.bak "s/__VERSION__/${VERSION}/" "$BUILD_DIR/README.md"
 rm -f "$BUILD_DIR/README.md.bak"

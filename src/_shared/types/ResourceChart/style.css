@@ -1,0 +1,88 @@
+.resourceDetail[data-type="chart"] {
+    background-color: transparent;
+}
+
+.resourceDetail[data-type="chart"] .resourceContent {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.resourceDetail[data-type="chart"] .chartSvg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.resourceDetail[data-type="chart"] .chartLabel,
+.resourceDetail[data-type="chart"] .chartValue,
+.resourceDetail[data-type="chart"] .chartCenterLabel {
+    fill: currentColor;
+    font-size: 16px;
+}
+
+.resourceDetail[data-type="chart"] .chartLabel {
+    opacity: 0.8;
+}
+
+.resourceDetail[data-type="chart"] .chartValue {
+    font-weight: 700;
+}
+
+.resourceDetail[data-type="chart"] .chartCenterValue {
+    fill: currentColor;
+    font-size: 30px;
+    font-weight: 700;
+}
+
+.resourceDetail[data-type="chart"][data-chart-type="ring"] .chartCenterValue {
+    font-size: 40px;
+}
+
+.resourceDetail[data-type="chart"] .chartBar,
+.resourceDetail[data-type="chart"] .chartDot {
+    transform-box: fill-box;
+}
+
+.resourceDetail[data-type="chart"] .chartBar {
+    transform-origin: 50% 100%;
+}
+
+.resourceDetail[data-type="chart"] .chartDot {
+    transform-origin: 50% 50%;
+}
+
+.resourceDetail[data-type="chart"] .chartLine {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+}
+
+/* Driven by the OverlayAnimator (names starting with "ft") */
+@keyframes ftChartGrow {
+    from { scale: 1 0; }
+    to   { scale: 1 1; }
+}
+
+@keyframes ftChartFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes ftChartDraw {
+    from { stroke-dashoffset: 1; }
+    to   { stroke-dashoffset: 0; }
+}
+
+@keyframes ftChartPop {
+    from { scale: 0; }
+    to   { scale: 1; }
+}
+
+@keyframes ftChartArc {
+    from { stroke-dasharray: 0 100; }
+    to   { stroke-dasharray: var(--arc-len, 100) 100; }
+}
+
+.editPropertiesContainer .propertiesTypeIcon[data-type="chart"] [class^="icon-"]::before, .editPropertiesContainer .propertiesTypeIcon[data-type="chart"] [class*=" icon-"]::before {
+    content: "\e86e"; /* icon-chart-bar */
+}

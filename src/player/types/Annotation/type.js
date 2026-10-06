@@ -286,21 +286,21 @@ FrameTrail.defineType(
                         self.makeTimelineElementDraggable();
                         self.makeTimelineElementResizeable();
                     }, 50);
-                    
+
+
+                    // Clicking selects without moving the playhead; double-clicking jumps to my start.
                     this._annotationClickHandler = function(){
+                        AnnotationsController.selectAnnotation(self);
+                    };
 
-                        if (AnnotationsController.annotationInFocus === self){
-                            return AnnotationsController.annotationInFocus = null;
-                        }
-
-                        self.permanentFocusState = true;
-                        AnnotationsController.annotationInFocus = self;
-
+                    this._dblClickHandler = function(evt){
+                        if (evt.target.closest('.ui-resizable-handle')) { return; }
+                        AnnotationsController.selectAnnotation(self);
                         FrameTrail.module('HypervideoController').currentTime = self.data.start;
-
                     };
 
                     this.timelineElement.addEventListener('click', this._annotationClickHandler);
+                    this.timelineElement.addEventListener('dblclick', this._dblClickHandler);
 
                 },
 
@@ -317,6 +317,7 @@ FrameTrail.defineType(
                     this.timelineElement.querySelectorAll('.ui-resizable-handle').forEach(function(h) { h.remove(); });
 
                     if (this._annotationClickHandler) { this.timelineElement.removeEventListener('click', this._annotationClickHandler); this._annotationClickHandler = null; }
+                    if (this._dblClickHandler) { this.timelineElement.removeEventListener('dblclick', this._dblClickHandler); this._dblClickHandler = null; }
 
                 },
 
@@ -342,9 +343,7 @@ FrameTrail.defineType(
                         listeners: {
                             start: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('AnnotationsController').annotationInFocus = self;
-                                }
+                                FrameTrail.module('AnnotationsController').selectAnnotation(self);
 
                                 oldAnnotationData = Object.assign({}, self.data);
 
@@ -390,9 +389,9 @@ FrameTrail.defineType(
 
                             end: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('AnnotationsController').annotationInFocus = null;
-                                }
+                                // The click ending this gesture must not change the selection
+
+                                FrameTrail.module('ViewVideo').swallowNextClick();
 
                                 e.target.classList.remove('ui-draggable-dragging');
 
@@ -517,9 +516,7 @@ FrameTrail.defineType(
 
                                 endHandleGrabbed = !!e.edges.right;
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('AnnotationsController').annotationInFocus = self;
-                                }
+                                FrameTrail.module('AnnotationsController').selectAnnotation(self);
 
                                 oldAnnotationData = Object.assign({}, self.data);
 
@@ -575,9 +572,9 @@ FrameTrail.defineType(
 
                             end: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('AnnotationsController').annotationInFocus = null;
-                                }
+                                // The click ending this gesture must not change the selection
+
+                                FrameTrail.module('ViewVideo').swallowNextClick();
 
                                 var ViewVideo   = FrameTrail.module('ViewVideo');
                                 ViewVideo.hideTimelineSnapIndicator();

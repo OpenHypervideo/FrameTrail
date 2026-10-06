@@ -562,6 +562,7 @@ FrameTrail.defineType(
                                             + '    <div class="overlayOptionsTabs">'
                                             + '        <ul>'
                                             + '            <li><a href="#OverlayOptions">'+ this.labels['GenericOptions'] +'</a></li>'
+                                            + '            <li><a href="#OverlayAnimation">'+ this.labels['SettingsAnimation'] +'</a></li>'
                                             + '            <li class="ui-tabs-right"><a href="#ActionOnEnd">onEnd</a></li>'
                                             + '            <li class="ui-tabs-right"><a href="#ActionOnStart">onStart</a></li>'
                                             + '            <li class="ui-tabs-right"><a href="#ActionOnClick">onClick</a></li>'
@@ -573,42 +574,7 @@ FrameTrail.defineType(
                                             + '            <div class="layoutRow">'
                                             + '                <div class="column-4">'
                                             + '                    <label>'+ this.labels['SettingsOpacity'] +'</label>'
-                                            + '                    <input type="range" class="opacityRange" min="0" max="1" step="0.01" value="'+ (overlay.data.attributes.opacity || 1) +'">'
-                                            + '                </div>'
-                                            + '            </div>'
-                                            + '            <hr>'
-                                            + '            <div class="layoutRow">'
-                                            + '                <div class="column-4">'
-                                            + '                    <label>'+ this.labels['SettingsAnimationIn'] +'</label>'
-                                            + '                    <div class="custom-select">'
-                                            + '                    <select class="animationInSelect">'
-                                            + '                        <option value="none">'+ this.labels['AnimationNone'] +'</option>'
-                                            + '                        <option value="fade">'+ this.labels['AnimationFade'] +'</option>'
-                                            + '                        <option value="slideLeft">'+ this.labels['AnimationSlideLeft'] +'</option>'
-                                            + '                        <option value="slideRight">'+ this.labels['AnimationSlideRight'] +'</option>'
-                                            + '                        <option value="slideUp">'+ this.labels['AnimationSlideUp'] +'</option>'
-                                            + '                        <option value="slideDown">'+ this.labels['AnimationSlideDown'] +'</option>'
-                                            + '                        <option value="zoom">'+ this.labels['AnimationZoom'] +'</option>'
-                                            + '                    </select>'
-                                            + '                    </div>'
-                                            + '                </div>'
-                                            + '                <div class="column-4">'
-                                            + '                    <label>'+ this.labels['SettingsAnimationOut'] +'</label>'
-                                            + '                    <div class="custom-select">'
-                                            + '                    <select class="animationOutSelect">'
-                                            + '                        <option value="none">'+ this.labels['AnimationNone'] +'</option>'
-                                            + '                        <option value="fade">'+ this.labels['AnimationFade'] +'</option>'
-                                            + '                        <option value="slideLeft">'+ this.labels['AnimationSlideLeftOut'] +'</option>'
-                                            + '                        <option value="slideRight">'+ this.labels['AnimationSlideRightOut'] +'</option>'
-                                            + '                        <option value="slideUp">'+ this.labels['AnimationSlideUpOut'] +'</option>'
-                                            + '                        <option value="slideDown">'+ this.labels['AnimationSlideDownOut'] +'</option>'
-                                            + '                        <option value="zoom">'+ this.labels['AnimationZoom'] +'</option>'
-                                            + '                    </select>'
-                                            + '                    </div>'
-                                            + '                </div>'
-                                            + '                <div class="column-4">'
-                                            + '                    <label>'+ this.labels['SettingsAnimationDuration'] +'</label>'
-                                            + '                    <input type="range" class="animationDurationRange" min="100" max="1000" step="50" value="'+ (overlay.data.attributes.animationDuration || 300) +'">'
+                                            + '                    <input type="range" class="opacityRange" min="0" max="1" step="0.01" value="'+ ((overlay.data.attributes.opacity != null) ? overlay.data.attributes.opacity : 1) +'">'
                                             + '                </div>'
                                             + '            </div>'
                                             + '            <hr>'
@@ -663,6 +629,7 @@ FrameTrail.defineType(
                                             + '                </div>'
                                             + '            </div>'
                                             + '        </div>'
+                                            + '        <div id="OverlayAnimation" class="overlayAnimationPanel"></div>'
                                             + '        <div id="ActionOnReady">'
                                             + '            <textarea class="onReadyAction codeTextarea" data-eventname="onReady">' + (overlay.data.events.onReady ? overlay.data.events.onReady : '') + '</textarea>'
                                             + '            <button class="executeActionCode">'+ this.labels['SettingsTestCode'] +'</button>'
@@ -690,9 +657,20 @@ FrameTrail.defineType(
                         controlsContainer.appendChild(_dcw.firstElementChild);
                     }
 
+                    // The Animation tab is rendered by the player's OverlayAnimationEditor
+                    var OverlayAnimationEditor = FrameTrail.module('OverlayAnimationEditor');
+                    if (OverlayAnimationEditor) {
+                        OverlayAnimationEditor.renderAnimationPanel(overlay, controlsContainer.querySelector('#OverlayAnimation'));
+                    } else {
+                        controlsContainer.querySelector('a[href="#OverlayAnimation"]').parentElement.remove();
+                        controlsContainer.querySelector('#OverlayAnimation').remove();
+                    }
+
                     FTTabs(controlsContainer.querySelector('.overlayOptionsTabs'), {
                         heightStyle: 'fill',
+                        active: overlay._lastPropertiesTab || 0,
                         activate: function(event, ui) {
+                            overlay._lastPropertiesTab = FTTabs(controlsContainer.querySelector('.overlayOptionsTabs'), 'option', 'active');
                             FTTabs(controlsContainer.querySelector('.overlayOptionsTabs'), 'refresh');
                             var cm6Wrapper = ui.newPanel.querySelector('.cm6-wrapper');
                             if (cm6Wrapper && cm6Wrapper._cm6view) { cm6Wrapper._cm6view.requestMeasure(); }
@@ -821,31 +799,32 @@ FrameTrail.defineType(
                         });
                     });
 
+                    // Position inputs edit the box at the playhead: the position, or the
+                    // keyframe at the playhead (clamped to the span) when the box moves
+                    // (see Overlay.setRect / editTime)
                     function bindPositionInput(selector, prop, inputId) {
                         var elem = controlsContainer.querySelector(selector);
                         elem.parentElement.setAttribute('data-input-id', inputId);
+                        var applyInput = function(value) {
+                            var oldValue = overlay.getRectAt(overlay.editTime())[prop],
+                                rect = overlay.getRectAt(overlay.editTime());
+                            rect[prop] = parseFloat(value);
+                            if (isNaN(rect[prop])) { return; }
+                            overlay.setRect(rect);
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                            FrameTrail.triggerEvent('userAction', {
+                                action: 'OverlayChange',
+                                overlay: overlay.data,
+                                changes: [{ property: 'position.' + prop, oldValue: oldValue, newValue: rect[prop] }]
+                            });
+                        };
                         elem.addEventListener('input', function(evt) {
-                            if (manualInputMode) {
-                                overlay.data.position[prop] = parseFloat(this.value);
-                                overlay.updateOverlayElement();
-                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                FrameTrail.triggerEvent('userAction', {
-                                    action: 'OverlayChange',
-                                    overlay: overlay.data,
-                                    changes: [{ property: 'position.' + prop, oldValue: oldOverlayData.position[prop], newValue: overlay.data.position[prop] }]
-                                });
-                            }
+                            if (manualInputMode) { applyInput(this.value); }
                         });
                         elem.addEventListener('change', function(evt) {
                             if (manualInputMode) {
-                                overlay.data.position[prop] = parseFloat(evt.target.value);
-                                overlay.updateOverlayElement();
-                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                FrameTrail.triggerEvent('userAction', {
-                                    action: 'OverlayChange',
-                                    overlay: overlay.data,
-                                    changes: [{ property: 'position.' + prop, oldValue: oldOverlayData.position[prop], newValue: overlay.data.position[prop] }]
-                                });
+                                applyInput(evt.target.value);
+                                FrameTrail.module('OverlaysController').refreshMotionControls(overlay);
                             }
                         });
                     }
@@ -857,64 +836,32 @@ FrameTrail.defineType(
                     bindPositionInput('.positionHeight', 'height', 'PositionHeight');
 
                     // Add undo support for position spinners
-                    var positionBeforeEdit = {};
+                    var positionStateBefore = null;
                     ['.positionTop', '.positionLeft', '.positionWidth', '.positionHeight'].forEach(function(sel) {
                         var el = controlsContainer.querySelector(sel);
                         el.addEventListener('focus', function() {
-                            positionBeforeEdit = {
-                                top: overlay.data.position.top,
-                                left: overlay.data.position.left,
-                                width: overlay.data.position.width,
-                                height: overlay.data.position.height
-                            };
+                            positionStateBefore = overlay.snapshotState(['position', 'keyframes']);
                         });
                         el.addEventListener('blur', function() {
-                            var currentPosition = overlay.data.position;
-                            if (positionBeforeEdit.top !== currentPosition.top ||
-                                positionBeforeEdit.left !== currentPosition.left ||
-                                positionBeforeEdit.width !== currentPosition.width ||
-                                positionBeforeEdit.height !== currentPosition.height) {
-                                (function(overlayId, oldPos, newPos, labels) {
-                                    var findOverlay = function() {
-                                        var overlays = FrameTrail.module('HypervideoModel').overlays;
-                                        for (var i = 0; i < overlays.length; i++) {
-                                            if (overlays[i].data.created === overlayId) {
-                                                return overlays[i];
-                                            }
-                                        }
-                                        return null;
-                                    };
-                                    FrameTrail.module('UndoManager').register({
-                                        category: 'overlays',
-                                        description: labels['SidebarOverlays'] + ' Position',
-                                        undo: function() {
-                                            var o = findOverlay();
-                                            if (!o) return;
-                                            o.data.position.top = oldPos.top;
-                                            o.data.position.left = oldPos.left;
-                                            o.data.position.width = oldPos.width;
-                                            o.data.position.height = oldPos.height;
-                                            o.updateOverlayElement();
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                        },
-                                        redo: function() {
-                                            var o = findOverlay();
-                                            if (!o) return;
-                                            o.data.position.top = newPos.top;
-                                            o.data.position.left = newPos.left;
-                                            o.data.position.width = newPos.width;
-                                            o.data.position.height = newPos.height;
-                                            o.updateOverlayElement();
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                        }
-                                    });
-                                })(overlay.data.created, 
-                                   JSON.parse(JSON.stringify(positionBeforeEdit)), 
-                                   JSON.parse(JSON.stringify(currentPosition)), 
-                                   self.labels);
-                            }
+                            if (!positionStateBefore) { return; }
+                            FrameTrail.module('OverlaysController').registerStateUndo(
+                                overlay,
+                                self.labels['SidebarOverlays'] + ' Position',
+                                positionStateBefore,
+                                overlay.snapshotState(['position', 'keyframes'])
+                            );
+                            positionStateBefore = null;
                         });
                     });
+
+                    // With box motion the inputs show the box at the playhead
+                    if (overlay.hasKeyframes()) {
+                        var rectNow = overlay.getRectAt(overlay.editTime());
+                        controlsContainer.querySelector('.positionTop').value    = rectNow.top;
+                        controlsContainer.querySelector('.positionLeft').value   = rectNow.left;
+                        controlsContainer.querySelector('.positionWidth').value  = rectNow.width;
+                        controlsContainer.querySelector('.positionHeight').value = rectNow.height;
+                    }
 
                     if (Array.isArray(overlay.data.attributes) && overlay.data.attributes.length < 1) {
                         overlay.data.attributes = {};
@@ -922,18 +869,15 @@ FrameTrail.defineType(
 
                     // Helper to sync appearance UI controls from current data
                     var syncAppearanceUI = function(a) {
-                        var c = document.querySelector('#OverlayAppearance');
-                        if (!c) return;
-                        c.querySelector('.opacityRange').value = a.opacity || 1;
-                        c.querySelector('.animationInSelect').value = a.animationIn || 'none';
-                        c.querySelector('.animationOutSelect').value = a.animationOut || 'none';
-                        c.querySelector('.animationDurationRange').value = a.animationDuration || 300;
+                        var range = controlsContainer.querySelector('.opacityRange');
+                        if (!range || !range.isConnected) return;
+                        range.value = (a.opacity != null) ? a.opacity : 1;
                     };
 
                     // --- Opacity Range ---
-                    var opacityBeforeChange = overlay.data.attributes.opacity || 1;
+                    var opacityBeforeChange = (overlay.data.attributes.opacity != null) ? overlay.data.attributes.opacity : 1;
                     controlsContainer.querySelector('.opacityRange').addEventListener('focus', function() {
-                        opacityBeforeChange = overlay.data.attributes.opacity || 1;
+                        opacityBeforeChange = (overlay.data.attributes.opacity != null) ? overlay.data.attributes.opacity : 1;
                     });
                     controlsContainer.querySelector('.opacityRange').addEventListener('input', function() {
                         overlay.data.attributes.opacity = parseFloat(this.value);
@@ -976,142 +920,6 @@ FrameTrail.defineType(
                         opacityBeforeChange = newOpacity;
                     });
 
-                    // ==========================================
-                    // ANIMATION CONTROLS
-                    // ==========================================
-
-                    controlsContainer.querySelector('.animationInSelect').value = overlay.data.attributes.animationIn || 'none';
-                    controlsContainer.querySelector('.animationOutSelect').value = overlay.data.attributes.animationOut || 'none';
-
-                    // --- Animation In Select ---
-                    var animInBeforeChange = overlay.data.attributes.animationIn || 'none';
-                    controlsContainer.querySelector('.animationInSelect').addEventListener('focus', function() {
-                        animInBeforeChange = overlay.data.attributes.animationIn || 'none';
-                    });
-                    controlsContainer.querySelector('.animationInSelect').addEventListener('change', function() {
-                        var newValue = this.value;
-                        var oldValue = animInBeforeChange;
-                        overlay.data.attributes.animationIn = newValue;
-                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-
-                        if (oldValue !== newValue) {
-                            (function(overlayId, oldVal, newVal, labels) {
-                                var findOverlay = function() {
-                                    var overlays = FrameTrail.module('HypervideoModel').overlays;
-                                    for (var i = 0; i < overlays.length; i++) {
-                                        if (overlays[i].data.created === overlayId) return overlays[i];
-                                    }
-                                    return null;
-                                };
-                                FrameTrail.module('UndoManager').register({
-                                    category: 'overlays',
-                                    description: labels['SidebarOverlays'] + ' ' + labels['SettingsAnimationIn'],
-                                    undo: function() {
-                                        var o = findOverlay();
-                                        if (!o) return;
-                                        o.data.attributes.animationIn = oldVal;
-                                        syncAppearanceUI(o.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                    },
-                                    redo: function() {
-                                        var o = findOverlay();
-                                        if (!o) return;
-                                        o.data.attributes.animationIn = newVal;
-                                        syncAppearanceUI(o.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                    }
-                                });
-                            })(overlay.data.created, oldValue, newValue, self.labels);
-                        }
-                        animInBeforeChange = newValue;
-                    });
-
-                    // --- Animation Out Select ---
-                    var animOutBeforeChange = overlay.data.attributes.animationOut || 'none';
-                    controlsContainer.querySelector('.animationOutSelect').addEventListener('focus', function() {
-                        animOutBeforeChange = overlay.data.attributes.animationOut || 'none';
-                    });
-                    controlsContainer.querySelector('.animationOutSelect').addEventListener('change', function() {
-                        var newValue = this.value;
-                        var oldValue = animOutBeforeChange;
-                        overlay.data.attributes.animationOut = newValue;
-                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-
-                        if (oldValue !== newValue) {
-                            (function(overlayId, oldVal, newVal, labels) {
-                                var findOverlay = function() {
-                                    var overlays = FrameTrail.module('HypervideoModel').overlays;
-                                    for (var i = 0; i < overlays.length; i++) {
-                                        if (overlays[i].data.created === overlayId) return overlays[i];
-                                    }
-                                    return null;
-                                };
-                                FrameTrail.module('UndoManager').register({
-                                    category: 'overlays',
-                                    description: labels['SidebarOverlays'] + ' ' + labels['SettingsAnimationOut'],
-                                    undo: function() {
-                                        var o = findOverlay();
-                                        if (!o) return;
-                                        o.data.attributes.animationOut = oldVal;
-                                        syncAppearanceUI(o.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                    },
-                                    redo: function() {
-                                        var o = findOverlay();
-                                        if (!o) return;
-                                        o.data.attributes.animationOut = newVal;
-                                        syncAppearanceUI(o.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                    }
-                                });
-                            })(overlay.data.created, oldValue, newValue, self.labels);
-                        }
-                        animOutBeforeChange = newValue;
-                    });
-
-                    // --- Animation Duration Range ---
-                    var durationBeforeChange = overlay.data.attributes.animationDuration || 300;
-                    controlsContainer.querySelector('.animationDurationRange').addEventListener('focus', function() {
-                        durationBeforeChange = overlay.data.attributes.animationDuration || 300;
-                    });
-                    controlsContainer.querySelector('.animationDurationRange').addEventListener('input', function() {
-                        overlay.data.attributes.animationDuration = parseInt(this.value, 10);
-                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                    });
-                    controlsContainer.querySelector('.animationDurationRange').addEventListener('change', function() {
-                        var newDuration = parseInt(this.value, 10);
-                        if (durationBeforeChange !== newDuration) {
-                            (function(overlayId, oldDuration, newDur, labels) {
-                                var findOverlay = function() {
-                                    var overlays = FrameTrail.module('HypervideoModel').overlays;
-                                    for (var i = 0; i < overlays.length; i++) {
-                                        if (overlays[i].data.created === overlayId) return overlays[i];
-                                    }
-                                    return null;
-                                };
-                                FrameTrail.module('UndoManager').register({
-                                    category: 'overlays',
-                                    description: labels['SidebarOverlays'] + ' ' + labels['SettingsAnimationDuration'],
-                                    undo: function() {
-                                        var o = findOverlay();
-                                        if (!o) return;
-                                        o.data.attributes.animationDuration = oldDuration;
-                                        syncAppearanceUI(o.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                    },
-                                    redo: function() {
-                                        var o = findOverlay();
-                                        if (!o) return;
-                                        o.data.attributes.animationDuration = newDur;
-                                        syncAppearanceUI(o.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                    }
-                                });
-                            })(overlay.data.created, durationBeforeChange, newDuration, self.labels);
-                        }
-                        durationBeforeChange = newDuration;
-                    });
-
                     // --- Arrange (Stacking Order) Buttons ---
                     controlsContainer.querySelectorAll('.arrangeButton').forEach(function(btn) {
                         btn.addEventListener('click', function() {
@@ -1123,52 +931,32 @@ FrameTrail.defineType(
                     controlsContainer.querySelectorAll('.alignButton').forEach(function(btn) {
                         btn.addEventListener('click', function() {
 
-                            var position = overlay.data.position,
-                                oldPos = JSON.parse(JSON.stringify(position));
+                            var before = overlay.snapshotState(['position', 'keyframes']),
+                                rect   = overlay.getRectAt(overlay.editTime());
 
                             switch (btn.dataset.align) {
-                                case 'left':    position.left = 0;                           break;
-                                case 'centerH': position.left = (100 - position.width) / 2;  break;
-                                case 'right':   position.left = 100 - position.width;        break;
-                                case 'top':     position.top  = 0;                           break;
-                                case 'middleV': position.top  = (100 - position.height) / 2; break;
-                                case 'bottom':  position.top  = 100 - position.height;       break;
+                                case 'left':    rect.left = 0;                       break;
+                                case 'centerH': rect.left = (100 - rect.width) / 2;  break;
+                                case 'right':   rect.left = 100 - rect.width;        break;
+                                case 'top':     rect.top  = 0;                       break;
+                                case 'middleV': rect.top  = (100 - rect.height) / 2; break;
+                                case 'bottom':  rect.top  = 100 - rect.height;       break;
                             }
 
-                            overlay.updateOverlayElement();
-                            overlay.scaleOverlayElement();
+                            overlay.setRect(rect);
 
-                            controlsContainer.querySelector('.positionTop').value  = position.top;
-                            controlsContainer.querySelector('.positionLeft').value = position.left;
+                            controlsContainer.querySelector('.positionTop').value  = rect.top;
+                            controlsContainer.querySelector('.positionLeft').value = rect.left;
 
                             FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 
-                            (function(overlayId, capturedOldPos, capturedNewPos, labels) {
-                                var findOverlay = function() {
-                                    var overlays = FrameTrail.module('HypervideoModel').overlays;
-                                    for (var i = 0; i < overlays.length; i++) {
-                                        if (overlays[i].data.created === overlayId) return overlays[i];
-                                    }
-                                    return null;
-                                };
-                                var applyPos = function(pos) {
-                                    var o = findOverlay();
-                                    if (!o) return;
-                                    o.data.position.top    = pos.top;
-                                    o.data.position.left   = pos.left;
-                                    o.data.position.width  = pos.width;
-                                    o.data.position.height = pos.height;
-                                    o.updateOverlayElement();
-                                    o.scaleOverlayElement();
-                                    FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                };
-                                FrameTrail.module('UndoManager').register({
-                                    category: 'overlays',
-                                    description: labels['SidebarOverlays'] + ' ' + labels['SettingsAlign'],
-                                    undo: function() { applyPos(capturedOldPos); },
-                                    redo: function() { applyPos(capturedNewPos); }
-                                });
-                            })(overlay.data.created, oldPos, JSON.parse(JSON.stringify(position)), self.labels);
+                            FrameTrail.module('OverlaysController').registerStateUndo(
+                                overlay,
+                                self.labels['SidebarOverlays'] + ' ' + self.labels['SettingsAlign'],
+                                before,
+                                overlay.snapshotState(['position', 'keyframes'])
+                            );
+                            FrameTrail.module('OverlaysController').refreshMotionControls(overlay);
 
                         });
                     });
@@ -1832,6 +1620,155 @@ FrameTrail.defineType(
                  */
                 getDisplayLabel: function() {
                     return this.resourceData.name || this.resourceData.type || '';
+                },
+
+                /**
+                 * I render a small settings form for an overlay's attributes, laid out in
+                 * layoutRows (no new CSS). Every change updates the attribute, re-renders
+                 * the overlay content and registers an undo step.
+                 *
+                 * rows: [[field, field, …], …] — a field is
+                 *   { key, type: 'number'|'text'|'textarea'|'color'|'select'|'switch',
+                 *     labelKey, column (1-12), min, max, step, options: [{ value, label }],
+                 *     hintKey, rerenderOnInput (default true) }
+                 *
+                 * @method renderAttributeForm
+                 * @param {Overlay} overlay
+                 * @param {Array} rows
+                 * @return HTMLElement
+                 */
+                renderAttributeForm: function(overlay, rows) {
+
+                    var self   = this,
+                        attrs  = overlay.data.attributes,
+                        form   = document.createElement('div'),
+                        before = null,
+                        renderTimer = null;
+
+                    form.className = 'attributeForm';
+
+                    var escapeAttr = function(value) {
+                        return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+                    };
+
+                    var rerender = function(immediately) {
+                        window.clearTimeout(renderTimer);
+                        if (immediately) {
+                            overlay.rerenderContent();
+                        } else {
+                            renderTimer = window.setTimeout(function() { overlay.rerenderContent(); }, 150);
+                        }
+                    };
+
+                    var commit = function() {
+                        var after = overlay.snapshotState(['attributes']);
+                        if (before) {
+                            FrameTrail.module('OverlaysController').registerStateUndo(
+                                overlay, self.labels['SidebarOverlays'] + ' ' + self.labels['GenericOptions'], before, after, { rerender: true }
+                            );
+                        }
+                        before = after;
+                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                    };
+
+                    rows.forEach(function(row) {
+
+                        var rowElement = document.createElement('div');
+                        rowElement.className = 'layoutRow';
+
+                        row.forEach(function(field) {
+
+                            var column = document.createElement('div'),
+                                value  = attrs[field.key],
+                                control;
+
+                            column.className = 'column-' + (field.column || 12);
+
+                            if (field.type === 'switch') {
+                                column.innerHTML = '<div class="checkboxRow">'
+                                    + '<label class="switch"><input type="checkbox" autocomplete="off"' + (value ? ' checked' : '') + '><span class="slider round"></span></label>'
+                                    + '<label>' + self.labels[field.labelKey] + '</label>'
+                                    + '</div>';
+                                control = column.querySelector('input');
+                            } else {
+                                column.innerHTML = '<label>' + self.labels[field.labelKey] + '</label>';
+                                if (field.type === 'select') {
+                                    var wrap = document.createElement('div');
+                                    wrap.className = 'custom-select';
+                                    control = document.createElement('select');
+                                    control.innerHTML = field.options.map(function(option) {
+                                        return '<option value="' + escapeAttr(option.value) + '"' + (String(option.value) === String(value) ? ' selected' : '') + '>' + option.label + '</option>';
+                                    }).join('');
+                                    wrap.appendChild(control);
+                                    column.appendChild(wrap);
+                                } else if (field.type === 'textarea') {
+                                    control = document.createElement('textarea');
+                                    control.rows = field.rows || 4;
+                                    control.value = (value == null) ? '' : value;
+                                    column.appendChild(control);
+                                } else {
+                                    control = document.createElement('input');
+                                    control.type = field.type;
+                                    if (field.min != null)  { control.min = field.min; }
+                                    if (field.max != null)  { control.max = field.max; }
+                                    if (field.step != null) { control.step = field.step; }
+                                    control.value = (value == null) ? '' : value;
+                                    column.appendChild(control);
+                                }
+                            }
+
+                            if (field.hintKey) {
+                                column.insertAdjacentHTML('beforeend', '<div class="fieldHint">' + self.labels[field.hintKey] + '</div>');
+                            }
+
+                            var read = function() {
+                                if (field.type === 'switch') { return control.checked; }
+                                if (field.type === 'number') {
+                                    var number = parseFloat(control.value);
+                                    if (isNaN(number)) { return undefined; }
+                                    if (field.min != null) { number = Math.max(field.min, number); }
+                                    if (field.max != null) { number = Math.min(field.max, number); }
+                                    return number;
+                                }
+                                if (field.type === 'select' && field.numeric) { return parseFloat(control.value); }
+                                return control.value;
+                            };
+
+                            control.addEventListener('focus', function() {
+                                before = overlay.snapshotState(['attributes']);
+                            });
+
+                            if (field.type === 'text' || field.type === 'textarea' || field.type === 'number' || field.type === 'color') {
+                                control.addEventListener('input', function() {
+                                    var v = read();
+                                    if (v === undefined) { return; }
+                                    if (!before) { before = overlay.snapshotState(['attributes']); }
+                                    attrs[field.key] = v;
+                                    if (field.rerenderOnInput !== false) { rerender(false); }
+                                });
+                            }
+
+                            control.addEventListener('change', function() {
+                                var v = read();
+                                if (v === undefined) { return; }
+                                if (!before) { before = overlay.snapshotState(['attributes']); }
+                                attrs[field.key] = v;
+                                rerender(true);
+                                commit();
+                            });
+
+                            rowElement.appendChild(column);
+
+                        });
+
+                        form.appendChild(rowElement);
+
+                    });
+
+                    form.appendChild(document.createElement('hr'));
+
+                    return form;
+
                 },
 
                 /**

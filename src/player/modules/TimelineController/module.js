@@ -203,6 +203,20 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
 
 
     /**
+     * The playhead position in percent of the timeline width. Playheads are
+     * created at this position: timeupdate only fires on seeks and while
+     * playing, so a playhead created while paused would otherwise sit at 0.
+     * @method getPlayheadPercent
+     * @private
+     * @return {Number}
+     */
+    function getPlayheadPercent() {
+        if (!duration) return 0;
+        return (toRelative(FrameTrail.module('HypervideoController').currentTime) / duration) * 100;
+    }
+
+
+    /**
      * Handle timeupdate event to sync playhead positions.
      * @method onTimeUpdate
      * @private
@@ -211,7 +225,7 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
         if (!initialized || registeredTimelines.length === 0 || duration === 0) return;
 
         var currentTime = toRelative(FrameTrail.module('HypervideoController').currentTime);
-        var playheadPercent = (currentTime / duration) * 100;
+        var playheadPercent = getPlayheadPercent();
 
         // Update playhead positions on all timelines (percentage of scroller width)
         playheadElements.forEach(function(playhead) {
@@ -387,6 +401,7 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
         // Add playhead indicator inside scroller (positioned absolutely within it)
         var playhead = document.createElement('div');
         playhead.className = 'timelinePlayhead';
+        playhead.style.left = getPlayheadPercent() + '%';
         scroller.appendChild(playhead);
         playheadElements.push(playhead);
 
@@ -409,18 +424,26 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
             var seekTime = Math.max(0, Math.min((x / scrollerWidth) * duration, duration));
             FrameTrail.module('HypervideoController').currentTime = toAbsolute(seekTime);
         };
+        var scrubStartX = 0, scrubMoved = false;
         var scrubStart = function(e) {
             if (e.target.closest('.timelineElement')) return;
             if (e.button !== undefined && e.button !== 0) return;
             scrubbing = true;
+            scrubStartX = e.clientX;
+            scrubMoved = false;
             scroller.setPointerCapture(e.pointerId);
             scrubSeek(e);
         };
         var scrubMove = function(e) {
             if (!scrubbing) return;
+            if (Math.abs(e.clientX - scrubStartX) > 3) scrubMoved = true;
             scrubSeek(e);
         };
-        var scrubEnd = function() { scrubbing = false; };
+        var scrubEnd = function() {
+            // A scrub is not a click on empty space: it keeps the editor's selection
+            if (scrubbing && scrubMoved) FrameTrail.module('ViewVideo').swallowNextClick();
+            scrubbing = false;
+        };
         scroller.addEventListener('pointerdown', scrubStart);
         scroller.addEventListener('pointermove', scrubMove);
         scroller.addEventListener('pointerup', scrubEnd);
@@ -799,6 +822,7 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
         // Re-add playhead indicator to ruler (scroller was emptied above)
         rulerPlayhead = document.createElement('div');
         rulerPlayhead.className = 'timelinePlayhead';
+        rulerPlayhead.style.left = getPlayheadPercent() + '%';
         scroller.appendChild(rulerPlayhead);
 
         // Sync scroll

@@ -25,6 +25,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         ViewVideo              = FrameTrail.module('ViewVideo'),
 
         AnnotationsController  = FrameTrail.initModule('AnnotationsController'),
+        // Before the OverlaysController: overlays attach to it when they render
+        OverlayAnimator        = FrameTrail.initModule('OverlayAnimator'),
         OverlaysController     = FrameTrail.initModule('OverlaysController'),
         CodeSnippetsController = FrameTrail.initModule('CodeSnippetsController'),
         ChaptersController     = FrameTrail.initModule('ChaptersController'),
@@ -36,6 +38,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         isPlaying              = false,
         isStalled              = false,
+        isBuffering            = false,
         stallRequestedBy       = [],
         currentTime            = 0,
         previousTime           = 0,
@@ -141,6 +144,20 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
             videoElement.addEventListener('waiting', function() {
                 FrameTrail.changeState('videoWorking', true);
+                // While buffering the video time stands still: so do the overlay animations
+                isBuffering = true;
+                OverlayAnimator.syncAll();
+            });
+
+            videoElement.addEventListener('playing', function() {
+                if (isBuffering) {
+                    isBuffering = false;
+                    OverlayAnimator.syncAll();
+                }
+            });
+
+            videoElement.addEventListener('ratechange', function() {
+                OverlayAnimator.syncAll();
             });
 
             videoElement.addEventListener('canplaythrough', function() {
@@ -780,6 +797,12 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         ViewVideo.OverlayContainer.onclick = function(evt){
             if (evt.target.classList.contains('overlayContainer')) {
+                // While editing overlays, a click on empty space first clears the selection
+                var OverlaysController = FrameTrail.module('OverlaysController');
+                if (FrameTrail.getState('editMode') === 'overlays' && OverlaysController && OverlaysController.overlayInFocus) {
+                    OverlaysController.overlayInFocus = null;
+                    return;
+                }
                 if ( isPlaying ) {
                     pause();
                 } else {
@@ -1249,6 +1272,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             FrameTrail.triggerEvent('timeupdate', {});
 
             OverlaysController.checkMediaSynchronization();
+            OverlayAnimator.checkSync();
         } else if (HypervideoModel.videoType == 'vimeo') {
             var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
             if (window.player_vimeo[lastVimeoPlayerID]) {
@@ -1259,6 +1283,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                     FrameTrail.triggerEvent('timeupdate', {});
 
                     OverlaysController.checkMediaSynchronization();
+                    OverlayAnimator.checkSync();
                 });
             }
         } else {
@@ -1275,6 +1300,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             FrameTrail.triggerEvent('timeupdate', {});
 
             OverlaysController.checkMediaSynchronization();
+            OverlayAnimator.checkSync();
         }
 
     };
@@ -1332,6 +1358,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         FrameTrail.triggerEvent('timeupdate', {});
 
         OverlaysController.checkMediaSynchronization();
+        OverlayAnimator.checkSync();
 
     };
 
@@ -1572,6 +1599,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         isPlaying = true;
 
         OverlaysController.syncMedia();
+        OverlayAnimator.syncAll();
 
     };
 
@@ -1600,8 +1628,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         isPlaying = false;
         ytSeekPending = null;
+        isBuffering = false;
 
         OverlaysController.syncMedia();
+        OverlayAnimator.syncAll();
 
     };
 
@@ -1664,6 +1694,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
                 isStalled = aBoolean;
 
+                OverlayAnimator.syncAll();
+
             }
 
         } else {
@@ -1698,6 +1730,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 }
 
                 isStalled = aBoolean;
+
+                OverlayAnimator.syncAll();
 
             }
 
@@ -1777,6 +1811,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         lowPriorityUpdater();
 
         OverlaysController.syncMedia();
+        OverlayAnimator.syncAll();
         
         return aNumberAsFloat;
 
@@ -1878,6 +1913,30 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             window.clearInterval(nullVideoIntervalID);
         }
 
+        // Only called when the hypervideo is torn down
+        OverlayAnimator.stop();
+
+    };
+
+    /**
+     * I return the playback rate of the main video (1 for embedded players).
+     *
+     * @method getPlaybackRate
+     * @private
+     */
+    function getPlaybackRate() {
+
+        if (HypervideoModel.videoType == 'native' && videoElement) {
+            return videoElement.playbackRate || 1;
+        }
+        if (HypervideoModel.videoType == 'youtube') {
+            var player = window.player_youtube && window.player_youtube[FrameTrail.getState('lastYoutubePlayerID')];
+            if (player && player.getPlaybackRate) {
+                return player.getPlaybackRate() || 1;
+            }
+        }
+        return 1;
+
     };
 
 
@@ -1906,6 +1965,40 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
          * @readOnly
          */
         get isPlaying()          { return isPlaying               },
+
+        /**
+         * These read-only attributes tell whether playback is held up: by synced media
+         * requesting a stall (isStalled) or by the native video buffering (isBuffering).
+         *
+         * @attribute isStalled
+         * @readOnly
+         */
+        get isStalled()          { return isStalled               },
+        get isBuffering()        { return isBuffering             },
+
+        /**
+         * The exact current time: for a native video read straight from the element
+         * (currentTime is only refreshed on the update tick), otherwise currentTime.
+         *
+         * @attribute preciseTime
+         * @readOnly
+         */
+        get preciseTime()        {
+            if (HypervideoModel.videoType == 'native' && videoElement && !videoElement.seeking) {
+                var t = videoElement.currentTime;
+                if (HypervideoModel.offsetOut && t > HypervideoModel.offsetOut) { t = HypervideoModel.offsetOut; }
+                return t;
+            }
+            return currentTime;
+        },
+
+        /**
+         * The playback rate of the main video (1 for embedded players without one).
+         *
+         * @attribute playbackRate
+         * @readOnly
+         */
+        get playbackRate()       { return getPlaybackRate()       },
 
 
 

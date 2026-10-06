@@ -154,4 +154,4 @@ Joscha Jäger, Michael J. Zeder, Michael Morgenstern, Olivier Aubert, Philo van 
 
 FrameTrail is dual licensed under [MIT](http://www.opensource.org/licenses/mit-license.php) and [GPL v3](http://www.gnu.org/licenses/gpl-3.0.html).
 
-See [LICENSE.md](LICENSE.md) for details.
+See [LICENSE.md](LICENSE.md) for details, and [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for code ported from third-party projects.

@@ -58,6 +58,17 @@ FrameTrail.defineType(
                 this.overlayElement = document.createElement('div');
                 this.overlayElement.className = 'overlayElement';
 
+                // Transitions animate this layer only, never the overlay box: the box
+                // keeps its hover transform, selection outline and resize handles, and
+                // .resourceDetail keeps the transform scaleOverlayElement() writes.
+                this.animationLayer = document.createElement('div');
+                this.animationLayer.className = 'overlayAnimationLayer';
+                this.overlayElement.appendChild(this.animationLayer);
+
+                if (!Array.isArray(this.data.keyframes) || !this.data.keyframes.length) {
+                    delete this.data.keyframes;
+                }
+
 
             },
             prototype: {
@@ -148,7 +159,7 @@ FrameTrail.defineType(
                         this.resourceItem.getDisplayLabel();
 
                     var newOverlayContent = this.resourceItem.renderContent();
-                    this.overlayElement.append(newOverlayContent);
+                    this.getContentHost().append(newOverlayContent);
 
                     this.updateTimelineElement();
                     this.updateOverlayElement();
@@ -192,6 +203,19 @@ FrameTrail.defineType(
                     var _self = this;
 
                     this.updateHoverStyle();
+
+                    var OverlayAnimator = FrameTrail.module('OverlayAnimator');
+                    if (OverlayAnimator) {
+                        OverlayAnimator.attach(this);
+                    }
+
+                    // Scaled types follow their box when box motion animates its size
+                    if (window.ResizeObserver && this.isScaledType()) {
+                        this._resizeObserver = new ResizeObserver(function() {
+                            _self.scaleOverlayElement();
+                        });
+                        this._resizeObserver.observe(this.overlayElement);
+                    }
 
                     this.overlayElement.addEventListener('click', function(evt) {
                         var self = _self;
@@ -290,8 +314,572 @@ FrameTrail.defineType(
                  */
                 removeFromDOM: function () {
 
+                    var OverlayAnimator = FrameTrail.module('OverlayAnimator');
+                    if (OverlayAnimator) {
+                        OverlayAnimator.detach(this);
+                    }
+
+                    if (this._resizeObserver) {
+                        this._resizeObserver.disconnect();
+                        this._resizeObserver = null;
+                    }
+
+                    var detail = this.overlayElement.querySelector('.resourceDetail');
+                    if (detail && detail._ftCleanup) { detail._ftCleanup(); }
+
                     this.timelineElement.remove();
                     this.overlayElement.remove();
+
+                },
+
+                /**
+                 * I return the element my content (.resourceDetail) lives in: the
+                 * animation layer inside my overlayElement.
+                 *
+                 * @method getContentHost
+                 * @return HTMLElement
+                 */
+                getContentHost: function () {
+
+                    return this.animationLayer || this.overlayElement;
+
+                },
+
+                /**
+                 * I tell the OverlayAnimator that my content was re-rendered or edited,
+                 * so text reveals and content animations are rebuilt (debounced).
+                 *
+                 * @method contentChanged
+                 */
+                contentChanged: function () {
+
+                    var self = this;
+
+                    window.clearTimeout(this._contentChangedTimer);
+                    this._contentChangedTimer = window.setTimeout(function() {
+                        var OverlayAnimator = FrameTrail.module('OverlayAnimator');
+                        if (OverlayAnimator) {
+                            OverlayAnimator.invalidate(self);
+                        }
+                    }, 100);
+
+                },
+
+                /**
+                 * I replace my rendered content with a fresh render of my resource item,
+                 * e.g. after an attribute changed that the content markup depends on.
+                 *
+                 * @method rerenderContent
+                 */
+                rerenderContent: function () {
+
+                    var host = this.getContentHost(),
+                        oldDetail = host.querySelector('.resourceDetail'),
+                        newDetail = this.resourceItem.renderContent();
+
+                    if (oldDetail) {
+                        if (oldDetail._ftCleanup) { oldDetail._ftCleanup(); }
+                        host.replaceChild(newDetail, oldDetail);
+                    } else {
+                        host.appendChild(newDetail);
+                    }
+
+                    this.updateOverlayElement();
+                    this.scaleOverlayElement();
+
+                    var OverlayAnimator = FrameTrail.module('OverlayAnimator');
+                    if (OverlayAnimator) {
+                        OverlayAnimator.invalidate(this);
+                    }
+
+                },
+
+
+                /* ---------------------------------------------------------- */
+                /*  Box motion (keyframed position / size)                    */
+                /* ---------------------------------------------------------- */
+
+                /**
+                 * I tell whether my box moves (has keyframes).
+                 * @method hasKeyframes
+                 * @return {Boolean}
+                 */
+                hasKeyframes: function () {
+
+                    return !!(this.data.keyframes && this.data.keyframes.length);
+
+                },
+
+                /**
+                 * I return the current playhead time (absolute seconds).
+                 * @method playheadTime
+                 * @return {Number}
+                 */
+                playheadTime: function () {
+
+                    var HypervideoController = FrameTrail.module('HypervideoController');
+                    return HypervideoController ? HypervideoController.currentTime : this.data.start;
+
+                },
+
+                /**
+                 * I return the time my box is edited at: the playhead, clamped to my
+                 * span. Outside my span, where I am shown as a ghost, that is the
+                 * nearest span edge, which is also where the ghost's box is sampled.
+                 * @method editTime
+                 * @return {Number}
+                 */
+                editTime: function () {
+
+                    return Math.max(this.data.start, Math.min(this.data.end, this.playheadTime()));
+
+                },
+
+                /**
+                 * I return the index of my keyframe at time t (within the 0.1 s a
+                 * keyframe snaps to), or -1.
+                 * @method keyframeIndexAt
+                 * @param {Number} t
+                 * @return {Number}
+                 */
+                keyframeIndexAt: function (t) {
+
+                    var kfs = this.data.keyframes || [];
+                    for (var i = 0; i < kfs.length; i++) {
+                        if (Math.abs(kfs[i].t - t) <= 0.1) {
+                            return i;
+                        }
+                    }
+                    return -1;
+
+                },
+
+                /**
+                 * I return my box at time t: sampled from my keyframes, or my position.
+                 * @method getRectAt
+                 * @param {Number} t
+                 * @return {Object} { top, left, width, height } in percent
+                 */
+                getRectAt: function (t) {
+
+                    if (!this.hasKeyframes()) {
+                        return {
+                            top:    this.data.position.top,
+                            left:   this.data.position.left,
+                            width:  this.data.position.width,
+                            height: this.data.position.height
+                        };
+                    }
+
+                    var box = FrameTrail.module('AnimationLibrary').sampleKeyframes(this.data.keyframes, t);
+                    return { left: box[0], top: box[1], width: box[2], height: box[3] };
+
+                },
+
+                /**
+                 * While my box moves, my position is the union box of the track within
+                 * my span (that is also what the FragmentSelector's xywh says).
+                 * @method syncPositionFromKeyframes
+                 */
+                syncPositionFromKeyframes: function () {
+
+                    if (!this.hasKeyframes()) { return; }
+
+                    var union = FrameTrail.module('AnimationLibrary').unionBox(this.data.keyframes, this.data.start, this.data.end);
+                    this.data.position.top    = union.top;
+                    this.data.position.left   = union.left;
+                    this.data.position.width  = union.width;
+                    this.data.position.height = union.height;
+
+                },
+
+                /**
+                 * I apply a new box. Without box motion it becomes my position; with box
+                 * motion it becomes (or updates) the keyframe at the playhead (clamped to
+                 * my span, see editTime).
+                 * @method setRect
+                 * @param {Object} rect { top, left, width, height } in percent
+                 */
+                setRect: function (rect) {
+
+                    if (this.hasKeyframes()) {
+                        this.upsertKeyframe(this.editTime(), rect);
+                    } else {
+                        this.data.position.top    = rect.top;
+                        this.data.position.left   = rect.left;
+                        this.data.position.width  = rect.width;
+                        this.data.position.height = rect.height;
+                    }
+
+                    this.updateOverlayElement();
+                    this.scaleOverlayElement();
+
+                },
+
+                /**
+                 * I write a keyframe at time t, replacing one within 0.1 s.
+                 * @method upsertKeyframe
+                 * @param {Number} t
+                 * @param {Object} rect
+                 */
+                upsertKeyframe: function (t, rect) {
+
+                    var kfs  = (this.data.keyframes || []).slice(),
+                        xywh = [rect.left, rect.top, rect.width, rect.height],
+                        idx  = this.keyframeIndexAt(t);
+
+                    if (idx !== -1) {
+                        kfs[idx] = { t: kfs[idx].t, xywh: xywh, ease: kfs[idx].ease };
+                    } else {
+                        kfs.push({ t: t, xywh: xywh });
+                    }
+
+                    this.setKeyframes(kfs);
+
+                },
+
+                /**
+                 * I replace my keyframes (normalised), keep my position in sync and
+                 * refresh markers and animation.
+                 * @method setKeyframes
+                 * @param {Array} kfs
+                 */
+                setKeyframes: function (kfs) {
+
+                    var normalized = FrameTrail.module('AnimationLibrary').normalizeKeyframes(kfs);
+
+                    if (normalized) {
+                        this.data.keyframes = normalized;
+                        this.syncPositionFromKeyframes();
+                    } else {
+                        delete this.data.keyframes;
+                    }
+
+                    this.updateOverlayElement();
+                    this.scaleOverlayElement();
+                    this.renderKeyframeMarkers();
+
+                    var OverlayAnimator = FrameTrail.module('OverlayAnimator');
+                    if (OverlayAnimator) {
+                        OverlayAnimator.invalidate(this);
+                    }
+
+                },
+
+                /**
+                 * I switch box motion on (first keyframe at the playhead, clamped to my
+                 * span, from my current position) or off (my position becomes the box
+                 * at the playhead).
+                 * @method setMotionEnabled
+                 * @param {Boolean} enabled
+                 */
+                setMotionEnabled: function (enabled) {
+
+                    var t = this.editTime();
+
+                    if (enabled && !this.hasKeyframes()) {
+                        this.setKeyframes([{
+                            t: t,
+                            xywh: [this.data.position.left, this.data.position.top, this.data.position.width, this.data.position.height]
+                        }]);
+                    } else if (!enabled && this.hasKeyframes()) {
+                        var rect = this.getRectAt(t);
+                        this.setKeyframes(null);
+                        this.data.position.top    = rect.top;
+                        this.data.position.left   = rect.left;
+                        this.data.position.width  = rect.width;
+                        this.data.position.height = rect.height;
+                        this.updateOverlayElement();
+                        this.scaleOverlayElement();
+                    }
+
+                },
+
+                /**
+                 * I render my keyframes as diamonds on my timelineElement (shown while
+                 * editing): click jumps to the keyframe and opens its easing menu, drag
+                 * retimes it.
+                 * @method renderKeyframeMarkers
+                 */
+                renderKeyframeMarkers: function () {
+
+                    var self = this,
+                        el   = this.timelineElement;
+
+                    el.querySelectorAll('.keyframeMarker').forEach(function(marker) {
+                        try { interact(marker).unset(); } catch (e) {}
+                        marker.remove();
+                    });
+
+                    if (!this.hasKeyframes()) { return; }
+
+                    var span = this.data.end - this.data.start;
+                    if (span <= 0) { return; }
+
+                    var editing = el.classList.contains('ui-draggable'),
+                        current = this.keyframeIndexAt(this.playheadTime());
+
+                    this.data.keyframes.forEach(function(kf, idx) {
+
+                        if (kf.t < self.data.start - 0.0005 || kf.t > self.data.end + 0.0005) { return; }
+
+                        var marker = document.createElement('div');
+                        marker.className = 'keyframeMarker';
+                        marker.dataset.index = idx;
+                        marker.style.left = (100 * (kf.t - self.data.start) / span) + '%';
+                        marker.setAttribute('data-tooltip-top', self.labels['MessageKeyframeMarker']);
+                        if (idx === current) {
+                            marker.classList.add('current');
+                        }
+
+                        marker.addEventListener('click', function(evt) {
+                            evt.stopPropagation();
+                            FrameTrail.module('OverlaysController').selectOverlay(self);
+                            FrameTrail.module('HypervideoController').currentTime = self.data.keyframes[idx].t;
+                            FrameTrail.module('OverlayAnimationEditor').openKeyframeMenu(self, idx, marker);
+                        });
+
+                        if (editing) {
+                            var before = null;
+                            interact(marker).draggable({
+                                listeners: {
+                                    start: function() {
+                                        before = self.snapshotState(['keyframes', 'position']);
+                                        FrameTrail.module('OverlayAnimationEditor').closeKeyframeMenu();
+                                    },
+                                    move: function(e) {
+                                        var width = el.offsetWidth,
+                                            left  = parseFloat(marker.style.left) / 100 * width + e.dx,
+                                            t     = self.data.start + Math.max(0, Math.min(width, left)) / width * span,
+                                            kfs   = self.data.keyframes,
+                                            prev  = kfs[idx - 1],
+                                            next  = kfs[idx + 1];
+                                        if (prev) { t = Math.max(t, prev.t + 0.01); }
+                                        if (next) { t = Math.min(t, next.t - 0.01); }
+                                        t = Math.max(self.data.start, Math.min(self.data.end, t));
+                                        kfs[idx].t = t;
+                                        marker.style.left = (100 * (t - self.data.start) / span) + '%';
+                                        FrameTrail.module('HypervideoController').currentTime = t;
+                                    },
+                                    end: function() {
+                                        FrameTrail.module('ViewVideo').swallowNextClick();
+                                        self.setKeyframes(self.data.keyframes);
+                                        FrameTrail.module('OverlaysController').registerStateUndo(self, self.labels['SettingsMotionMoveKeyframe'], before, self.snapshotState(['keyframes', 'position']));
+                                        FrameTrail.module('OverlaysController').refreshMotionControls(self);
+                                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                    }
+                                }
+                            });
+                        }
+
+                        el.appendChild(marker);
+
+                    });
+
+                },
+
+                /**
+                 * I mark the keyframe marker at the playhead.
+                 * @method updateKeyframeMarkerState
+                 * @param {Number} t
+                 */
+                updateKeyframeMarkerState: function (t) {
+
+                    if (!this.hasKeyframes()) { return; }
+
+                    var current = this.keyframeIndexAt(t);
+                    this.timelineElement.querySelectorAll('.keyframeMarker').forEach(function(marker) {
+                        marker.classList.toggle('current', parseInt(marker.dataset.index, 10) === current);
+                    });
+
+                },
+
+                /**
+                 * I write my keyframes after a keyframe edit from the editing UI (the
+                 * keyframe toggle on the video, the easing menu of a diamond) and
+                 * register the undo step. Removing the last keyframe ends box motion,
+                 * leaving the box where it is at the playhead.
+                 * @method editKeyframes
+                 * @param {String} description  undo description
+                 * @param {Function} mutate     receives a copy of my keyframes, returns the new list
+                 */
+                editKeyframes: function (description, mutate) {
+
+                    var before = this.snapshotState(['keyframes', 'position']),
+                        kfs    = mutate((this.data.keyframes || []).map(function(kf) {
+                            return { t: kf.t, xywh: kf.xywh.slice(), ease: kf.ease };
+                        }));
+
+                    if (kfs && kfs.length) {
+                        this.setKeyframes(kfs);
+                    } else {
+                        this.setMotionEnabled(false);
+                    }
+
+                    var OverlaysController = FrameTrail.module('OverlaysController');
+                    OverlaysController.registerStateUndo(this, this.labels['SidebarOverlays'] + ' ' + description, before, this.snapshotState(['keyframes', 'position']));
+                    OverlaysController.refreshMotionControls(this);
+                    FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+
+                },
+
+                /**
+                 * I render the keyframe toggle (a diamond next to my box on the video,
+                 * shown while I am selected and the playhead is inside my span). It sets
+                 * or removes the keyframe at the playhead; once a keyframe exists, moving
+                 * or resizing me sets keyframes at the playhead (see setRect).
+                 * @method renderKeyframeToggle
+                 */
+                renderKeyframeToggle: function () {
+
+                    var self = this;
+
+                    if (this.keyframeToggle) {
+                        this.keyframeToggle.remove();
+                    }
+
+                    var toggle = document.createElement('div');
+                    toggle.className = 'keyframeToggle';
+                    toggle.setAttribute('role', 'button');
+
+                    toggle.addEventListener('pointerdown', function(evt) {
+                        evt.stopPropagation();
+                    });
+                    toggle.addEventListener('dblclick', function(evt) {
+                        evt.stopPropagation();
+                    });
+                    toggle.addEventListener('click', function(evt) {
+                        evt.stopPropagation();
+                        var t = self.playheadTime();
+                        if (t < self.data.start || t > self.data.end) { return; }
+                        var idx = self.keyframeIndexAt(t);
+                        if (idx !== -1) {
+                            self.editKeyframes(self.labels['SettingsMotionDeleteKeyframe'], function(kfs) {
+                                kfs.splice(idx, 1);
+                                return kfs;
+                            });
+                        } else {
+                            var rect = self.getRectAt(t);
+                            self.editKeyframes(self.labels['KeyframeAdd'], function(kfs) {
+                                kfs.push({ t: t, xywh: [rect.left, rect.top, rect.width, rect.height] });
+                                return kfs;
+                            });
+                        }
+                    });
+
+                    this.keyframeToggle = toggle;
+                    this.overlayElement.appendChild(toggle);
+
+                    this.updateKeyframeToggle(this.playheadTime());
+
+                },
+
+                /**
+                 * I update the keyframe toggle for time t: available inside my span,
+                 * filled when a keyframe sits at t, and placed where my box leaves room.
+                 * @method updateKeyframeToggle
+                 * @param {Number} t
+                 */
+                updateKeyframeToggle: function (t) {
+
+                    var toggle = this.keyframeToggle;
+                    if (!toggle) { return; }
+
+                    var inSpan = t >= this.data.start && t <= this.data.end,
+                        on     = inSpan && this.keyframeIndexAt(t) !== -1,
+                        rect   = this.getRectAt(this.editTime()),
+                        atTop  = rect.top < 6;
+
+                    toggle.classList.toggle('available', inSpan);
+                    toggle.classList.toggle('on', on);
+                    toggle.classList.toggle('below', atTop && rect.top + rect.height <= 94);
+                    toggle.classList.toggle('inside', atTop && rect.top + rect.height > 94);
+                    toggle.setAttribute('data-tooltip-right', on ? this.labels['KeyframeRemove'] : this.labels['KeyframeAdd'] + ' – ' + this.labels['KeyframeAddHint']);
+
+                },
+
+                /**
+                 * While I am selected but not shown at the playhead (outside my span and
+                 * my transitions), I am a ghost: dimmed, still editable, showing my
+                 * settled look with my box at the nearest span edge.
+                 * @method setGhost
+                 * @param {Boolean} ghost
+                 */
+                setGhost: function (ghost) {
+
+                    ghost = !!ghost;
+                    if (!!this.ghostState === ghost) { return; }
+
+                    this.ghostState = ghost;
+                    this.overlayElement.classList.toggle('ghost', ghost);
+
+                    var OverlayAnimator = FrameTrail.module('OverlayAnimator');
+                    if (OverlayAnimator) {
+                        OverlayAnimator.setGhost(this, ghost);
+                    }
+
+                },
+
+
+                /* ---------------------------------------------------------- */
+                /*  Undo snapshots                                            */
+                /* ---------------------------------------------------------- */
+
+                /**
+                 * I return a deep copy of some of my data keys, for undo.
+                 * @method snapshotState
+                 * @param {Array} keys (default: start, end, position, keyframes, attributes)
+                 * @return {Object}
+                 */
+                snapshotState: function (keys) {
+
+                    var self  = this,
+                        state = {};
+
+                    (keys || ['start', 'end', 'position', 'keyframes', 'attributes']).forEach(function(key) {
+                        state[key] = (self.data[key] === undefined) ? null : JSON.parse(JSON.stringify(self.data[key]));
+                    });
+
+                    return state;
+
+                },
+
+                /**
+                 * I restore a snapshot taken by snapshotState() and refresh everything
+                 * that depends on it.
+                 * @method applyState
+                 * @param {Object} state
+                 * @param {Object} options { rerender: re-render my content }
+                 */
+                applyState: function (state, options) {
+
+                    var self = this;
+
+                    Object.keys(state).forEach(function(key) {
+                        if (state[key] === null) {
+                            delete self.data[key];
+                        } else {
+                            self.data[key] = JSON.parse(JSON.stringify(state[key]));
+                        }
+                    });
+
+                    if (!this.data.attributes) { this.data.attributes = {}; }
+                    if (!this.data.position)   { this.data.position = {}; }
+
+                    if (options && options.rerender) {
+                        this.rerenderContent();
+                    } else {
+                        this.updateOverlayElement();
+                        this.scaleOverlayElement();
+                    }
+
+                    this.updateHoverStyle();
+                    this.updateTimelineElement();
+
+                    var OverlayAnimator = FrameTrail.module('OverlayAnimator');
+                    if (OverlayAnimator) {
+                        OverlayAnimator.invalidate(this);
+                    }
 
                 },
 
@@ -321,6 +909,46 @@ FrameTrail.defineType(
                         this.timelineElement.classList.add('previewPositionRight');
                     }
 
+                    this.updateTimelineTails();
+
+                    // Every start/end mutation (drag, resize, inputs, undo) ends up here
+                    var span = this.data.start + ',' + this.data.end;
+                    if (this._lastSpan !== undefined && this._lastSpan !== span) {
+                        if (this.hasKeyframes()) {
+                            this.syncPositionFromKeyframes();
+                        }
+                        var OverlayAnimator = FrameTrail.module('OverlayAnimator');
+                        if (OverlayAnimator) {
+                            OverlayAnimator.invalidate(this);
+                        }
+                    }
+                    this._lastSpan = span;
+
+                    this.renderKeyframeMarkers();
+
+                },
+
+                /**
+                 * I show the lead-in and trail-out of my transitions as faded tails
+                 * left and right of my timelineElement.
+                 *
+                 * @method updateTimelineTails
+                 */
+                updateTimelineTails: function () {
+
+                    var OverlayAnimator = FrameTrail.module('OverlayAnimator'),
+                        win  = OverlayAnimator ? OverlayAnimator.getWindow(this) : null,
+                        span = this.data.end - this.data.start;
+
+                    if (!win || span <= 0) {
+                        this.timelineElement.style.removeProperty('--ft-tail-in');
+                        this.timelineElement.style.removeProperty('--ft-tail-out');
+                        return;
+                    }
+
+                    this.timelineElement.style.setProperty('--ft-tail-in',  (win.leadInMs   / 1000 / span).toString());
+                    this.timelineElement.style.setProperty('--ft-tail-out', (win.trailOutMs / 1000 / span).toString());
+
                 },
 
                 /**
@@ -331,15 +959,21 @@ FrameTrail.defineType(
                  */
                 updateOverlayElement: function () {
 
-                    this.overlayElement.style.top    = this.data.position.top    + '%';
-                    this.overlayElement.style.left   = this.data.position.left   + '%';
-                    this.overlayElement.style.width  = this.data.position.width  + '%';
-                    this.overlayElement.style.height = this.data.position.height + '%';
+                    // With box motion the box at the playhead is the truth; the box
+                    // animation overrides it while the overlay is armed anyway.
+                    var rect = this.hasKeyframes()
+                        ? this.getRectAt(FrameTrail.module('HypervideoController') ? FrameTrail.module('HypervideoController').currentTime : this.data.start)
+                        : this.data.position;
+
+                    this.overlayElement.style.top    = rect.top    + '%';
+                    this.overlayElement.style.left   = rect.left   + '%';
+                    this.overlayElement.style.width  = rect.width  + '%';
+                    this.overlayElement.style.height = rect.height + '%';
                     this.overlayElement.style.zIndex = (this.data.attributes.zIndex != null) ? this.data.attributes.zIndex : '';
 
                     var _rdChild = this.overlayElement.querySelector('.resourceDetail');
                     if (_rdChild) {
-                        _rdChild.style.opacity = (this.data.attributes.opacity || 1);
+                        _rdChild.style.opacity = (this.data.attributes.opacity != null) ? this.data.attributes.opacity : 1;
                     }
 
                     var _rd = this.overlayElement.querySelector('.resourceDetail');
@@ -351,13 +985,26 @@ FrameTrail.defineType(
 
 
                 /**
+                 * I tell whether my content is rendered at a reading width and scaled
+                 * to fit (see scaleOverlayElement).
+                 * @method isScaledType
+                 * @return {Boolean}
+                 */
+                isScaledType: function() {
+
+                    return ['wikipedia', 'webpage', 'text', 'html', 'quiz', 'mastodon', 'urlpreview'].indexOf(this.data.type) >= 0;
+
+                },
+
+
+                /**
                 * I scale the overlay element in case the space is too small
                 * (text overlays are always scaled to assure proper display)
                 * @method scaleOverlayElement
                 */
                 scaleOverlayElement: function() {
 
-                    if (this.data.type == 'wikipedia' || this.data.type == 'webpage' || this.data.type == 'text' || this.data.type == 'html' || this.data.type == 'quiz' || this.data.type == 'mastodon' || this.data.type == 'urlpreview') {
+                    if (this.isScaledType()) {
 
                         var elementToScale = this.overlayElement ? this.overlayElement.querySelector('.resourceDetail') : null,
                             wrapperElement = this.overlayElement,
@@ -455,40 +1102,13 @@ FrameTrail.defineType(
                 },
 
                 /**
-                 * I return the CSS class name for the entrance animation.
-                 * @method getAnimationInClass
-                 * @return {String}
-                 */
-                getAnimationInClass: function() {
-                    var anim = this.data.attributes.animationIn || 'none';
-                    return 'anim-in-' + anim;
-                },
-
-                /**
-                 * I return the CSS class name for the exit animation.
-                 * @method getAnimationOutClass
-                 * @return {String}
-                 */
-                getAnimationOutClass: function() {
-                    var anim = this.data.attributes.animationOut || 'none';
-                    return 'anim-out-' + anim;
-                },
-
-                /**
-                 * I remove all animation classes from the overlay element.
-                 * @method clearAnimationClasses
-                 */
-                clearAnimationClasses: function() {
-                    this.overlayElement.classList.remove(
-                        'anim-in-none', 'anim-in-fade', 'anim-in-slideLeft', 'anim-in-slideRight',
-                        'anim-in-slideUp', 'anim-in-slideDown', 'anim-in-zoom',
-                        'anim-out-fade', 'anim-out-slideLeft', 'anim-out-slideRight',
-                        'anim-out-slideUp', 'anim-out-slideDown', 'anim-out-zoom', 'animating-out'
-                    );
-                },
-
-                /**
                  * When I am scheduled to be displayed, this is the method to be called.
+                 *
+                 * Entrance and exit animations are not started here: the OverlayAnimator
+                 * arms animated overlays ahead of their start and runs their transitions
+                 * on the video clock. I only switch on visibility, interactivity, synced
+                 * media and the onStart event, exactly at the activation tick.
+                 *
                  * @method setActive
                  * @param {Boolean} onlyTimelineElement (optional)
                  */
@@ -496,28 +1116,7 @@ FrameTrail.defineType(
 
                     if (!onlyTimelineElement) {
                         if (!this.overlayElement.classList.contains('active')) {
-                            var self = this;
-                            var animIn = this.data.attributes.animationIn || 'none';
-                            var duration = this.data.attributes.animationDuration || 300;
-
-                            this.clearAnimationClasses();
-
-                            if (animIn !== 'none') {
-                                this.overlayElement.style.setProperty('--overlay-anim-duration', duration + 'ms');
-                                this.overlayElement.classList.add('anim-in-' + animIn);
-
-                                // After entrance animation completes, clean up so it can't replay
-                                var onEntranceEnd = function(e) {
-                                    if (e.target === self.overlayElement) {
-                                        self.overlayElement.removeEventListener('animationend', onEntranceEnd);
-                                        self.clearAnimationClasses();
-                                        self.overlayElement.style.opacity = '1';
-                                    }
-                                };
-                                this.overlayElement.addEventListener('animationend', onEntranceEnd);
-                            } else {
-                                this.overlayElement.style.opacity = '1';
-                            }
+                            this.overlayElement.style.opacity = '1';
                         }
                         this.overlayElement.classList.add('active');
 
@@ -552,6 +1151,11 @@ FrameTrail.defineType(
 
                 /**
                  * When I am scheduled to disappear, this is the method to be called.
+                 *
+                 * An exit animation trails after my end time on the OverlayAnimator's
+                 * timeline, so I stop being interactive right away; while the exit plays
+                 * I stay visible through my 'present' state.
+                 *
                  * @method setInactive
                  */
                 setInactive: function () {
@@ -562,10 +1166,6 @@ FrameTrail.defineType(
                         this.overlayElement.classList.remove('active');
                         return;
                     }
-
-                    var self = this;
-                    var animOut = this.data.attributes.animationOut || 'none';
-                    var duration = this.data.attributes.animationDuration || 300;
 
                     if (this.syncedMedia) {
 
@@ -583,41 +1183,9 @@ FrameTrail.defineType(
                         }
                     }
 
-                    // Only play exit animation if the overlay element is visually active.
-                    // When only timeline-activated via setActive(true), the overlay element
-                    // never got 'active' class, so skip the animation to avoid flicker.
-                    var isVisuallyActive = this.overlayElement.classList.contains('active');
-
-                    if (animOut === 'none' || !isVisuallyActive) {
-                        this.clearAnimationClasses();
+                    this.overlayElement.classList.remove('active');
+                    if (!this.overlayElement.classList.contains('present')) {
                         this.overlayElement.style.opacity = '';
-                        this.overlayElement.classList.remove('active');
-                    } else {
-                        this.overlayElement.classList.add('animating-out');
-                        this.clearAnimationClasses();
-                        this.overlayElement.style.opacity = '';
-                        this.overlayElement.style.setProperty('--overlay-anim-duration', duration + 'ms');
-                        this.overlayElement.classList.add('anim-out-' + animOut);
-                        this.overlayElement.classList.add('animating-out');
-
-                        var onAnimEnd = function(e) {
-                            if (e.target === self.overlayElement) {
-                                self.overlayElement.removeEventListener('animationend', onAnimEnd);
-                                self.clearAnimationClasses();
-                                self.overlayElement.classList.remove('active');
-                            }
-                        };
-
-                        this.overlayElement.addEventListener('animationend', onAnimEnd);
-
-                        // Fallback timeout in case animationend doesn't fire
-                        setTimeout(function() {
-                            self.overlayElement.removeEventListener('animationend', onAnimEnd);
-                            if (self.overlayElement.classList.contains('animating-out')) {
-                                self.clearAnimationClasses();
-                                self.overlayElement.classList.remove('active');
-                            }
-                        }, duration + 50);
                     }
 
                     this.activeState = false;
@@ -706,21 +1274,29 @@ FrameTrail.defineType(
                         self.makeOverlayElementResizeable();
                     }, 50);
 
-                    this._editClickHandlerTimeline = this._editClickHandlerOverlay = function putInFocus() {
-
-                        if (OverlaysController.overlayInFocus === self){
-                            return OverlaysController.overlayInFocus = null;
-                        }
-
-                        self.permanentFocusState = true;
-                        OverlaysController.overlayInFocus = self;
-
-                        FrameTrail.module('HypervideoController').currentTime = self.data.start + 0.01;
-
+                    // Clicking selects without moving the playhead; double-clicking the
+                    // timeline element (or my ghost on the video) jumps into my span.
+                    this._editClickHandler = function select() {
+                        OverlaysController.selectOverlay(self);
                     };
 
-                    this.timelineElement.addEventListener('click', this._editClickHandlerTimeline);
-                    this.overlayElement.addEventListener('click', this._editClickHandlerOverlay);
+                    this._editDblClickHandlerTimeline = function jumpToStart(evt) {
+                        if (evt.target.closest('.ui-resizable-handle, .keyframeMarker')) { return; }
+                        OverlaysController.selectOverlay(self);
+                        FrameTrail.module('HypervideoController').currentTime = self.data.start + 0.01;
+                    };
+
+                    this._editDblClickHandlerOverlay = function jumpFromGhost(evt) {
+                        if (!self.ghostState || evt.target.closest('.ui-resizable-handle, .keyframeToggle')) { return; }
+                        FrameTrail.module('HypervideoController').currentTime = self.data.start + 0.01;
+                    };
+
+                    this.timelineElement.addEventListener('click', this._editClickHandler);
+                    this.overlayElement.addEventListener('click', this._editClickHandler);
+                    this.timelineElement.addEventListener('dblclick', this._editDblClickHandlerTimeline);
+                    this.overlayElement.addEventListener('dblclick', this._editDblClickHandlerOverlay);
+
+                    this.renderKeyframeToggle();
 
                 },
 
@@ -747,8 +1323,16 @@ FrameTrail.defineType(
                     this.overlayElement.classList.remove('ui-draggable', 'ui-resizable');
                     this.overlayElement.querySelectorAll('.ui-resizable-handle').forEach(function(e) { e.remove(); });
 
-                    this.timelineElement.removeEventListener('click', this._editClickHandlerTimeline);
-                    this.overlayElement.removeEventListener('click', this._editClickHandlerOverlay);
+                    this.timelineElement.removeEventListener('click', this._editClickHandler);
+                    this.overlayElement.removeEventListener('click', this._editClickHandler);
+                    this.timelineElement.removeEventListener('dblclick', this._editDblClickHandlerTimeline);
+                    this.overlayElement.removeEventListener('dblclick', this._editDblClickHandlerOverlay);
+
+                    if (this.keyframeToggle) {
+                        this.keyframeToggle.remove();
+                        this.keyframeToggle = null;
+                    }
+                    this.setGhost(false);
 
                 },
 
@@ -765,24 +1349,20 @@ FrameTrail.defineType(
                 makeTimelineElementDraggable: function () {
 
                     var self = this,
-                        oldStart,
-                        oldEnd;
+                        stateBefore;
 
                     var el = this.timelineElement;
                     this.timelineElement.classList.add('ui-draggable');
 
                     interact(el).draggable({
-                        ignoreFrom: '.ui-resizable-handle',
+                        ignoreFrom: '.ui-resizable-handle, .keyframeMarker',
                         listeners: {
                             start: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('OverlaysController').overlayInFocus = self;
-                                }
+                                FrameTrail.module('OverlaysController').selectOverlay(self);
 
                                 // Capture old values for undo
-                                oldStart = self.data.start;
-                                oldEnd   = self.data.end;
+                                stateBefore = self.snapshotState(['start', 'end', 'position', 'keyframes']);
 
                                 e.target.dataset.ftX    = e.target.offsetLeft;
                                 e.target.dataset.ftRawX = e.target.offsetLeft;
@@ -826,9 +1406,9 @@ FrameTrail.defineType(
 
                             end: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('OverlaysController').overlayInFocus = null;
-                                }
+                                // The click ending this gesture must not change the selection
+
+                                FrameTrail.module('ViewVideo').swallowNextClick();
 
                                 e.target.classList.remove('ui-draggable-dragging');
 
@@ -852,6 +1432,12 @@ FrameTrail.defineType(
                                 var newStart = (leftPercent * (videoDuration / 100)) + HypervideoModel.offsetIn;
                                 var newEnd   = ((leftPercent + widthPercent) * (videoDuration / 100)) + HypervideoModel.offsetIn;
 
+                                // Moving the whole overlay moves its box-motion keyframes along
+                                var shift = newStart - stateBefore.start;
+                                if (self.hasKeyframes() && shift !== 0) {
+                                    self.data.keyframes.forEach(function(kf) { kf.t += shift; });
+                                }
+
                                 self.data.start = newStart;
                                 self.data.end   = newEnd;
 
@@ -861,40 +1447,12 @@ FrameTrail.defineType(
 
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 
-                                // Register undo command for timeline drag
-                                (function(overlayId, capturedOldStart, capturedOldEnd, capturedNewStart, capturedNewEnd) {
-                                    var findOverlay = function() {
-                                        var overlays = FrameTrail.module('HypervideoModel').overlays;
-                                        for (var i = 0; i < overlays.length; i++) {
-                                            if (overlays[i].data.created === overlayId) {
-                                                return overlays[i];
-                                            }
-                                        }
-                                        return null;
-                                    };
-                                    FrameTrail.module('UndoManager').register({
-                                        category: 'overlays',
-                                        description: self.labels['SidebarOverlays'] + ' Move',
-                                        undo: function() {
-                                            var overlay = findOverlay();
-                                            if (!overlay) return;
-                                            overlay.data.start = capturedOldStart;
-                                            overlay.data.end = capturedOldEnd;
-                                            overlay.updateTimelineElement();
-                                            FrameTrail.module('OverlaysController').stackTimelineView();
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                        },
-                                        redo: function() {
-                                            var overlay = findOverlay();
-                                            if (!overlay) return;
-                                            overlay.data.start = capturedNewStart;
-                                            overlay.data.end = capturedNewEnd;
-                                            overlay.updateTimelineElement();
-                                            FrameTrail.module('OverlaysController').stackTimelineView();
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                        }
-                                    });
-                                })(self.data.created, oldStart, oldEnd, newStart, newEnd);
+                                FrameTrail.module('OverlaysController').registerStateUndo(
+                                    self,
+                                    self.labels['SidebarOverlays'] + ' Move',
+                                    stateBefore,
+                                    self.snapshotState(['start', 'end', 'position', 'keyframes'])
+                                );
 
                             }
                         }
@@ -915,8 +1473,7 @@ FrameTrail.defineType(
 
                     var self = this,
                         endHandleGrabbed,
-                        oldStart,
-                        oldEnd;
+                        stateBefore;
 
                     var el = this.timelineElement;
 
@@ -940,13 +1497,10 @@ FrameTrail.defineType(
 
                                 endHandleGrabbed = !!e.edges.right;
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('OverlaysController').overlayInFocus = self;
-                                }
+                                FrameTrail.module('OverlaysController').selectOverlay(self);
 
                                 // Capture old values for undo
-                                oldStart = self.data.start;
-                                oldEnd   = self.data.end;
+                                stateBefore = self.snapshotState(['start', 'end', 'position', 'keyframes']);
 
                                 e.target.dataset.ftLeft  = e.target.offsetLeft;
                                 e.target.dataset.ftWidth = e.target.offsetWidth;
@@ -1002,9 +1556,9 @@ FrameTrail.defineType(
 
                             end: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('OverlaysController').overlayInFocus = null;
-                                }
+                                // The click ending this gesture must not change the selection
+
+                                FrameTrail.module('ViewVideo').swallowNextClick();
 
                                 var ViewVideo   = FrameTrail.module('ViewVideo');
                                 ViewVideo.hideTimelineSnapIndicator();
@@ -1032,6 +1586,7 @@ FrameTrail.defineType(
                                 var newStart = (leftPercent * (videoDuration / 100)) + HypervideoModel.offsetIn;
                                 var newEnd   = ((leftPercent + widthPercent) * (videoDuration / 100)) + HypervideoModel.offsetIn;
 
+                                // Trimming leaves box-motion keyframes where they are
                                 self.data.start = newStart;
                                 self.data.end   = newEnd;
 
@@ -1043,42 +1598,12 @@ FrameTrail.defineType(
 
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 
-                                // Register undo command for timeline resize
-                                (function(overlayId, capturedOldStart, capturedOldEnd, capturedNewStart, capturedNewEnd) {
-                                    var findOverlay = function() {
-                                        var overlays = FrameTrail.module('HypervideoModel').overlays;
-                                        for (var i = 0; i < overlays.length; i++) {
-                                            if (overlays[i].data.created === overlayId) {
-                                                return overlays[i];
-                                            }
-                                        }
-                                        return null;
-                                    };
-                                    FrameTrail.module('UndoManager').register({
-                                        category: 'overlays',
-                                        description: self.labels['SidebarOverlays'] + ' Resize',
-                                        undo: function() {
-                                            var overlay = findOverlay();
-                                            if (!overlay) return;
-                                            overlay.data.start = capturedOldStart;
-                                            overlay.data.end = capturedOldEnd;
-                                            overlay.updateTimelineElement();
-                                            overlay.scaleOverlayElement();
-                                            FrameTrail.module('OverlaysController').stackTimelineView();
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                        },
-                                        redo: function() {
-                                            var overlay = findOverlay();
-                                            if (!overlay) return;
-                                            overlay.data.start = capturedNewStart;
-                                            overlay.data.end = capturedNewEnd;
-                                            overlay.updateTimelineElement();
-                                            overlay.scaleOverlayElement();
-                                            FrameTrail.module('OverlaysController').stackTimelineView();
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                        }
-                                    });
-                                })(self.data.created, oldStart, oldEnd, newStart, newEnd);
+                                FrameTrail.module('OverlaysController').registerStateUndo(
+                                    self,
+                                    self.labels['SidebarOverlays'] + ' Resize',
+                                    stateBefore,
+                                    self.snapshotState(['start', 'end', 'position', 'keyframes'])
+                                );
 
                             }
                         }
@@ -1099,27 +1624,23 @@ FrameTrail.defineType(
                 makeOverlayElementDraggable: function () {
 
                     var self = this,
-                        oldPosition;
+                        stateBefore;
 
                     var el = this.overlayElement;
                     this.overlayElement.classList.add('ui-draggable');
 
                     interact(el).draggable({
-                        ignoreFrom: '.ui-resizable-handle',
+                        ignoreFrom: '.ui-resizable-handle, .keyframeToggle',
                         listeners: {
                             start: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('OverlaysController').overlayInFocus = self;
-                                }
+                                FrameTrail.module('OverlaysController').selectOverlay(self);
 
-                                // Capture old position for undo
-                                oldPosition = {
-                                    top:    self.data.position.top,
-                                    left:   self.data.position.left,
-                                    width:  self.data.position.width,
-                                    height: self.data.position.height
-                                };
+                                // Capture old state for undo
+                                stateBefore = self.snapshotState(['position', 'keyframes']);
+
+                                // The box animation must not fight the inline position below
+                                FrameTrail.module('OverlayAnimator').suspendBox(self, true);
 
                                 // Convert % positioning to px for interaction
                                 e.target.dataset.ftX = e.target.offsetLeft;
@@ -1159,9 +1680,9 @@ FrameTrail.defineType(
 
                             end: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('OverlaysController').overlayInFocus = null;
-                                }
+                                // The click ending this gesture must not change the selection
+
+                                FrameTrail.module('ViewVideo').swallowNextClick();
 
                                 var x = parseFloat(e.target.dataset.ftX);
                                 var y = parseFloat(e.target.dataset.ftY);
@@ -1183,61 +1704,19 @@ FrameTrail.defineType(
                                     height: e.target.offsetHeight / parent.offsetHeight * 100
                                 };
 
-                                self.data.position.top    = newPosition.top;
-                                self.data.position.left   = newPosition.left;
-                                self.data.position.width  = newPosition.width;
-                                self.data.position.height = newPosition.height;
-
-                                self.updateOverlayElement();
+                                // Position, or the keyframe at the playhead when the box moves
+                                self.setRect(newPosition);
+                                FrameTrail.module('OverlayAnimator').suspendBox(self, false);
 
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 
-                                // Register undo command for overlay drag
-                                (function(overlayId, capturedOldPos, capturedNewPos) {
-                                    var findOverlay = function() {
-                                        var overlays = FrameTrail.module('HypervideoModel').overlays;
-                                        for (var i = 0; i < overlays.length; i++) {
-                                            if (overlays[i].data.created === overlayId) {
-                                                return overlays[i];
-                                            }
-                                        }
-                                        return null;
-                                    };
-                                    FrameTrail.module('UndoManager').register({
-                                        category: 'overlays',
-                                        description: self.labels['SidebarOverlays'] + ' Move',
-                                        undo: function() {
-                                            var overlay = findOverlay();
-                                            if (!overlay) return;
-                                            overlay.data.position.top    = capturedOldPos.top;
-                                            overlay.data.position.left   = capturedOldPos.left;
-                                            overlay.data.position.width  = capturedOldPos.width;
-                                            overlay.data.position.height = capturedOldPos.height;
-                                            overlay.overlayElement.style.top    = '';
-                                            overlay.overlayElement.style.left   = '';
-                                            overlay.overlayElement.style.width  = '';
-                                            overlay.overlayElement.style.height = '';
-                                            overlay.updateOverlayElement();
-                                            overlay.scaleOverlayElement();
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                        },
-                                        redo: function() {
-                                            var overlay = findOverlay();
-                                            if (!overlay) return;
-                                            overlay.data.position.top    = capturedNewPos.top;
-                                            overlay.data.position.left   = capturedNewPos.left;
-                                            overlay.data.position.width  = capturedNewPos.width;
-                                            overlay.data.position.height = capturedNewPos.height;
-                                            overlay.overlayElement.style.top    = '';
-                                            overlay.overlayElement.style.left   = '';
-                                            overlay.overlayElement.style.width  = '';
-                                            overlay.overlayElement.style.height = '';
-                                            overlay.updateOverlayElement();
-                                            overlay.scaleOverlayElement();
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                        }
-                                    });
-                                })(self.data.created, oldPosition, newPosition);
+                                FrameTrail.module('OverlaysController').registerStateUndo(
+                                    self,
+                                    self.labels['SidebarOverlays'] + ' Move',
+                                    stateBefore,
+                                    self.snapshotState(['position', 'keyframes'])
+                                );
+                                FrameTrail.module('OverlaysController').refreshMotionControls(self);
 
                             }
                         }
@@ -1257,7 +1736,7 @@ FrameTrail.defineType(
                 makeOverlayElementResizeable: function () {
 
                     var self = this,
-                        oldPosition,
+                        stateBefore,
                         resizeEdges;
 
                     var el = this.overlayElement;
@@ -1282,19 +1761,15 @@ FrameTrail.defineType(
                         listeners: {
                             start: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('OverlaysController').overlayInFocus = self;
-                                }
+                                FrameTrail.module('OverlaysController').selectOverlay(self);
 
                                 resizeEdges = e.edges;
 
-                                // Capture old position for undo
-                                oldPosition = {
-                                    top:    self.data.position.top,
-                                    left:   self.data.position.left,
-                                    width:  self.data.position.width,
-                                    height: self.data.position.height
-                                };
+                                // Capture old state for undo
+                                stateBefore = self.snapshotState(['position', 'keyframes']);
+
+                                // The box animation must not fight the inline size below
+                                FrameTrail.module('OverlayAnimator').suspendBox(self, true);
 
                                 // Convert % positioning to px for interaction
                                 e.target.dataset.ftLeft   = e.target.offsetLeft;
@@ -1353,9 +1828,9 @@ FrameTrail.defineType(
 
                             end: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('OverlaysController').overlayInFocus = null;
-                                }
+                                // The click ending this gesture must not change the selection
+
+                                FrameTrail.module('ViewVideo').swallowNextClick();
 
                                 var parent      = e.target.parentElement;
                                 var finalLeft   = parseFloat(e.target.dataset.ftLeft);
@@ -1393,62 +1868,19 @@ FrameTrail.defineType(
                                     height: finalHeight / parent.offsetHeight * 100
                                 };
 
-                                self.data.position.top    = newPosition.top;
-                                self.data.position.left   = newPosition.left;
-                                self.data.position.width  = newPosition.width;
-                                self.data.position.height = newPosition.height;
-
-                                self.updateOverlayElement();
-                                self.scaleOverlayElement();
+                                // Position, or the keyframe at the playhead when the box moves
+                                self.setRect(newPosition);
+                                FrameTrail.module('OverlayAnimator').suspendBox(self, false);
 
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 
-                                // Register undo command for overlay resize
-                                (function(overlayId, capturedOldPos, capturedNewPos) {
-                                    var findOverlay = function() {
-                                        var overlays = FrameTrail.module('HypervideoModel').overlays;
-                                        for (var i = 0; i < overlays.length; i++) {
-                                            if (overlays[i].data.created === overlayId) {
-                                                return overlays[i];
-                                            }
-                                        }
-                                        return null;
-                                    };
-                                    FrameTrail.module('UndoManager').register({
-                                        category: 'overlays',
-                                        description: self.labels['SidebarOverlays'] + ' Resize',
-                                        undo: function() {
-                                            var overlay = findOverlay();
-                                            if (!overlay) return;
-                                            overlay.data.position.top    = capturedOldPos.top;
-                                            overlay.data.position.left   = capturedOldPos.left;
-                                            overlay.data.position.width  = capturedOldPos.width;
-                                            overlay.data.position.height = capturedOldPos.height;
-                                            overlay.overlayElement.style.top    = '';
-                                            overlay.overlayElement.style.left   = '';
-                                            overlay.overlayElement.style.width  = '';
-                                            overlay.overlayElement.style.height = '';
-                                            overlay.updateOverlayElement();
-                                            overlay.scaleOverlayElement();
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                        },
-                                        redo: function() {
-                                            var overlay = findOverlay();
-                                            if (!overlay) return;
-                                            overlay.data.position.top    = capturedNewPos.top;
-                                            overlay.data.position.left   = capturedNewPos.left;
-                                            overlay.data.position.width  = capturedNewPos.width;
-                                            overlay.data.position.height = capturedNewPos.height;
-                                            overlay.overlayElement.style.top    = '';
-                                            overlay.overlayElement.style.left   = '';
-                                            overlay.overlayElement.style.width  = '';
-                                            overlay.overlayElement.style.height = '';
-                                            overlay.updateOverlayElement();
-                                            overlay.scaleOverlayElement();
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                                        }
-                                    });
-                                })(self.data.created, oldPosition, newPosition);
+                                FrameTrail.module('OverlaysController').registerStateUndo(
+                                    self,
+                                    self.labels['SidebarOverlays'] + ' Resize',
+                                    stateBefore,
+                                    self.snapshotState(['position', 'keyframes'])
+                                );
+                                FrameTrail.module('OverlaysController').refreshMotionControls(self);
 
                             }
                         }

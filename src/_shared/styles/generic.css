@@ -317,6 +317,7 @@ details[open] > summary {
 }
 
 .layoutRow > * input[type="text"], 
+.layoutRow > * input[type="number"],
 .layoutRow > * textarea,
 .layoutRow > * select {
     width: 100%;

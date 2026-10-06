@@ -60,11 +60,18 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
      */
     function updateStatesOfOverlays(currentTime) {
 
-        var overlay;
+        var overlay,
+            OverlayAnimator = FrameTrail.module('OverlayAnimator');
 
         for (var idx in overlays) {
 
             overlay = overlays[idx];
+
+            // Arm / disarm animated overlays first, so an overlay activated below
+            // is already showing the right frame of its animations.
+            if (OverlayAnimator) {
+                OverlayAnimator.updatePresence(overlay, currentTime);
+            }
 
             if (    overlay.data.start <= currentTime
                  && overlay.data.end   >= currentTime) {
@@ -102,6 +109,14 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             overlayInFocus.setActive(true);
         } else if (overlayInFocus) {
             overlayInFocus.setActive();
+        }
+
+        if (overlayInFocus) {
+            // Selected but not shown at the playhead: show it as a ghost
+            var inSpan  = overlayInFocus.data.start <= currentTime && overlayInFocus.data.end >= currentTime,
+                present = OverlayAnimator ? OverlayAnimator.isPresent(overlayInFocus) : false;
+            overlayInFocus.setGhost(!inSpan && !present);
+            refreshMotionControls(overlayInFocus);
         }
 
     };
@@ -303,6 +318,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             stackTimelineView();
             initEditOptions();
             makeTimelineDroppable(true);
+            ViewVideo.OverlayTimeline.addEventListener('click', onTimelineClick);
 
 
         } else if (oldEditMode === 'overlays' && editMode !== 'overlays') {
@@ -316,6 +332,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             setOverlayInFocus(null);
             resetTimelineView();
             makeTimelineDroppable(false);
+            ViewVideo.OverlayTimeline.removeEventListener('click', onTimelineClick);
 
 
         }
@@ -330,6 +347,12 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
      * @method rescaleOverlays
      */
     function rescaleOverlays() {
+
+        // Animation presets express travel distances relative to the stage
+        var container = ViewVideo.OverlayContainer;
+        if (container) {
+            container.style.setProperty('--ft-stage-min', Math.min(container.offsetWidth, container.offsetHeight) + 'px');
+        }
 
         for (var idx in overlays) {
             overlays[idx].scaleOverlayElement();
@@ -418,7 +441,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 ondragleave:      function(e) { e.target.classList.remove('droppableHover'); var _sh = ViewVideo.PlayerProgress.querySelector('.ui-slider-handle'); if (_sh) _sh.classList.remove('highlight'); },
                 ondrop: function(e) {
                     var $dragged        = e.relatedTarget,
-                        presetName      = $dragged.dataset.preset,
+                        tileID          = $dragged.dataset.tile,
                         resourceID      = $dragged.getAttribute('data-resourceID'),
                         videoDuration   = FrameTrail.module('HypervideoModel').duration,
                         startTime       = FrameTrail.module('HypervideoController').currentTime,
@@ -433,44 +456,21 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                         overlayPositionTop  = 100 * (tmpOffsetTop  / ViewVideo.OverlayContainer.offsetHeight),
                         newOverlay;
 
-                        if (presetName) {
-                            newOverlay = createPresetOverlay(presetName, startTime, endTime, overlayPositionTop, overlayPositionLeft);
-                        } else if ($dragged.dataset.type == 'text') {
-                            newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
-                                "name": labels['ResourceCustomTextHTML'], "type": $dragged.dataset.type,
-                                "start": startTime, "end": endTime, "attributes": { "text": "" },
-                                "position": { "top": overlayPositionTop, "left": overlayPositionLeft, "width": 30, "height": 30 }
-                            });
-                        } else if ($dragged.dataset.type == 'html') {
-                            newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
-                                "name": labels['ResourceCustomHTML'], "type": $dragged.dataset.type,
-                                "start": startTime, "end": endTime, "attributes": { "text": "" },
-                                "position": { "top": overlayPositionTop, "left": overlayPositionLeft, "width": 30, "height": 30 }
-                            });
-                        } else if ($dragged.dataset.type == 'quiz') {
-                            newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
-                                "name": labels['ResourceTypeQuiz'], "type": $dragged.dataset.type,
-                                "start": startTime, "end": endTime,
-                                "attributes": {
-                                    "questionType": "multipleChoice",
-                                    "question": labels['SettingsQuizDefaultQuestion'],
-                                    "answers": [
-                                        { 'text': labels['SettingsQuizDefaultAnswer1'], 'correct': false },
-                                        { 'text': labels['SettingsQuizDefaultAnswer2'], 'correct': true  },
-                                        { 'text': labels['SettingsQuizDefaultAnswer3'], 'correct': false }
-                                    ],
-                                    "onCorrectAnswer": { "jumpForward": false, "resumePlayback": true,  "showText": false },
-                                    "onWrongAnswer":   { "jumpBackward": 10, "resumePlayback": true, "showText": false }
-                                },
-                                "position": { "top": overlayPositionTop, "left": overlayPositionLeft, "width": 30, "height": 30 }
-                            });
-                        } else if ($dragged.dataset.type == 'hotspot') {
-                            newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
-                                "name": "Hotspot / Link", "type": $dragged.dataset.type,
-                                "start": startTime, "end": endTime,
-                                "attributes": { "color": "#0096ff", "linkUrl": "", "borderWidth": 5, "shape": "circle", "borderRadius": 10 },
-                                "position": { "top": overlayPositionTop, "left": overlayPositionLeft, "width": 20, "height": 30 }
-                            });
+                        var tile = tileID ? getCustomOverlayTile(tileID) : null;
+
+                        if (tile) {
+                            var protoData = {
+                                "name":       tile.name || tile.label,
+                                "type":       tile.type,
+                                "start":      startTime,
+                                "end":        endTime,
+                                "attributes": JSON.parse(JSON.stringify(tile.attributes)),
+                                "position":   { "top": overlayPositionTop, "left": overlayPositionLeft, "width": tile.size[0], "height": tile.size[1] }
+                            };
+                            if (tile.events) {
+                                protoData.events = JSON.parse(JSON.stringify(tile.events));
+                            }
+                            newOverlay = FrameTrail.module('HypervideoModel').newOverlay(protoData);
                         } else {
                             newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
                                 "start": startTime, "end": endTime, "resourceId": resourceID,
@@ -480,6 +480,12 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
                     newOverlay.renderInDOM();
                     newOverlay.startEditing();
+
+                    // Kinds that are made to move (e.g. the cursor) start with box motion on
+                    if (tile && tile.motion) {
+                        newOverlay.setMotionEnabled(true);
+                    }
+
                     updateStatesOfOverlays(FrameTrail.module('HypervideoController').currentTime);
                     stackTimelineView();
                     FrameTrail.module('TimelineController').refreshMinimap();
@@ -498,6 +504,174 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
     };
 
+
+
+    /**
+     * I return the tiles of the "Custom Overlay" gallery: one per overlay kind or
+     * variant, each with the data a dropped overlay starts with. The first four
+     * (Text, Custom HTML, Quiz, Hotspot) keep their long-standing defaults; Quiz
+     * and Hotspot pass no events, so newOverlay() adds the pausing onStart handler.
+     *
+     * @method getCustomOverlayTiles
+     * @return {Array}
+     * @private
+     */
+    function getCustomOverlayTiles() {
+
+        // attributes.text is stored HTML-escaped (see ResourceText.renderContent).
+        // Only markup Quill is configured for survives an edit round-trip: inline
+        // colour / size spans (sizes from its whitelist) and paragraph alignment.
+        var escapeHtml = function(html) {
+            var escapeHelper = document.createElement('div');
+            escapeHelper.appendChild(document.createTextNode(html));
+            return escapeHelper.innerHTML;
+        };
+
+        var hotspotVariant = function(shape, extra) {
+            var attributes = {
+                "color": "#ffd23f", "linkUrl": "", "borderWidth": 6, "shape": shape, "borderRadius": 10,
+                "animation": { "in": { "preset": "draw" }, "out": { "preset": "fadeOut" } }
+            };
+            for (var key in extra) { attributes[key] = extra[key]; }
+            return attributes;
+        };
+
+        return [
+            {
+                id: 'text', type: 'text', icon: 'icon-doc-text', label: labels['ResourceCustomTextHTML'],
+                attributes: { "text": "" }, size: [30, 30]
+            },
+            {
+                id: 'html', type: 'html', icon: 'icon-file-code', label: labels['ResourceCustomHTML'],
+                attributes: { "text": "" }, size: [30, 30]
+            },
+            {
+                id: 'quiz', type: 'quiz', icon: 'icon-question-circle-o', label: 'Quiz', name: labels['ResourceTypeQuiz'],
+                attributes: {
+                    "questionType": "multipleChoice",
+                    "question": labels['SettingsQuizDefaultQuestion'],
+                    "answers": [
+                        { 'text': labels['SettingsQuizDefaultAnswer1'], 'correct': false },
+                        { 'text': labels['SettingsQuizDefaultAnswer2'], 'correct': true  },
+                        { 'text': labels['SettingsQuizDefaultAnswer3'], 'correct': false }
+                    ],
+                    "onCorrectAnswer": { "jumpForward": false, "resumePlayback": true,  "showText": false },
+                    "onWrongAnswer":   { "jumpBackward": 10, "resumePlayback": true, "showText": false }
+                },
+                size: [30, 30]
+            },
+            {
+                id: 'hotspot', type: 'hotspot', icon: 'icon-link', label: 'Hotspot / Link',
+                attributes: { "color": "#0096ff", "linkUrl": "", "borderWidth": 5, "shape": "circle", "borderRadius": 10 },
+                size: [20, 30]
+            },
+            {
+                id: 'card', type: 'text', icon: 'icon-vcard', label: labels['CustomOverlayCard'],
+                attributes: {
+                    "title": labels['CustomOverlayCardTitle'],
+                    "text": escapeHtml('<p><span style="font-size: 22px;">' + labels['CustomOverlayCardText'] + '</span></p>'),
+                    "box": { "background": "#ffffff", "titleColor": "#14161a", "padding": 28, "radius": 14, "shadow": true },
+                    "animation": { "in": { "preset": "slideFromBottom" }, "out": { "preset": "fadeOut" } }
+                },
+                size: [34, 32], events: {}
+            },
+            {
+                id: 'quote', type: 'text', icon: 'icon-quote-left', label: labels['CustomOverlayQuote'],
+                attributes: {
+                    "text": escapeHtml(
+                          '<p><span style="font-size: 30px;">“' + labels['CustomOverlayQuoteText'] + '”</span></p>'
+                        + '<p><span style="color: rgb(96, 102, 112); font-size: 18px;">— ' + labels['CustomOverlayQuoteAuthor'] + '</span></p>'
+                    ),
+                    "box": { "background": "#f4f2ee", "padding": 32, "radius": 6, "borderWidth": 0 },
+                    "animation": { "in": { "preset": "fadeIn", "duration": 600 }, "out": { "preset": "fadeOut" } }
+                },
+                size: [40, 30], events: {}
+            },
+            {
+                id: 'notification', type: 'text', icon: 'icon-bell', label: labels['CustomOverlayNotification'],
+                attributes: {
+                    "title": labels['CustomOverlayNotificationTitle'],
+                    "text": escapeHtml('<p><span style="color: rgb(214, 218, 224); font-size: 20px;">' + labels['CustomOverlayNotificationText'] + '</span></p>'),
+                    "box": { "background": "#1f2329", "titleColor": "#ffffff", "padding": 22, "radius": 16, "shadow": true },
+                    "animation": { "in": { "preset": "slideFromTop", "duration": 600, "ease": "springQuick" }, "out": { "preset": "slideToTop" } }
+                },
+                size: [34, 18], events: {}
+            },
+            {
+                id: 'arrow', type: 'hotspot', icon: 'icon-right-big', label: labels['CustomOverlayArrow'],
+                attributes: hotspotVariant('arrow', { "direction": "right", "curve": "straight" }),
+                size: [22, 10], events: {}
+            },
+            {
+                id: 'curvedArrow', type: 'hotspot', icon: 'icon-reply', label: labels['CustomOverlayCurvedArrow'],
+                attributes: hotspotVariant('arrow', { "direction": "right", "curve": "curved" }),
+                size: [22, 18], events: {}
+            },
+            {
+                id: 'underline', type: 'hotspot', icon: 'icon-underline', label: labels['CustomOverlayUnderline'],
+                attributes: hotspotVariant('underline', {}),
+                size: [24, 6], events: {}
+            },
+            {
+                id: 'freeform', type: 'hotspot', icon: 'icon-brush', label: labels['CustomOverlayFreeform'],
+                attributes: hotspotVariant('freeform', { "path": "M50,4 L96,36 L80,94 L20,94 L4,36 Z", "borderWidth": 4 }),
+                size: [20, 30], events: {}
+            },
+            {
+                id: 'cursor', type: 'cursor', icon: 'icon-mouse-pointer', label: labels['ResourceTypeCursor'],
+                attributes: { "style": "arrow", "color": "#ffffff", "outlineColor": "#111111", "clicks": [] },
+                size: [4, 8], motion: true, events: {}
+            },
+            {
+                id: 'counter', type: 'counter', icon: 'icon-hashtag', label: labels['ResourceTypeCounter'],
+                attributes: {
+                    "from": 0, "to": 1250, "decimals": 0, "prefix": "", "suffix": "",
+                    "duration": 1500, "ease": "power2Out", "style": "count",
+                    "color": "#ffffff", "weight": 700, "align": "center"
+                },
+                size: [24, 16], events: {}
+            },
+            {
+                id: 'barChart', type: 'chart', icon: 'icon-chart-bar', label: labels['CustomOverlayBarChart'],
+                attributes: { "chartType": "bars", "data": "2022: 40\n2023: 65\n2024: 90", "unit": "", "color": "#4cc3ff", "highlight": 0, "showValues": true, "duration": 1500, "textColor": "#ffffff" },
+                size: [36, 36], events: {}
+            },
+            {
+                id: 'lineChart', type: 'chart', icon: 'icon-chart-line-data', label: labels['CustomOverlayLineChart'],
+                attributes: { "chartType": "line", "data": "Jan: 12\nFeb: 19\nMar: 15\nApr: 28\nMay: 33", "unit": "", "color": "#4cc3ff", "highlight": 0, "showValues": true, "duration": 1800, "textColor": "#ffffff" },
+                size: [40, 32], events: {}
+            },
+            {
+                id: 'donutChart', type: 'chart', icon: 'icon-chart-pie', label: labels['CustomOverlayDonutChart'],
+                attributes: { "chartType": "donut", "data": "A: 55\nB: 30\nC: 15", "unit": "%", "color": "#4cc3ff", "highlight": 0, "showValues": true, "duration": 1500, "textColor": "#ffffff" },
+                size: [26, 40], events: {}
+            },
+            {
+                id: 'progressRing', type: 'chart', icon: 'icon-chart-ring', label: labels['CustomOverlayProgressRing'],
+                attributes: { "chartType": "ring", "data": "72", "unit": "%", "color": "#4cc3ff", "highlight": 0, "showValues": true, "duration": 1500, "textColor": "#ffffff" },
+                size: [20, 34], events: {}
+            }
+        ];
+
+    }
+
+    /**
+     * I return one tile of the "Custom Overlay" gallery by its id.
+     *
+     * @method getCustomOverlayTile
+     * @param {String} id
+     * @return {Object|null}
+     * @private
+     */
+    function getCustomOverlayTile(id) {
+
+        var tiles = getCustomOverlayTiles();
+        for (var i = 0; i < tiles.length; i++) {
+            if (tiles[i].id === id) { return tiles[i]; }
+        }
+        return null;
+
+    }
 
 
     /**
@@ -539,115 +713,6 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
 
     /**
-     * I create the overlays for a built-in preset and return the primary new overlay.
-     * Presets composed of several overlays create and render their secondary
-     * overlays (incl. undo registration) themselves.
-     *
-     * @method createPresetOverlay
-     * @param {String} presetName
-     * @param {Number} startTime
-     * @param {Number} endTime
-     * @param {Number} top
-     * @param {Number} left
-     * @return Overlay
-     * @private
-     */
-    function createPresetOverlay(presetName, startTime, endTime, top, left) {
-
-        var HypervideoModel = FrameTrail.module('HypervideoModel'),
-            duration        = HypervideoModel.duration,
-            newOverlay      = null;
-
-        var createSecondary = function(protoData) {
-            var secondaryOverlay = HypervideoModel.newOverlay(protoData);
-            secondaryOverlay.renderInDOM();
-            secondaryOverlay.startEditing();
-            registerAddUndo(secondaryOverlay);
-            return secondaryOverlay;
-        };
-
-        // newOverlay() only auto-adds the pausing onStart handler when no events
-        // object is passed at all, so presets which need a click handler have to
-        // spell the pause out again.
-        var pauseCode = "FrameTrail.module('HypervideoController').pause();";
-
-        var buttonAttributes = function(text) {
-            return {
-                "text": text, "action": "", "actionTarget": "",
-                "color": "#0096ff", "textColor": "#ffffff", "backgroundColor": "#0096ff",
-                "borderWidth": 0, "shape": "rounded", "borderRadius": 20
-            };
-        };
-
-        // attributes.text is stored HTML-escaped (see ResourceText.renderContent and
-        // its Quill init, which both decode via innerHTML -> textContent). Raw markup
-        // would be flattened to plain text the moment the overlay is edited.
-        var escapeHtml = function(html) {
-            var escapeHelper = document.createElement('div');
-            escapeHelper.appendChild(document.createTextNode(html));
-            return escapeHelper.innerHTML;
-        };
-
-        // Only markup Quill is configured for survives an edit round-trip: align on
-        // the paragraph, colour and size on an inline span (26px is in the size
-        // whitelist). A styled wrapper div would be stripped.
-        var cardAttributes = function(text) {
-            return {
-                "text": escapeHtml(
-                      '<p style="text-align: center;">'
-                    + '<span style="color: rgb(255, 255, 255); font-size: 26px;">' + text + '</span>'
-                    + '</p>'
-                ),
-                "animationIn": "fade", "animationOut": "fade", "animationDuration": 300
-            };
-        };
-
-        switch (presetName) {
-
-            case 'choiceButtons':
-                newOverlay = HypervideoModel.newOverlay({
-                    "name": labels['PresetChoiceOptionA'], "type": "hotspot",
-                    "start": startTime, "end": endTime,
-                    "attributes": { "text": labels['PresetChoiceOptionA'], "action": "jumpToTime", "actionTarget": "", "color": "#0096ff", "textColor": "#ffffff", "backgroundColor": "#0096ff", "borderWidth": 0, "shape": "rounded", "borderRadius": 4 },
-                    "events": { "onStart": "FrameTrail.module('HypervideoController').pause();" },
-                    "position": { "top": 40, "left": 12, "width": 32, "height": 14 }
-                });
-                createSecondary({
-                    "name": labels['PresetChoiceOptionB'], "type": "hotspot",
-                    "start": startTime, "end": endTime,
-                    "attributes": { "text": labels['PresetChoiceOptionB'], "action": "jumpToTime", "actionTarget": "", "color": "#0096ff", "textColor": "#ffffff", "backgroundColor": "#0096ff", "borderWidth": 0, "shape": "rounded", "borderRadius": 4 },
-                    "events": {},
-                    "position": { "top": 40, "left": 56, "width": 32, "height": 14 }
-                });
-                break;
-
-            case 'pauseContinue':
-                // Kept short on purpose: the card pauses playback when it starts, so
-                // once the viewer continues it should fade out again quickly instead
-                // of hanging over the resumed video.
-                var cardEnd = Math.min(startTime + 2, duration);
-                newOverlay = HypervideoModel.newOverlay({
-                    "name": labels['PresetPauseContinue'], "type": "text",
-                    "start": startTime, "end": cardEnd,
-                    "attributes": cardAttributes(labels['PresetPauseCardText']),
-                    "position": { "top": 20, "left": 20, "width": 60, "height": 40 }
-                });
-                createSecondary({
-                    "name": labels['PresetContinue'], "type": "hotspot",
-                    "start": startTime, "end": cardEnd,
-                    "attributes": buttonAttributes(labels['PresetContinue']),
-                    "events": { "onStart": pauseCode, "onClick": "hypervideo.play();" },
-                    "position": { "top": 64, "left": 38, "width": 24, "height": 13 }
-                });
-                break;
-        }
-
-        return newOverlay;
-
-    };
-
-
-    /**
      * I set the overlay from the parameter (when given) "in focus" and remove any previous overlay from focus.
      *
      * @method setOverlayInFocus
@@ -658,9 +723,15 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         if (overlayInFocus) {
 
             overlayInFocus.permanentFocusState = false;
+            overlayInFocus.setGhost(false);
             overlayInFocus.removedFromFocus();
 
             removePropertiesControls();
+        }
+
+        var OverlayAnimationEditor = FrameTrail.module('OverlayAnimationEditor');
+        if (OverlayAnimationEditor) {
+            OverlayAnimationEditor.closeKeyframeMenu();
         }
 
         overlayInFocus = overlay;
@@ -722,6 +793,139 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
         ViewVideo.EditPropertiesContainer.classList.remove('active'); ViewVideo.EditPropertiesContainer.innerHTML = '';
         ViewVideo.switchInfoTab('add');
+
+    }
+
+
+    /**
+     * I re-render the properties controls of an overlay, if it is the one in focus
+     * (e.g. after undo/redo changed data the controls show). The active tab is kept.
+     *
+     * @method refreshPropertiesControls
+     * @param {Overlay} overlay
+     */
+    function refreshPropertiesControls(overlay) {
+
+        if (!overlay || overlayInFocus !== overlay) {
+            return;
+        }
+
+        renderPropertiesControls(overlay.resourceItem.renderPropertiesControls(overlay));
+
+    }
+
+
+    /**
+     * I select an overlay for editing (it stays selected until something else
+     * is selected or the selection is cleared). Selecting never moves the playhead.
+     *
+     * @method selectOverlay
+     * @param {Overlay} overlay
+     */
+    function selectOverlay(overlay) {
+
+        if (overlayInFocus !== overlay) {
+            setOverlayInFocus(overlay);
+        }
+        if (overlay) {
+            overlay.permanentFocusState = true;
+        }
+
+    }
+
+
+    /**
+     * I update the keyframe controls of the overlay in focus after its box or
+     * the playhead changed: the position inputs follow the moving box, the
+     * keyframe toggle on the video and the diamonds mark the keyframe at the
+     * playhead.
+     *
+     * @method refreshMotionControls
+     * @param {Overlay} overlay
+     */
+    function refreshMotionControls(overlay) {
+
+        if (!overlay || overlayInFocus !== overlay) {
+            return;
+        }
+
+        var t = FrameTrail.module('HypervideoController').currentTime;
+
+        if (overlay.hasKeyframes()) {
+            var rect = overlay.getRectAt(overlay.editTime());
+            ['top', 'left', 'width', 'height'].forEach(function(prop) {
+                var input = ViewVideo.EditPropertiesContainer.querySelector('.position' + prop.charAt(0).toUpperCase() + prop.slice(1));
+                if (input && document.activeElement !== input) {
+                    input.value = Math.round(rect[prop] * 1000) / 1000;
+                }
+            });
+        }
+
+        overlay.updateKeyframeToggle(t);
+        overlay.updateKeyframeMarkerState(t);
+
+    }
+
+
+    /**
+     * A click on empty space in the overlay timeline clears the selection.
+     *
+     * @method onTimelineClick
+     * @param {Event} evt
+     */
+    function onTimelineClick(evt) {
+
+        if (FrameTrail.getState('editMode') !== 'overlays' || evt.target.closest('.timelineElement')) {
+            return;
+        }
+        setOverlayInFocus(null);
+
+    }
+
+
+    /**
+     * I register an undo command that restores snapshots taken with
+     * Overlay.snapshotState() (the overlay is found again by its creation time).
+     *
+     * @method registerStateUndo
+     * @param {Overlay} overlay
+     * @param {String} description
+     * @param {Object} before
+     * @param {Object} after
+     * @param {Object} options  passed to Overlay.applyState (e.g. { rerender: true })
+     */
+    function registerStateUndo(overlay, description, before, after, options) {
+
+        if (JSON.stringify(before) === JSON.stringify(after)) {
+            return;
+        }
+
+        var overlayId = overlay.data.created;
+
+        var findOverlay = function() {
+            var allOverlays = FrameTrail.module('HypervideoModel').overlays;
+            for (var i = 0; i < allOverlays.length; i++) {
+                if (allOverlays[i].data.created === overlayId) { return allOverlays[i]; }
+            }
+            return null;
+        };
+
+        var apply = function(state) {
+            var o = findOverlay();
+            if (!o) { return; }
+            o.applyState(state, options);
+            stackTimelineView();
+            refreshPropertiesControls(o);
+            refreshMotionControls(o);
+            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+        };
+
+        FrameTrail.module('UndoManager').register({
+            category: 'overlays',
+            description: description,
+            undo: function() { apply(before); },
+            redo: function() { apply(after); }
+        });
 
     }
 
@@ -1093,13 +1297,9 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                             +  '        <li>'
                             +  '            <a href="#CustomOverlay">'+ labels['ResourceAddCustomOverlay'] +'</a>'
                             +  '        </li>'
-                            +  '        <li>'
-                            +  '            <a href="#OverlayPresets">'+ labels['GenericPresets'] +'</a>'
-                            +  '        </li>'
                             +  '    </ul>'
                             +  '    <div id="ResourceList"></div>'
                             +  '    <div id="CustomOverlay"></div>'
-                            +  '    <div id="OverlayPresets"></div>'
                             +  '</div>';
         var overlayEditingOptions = _oeWrapper.firstElementChild;
         FTTabs(overlayEditingOptions, { heightStyle: 'fill' }); // Phase 2 bridge
@@ -1110,44 +1310,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             overlayEditingOptions.querySelector('#ResourceList')
         );
 
-        /* Append custom text resource to 'Custom Overlay' tab */
-        // TODO: Move to separate function
-        var _tw = document.createElement('div');
-        _tw.innerHTML = '<div class="resourceThumb" data-type="text">'
-                + '    <div class="resourceOverlay">'
-                + '        <div class="resourceIcon"><span class="icon-doc-text"></div>'
-                + '    </div>'
-                + '    <div class="resourceTitle">'+ labels['ResourceCustomTextHTML'] +'</div>'
-                + '</div>';
-        var textElement = _tw.firstElementChild;
-
-        var _hlw = document.createElement('div');
-        _hlw.innerHTML = '<div class="resourceThumb" data-type="html">'
-                + '    <div class="resourceOverlay">'
-                + '        <div class="resourceIcon"><span class="icon-file-code"></div>'
-                + '    </div>'
-                + '    <div class="resourceTitle">'+ labels['ResourceCustomHTML'] +'</div>'
-                + '</div>';
-        var htmlElement = _hlw.firstElementChild;
-
-        var _qw = document.createElement('div');
-        _qw.innerHTML = '<div class="resourceThumb" data-type="quiz">'
-                + '    <div class="resourceOverlay">'
-                + '        <div class="resourceIcon"><span class="icon-question-circle-o"></div>'
-                + '    </div>'
-                + '    <div class="resourceTitle">Quiz</div>'
-                + '</div>';
-        var quizElement = _qw.firstElementChild;
-
-        var _hw = document.createElement('div');
-        _hw.innerHTML = '<div class="resourceThumb" data-type="hotspot">'
-                + '    <div class="resourceOverlay">'
-                + '        <div class="resourceIcon"><span class="icon-link"></div>'
-                + '    </div>'
-                + '    <div class="resourceTitle">Hotspot / Link</div>'
-                + '</div>';
-        var hotspotElement = _hw.firstElementChild;
-
+        /* Gallery of custom overlays (one tile per overlay kind / variant) */
         var thumbDraggableOpts = {
             listeners: {
                 start: function(e) {
@@ -1179,30 +1342,21 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 }
             }
         };
-        [textElement, htmlElement, quizElement, hotspotElement].forEach(function(el) {
-            interact(el).draggable(thumbDraggableOpts);
-        });
 
-        overlayEditingOptions.querySelector('#CustomOverlay').append(textElement, htmlElement, quizElement, hotspotElement);
+        var gallery = overlayEditingOptions.querySelector('#CustomOverlay');
 
-        /* Append built-in presets to 'Presets' tab */
-        var presetDefinitions = [
-            { preset: 'pauseContinue', icon: 'icon-pause-circle-o', label: labels['PresetPauseContinue'] },
-            { preset: 'choiceButtons', icon: 'icon-flow-branch',    label: labels['PresetChoiceButtons'] }
-        ];
-
-        var presetPanel = overlayEditingOptions.querySelector('#OverlayPresets');
-        presetDefinitions.forEach(function(definition) {
-            var _pw = document.createElement('div');
-            _pw.innerHTML = '<div class="resourceThumb" data-preset="'+ definition.preset +'">'
-                    + '    <div class="resourceOverlay">'
-                    + '        <div class="resourceIcon"><span class="'+ definition.icon +'"></span></div>'
-                    + '    </div>'
-                    + '    <div class="resourceTitle">'+ definition.label +'</div>'
-                    + '</div>';
-            var presetThumb = _pw.firstElementChild;
-            interact(presetThumb).draggable(thumbDraggableOpts);
-            presetPanel.appendChild(presetThumb);
+        getCustomOverlayTiles().forEach(function(tile) {
+            var thumb = document.createElement('div');
+            thumb.className = 'resourceThumb';
+            thumb.dataset.type = tile.type;
+            thumb.dataset.tile = tile.id;
+            thumb.innerHTML = '<div class="resourceOverlay">'
+                            + '    <div class="resourceIcon"><span class="'+ tile.icon +'"></span></div>'
+                            + '</div>'
+                            + '<div class="resourceTitle"></div>';
+            thumb.querySelector('.resourceTitle').textContent = tile.label;
+            interact(thumb).draggable(thumbDraggableOpts);
+            gallery.appendChild(thumb);
         });
 
     };
@@ -1218,6 +1372,10 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
         initController:         initController,
         updateStatesOfOverlays: updateStatesOfOverlays,
+        registerStateUndo:      registerStateUndo,
+        refreshPropertiesControls: refreshPropertiesControls,
+        refreshMotionControls:  refreshMotionControls,
+        selectOverlay:          selectOverlay,
         stackTimelineView:      stackTimelineView,
         rescaleOverlays:        rescaleOverlays,
 

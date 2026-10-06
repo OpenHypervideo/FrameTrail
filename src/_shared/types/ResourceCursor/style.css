@@ -1,0 +1,46 @@
+.resourceDetail[data-type="cursor"] {
+    background-color: transparent;
+    overflow: visible;
+}
+
+.resourceDetail[data-type="cursor"] .resourceContent {
+    overflow: visible;
+}
+
+.resourceDetail[data-type="cursor"] .cursorGlyph {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.35));
+}
+
+/* Centred on the glyph's tip; sized relative to the cursor box */
+.resourceDetail[data-type="cursor"] .cursorRipple {
+    position: absolute;
+    width: 160%;
+    aspect-ratio: 1;
+    border: 3px solid #ffffff;
+    border-radius: 50%;
+    translate: -50% -50%;
+    box-sizing: border-box;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* Driven by the OverlayAnimator (names starting with "ft") */
+@keyframes ftCursorPress {
+    0%, 100% { scale: 1; }
+    40%      { scale: 0.82; }
+}
+
+@keyframes ftCursorRipple {
+    from { opacity: 0.9; scale: 0.2; }
+    to   { opacity: 0;   scale: 1.6; }
+}
+
+.editPropertiesContainer .propertiesTypeIcon[data-type="cursor"] [class^="icon-"]::before, .editPropertiesContainer .propertiesTypeIcon[data-type="cursor"] [class*=" icon-"]::before {
+    content: "\f245"; /* icon-mouse-pointer */
+}

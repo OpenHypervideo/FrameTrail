@@ -323,9 +323,53 @@
      */
     function _parseSpatialSelector(selectorValue) {
         try {
-            var m = /xywh=percent:([\d.]+),([\d.]+),([\d.]+),([\d.]+)/.exec(selectorValue);
+            var n = '(-?[\\d.]+(?:[eE][-+]?\\d+)?)',
+                m = new RegExp('xywh=percent:' + n + ',' + n + ',' + n + ',' + n).exec(selectorValue);
             return { left: parseFloat(m[1]), top: parseFloat(m[2]), width: parseFloat(m[3]), height: parseFloat(m[4]) };
         } catch (_) { return {}; }
+    }
+
+    /**
+     * Parse the box-motion keyframes of an overlay (the frametrail:keyframes
+     * extension on its FragmentSelector). Returns undefined when there are none.
+     * @private
+     */
+    function _parseKeyframes(rawKeyframes) {
+        var AnimationLibrary = FrameTrail.module('AnimationLibrary');
+        if (!rawKeyframes || !AnimationLibrary) { return undefined; }
+        return AnimationLibrary.normalizeKeyframes(rawKeyframes);
+    }
+
+    /**
+     * Build the target selector of an overlay. A moving overlay keeps a plain
+     * Media Fragments box (the union of its track within its span) for every
+     * consumer, and adds its keyframes as the frametrail:keyframes extension.
+     * @private
+     */
+    function _overlayTargetSelector(overlay) {
+        var position = overlay.position,
+            AnimationLibrary = FrameTrail.module('AnimationLibrary'),
+            keyframes = (overlay.keyframes && overlay.keyframes.length && AnimationLibrary)
+                ? AnimationLibrary.normalizeKeyframes(overlay.keyframes)
+                : undefined;
+        if (keyframes) {
+            position = AnimationLibrary.unionBox(keyframes, overlay.start, overlay.end);
+        }
+        var selector = {
+            "conformsTo": "http://www.w3.org/TR/media-frags/",
+            "type": "FragmentSelector",
+            "value":
+                "t=" + overlay.start + "," + overlay.end
+                + "&xywh=percent:"
+                + position.left + ","
+                + position.top + ","
+                + position.width + ","
+                + position.height
+        };
+        if (keyframes) {
+            selector["frametrail:keyframes"] = keyframes;
+        }
+        return selector;
     }
 
     /**
@@ -1062,6 +1106,7 @@
                             "licenseType":          contentItem.body['frametrail:licenseType'] || null,
                             "licenseAttribution":   contentItem.body['frametrail:licenseAttribution'] || null,
                             "position": _parseSpatialSelector(contentItem.target.selector.value),
+                            "keyframes": _parseKeyframes(contentItem.target.selector['frametrail:keyframes']),
                             "events": contentItem["frametrail:events"],
                             "tags": contentItem["frametrail:tags"]
                         });
@@ -1664,17 +1709,7 @@
                         "target": {
                             "type": "Video",
                             "source": FrameTrail.module('HypervideoModel').sourcePath,
-                            "selector": {
-                                "conformsTo": "http://www.w3.org/TR/media-frags/",
-                                "type": "FragmentSelector",
-                                "value":
-                                    "t=" + overlays[i].start + "," + overlays[i].end
-                                    + "&xywh=percent:"
-                                    + overlays[i].position.left + ","
-                                    + overlays[i].position.top + ","
-                                    + overlays[i].position.width + ","
-                                    + overlays[i].position.height
-                            }
+                            "selector": _overlayTargetSelector(overlays[i])
                         },
                         "body": {
                             "type": ({
@@ -1704,7 +1739,10 @@
                                         'spotify':   'Sound',
                                         'slideshare': 'Text',
                                         'reddit':    'Text',
-                                        'flickr':    'Image'
+                                        'flickr':    'Image',
+                                        'cursor':    'Dataset',
+                                        'counter':   'Dataset',
+                                        'chart':     'Dataset'
                                     })[overlays[i].type],
                             "frametrail:type": overlays[i].type,
                             "format": ({
@@ -1740,10 +1778,13 @@
                                 'spotify': 'text/html',
                                 'slideshare': 'text/html',
                                 'reddit': 'text/html',
-                                'flickr': 'text/html'
+                                'flickr': 'text/html',
+                                'cursor': 'application/x-frametrail-cursor',
+                                'counter': 'application/x-frametrail-counter',
+                                'chart': 'application/x-frametrail-chart'
                             })[overlays[i].type],
                             "source": (function () {
-                                if (['codesnippet', 'text', 'quiz', 'hotspot', 'entity', 'webpage', 'wikipedia',].indexOf( overlays[i].type ) < 0) {
+                                if (['codesnippet', 'text', 'quiz', 'hotspot', 'entity', 'webpage', 'wikipedia', 'cursor', 'counter', 'chart'].indexOf( overlays[i].type ) < 0) {
                                     return overlays[i].src
                                 }
                                 return undefined;

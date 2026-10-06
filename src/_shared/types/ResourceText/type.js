@@ -61,7 +61,24 @@ FrameTrail.defineType(
                     var child = unescapeHelper.childNodes[0];
                     var unescapedString = child ? child.nodeValue : '';
 
-                    resourceContent.innerHTML = unescapedString;
+                    // Optional title (plain text) above the rich text body
+                    var title = self.resourceData.attributes.title;
+                    if (title) {
+                        var titleElement = document.createElement('div');
+                        titleElement.className = 'textOverlayTitle';
+                        titleElement.setAttribute('role', 'heading');
+                        titleElement.setAttribute('aria-level', '3');
+                        titleElement.textContent = title;
+                        resourceContent.appendChild(titleElement);
+                    }
+
+                    var bodyElement = document.createElement('div');
+                    bodyElement.className = 'textOverlayBody';
+                    bodyElement.innerHTML = unescapedString;
+                    resourceContent.appendChild(bodyElement);
+
+                    this.applyCardStyle(resourceContent, self.resourceData.attributes.box);
+
                     resourceDetail.appendChild(resourceContent);
 
                     resourceDetail.appendChild(this.buildResourceOptions({
@@ -70,6 +87,54 @@ FrameTrail.defineType(
                     }));
 
                     return resourceDetail;
+
+                },
+
+                /**
+                 * I apply the optional card style (attributes.box) to my content element:
+                 * background, padding, corner radius, border and shadow; the title colour
+                 * is passed on as --ft-text-title-color. Without a box nothing changes.
+                 *
+                 * @method applyCardStyle
+                 * @param {HTMLElement} contentElement
+                 * @param {Object} box
+                 */
+                applyCardStyle: function(contentElement, box) {
+
+                    var style = contentElement.style;
+
+                    if (!box || typeof box !== 'object') {
+                        contentElement.classList.remove('textOverlayCard');
+                        ['background', 'padding', 'border-radius', 'border', 'box-shadow', '--ft-text-title-color'].forEach(function(prop) {
+                            style.removeProperty(prop);
+                        });
+                        return;
+                    }
+
+                    contentElement.classList.add('textOverlayCard');
+                    style.background   = box.background || 'transparent';
+                    style.padding      = (box.padding != null) ? box.padding + 'px' : '';
+                    style.borderRadius = (box.radius != null) ? box.radius + 'px' : '';
+                    style.border       = (box.borderWidth > 0) ? box.borderWidth + 'px solid ' + (box.borderColor || '#000000') : '';
+                    style.boxShadow    = box.shadow ? '0 12px 32px rgba(0, 0, 0, 0.28)' : '';
+                    if (box.titleColor) {
+                        style.setProperty('--ft-text-title-color', box.titleColor);
+                    } else {
+                        style.removeProperty('--ft-text-title-color');
+                    }
+
+                },
+
+                /**
+                 * The element whose text is split for text reveals (title and body).
+                 *
+                 * @method getTextRevealRoot
+                 * @param {HTMLElement} resourceDetail
+                 * @return {HTMLElement}
+                 */
+                getTextRevealRoot: function(resourceDetail) {
+
+                    return resourceDetail.querySelector('.resourceContent');
 
                 },
 
@@ -138,10 +203,192 @@ FrameTrail.defineType(
 
                     var basicControls = this.renderBasicPropertiesControls(overlay);
 
-                    basicControls.controlsContainer.querySelector('#OverlayOptions').prepend(this.renderTextEditors(overlay));
+                    var optionsPanel = basicControls.controlsContainer.querySelector('#OverlayOptions');
+                    optionsPanel.prepend(this.renderTextEditors(overlay));
+                    optionsPanel.prepend(this.renderCardControls(overlay));
 
 
                     return basicControls;
+
+                },
+
+
+                /**
+                 * I render the controls for the optional title and card style of a text
+                 * overlay (attributes.title, attributes.box).
+                 *
+                 * @method renderCardControls
+                 * @param {Overlay} overlay
+                 * @return HTMLElement
+                 */
+                renderCardControls: function(overlay) {
+
+                    var self   = this,
+                        labels = this.labels,
+                        attrs  = overlay.data.attributes,
+                        box    = attrs.box;
+
+                    var colorValue = function(value, fallback) {
+                        return (/^#[0-9a-fA-F]{6}$/.test(value || '')) ? value : fallback;
+                    };
+
+                    var wrapper = document.createElement('div');
+                    wrapper.className = 'textCardControls';
+                    wrapper.innerHTML = '<div class="layoutRow">'
+                        + '    <div class="column-12">'
+                        + '        <label>' + labels['SettingsTextTitle'] + '</label>'
+                        + '        <input type="text" class="textTitleInput">'
+                        + '    </div>'
+                        + '</div>'
+                        + '<div class="layoutRow">'
+                        + '    <div class="column-12">'
+                        + '        <div class="checkboxRow">'
+                        + '            <label class="switch">'
+                        + '                <input class="textBoxCheckbox" type="checkbox" autocomplete="off"' + (box ? ' checked' : '') + '>'
+                        + '                <span class="slider round"></span>'
+                        + '            </label>'
+                        + '            <label>' + labels['SettingsTextBox'] + '</label>'
+                        + '        </div>'
+                        + '    </div>'
+                        + '</div>'
+                        + (box
+                            ? '<div class="layoutRow">'
+                            + '    <div class="column-3">'
+                            + '        <label>' + labels['SettingsTextBoxBackground'] + '</label>'
+                            + '        <input type="color" class="textBoxField" data-key="background" value="' + colorValue(box.background, '#ffffff') + '">'
+                            + '    </div>'
+                            + '    <div class="column-3">'
+                            + '        <label>' + labels['SettingsTextBoxTitleColor'] + '</label>'
+                            + '        <input type="color" class="textBoxField" data-key="titleColor" value="' + colorValue(box.titleColor, '#14161a') + '">'
+                            + '    </div>'
+                            + '    <div class="column-3">'
+                            + '        <label>' + labels['SettingsTextBoxPadding'] + '</label>'
+                            + '        <input type="number" class="textBoxField" data-key="padding" data-number="1" min="0" max="200" step="1" value="' + (box.padding != null ? box.padding : 0) + '">'
+                            + '    </div>'
+                            + '    <div class="column-3">'
+                            + '        <label>' + labels['SettingsTextBoxRadius'] + '</label>'
+                            + '        <input type="number" class="textBoxField" data-key="radius" data-number="1" min="0" max="200" step="1" value="' + (box.radius != null ? box.radius : 0) + '">'
+                            + '    </div>'
+                            + '</div>'
+                            + '<div class="layoutRow">'
+                            + '    <div class="column-3">'
+                            + '        <label>' + labels['SettingsTextBoxBorderWidth'] + '</label>'
+                            + '        <input type="number" class="textBoxField" data-key="borderWidth" data-number="1" min="0" max="40" step="1" value="' + (box.borderWidth != null ? box.borderWidth : 0) + '">'
+                            + '    </div>'
+                            + '    <div class="column-3">'
+                            + '        <label>' + labels['SettingsTextBoxBorderColor'] + '</label>'
+                            + '        <input type="color" class="textBoxField" data-key="borderColor" value="' + colorValue(box.borderColor, '#000000') + '">'
+                            + '    </div>'
+                            + '    <div class="column-6">'
+                            + '        <label>&nbsp;</label>'
+                            + '        <div class="checkboxRow">'
+                            + '            <label class="switch">'
+                            + '                <input class="textBoxShadow" type="checkbox" autocomplete="off"' + (box.shadow ? ' checked' : '') + '>'
+                            + '                <span class="slider round"></span>'
+                            + '            </label>'
+                            + '            <label>' + labels['SettingsTextBoxShadow'] + '</label>'
+                            + '        </div>'
+                            + '    </div>'
+                            + '</div>'
+                            : '')
+                        + '<hr>';
+
+                    var getContent = function() {
+                        return overlay.overlayElement.querySelector('.resourceDetail .resourceContent');
+                    };
+
+                    var registerUndo = function(before) {
+                        FrameTrail.module('OverlaysController').registerStateUndo(
+                            overlay,
+                            labels['SidebarOverlays'] + ' ' + labels['SettingsTextBox'],
+                            before,
+                            overlay.snapshotState(['attributes']),
+                            { rerender: true }
+                        );
+                    };
+
+                    // Title
+                    var titleInput  = wrapper.querySelector('.textTitleInput'),
+                        titleBefore = null;
+                    titleInput.value = attrs.title || '';
+                    titleInput.addEventListener('focus', function() {
+                        titleBefore = overlay.snapshotState(['attributes']);
+                    });
+                    titleInput.addEventListener('input', function() {
+                        var value = this.value,
+                            content = getContent();
+                        if (value) {
+                            attrs.title = value;
+                        } else {
+                            delete attrs.title;
+                        }
+                        if (content) {
+                            var titleElement = content.querySelector('.textOverlayTitle');
+                            if (value && !titleElement) {
+                                titleElement = document.createElement('div');
+                                titleElement.className = 'textOverlayTitle';
+                                titleElement.setAttribute('role', 'heading');
+                                titleElement.setAttribute('aria-level', '3');
+                                content.prepend(titleElement);
+                            }
+                            if (titleElement) {
+                                if (value) { titleElement.textContent = value; } else { titleElement.remove(); }
+                            }
+                        }
+                        overlay.contentChanged();
+                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                    });
+                    titleInput.addEventListener('change', function() {
+                        if (titleBefore) { registerUndo(titleBefore); }
+                        titleBefore = overlay.snapshotState(['attributes']);
+                    });
+
+                    // Card style on / off
+                    wrapper.querySelector('.textBoxCheckbox').addEventListener('change', function() {
+                        var before = overlay.snapshotState(['attributes']);
+                        if (this.checked) {
+                            attrs.box = { background: '#ffffff', titleColor: '#14161a', padding: 24, radius: 12, shadow: true };
+                        } else {
+                            delete attrs.box;
+                        }
+                        overlay.rerenderContent();
+                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        registerUndo(before);
+                        wrapper.replaceWith(self.renderCardControls(overlay));
+                    });
+
+                    // Card style fields
+                    var fieldBefore = null;
+                    wrapper.querySelectorAll('.textBoxField, .textBoxShadow').forEach(function(field) {
+                        field.addEventListener('focus', function() {
+                            fieldBefore = overlay.snapshotState(['attributes']);
+                        });
+                        var apply = function() {
+                            if (!attrs.box) { return; }
+                            if (field.classList.contains('textBoxShadow')) {
+                                attrs.box.shadow = field.checked;
+                            } else if (field.dataset.number) {
+                                var number = parseFloat(field.value);
+                                if (isNaN(number)) { return; }
+                                attrs.box[field.dataset.key] = number;
+                            } else {
+                                attrs.box[field.dataset.key] = field.value;
+                            }
+                            var content = getContent();
+                            if (content) { self.applyCardStyle(content, attrs.box); }
+                            overlay.scaleOverlayElement();
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        };
+                        field.addEventListener('input', apply);
+                        field.addEventListener('change', function() {
+                            var before = fieldBefore || overlay.snapshotState(['attributes']);
+                            apply();
+                            registerUndo(before);
+                            fieldBefore = overlay.snapshotState(['attributes']);
+                        });
+                    });
+
+                    return wrapper;
 
                 },
 
@@ -331,7 +578,10 @@ FrameTrail.defineType(
 
                                     if (overlayOrAnnotation.overlayElement) {
 
-                                        overlayOrAnnotation.overlayElement.querySelector('.resourceDetail').innerHTML = newHtml;
+                                        // Only the body: title, card style and license block stay
+                                        var textDetail = overlayOrAnnotation.overlayElement.querySelector('.resourceDetail');
+                                        (textDetail.querySelector('.textOverlayBody') || textDetail.querySelector('.resourceContent') || textDetail).innerHTML = newHtml;
+                                        if (overlayOrAnnotation.contentChanged) { overlayOrAnnotation.contentChanged(); }
                                         FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 
                                         if (window.oldTextContent != overlayOrAnnotation.data.attributes.text) {

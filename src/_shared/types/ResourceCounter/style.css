@@ -1,0 +1,46 @@
+.resourceDetail[data-type="counter"] {
+    background-color: transparent;
+}
+
+.resourceDetail[data-type="counter"] .resourceContent {
+    container-type: size;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* The number fills the overlay box: limited by its height and by its width
+   (--counter-chars: length of the final value incl. prefix / suffix). */
+.resourceDetail[data-type="counter"] .counterValue {
+    font-size: min(70cqh, calc(170cqw / var(--counter-chars, 4)));
+    line-height: 1;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
+
+.resourceDetail[data-type="counter"] .counterRollColumn {
+    display: inline-block;
+    height: 1em;
+    overflow: hidden;
+    vertical-align: top;
+}
+
+.resourceDetail[data-type="counter"] .counterRollStrip {
+    display: flex;
+    flex-direction: column;
+}
+
+.resourceDetail[data-type="counter"] .counterRollStrip > span {
+    height: 1em;
+    line-height: 1;
+}
+
+/* Driven by the OverlayAnimator (names starting with "ft") */
+@keyframes ftCounterRoll {
+    from { translate: 0 var(--roll-from, 0em); }
+    to   { translate: 0 var(--roll-to, 0em); }
+}
+
+.editPropertiesContainer .propertiesTypeIcon[data-type="counter"] [class^="icon-"]::before, .editPropertiesContainer .propertiesTypeIcon[data-type="counter"] [class*=" icon-"]::before {
+    content: "\f292"; /* icon-hashtag */
+}

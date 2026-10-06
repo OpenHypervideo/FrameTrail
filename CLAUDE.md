@@ -27,12 +27,12 @@ FrameTrail/
 │   │   │   ├── storage/            # StorageAdapter + Server/Local/Download adapters
 │   │   │   ├── _templateModule.js  # Module boilerplate template
 │   │   │   └── _templateType.js    # Type boilerplate template
-│   │   ├── modules/                # 12 shared modules
-│   │   ├── types/                  # 23 resource type definitions
+│   │   ├── modules/                # 17 shared modules
+│   │   ├── types/                  # 26 resource types + the base Resource
 │   │   ├── styles/                 # Global CSS (variables, generic, webfont)
 │   │   └── fonts/                  # Webfonts (woff2 only)
 │   ├── player/
-│   │   ├── modules/                # 18 player-specific modules
+│   │   ├── modules/                # 24 player-specific modules
 │   │   └── types/                  # Player types (Annotation, Overlay, etc.)
 │   ├── resourcemanager/
 │   │   └── modules/ResourceManagerLauncher/
@@ -71,7 +71,7 @@ Three HTML entry points in `src/`:
 - `src/_shared/frametrail-core/` — Core framework and module loader
 - `src/_shared/frametrail-core/storage/` — Storage adapters (Server, Local, Download)
 - `src/_shared/modules/` — Shared modules (Database, UserManagement, ResourceManager, RouteNavigation, StorageManager, Localization, etc.)
-- `src/_shared/types/` — Resource type definitions (29 types, all inherit from base Resource)
+- `src/_shared/types/` — Resource type definitions (26 types, all inherit from base Resource)
 - `src/player/modules/` — Player modules (HypervideoModel, HypervideoController, AnnotationsController, OverlaysController, Interface, Titlebar, Sidebar, etc.)
 - `src/player/types/` — Player types (Annotation, Overlay, Hypervideo, Subtitle, CodeSnippet, ContentView)
 - `src/_shared/styles/` — Global CSS (variables.css, generic.css, frametrail-webfont.css)
@@ -181,7 +181,7 @@ _data/
 
 ### Resource Types
 
-All 23 resource types inherit from the base `Resource` type in `src/_shared/types/Resource/`:
+All 26 resource types inherit from the base `Resource` type in `src/_shared/types/Resource/`:
 
 | Type | Description |
 |------|-------------|
@@ -198,16 +198,19 @@ All 23 resource types inherit from the base `Resource` type in `src/_shared/type
 | ResourceWebpage | Generic iframe embeds |
 | ResourceWikipedia | Wikipedia article embeds |
 | ResourcePDF | PDF document viewer |
-| ResourceText | Rich text (WYSIWYG via Quill + HTML editor) |
+| ResourceText | Rich text (WYSIWYG via Quill + HTML editor), optional title and card style |
 | ResourceHtml | Raw HTML (CodeMirror HTML editor only, no sanitisation) |
 | ResourceLocation | OpenStreetMap (via Leaflet) |
 | ResourceQuiz | Interactive quiz |
-| ResourceHotspot | Clickable hotspot |
+| ResourceHotspot | Clickable hotspot: circle, rectangle, rounded, arrow, underline, freeform (SVG path) |
 | ResourceEntity | Linked data entity |
 | ResourceMastodon | Mastodon embeds |
 | ResourceCodepen | CodePen embeds |
 | ResourceFigma | Figma embeds |
 | ResourceUrlPreview | URL preview cards |
+| ResourceCursor | Mouse pointer moved by box motion, with click ripples (overlay only) |
+| ResourceCounter | Animated number: count up or rolling digits (overlay only) |
+| ResourceChart | Animated bar / line / donut chart or progress ring from `Label: value` lines (overlay only) |
 
 ## Development
 
@@ -410,7 +413,7 @@ Overlays containing text-like content are scaled so they always render at a comf
 **How it works (`src/player/types/Overlay/type.js` → `scaleOverlayElement()`):**
 
 1. Called by `rescaleOverlays()` in `OverlaysController` whenever the video/overlay container resizes (triggered from `ViewVideo.adjustHypervideo()`).
-2. Applies only to these types: `wikipedia`, `webpage`, `text`, `quiz`, `mastodon`, `urlpreview`.
+2. Applies only to these types (`Overlay.isScaledType()`): `wikipedia`, `webpage`, `text`, `html`, `quiz`, `mastodon`, `urlpreview`. A ResizeObserver on the overlay box re-scales them when box motion animates their size.
 3. Logic:
    - `scaleBase` = 400px (800px for `text`)
    - If the overlay wrapper is **wider** than `scaleBase`, scaling is reset (no transform applied — content fills normally)
@@ -420,7 +423,63 @@ Overlays containing text-like content are scaled so they always render at a comf
 **CSS complement (`ResourceWebpage/style.css`):**
 The iframe inside a webpage overlay gets an additional static zoom-out via `width/height: 133%` + `transform: scale(0.75)` so that the full-width iframe content fits within the 400px rendered container. This is layered on top of the JS scaling, not a replacement for it.
 
-**To add scaling to a new type:** add its `data.type` string to the condition at the top of `scaleOverlayElement()`. Do NOT use CSS container queries or static CSS transforms as a substitute — the JS mechanism is the authoritative approach.
+**To add scaling to a new type:** add its `data.type` string to `isScaledType()`. Do NOT use CSS container queries or static CSS transforms as a substitute — the JS mechanism is the authoritative approach. (The overlay-only types Cursor, Counter and Chart are not scaled types: they size their content with container query units.)
+
+## Overlay Animation
+
+Overlay animations are seekable: what an overlay shows is a function of the video time, so scrubbing, pausing and seeking always show the exact frame. The motion is CSS (`@keyframes` in `src/_shared/modules/AnimationLibrary/presets.css`, plus `ft*` keyframes in the new types' stylesheets) and runs natively in the browser's animation engine; JavaScript only keeps it in sync with the video. There is no GSAP (its license excludes visual animation builders).
+
+- **Timing model — transitions frame the span.** The entrance plays *before* `start` (lead-in), the exit *after* `end` (trail-out, as the legacy exit did), so an overlay is fully present and clickable for exactly `[start, end]`. Emphasis loops, text reveals and content animations (counter, chart, cursor clicks) play inside the span. The lead-in is clipped at the video start (overlays at 0:00 appear without one). This is what keeps overlays whose `onStart` pauses the video (every new hotspot/quiz) fully visible at the pause.
+- **Activation is unchanged.** `setActive`/`setInactive`, onStart/onEnd, pointer events and synced media still follow the 150 ms tick. Animated overlays additionally get a **presence** state (`.present`, visible but not interactive) from `OverlayAnimator.updatePresence()`, called first in `OverlaysController.updateStatesOfOverlays()`: they are armed 200 ms ahead of their window; the `ftArmed` / `ftDisarm` keyframes flip the animation layer's visibility exactly at the window edges, so arming early never shows anything early. Overlays without any animation keep the plain class-toggle path.
+- **DOM.** `Overlay` puts its content into `.overlayAnimationLayer` (`overlay.getContentHost()`), between `.overlayElement` and `.resourceDetail`. Transitions animate only that layer and only `opacity`, individual `translate`/`scale`/`rotate`, `filter` and `clip-path` — never `transform` — so hover styles, `scaleOverlayElement()` and the editing handles keep working. Code that inserts content into an overlay must use `getContentHost()`.
+- **Engine (`src/player/modules/OverlayAnimator/`).** Builds one inline `animation` list per overlay (origin = start − lead-in), collects the resulting `CSSAnimation`s (only names starting with `ft`, so e.g. the hotspot pulse keeps its own clock) and syncs them like synced media: on play/pause/seek/rate change it sets every animation's time from the video (`startTime` while playing — never `play()`, which auto-rewinds finished animations), and the 25 ms tick corrects drift (`checkSync`). It reads `HypervideoController.preciseTime` and respects `isStalled` / `isBuffering`. An `ftClock` animation per overlay is the reference for drift checks and for per-frame JS hooks. `invalidate(overlay)` rebuilds after any change; `Overlay.contentChanged()` (debounced) and `Overlay.rerenderContent()` call it.
+- **Type hooks (optional, on Resource types):** `getTextRevealRoot(detail)` (Text), `getStrokeTargets(detail)` (Hotspot, for the Draw preset), `animateContent(detail, ctx)` → `{ update(localMs), destroy() }` (Counter, Chart, Cursor). `ctx` carries `leadInMs`, `spanMs`, `entry()` (builds a CSS `animation` entry), `easeCss`, `easeFn`, `reducedMotion`, `editMode`. Content animations put their delays at `ctx.leadInMs + …` so everything shares one origin.
+- **Data:** `attributes.animation = { in, emphasis, out, text }`, each `{ preset, duration (ms), ease, params? }` (emphasis also `iterations`, 0 = fill the span; text also `mode` word/letter and `stagger`). It round-trips through `frametrail:attributes`. The legacy fields `animationIn` / `animationOut` / `animationDuration` are read forever (`AnimationLibrary.normalizeAnimation()`) and replaced by `animation` on the first edit in the Animation tab.
+- **Registries (`src/_shared/modules/AnimationLibrary/`):** eases (CSS bezier / `linear()`-sampled spring and wiggle, with a JS evaluator each), presets per phase (`appliesTo` limits e.g. Draw to hotspots), window math, keyframe math and text splitting. Pure, shared, also initialised in the resource manager (the Database uses its keyframe helpers).
+- **Editing:** the overlay properties panel has the tabs Options | Animation (`src/player/modules/OverlayAnimationEditor/`). Changes go through `OverlaysController.registerStateUndo()` with `Overlay.snapshotState()` / `applyState()`. Timeline bars show the lead-in / trail-out as faded tails while editing.
+- **Reduced motion:** with `prefers-reduced-motion: reduce`, transitions become ≤ 250 ms fades, emphasis and text reveals are dropped and content animations show their end state; box motion is kept.
+
+## Box Motion (Keyframes)
+
+An overlay's box can move and resize over time. The editing UI is deliberately small (CapCut-style), there is no Motion tab:
+
+- **Keyframe toggle** (`.keyframeToggle`, a diamond at the selected overlay's corner on the video, shown while the playhead is inside its span): hollow sets a keyframe at the playhead, filled removes it. The first keyframe switches motion on; removing the last switches it off and keeps the box where it is.
+- **Auto-keying:** while an overlay has keyframes, every box change — canvas drag/resize, the position inputs, the align buttons — writes the keyframe at `Overlay.editTime()` (the playhead clamped to the span) via `Overlay.setRect()` → `upsertKeyframe()`, snapping to a keyframe within 0.1 s (`keyframeIndexAt()`).
+- **Diamonds** on the overlay's timeline element: click jumps there and opens the keyframe menu (`OverlayAnimationEditor.openKeyframeMenu()`, a `popover="auto"` built from `.contextSelectList`: easing of the segment to the next keyframe — Linear / In / Out / In & Out / Hold — and Delete); drag retimes.
+- Keyframe edits go through `Overlay.editKeyframes(description, mutate)`, which registers the snapshot undo step.
+
+Media Fragments can only express one static rectangle per time range, and no W3C or IIIF selector describes a moving region, so the keyframes are a FrameTrail extension on the overlay's FragmentSelector:
+
+```jsonc
+"selector": {
+    "type": "FragmentSelector",
+    "conformsTo": "http://www.w3.org/TR/media-frags/",
+    "value": "t=12.5,20&xywh=percent:18,22,47,40",           // union box of the track within the span
+    "frametrail:keyframes": [
+        { "t": 12.5, "xywh": [18.2, 30.1, 15, 12] },          // t: absolute video seconds (incl. offsetIn)
+        { "t": 15.0, "xywh": [40.6, 24.0, 16, 13], "ease": "easeInOut" },  // ease: segment to the next keyframe
+        { "t": 18.0, "xywh": [50.0, 22.4, 15, 12], "ease": "hold" }
+    ]
+}
+```
+
+- Internally `overlay.data.keyframes` has the same shape; `data.position` is kept equal to the union box (`AnimationLibrary.unionBox()`), which is also the fallback `xywh` other consumers see. `xywh` values may be off-frame inside keyframes; the fallback box is clamped to 0–100.
+- Moving the whole overlay in the timeline shifts its keyframes; trimming it does not (keyframes outside the span are kept).
+- At runtime the box is one Web Animation on `.overlayElement` (`left/top/width/height` in percent), cancelled while interact.js drags it (`OverlayAnimator.suspendBox()`).
+
+## Editor Selection
+
+Overlays, annotations and code snippets share one selection model in their edit modes, following video-editor conventions:
+
+- **Click** (timeline element, or an overlay on the video) selects the item (`OverlaysController.selectOverlay()`, `AnnotationsController.selectAnnotation()`, `CodeSnippetsController.selectCodeSnippet()`) and **never moves the playhead**. Clicking a selected item does nothing.
+- **Double-click** on the timeline element jumps to the item's start. Moving a timeline element horizontally and resizing it still seek (to the new start, or to the end when the end handle is dragged); so do the Start/End inputs.
+- Dragging or resizing selects the item and keeps it selected. Every interact.js `end` listener calls `ViewVideo.swallowNextClick()`, so the click that ends a gesture never reaches selection, deselection or the play toggle; a scrub drag on an empty timeline does the same.
+- **Deselect** with Esc (`InteractionController`), a plain click on empty timeline space (which also seeks, as before), or a click on empty video space (which then does not toggle playback).
+- **Ghost:** a selected overlay that is not shown at the playhead (outside `[start, end]` and outside its animation window) gets `.ghost` — dimmed, dashed, still draggable and resizable. `OverlayAnimator.setGhost()` shows its settled look (`end` − 1 ms: entered, text revealed, content animations finished) with the box sampled at the nearest span edge, which is also where `editTime()` writes box changes. During the lead-in and trail-out the real frame is shown instead, so scrubbing and Preview stay WYSIWYG. Double-clicking a ghost jumps into its span.
+
+## Custom Overlay Gallery
+
+The "Custom Overlay" tab of the overlay editing panel is one flat gallery built from `getCustomOverlayTiles()` in `OverlaysController`: Text, Custom HTML, Quiz, Hotspot (unchanged defaults), then Card, Quote, Notification (pre-styled Text overlays), Arrow, Curved Arrow, Underline, Freeform Hotspot (Hotspot variants that draw themselves in), Cursor (starts with box motion on), Counter, and Bar / Line / Donut Chart and Progress Ring. A tile is `{ id, type, icon, label, attributes, size, events?, motion? }`; the drop handler builds the overlay from it. Tiles that pass `events: {}` opt out of the pause-on-start default of hotspots and quizzes. The former "Presets" tab (Pause & Continue, Choice Buttons) has been removed.
 
 ## Localization
 

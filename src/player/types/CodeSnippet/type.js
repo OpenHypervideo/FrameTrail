@@ -251,19 +251,19 @@ FrameTrail.defineType(
 
                     this.makeTimelineElementDraggable();
 
+                    // Clicking selects without moving the playhead; double-clicking jumps to my start.
                     this._clickHandler = function(){
-
-                        if (CodeSnippetsController.codeSnippetInFocus === self){
-                            return CodeSnippetsController.codeSnippetInFocus = null;
-                        }
-
-                        self.permanentFocusState = true;
-                        CodeSnippetsController.codeSnippetInFocus = self;
-
-                        FrameTrail.module('HypervideoController').currentTime = self.data.start;
-
+                        CodeSnippetsController.selectCodeSnippet(self);
                     };
+
+                    this._dblClickHandler = function(evt){
+                        if (evt.target.closest('.ui-resizable-handle')) { return; }
+                        CodeSnippetsController.selectCodeSnippet(self);
+                        FrameTrail.module('HypervideoController').currentTime = self.data.start;
+                    };
+
                     this.timelineElement.addEventListener('click', this._clickHandler);
+                    this.timelineElement.addEventListener('dblclick', this._dblClickHandler);
 
 
                 },
@@ -280,6 +280,7 @@ FrameTrail.defineType(
                     this.timelineElement.classList.remove('ui-draggable', 'ui-draggable-dragging');
 
                     if (this._clickHandler) { this.timelineElement.removeEventListener('click', this._clickHandler); this._clickHandler = null; }
+                    if (this._dblClickHandler) { this.timelineElement.removeEventListener('dblclick', this._dblClickHandler); this._dblClickHandler = null; }
 
 
                 },
@@ -305,9 +306,7 @@ FrameTrail.defineType(
                         listeners: {
                             start: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('CodeSnippetsController').codeSnippetInFocus = self;
-                                }
+                                FrameTrail.module('CodeSnippetsController').selectCodeSnippet(self);
 
                                 // Capture old value for undo
                                 oldStart = self.data.start;
@@ -350,9 +349,9 @@ FrameTrail.defineType(
 
                             end: function(e) {
 
-                                if (!self.permanentFocusState) {
-                                    FrameTrail.module('CodeSnippetsController').codeSnippetInFocus = null;
-                                }
+                                // The click ending this gesture must not change the selection
+
+                                FrameTrail.module('ViewVideo').swallowNextClick();
 
                                 e.target.classList.remove('ui-draggable-dragging');
 

@@ -394,6 +394,40 @@
 
 
     /**
+     * I select an annotation for editing (it stays selected until something
+     * else is selected or the selection is cleared). Selecting never moves the
+     * playhead.
+     * @method selectAnnotation
+     * @param {Annotation} annotation
+     */
+    function selectAnnotation(annotation) {
+
+        if (annotationInFocus !== annotation) {
+            setAnnotationInFocus(annotation);
+        }
+        if (annotation) {
+            annotation.permanentFocusState = true;
+        }
+
+    }
+
+    /**
+     * A click on empty space in the annotation timeline clears the selection.
+     * @method onTimelineClick
+     * @param {Event} evt
+     * @private
+     */
+    function onTimelineClick(evt) {
+
+        if (FrameTrail.getState('editMode') !== 'annotations' || evt.target.closest('.timelineElement')) {
+            return;
+        }
+        setAnnotationInFocus(null);
+
+    }
+
+
+    /**
      * When an annotation got "into focus", its {{#crossLink "Annotation/gotInFocus:method"}}gotInFocus method{{/crossLink}}
      * calls this method, to do two jobs:
      * * first, append the properties controls elements to the respective DOM element.
@@ -486,6 +520,7 @@
             stackTimelineView();
             initEditOptions();
             makeTimelineDroppable(true);
+            FrameTrail.module('ViewVideo').AnnotationTimeline.addEventListener('click', onTimelineClick);
 
         } else if (oldEditMode === 'annotations' && editMode !== 'annotations') {
 
@@ -499,6 +534,7 @@
             setAnnotationInFocus(null);
             resetTimelineView();
             makeTimelineDroppable(false);
+            FrameTrail.module('ViewVideo').AnnotationTimeline.removeEventListener('click', onTimelineClick);
             initAnnotations();
 
         }
@@ -1361,6 +1397,7 @@
         findTopMostActiveAnnotation: findTopMostActiveAnnotation,
         renderPropertiesControls:    renderPropertiesControls,
         renderAnnotationTimelines:   renderAnnotationTimelines,
+        selectAnnotation:            selectAnnotation,
 
         /**
          * An annotation can be selected to be

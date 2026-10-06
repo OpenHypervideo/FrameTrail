@@ -1854,6 +1854,27 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
     };
 
+
+    /**
+     * A drag or resize gesture ends with a native click on whatever lies under
+     * the pointer. Called from the end of every editing gesture, I swallow that
+     * click, so it neither changes the selection nor toggles playback.
+     * @method swallowNextClick
+     */
+    function swallowNextClick() {
+
+        var swallow = function(evt) {
+            evt.stopPropagation();
+            evt.preventDefault();
+        };
+
+        window.addEventListener('click', swallow, { capture: true, once: true });
+        window.setTimeout(function() {
+            window.removeEventListener('click', swallow, { capture: true });
+        }, 50);
+
+    };
+
     /**
      *  Toggle (Enter / Exit) native Fullscreen State
      *
@@ -1948,6 +1969,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         computeTimelineSnap:     computeTimelineSnap,
         showTimelineSnapIndicator: showTimelineSnapIndicator,
         hideTimelineSnapIndicator: hideTimelineSnapIndicator,
+        swallowNextClick:        swallowNextClick,
 
         /**
          * I display a (formated time) string in an area of the progress bar.

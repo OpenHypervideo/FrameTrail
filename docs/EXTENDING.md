@@ -201,6 +201,33 @@ If your resource type should be creatable via the Resource Manager, update `src/
 
 If your resource type involves file uploads, update `src/_server/files.php` to handle the new file type.
 
+### 7. Animate Your Content (Optional)
+
+Every overlay can get entrance, emphasis and exit animations without any work in the type (they animate the overlay's animation layer). If your type's *content* should animate as well — a number counting, bars growing, a stroke drawing itself — implement one of the optional hooks the `OverlayAnimator` looks for. Animations run on the video clock, so they are exact when paused, scrubbed or seeked:
+
+```javascript
+// Called whenever the overlay's animations are (re)built. Put CSS animations on
+// your elements — keyframe names must start with "ft" — with delays measured
+// from ctx.leadInMs (that moment is the overlay's start time).
+animateContent: function(resourceDetail, ctx) {
+
+    if (ctx.reducedMotion) { return null; }   // show the end state
+
+    var bar = resourceDetail.querySelector('.myBar');
+    bar.style.animation = ctx.entry('ftMyGrow', 800, 'power2Out', ctx.leadInMs, 1, 'both');
+
+    // Optional per-frame JS for what CSS cannot do (e.g. formatted numbers).
+    // localMs is the time since the overlay's start; it is called while playing
+    // and on every seek, from the overlay's own animation clock.
+    return {
+        update:  function(localMs) { /* … */ },
+        destroy: function() { /* restore the end state */ }
+    };
+},
+```
+
+`ctx` also offers `spanMs` (length of the overlay), `easeCss(id)` / `easeFn(id)` (the shared ease registry) and `editMode`. Two narrower hooks exist: `getTextRevealRoot(resourceDetail)` (the element whose text the text-reveal presets split) and `getStrokeTargets(resourceDetail)` (SVG strokes with `pathLength="1"` that the Draw preset animates). Render your content in its final state — that is what thumbnails, content views and reduced motion show. If your content is re-rendered after an edit, call `overlay.rerenderContent()` (or `overlay.contentChanged()` after an in-place change) so the animations are rebuilt. See `ResourceCounter`, `ResourceChart` and `ResourceCursor` for complete examples.
+
 ## Creating a Custom Module
 
 ### Module Structure
@@ -492,7 +519,7 @@ When adding a new resource type or module, make sure to:
 1. Create `type.js` (or `module.js`) and `style.css` in the appropriate directory under `src/`
 2. Add `<script>` and `<link>` tags to `src/index.html` (and `src/resources.html` if applicable)
 3. Add entries to `scripts/build.sh` in `JS_FILES` and `CSS_FILES` arrays (in correct order)
-4. Add localization strings to `src/_shared/modules/Localization/locale/en.js` and `de.js`
+4. Add localization strings to all locale files in `src/_shared/modules/Localization/locale/` (`en.js`, `de.js`, `fr.js`), in alphabetical key order
 5. Test in both development mode (`src/`) and build mode (`build/`)
 6. Test in Chrome and Firefox
 7. Test with edit mode enabled and disabled

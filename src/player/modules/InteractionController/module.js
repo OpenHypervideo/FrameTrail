@@ -59,7 +59,9 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
             "37": interfaceLeft,
             "39": interfaceRight,
 
-            "32": spaceKey
+            "32": spaceKey,
+
+            "27": escapeKey
 
 
         },
@@ -399,6 +401,41 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
             HypervideoController.pause();
         } else {
             HypervideoController.play();
+        }
+
+    };
+
+    /**
+     * Escape clears the selection of the timeline that is being edited
+     * (overlays, annotations or code snippets), unless something else owns
+     * the key: a text editor, an open dialog or the keyframe easing menu.
+     * @method escapeKey
+     * @param {Event} evt
+     */
+    function escapeKey(evt) {
+
+        var target = evt.target;
+        if (   (target && target.isContentEditable)
+            || (target && target.closest && target.closest('.cm-editor'))
+            || document.querySelector('dialog[open]') ) {
+            return;
+        }
+
+        var OverlayAnimationEditor = FrameTrail.module('OverlayAnimationEditor');
+        if (OverlayAnimationEditor && OverlayAnimationEditor.isKeyframeMenuOpen()) {
+            return;
+        }
+
+        switch (FrameTrail.getState('editMode')) {
+            case 'overlays':
+                FrameTrail.module('OverlaysController').overlayInFocus = null;
+                break;
+            case 'annotations':
+                FrameTrail.module('AnnotationsController').annotationInFocus = null;
+                break;
+            case 'codesnippets':
+                FrameTrail.module('CodeSnippetsController').codeSnippetInFocus = null;
+                break;
         }
 
     };

@@ -573,6 +573,40 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
     };
 
 
+    /**
+     * I select a code snippet for editing (it stays selected until something
+     * else is selected or the selection is cleared). Selecting never moves the
+     * playhead.
+     * @method selectCodeSnippet
+     * @param {CodeSnippet} codeSnippet
+     */
+    function selectCodeSnippet(codeSnippet) {
+
+        if (codeSnippetInFocus !== codeSnippet) {
+            setCodeSnippetInFocus(codeSnippet);
+        }
+        if (codeSnippet) {
+            codeSnippet.permanentFocusState = true;
+        }
+
+    }
+
+    /**
+     * A click on empty space in the code snippet timeline clears the selection.
+     * @method onTimelineClick
+     * @param {Event} evt
+     * @private
+     */
+    function onTimelineClick(evt) {
+
+        if (FrameTrail.getState('editMode') !== 'codesnippets' || evt.target.closest('.timelineElement')) {
+            return;
+        }
+        setCodeSnippetInFocus(null);
+
+    }
+
+
 
 
     /**
@@ -603,8 +637,7 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
             stackTimelineView();
             initEditOptions();
             makeTimelineDroppable(true);
-
-
+            ViewVideo.CodeSnippetTimeline.addEventListener('click', onTimelineClick);
 
         } else if (oldEditMode === 'codesnippets' && editMode !== 'codesnippets') {
 
@@ -618,6 +651,7 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
             resetTimelineView();
             rearrangeTilesAndContent();
             makeTimelineDroppable(false);
+            ViewVideo.CodeSnippetTimeline.removeEventListener('click', onTimelineClick);
 
         }
 
@@ -812,6 +846,7 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
         stackTimelineView:          stackTimelineView,
         deleteCodeSnippet:            deleteCodeSnippet,
         renderActionPresetPicker:     renderActionPresetPicker,
+        selectCodeSnippet:            selectCodeSnippet,
 
         /**
          * I hold the currently opened codeSnippet (or null, when there is no opened snippet).

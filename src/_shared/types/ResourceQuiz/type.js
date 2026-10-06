@@ -444,7 +444,8 @@ FrameTrail.defineType(
                     if (overlayOrAnnotation.overlayElement) {
                         var _oldRd = overlayOrAnnotation.overlayElement.querySelector('.resourceDetail');
                         if (_oldRd) _oldRd.remove();
-                        overlayOrAnnotation.overlayElement.appendChild(resourceItem.renderContent());
+                        (overlayOrAnnotation.getContentHost ? overlayOrAnnotation.getContentHost() : overlayOrAnnotation.overlayElement).appendChild(resourceItem.renderContent());
+                        if (overlayOrAnnotation.contentChanged) { overlayOrAnnotation.contentChanged(); }
                     } else if (overlayOrAnnotation.contentViewDetailElements) {
                         overlayOrAnnotation.contentViewDetailElements.forEach(function(detailEl) {
                             var _rd = detailEl.querySelector('.resourceDetail');

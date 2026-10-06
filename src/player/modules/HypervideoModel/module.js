@@ -494,7 +494,8 @@
             if (protoData.created) {
                 // Restoring from saved data - use as-is
                 newData = JSON.parse(JSON.stringify(protoData));
-            } else if ( protoData.type == 'text' || protoData.type == 'html' || protoData.type == 'quiz' || protoData.type == 'hotspot' ) {
+            } else if ( ['text', 'html', 'quiz', 'hotspot', 'cursor', 'counter', 'chart'].indexOf(protoData.type) >= 0 ) {
+                // Overlay kinds that do not come from the resource library
                 newData = {
                     "name":         protoData.name,
                     "creator":      FrameTrail.getState('username'),
@@ -513,10 +514,12 @@
                     }
                 }
                 if ( protoData.type == 'quiz' || protoData.type == 'hotspot' ) {
-                    // Presets may pass explicit events; otherwise default to pausing on start.
+                    // Gallery tiles may pass explicit events; otherwise default to pausing on start.
                     newData.events = protoData.events || {
                         "onStart": "FrameTrail.module('HypervideoController').pause();"
                     };
+                } else if ( protoData.events ) {
+                    newData.events = protoData.events;
                 }
             } else {
                 newData = {

@@ -124,6 +124,7 @@
     FrameTrail.initModule('RouteNavigation');
     FrameTrail.initModule('StorageManager');
     FrameTrail.initModule('UserManagement');
+    FrameTrail.initModule('AnimationLibrary');
     FrameTrail.initModule('Database');
     FrameTrail.initModule('TagModel');
     FrameTrail.initModule('ResourceManager');
@@ -139,6 +140,9 @@
     // Set up Undo Manager
     FrameTrail.initModule('UndoManager');
     FrameTrail.initModule('Collaboration');
+
+    // Set up the overlay animation editor (Animation / Motion tabs)
+    FrameTrail.initModule('OverlayAnimationEditor');
 
 
     // Initialize storage, then start the actual init process

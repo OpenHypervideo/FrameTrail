@@ -41,6 +41,7 @@
     // Set up the various data models
     FrameTrail.initModule('RouteNavigation');
     FrameTrail.initModule('StorageManager');
+    FrameTrail.initModule('AnimationLibrary');
     FrameTrail.initModule('Database');
 
 

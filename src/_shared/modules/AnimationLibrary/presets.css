@@ -1,0 +1,324 @@
+/*
+ * Overlay animation presets (see AnimationLibrary/module.js).
+ *
+ * Every keyframe name starts with "ft": the OverlayAnimator only drives
+ * animations whose name starts with "ft". Durations, eases and delays are set
+ * by the animator; these rules only describe the motion.
+ *
+ * Parameters (set inline on the animation layer by the animator):
+ *   --ft-anim-dist   travel distance (defaults to a share of the stage)
+ *   --ft-anim-color  colour of glow / marker presets
+ *
+ * Only individual transform properties (translate, scale, rotate) are animated,
+ * never `transform`, so hover effects and overlay scaling keep working.
+ */
+
+
+/* Window edges ---------------------------------------------------------
+   Every animated overlay is armed slightly ahead of its window. These flip
+   the animation layer's visibility exactly at the window edges, so arming
+   early never shows anything early. (visibility interpolates as "visible"
+   whenever one endpoint is visible.) Both edges belong to the window, so the
+   OverlayAnimator runs ftArmed in the millisecond before it opens and ftDisarm
+   in the millisecond after it closes. */
+
+@keyframes ftArmed {
+    from { visibility: hidden; }
+    to   { visibility: visible; }
+}
+
+@keyframes ftDisarm {
+    from { visibility: visible; }
+    to   { visibility: hidden; }
+}
+
+
+/* Entrance ------------------------------------------------------------- */
+
+@keyframes ftInFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes ftInSlideFromLeft {
+    from { opacity: 0; translate: calc(-1 * var(--ft-anim-dist, 24px)) 0; }
+    to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes ftInSlideFromRight {
+    from { opacity: 0; translate: var(--ft-anim-dist, 24px) 0; }
+    to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes ftInSlideFromTop {
+    from { opacity: 0; translate: 0 calc(-1 * var(--ft-anim-dist, 24px)); }
+    to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes ftInSlideFromBottom {
+    from { opacity: 0; translate: 0 var(--ft-anim-dist, 24px); }
+    to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes ftInZoom {
+    from { opacity: 0; scale: 0.8; }
+    to   { opacity: 1; scale: 1; }
+}
+
+@keyframes ftInPop {
+    from { opacity: 0; scale: 0.5; }
+    30%  { opacity: 1; }
+    to   { opacity: 1; scale: 1; }
+}
+
+@keyframes ftInBlur {
+    from { opacity: 0; filter: blur(12px); scale: 1.04; }
+    to   { opacity: 1; filter: blur(0); scale: 1; }
+}
+
+@keyframes ftInWipeFromLeft {
+    from { clip-path: inset(0 100% 0 0); }
+    to   { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes ftInWipeFromRight {
+    from { clip-path: inset(0 0 0 100%); }
+    to   { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes ftInWipeFromTop {
+    from { clip-path: inset(0 0 100% 0); }
+    to   { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes ftInWipeFromBottom {
+    from { clip-path: inset(100% 0 0 0); }
+    to   { clip-path: inset(0 0 0 0); }
+}
+
+@keyframes ftInIris {
+    from { clip-path: circle(0% at 50% 50%); }
+    to   { clip-path: circle(75% at 50% 50%); }
+}
+
+@keyframes ftInDrop {
+    from { opacity: 0; translate: 0 calc(-3 * var(--ft-anim-dist, 24px)); }
+    to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes ftInRotate {
+    from { opacity: 0; rotate: -12deg; scale: 0.9; }
+    to   { opacity: 1; rotate: 0deg; scale: 1; }
+}
+
+/* Stroke targets carry pathLength="1" and stroke-dasharray: 1. The stroke is
+   hidden at the very ends so round line caps leave no dot behind. */
+@keyframes ftInDraw {
+    0%   { stroke-dashoffset: 1; stroke-opacity: 0; }
+    0.1% { stroke-opacity: 1; }
+    100% { stroke-dashoffset: 0; stroke-opacity: 1; }
+}
+
+
+/* Emphasis (rest → … → rest, repeated during the span) ----------------- */
+
+@keyframes ftLoopPulse {
+    0%, 100% { scale: 1; }
+    50%      { scale: 1.06; }
+}
+
+@keyframes ftLoopBreathe {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.65; }
+}
+
+@keyframes ftLoopWobble {
+    0%, 100% { rotate: 0deg; }
+    25%      { rotate: -3deg; }
+    75%      { rotate: 3deg; }
+}
+
+@keyframes ftLoopShake {
+    0%, 100%  { translate: 0 0; }
+    20%, 60%  { translate: calc(-0.25 * var(--ft-anim-dist, 24px)) 0; }
+    40%, 80%  { translate: calc(0.25 * var(--ft-anim-dist, 24px)) 0; }
+}
+
+@keyframes ftLoopBounce {
+    0%, 50%, 100% { translate: 0 0; }
+    30%           { translate: 0 calc(-0.5 * var(--ft-anim-dist, 24px)); }
+    65%           { translate: 0 calc(-0.2 * var(--ft-anim-dist, 24px)); }
+}
+
+@keyframes ftLoopFloat {
+    0%, 100% { translate: 0 0; }
+    50%      { translate: 0 calc(-0.25 * var(--ft-anim-dist, 24px)); }
+}
+
+@keyframes ftLoopHeartbeat {
+    0%, 28%, 70%, 100% { scale: 1; }
+    14%, 42%           { scale: 1.12; }
+}
+
+@keyframes ftLoopFlash {
+    0%, 100% { opacity: 1; }
+    50%      { opacity: 0.25; }
+}
+
+@keyframes ftLoopGlow {
+    0%, 100% { filter: drop-shadow(0 0 0 transparent); }
+    50%      { filter: drop-shadow(0 0 calc(0.4 * var(--ft-anim-dist, 24px)) var(--ft-anim-color, #ffffff)); }
+}
+
+
+/* Exit ----------------------------------------------------------------- */
+
+@keyframes ftOutFade {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+@keyframes ftOutSlideToLeft {
+    from { opacity: 1; translate: 0 0; }
+    to   { opacity: 0; translate: calc(-1 * var(--ft-anim-dist, 24px)) 0; }
+}
+
+@keyframes ftOutSlideToRight {
+    from { opacity: 1; translate: 0 0; }
+    to   { opacity: 0; translate: var(--ft-anim-dist, 24px) 0; }
+}
+
+@keyframes ftOutSlideToTop {
+    from { opacity: 1; translate: 0 0; }
+    to   { opacity: 0; translate: 0 calc(-1 * var(--ft-anim-dist, 24px)); }
+}
+
+@keyframes ftOutSlideToBottom {
+    from { opacity: 1; translate: 0 0; }
+    to   { opacity: 0; translate: 0 var(--ft-anim-dist, 24px); }
+}
+
+@keyframes ftOutZoom {
+    from { opacity: 1; scale: 1; }
+    to   { opacity: 0; scale: 0.8; }
+}
+
+@keyframes ftOutPop {
+    from { opacity: 1; scale: 1; }
+    70%  { opacity: 1; }
+    to   { opacity: 0; scale: 0.5; }
+}
+
+@keyframes ftOutBlur {
+    from { opacity: 1; filter: blur(0); scale: 1; }
+    to   { opacity: 0; filter: blur(12px); scale: 1.04; }
+}
+
+@keyframes ftOutWipeToLeft {
+    from { clip-path: inset(0 0 0 0); }
+    to   { clip-path: inset(0 100% 0 0); }
+}
+
+@keyframes ftOutWipeToRight {
+    from { clip-path: inset(0 0 0 0); }
+    to   { clip-path: inset(0 0 0 100%); }
+}
+
+@keyframes ftOutWipeToTop {
+    from { clip-path: inset(0 0 0 0); }
+    to   { clip-path: inset(0 0 100% 0); }
+}
+
+@keyframes ftOutWipeToBottom {
+    from { clip-path: inset(0 0 0 0); }
+    to   { clip-path: inset(100% 0 0 0); }
+}
+
+@keyframes ftOutIris {
+    from { clip-path: circle(75% at 50% 50%); }
+    to   { clip-path: circle(0% at 50% 50%); }
+}
+
+@keyframes ftOutDrop {
+    from { opacity: 1; translate: 0 0; }
+    to   { opacity: 0; translate: 0 calc(3 * var(--ft-anim-dist, 24px)); }
+}
+
+@keyframes ftOutRotate {
+    from { opacity: 1; rotate: 0deg; scale: 1; }
+    to   { opacity: 0; rotate: 12deg; scale: 0.9; }
+}
+
+@keyframes ftOutDraw {
+    0%    { stroke-dashoffset: 0; stroke-opacity: 1; }
+    99.9% { stroke-opacity: 1; }
+    100%  { stroke-dashoffset: 1; stroke-opacity: 0; }
+}
+
+
+/* Text reveal (applied to every unit with a staggered delay) ------------ */
+
+@keyframes ftTextFadeUp {
+    from { opacity: 0; translate: 0 0.4em; }
+    to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes ftTextFade {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes ftTextPop {
+    from { opacity: 0; scale: 0.6; }
+    to   { opacity: 1; scale: 1; }
+}
+
+@keyframes ftTextBlur {
+    from { opacity: 0; filter: blur(6px); }
+    to   { opacity: 1; filter: blur(0); }
+}
+
+@keyframes ftTextSlide {
+    from { opacity: 0; translate: -0.6em 0; }
+    to   { opacity: 1; translate: 0 0; }
+}
+
+@keyframes ftTextType {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+@keyframes ftTextMarker {
+    from { background-size: 0% 100%; }
+    to   { background-size: 100% 100%; }
+}
+
+.ftRevealUnit {
+    display: inline-block;
+}
+
+.ftRevealWord {
+    display: inline-block;
+    white-space: nowrap;
+}
+
+.ftRevealUnit.ftRevealInline {
+    display: inline;
+    background-image: linear-gradient(to bottom, transparent 55%, var(--ft-anim-color, #ffe14d) 55%, var(--ft-anim-color, #ffe14d) 92%, transparent 92%);
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+}
+
+.ftSrOnly {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+    border: 0;
+}

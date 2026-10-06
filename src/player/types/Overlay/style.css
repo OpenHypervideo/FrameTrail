@@ -98,118 +98,178 @@
     pointer-events: auto;
 }
 
-/* Keep visible during exit animation */
-.overlayContainer .overlayElement.animating-out {
+/* Armed by the OverlayAnimator: visible ahead of / after the active span while
+   its entrance and exit transitions play, but not interactive. */
+.overlayContainer .overlayElement.present {
     visibility: visible;
+}
+
+.overlayContainer .overlayElement > .overlayAnimationLayer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+/* Lead-in / trail-out of an overlay's transitions, drawn as faded tails while
+   editing (--ft-tail-in / --ft-tail-out: tail length relative to the element). */
+.overlayTimeline.editable .timelineElement::before,
+.overlayTimeline.editable .timelineElement::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    height: 100%;
     pointer-events: none;
+    background: inherit;
+    opacity: 0.45;
 }
 
-/* ============================================
-   ENTRANCE ANIMATIONS
-   ============================================ */
-
-@keyframes overlayFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-.overlayContainer .overlayElement.active.anim-in-fade {
-    animation: overlayFadeIn var(--overlay-anim-duration, 300ms) ease-out forwards;
+.overlayTimeline.editable .timelineElement::before {
+    right: 100%;
+    width: calc(var(--ft-tail-in, 0) * 100%);
+    mask-image: linear-gradient(to right, transparent, #000);
+    -webkit-mask-image: linear-gradient(to right, transparent, #000);
 }
 
-@keyframes overlaySlideInLeft {
-    from { opacity: 0; transform: translate3d(-30px, 0, 0); }
-    to { opacity: 1; transform: translate3d(0, 0, 0); }
-}
-.overlayContainer .overlayElement.active.anim-in-slideLeft {
-    animation: overlaySlideInLeft var(--overlay-anim-duration, 300ms) ease-out forwards;
-}
-
-@keyframes overlaySlideInRight {
-    from { opacity: 0; transform: translate3d(30px, 0, 0); }
-    to { opacity: 1; transform: translate3d(0, 0, 0); }
-}
-.overlayContainer .overlayElement.active.anim-in-slideRight {
-    animation: overlaySlideInRight var(--overlay-anim-duration, 300ms) ease-out forwards;
+.overlayTimeline.editable .timelineElement::after {
+    left: 100%;
+    width: calc(var(--ft-tail-out, 0) * 100%);
+    mask-image: linear-gradient(to left, transparent, #000);
+    -webkit-mask-image: linear-gradient(to left, transparent, #000);
 }
 
-@keyframes overlaySlideInUp {
-    from { opacity: 0; transform: translate3d(0, 30px, 0); }
-    to { opacity: 1; transform: translate3d(0, 0, 0); }
-}
-.overlayContainer .overlayElement.active.anim-in-slideUp {
-    animation: overlaySlideInUp var(--overlay-anim-duration, 300ms) ease-out forwards;
-}
-
-@keyframes overlaySlideInDown {
-    from { opacity: 0; transform: translate3d(0, -30px, 0); }
-    to { opacity: 1; transform: translate3d(0, 0, 0); }
-}
-.overlayContainer .overlayElement.active.anim-in-slideDown {
-    animation: overlaySlideInDown var(--overlay-anim-duration, 300ms) ease-out forwards;
-}
-
-@keyframes overlayZoomIn {
-    from { opacity: 0; transform: translate3d(0, 0, 0) scale(0.8); }
-    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-}
-.overlayContainer .overlayElement.active.anim-in-zoom {
-    animation: overlayZoomIn var(--overlay-anim-duration, 300ms) ease-out forwards;
+/* Box-motion keyframes on the timeline element (edit mode only). Editing
+   palette, not the theme's: the timeline element behind a diamond takes the
+   theme's colours (primary-fg when active), so a light fill with a dark edge
+   (or, for the current one, the reverse) keeps it visible on any of them. */
+.overlayTimeline .timelineElement .keyframeMarker {
+    display: none;
+    position: absolute;
+    top: 50%;
+    width: 9px;
+    height: 9px;
+    margin: -5px 0 0 -5px;
+    background: var(--editing-bg-color);
+    border: 1px solid var(--editing-fg-color);
+    transform: rotate(45deg);
+    box-sizing: border-box;
+    z-index: 2;
+    touch-action: none;
 }
 
-/* ============================================
-   EXIT ANIMATIONS
-   ============================================ */
-
-@keyframes overlayFadeOut {
-    from { opacity: 1; }
-    to { opacity: 0; }
-}
-.overlayContainer .overlayElement.anim-out-fade {
-    animation: overlayFadeOut var(--overlay-anim-duration, 300ms) ease-in forwards;
+.overlayTimeline.editable .timelineElement .keyframeMarker {
+    display: block;
+    cursor: ew-resize;
 }
 
-@keyframes overlaySlideOutLeft {
-    from { opacity: 1; transform: translate3d(0, 0, 0); }
-    to { opacity: 0; transform: translate3d(-30px, 0, 0); }
-}
-.overlayContainer .overlayElement.anim-out-slideLeft {
-    animation: overlaySlideOutLeft var(--overlay-anim-duration, 300ms) ease-in forwards;
-}
-
-@keyframes overlaySlideOutRight {
-    from { opacity: 1; transform: translate3d(0, 0, 0); }
-    to { opacity: 0; transform: translate3d(30px, 0, 0); }
-}
-.overlayContainer .overlayElement.anim-out-slideRight {
-    animation: overlaySlideOutRight var(--overlay-anim-duration, 300ms) ease-in forwards;
-}
-
-@keyframes overlaySlideOutDown {
-    from { opacity: 1; transform: translate3d(0, 0, 0); }
-    to { opacity: 0; transform: translate3d(0, 30px, 0); }
-}
-.overlayContainer .overlayElement.anim-out-slideDown {
-    animation: overlaySlideOutDown var(--overlay-anim-duration, 300ms) ease-in forwards;
-}
-
-@keyframes overlaySlideOutUp {
-    from { opacity: 1; transform: translate3d(0, 0, 0); }
-    to { opacity: 0; transform: translate3d(0, -30px, 0); }
-}
-.overlayContainer .overlayElement.anim-out-slideUp {
-    animation: overlaySlideOutUp var(--overlay-anim-duration, 300ms) ease-in forwards;
-}
-
-@keyframes overlayZoomOut {
-    from { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-    to { opacity: 0; transform: translate3d(0, 0, 0) scale(0.8); }
-}
-.overlayContainer .overlayElement.anim-out-zoom {
-    animation: overlayZoomOut var(--overlay-anim-duration, 300ms) ease-in forwards;
+.overlayTimeline .timelineElement .keyframeMarker.current {
+    background: var(--editing-fg-color);
+    border-color: var(--editing-bg-color);
 }
 
 .overlayContainer .overlayElement.highlighted {
     box-shadow: 0 0 1px 2px #f8f8f8 !important;
+}
+
+/* The selected overlay stays editable while it is not shown at the playhead
+   (as a ghost) or only partly shown (during its entrance / exit). */
+.mainContainer.editActive .overlayContainer .overlayElement.highlighted {
+    pointer-events: auto;
+}
+
+.overlayContainer .overlayElement.ghost {
+    visibility: visible;
+    opacity: 0.5 !important;
+    outline: 2px dashed #f8f8f8;
+    outline-offset: 2px;
+}
+
+/* Keyframe toggle next to the selected overlay: sets / removes the box-motion
+   keyframe at the playhead (filled when there is one). Editing palette, not the
+   theme's: it acts on the overlay, it is not part of the hypervideo. */
+.overlayContainer .overlayElement .keyframeToggle {
+    display: none;
+    position: absolute;
+    top: -28px;
+    right: -2px;
+    width: 22px;
+    height: 22px;
+    border: 1px solid var(--editing-fg-color);
+    border-radius: var(--input-border-radius);
+    background: var(--editing-bg-color);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    box-sizing: border-box;
+    cursor: pointer;
+    pointer-events: auto;
+    z-index: 3;
+}
+
+.overlayContainer .overlayElement .keyframeToggle.below {
+    top: auto;
+    bottom: -28px;
+}
+
+.overlayContainer .overlayElement .keyframeToggle.inside {
+    top: 4px;
+    right: 4px;
+}
+
+.mainContainer.editActive .overlayContainer .overlayElement.highlighted .keyframeToggle.available {
+    display: block;
+}
+
+.overlayContainer .overlayElement .keyframeToggle::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    border: 2px solid var(--editing-fg-color);
+    transform: rotate(45deg);
+    box-sizing: border-box;
+}
+
+.overlayContainer .overlayElement .keyframeToggle.on::before {
+    background: var(--editing-fg-color);
+}
+
+.overlayContainer .overlayElement .keyframeToggle:hover {
+    background: var(--editing-fg-color);
+    border-color: var(--editing-bg-color);
+}
+
+.overlayContainer .overlayElement .keyframeToggle:hover::before {
+    border-color: var(--editing-bg-color);
+}
+
+.overlayContainer .overlayElement .keyframeToggle.on:hover::before {
+    background: var(--editing-bg-color);
+}
+
+/* Menu of a keyframe diamond (a popover in the top layer) */
+.contextSelectList.keyframeMenu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: 0 0 2px 0;
+    max-height: none;
+    overflow: visible;
+}
+
+.contextSelectList.keyframeMenu:popover-open {
+    display: block;
+}
+
+.contextSelectList.keyframeMenu label {
+    display: block;
+    margin: 0;
+    padding: 6px 10px 2px 10px;
+    font-size: 12px;
+    color: var(--primary-bg-color);
+    opacity: 0.7;
 }
 
 /* Hover States */
