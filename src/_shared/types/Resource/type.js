@@ -549,14 +549,16 @@ FrameTrail.defineType(
                                             + '    <button class="deleteOverlay"><span class="icon-trash"></span>'+ this.labels['GenericDelete'] +'</button>'
                                             + '</div>'
                                             + '<div class="positionControls">'
-                                            + '    <label for="PositionHeight">'+ this.labels['SettingsPositionHeight'] +'</label>'
-                                            + '    <input id="PositionHeight" class="positionHeight" type="number" step="0.1" value="' + overlay.data.position.height + '">'
-                                            + '    <label for="PositionWidth">'+ this.labels['SettingsPositionWidth'] +'</label>'
-                                            + '    <input id="PositionWidth" class="positionWidth" type="number" step="0.1" value="' + overlay.data.position.width + '">'
-                                            + '    <label for="PositionLeft">'+ this.labels['SettingsPositionLeft'] +'</label>'
-                                            + '    <input id="PositionLeft" class="positionLeft" type="number" step="0.1" value="' + overlay.data.position.left + '">'
                                             + '    <label for="PositionTop">'+ this.labels['SettingsPositionTop'] +'</label>'
                                             + '    <input id="PositionTop" class="positionTop" type="number" step="0.1" value="' + overlay.data.position.top + '">'
+                                            + '    <label for="PositionLeft">'+ this.labels['SettingsPositionLeft'] +'</label>'
+                                            + '    <input id="PositionLeft" class="positionLeft" type="number" step="0.1" value="' + overlay.data.position.left + '">'
+                                            + '    <label for="PositionWidth">'+ this.labels['SettingsPositionWidth'] +'</label>'
+                                            + '    <input id="PositionWidth" class="positionWidth" type="number" step="0.1" value="' + overlay.data.position.width + '">'
+                                            + '    <label for="PositionHeight">'+ this.labels['SettingsPositionHeight'] +'</label>'
+                                            + '    <input id="PositionHeight" class="positionHeight" type="number" step="0.1" value="' + overlay.data.position.height + '">'
+                                            + '    <label for="PositionRotation">'+ this.labels['SettingsPositionRotation'] +'</label>'
+                                            + '    <input id="PositionRotation" class="positionRotation" type="number" step="1" value="' + (overlay.data.rotation || 0) + '">'
                                             + '</div>'
                                             + '<div class="overlayOptionsWrapper">'
                                             + '    <div class="overlayOptionsTabs">'
@@ -834,13 +836,14 @@ FrameTrail.defineType(
                     bindPositionInput('.positionLeft',   'left',   'PositionLeft');
                     bindPositionInput('.positionWidth',  'width',  'PositionWidth');
                     bindPositionInput('.positionHeight', 'height', 'PositionHeight');
+                    bindPositionInput('.positionRotation', 'rotation', 'PositionRotation');
 
                     // Add undo support for position spinners
                     var positionStateBefore = null;
-                    ['.positionTop', '.positionLeft', '.positionWidth', '.positionHeight'].forEach(function(sel) {
+                    ['.positionTop', '.positionLeft', '.positionWidth', '.positionHeight', '.positionRotation'].forEach(function(sel) {
                         var el = controlsContainer.querySelector(sel);
                         el.addEventListener('focus', function() {
-                            positionStateBefore = overlay.snapshotState(['position', 'keyframes']);
+                            positionStateBefore = overlay.snapshotState(['position', 'rotation', 'keyframes']);
                         });
                         el.addEventListener('blur', function() {
                             if (!positionStateBefore) { return; }
@@ -848,7 +851,7 @@ FrameTrail.defineType(
                                 overlay,
                                 self.labels['SidebarOverlays'] + ' Position',
                                 positionStateBefore,
-                                overlay.snapshotState(['position', 'keyframes'])
+                                overlay.snapshotState(['position', 'rotation', 'keyframes'])
                             );
                             positionStateBefore = null;
                         });
@@ -857,10 +860,11 @@ FrameTrail.defineType(
                     // With box motion the inputs show the box at the playhead
                     if (overlay.hasKeyframes()) {
                         var rectNow = overlay.getRectAt(overlay.editTime());
-                        controlsContainer.querySelector('.positionTop').value    = rectNow.top;
-                        controlsContainer.querySelector('.positionLeft').value   = rectNow.left;
-                        controlsContainer.querySelector('.positionWidth').value  = rectNow.width;
-                        controlsContainer.querySelector('.positionHeight').value = rectNow.height;
+                        controlsContainer.querySelector('.positionTop').value      = rectNow.top;
+                        controlsContainer.querySelector('.positionLeft').value     = rectNow.left;
+                        controlsContainer.querySelector('.positionWidth').value    = rectNow.width;
+                        controlsContainer.querySelector('.positionHeight').value   = rectNow.height;
+                        controlsContainer.querySelector('.positionRotation').value = Math.round(rectNow.rotation * 1000) / 1000;
                     }
 
                     if (Array.isArray(overlay.data.attributes) && overlay.data.attributes.length < 1) {
@@ -931,7 +935,7 @@ FrameTrail.defineType(
                     controlsContainer.querySelectorAll('.alignButton').forEach(function(btn) {
                         btn.addEventListener('click', function() {
 
-                            var before = overlay.snapshotState(['position', 'keyframes']),
+                            var before = overlay.snapshotState(['position', 'rotation', 'keyframes']),
                                 rect   = overlay.getRectAt(overlay.editTime());
 
                             switch (btn.dataset.align) {
@@ -954,7 +958,7 @@ FrameTrail.defineType(
                                 overlay,
                                 self.labels['SidebarOverlays'] + ' ' + self.labels['SettingsAlign'],
                                 before,
-                                overlay.snapshotState(['position', 'keyframes'])
+                                overlay.snapshotState(['position', 'rotation', 'keyframes'])
                             );
                             FrameTrail.module('OverlaysController').refreshMotionControls(overlay);
 
@@ -1195,6 +1199,9 @@ FrameTrail.defineType(
                             controlsContainer.querySelector('.positionLeft').value = val.left;
                             controlsContainer.querySelector('.positionWidth').value = val.width;
                             controlsContainer.querySelector('.positionHeight').value = val.height;
+                            if (val.rotation !== undefined) {
+                                controlsContainer.querySelector('.positionRotation').value = val.rotation;
+                            }
                             manualInputMode = true;
                         }
 

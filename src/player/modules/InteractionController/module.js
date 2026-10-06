@@ -408,7 +408,8 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
     /**
      * Escape clears the selection of the timeline that is being edited
      * (overlays, annotations or code snippets), unless something else owns
-     * the key: a text editor, an open dialog or the keyframe easing menu.
+     * the key: a text editor, an open dialog, the keyframe easing menu, or the
+     * freeform shape editor (drawing, or a selected point).
      * @method escapeKey
      * @param {Event} evt
      */
@@ -423,6 +424,11 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
 
         var OverlayAnimationEditor = FrameTrail.module('OverlayAnimationEditor');
         if (OverlayAnimationEditor && OverlayAnimationEditor.isKeyframeMenuOpen()) {
+            return;
+        }
+
+        var FreeformShapeEditor = FrameTrail.module('FreeformShapeEditor');
+        if (FreeformShapeEditor && FreeformShapeEditor.handleEscape()) {
             return;
         }
 

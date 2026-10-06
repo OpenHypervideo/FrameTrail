@@ -202,7 +202,7 @@ All 26 resource types inherit from the base `Resource` type in `src/_shared/type
 | ResourceHtml | Raw HTML (CodeMirror HTML editor only, no sanitisation) |
 | ResourceLocation | OpenStreetMap (via Leaflet) |
 | ResourceQuiz | Interactive quiz |
-| ResourceHotspot | Clickable hotspot: circle, rectangle, rounded, arrow, underline, freeform (SVG path) |
+| ResourceHotspot | Clickable hotspot: circle, rectangle, rounded, arrow, underline, freeform (outline drawn on the video) |
 | ResourceEntity | Linked data entity |
 | ResourceMastodon | Mastodon embeds |
 | ResourceCodepen | CodePen embeds |
@@ -439,10 +439,11 @@ Overlay animations are seekable: what an overlay shows is a function of the vide
 - **Editing:** the overlay properties panel has the tabs Options | Animation (`src/player/modules/OverlayAnimationEditor/`). Changes go through `OverlaysController.registerStateUndo()` with `Overlay.snapshotState()` / `applyState()`. Timeline bars show the lead-in / trail-out as faded tails while editing.
 - **Reduced motion:** with `prefers-reduced-motion: reduce`, transitions become ≤ 250 ms fades, emphasis and text reveals are dropped and content animations show their end state; box motion is kept.
 
-## Box Motion (Keyframes)
+## Box Motion (Keyframes) and Rotation
 
-An overlay's box can move and resize over time. The editing UI is deliberately small (CapCut-style), there is no Motion tab:
+An overlay's box can move, resize and rotate over time. The editing UI is deliberately small (CapCut-style), there is no Motion tab:
 
+- **Rotation** (every overlay type): the rotate handle (`.rotateHandle`, below the selected box, above it at the bottom of the stage) turns the box around its centre — snapping to right angles, 15° steps with Shift, double-click resets — and the Rotation input sits next to Top/Left/Width/Height. It is the individual CSS `rotate` property on `.overlayElement`, so it composes with the hover `transform` and with the animation layer's own transforms. Statically it is `data.rotation` (degrees, omitted when 0), serialized as `"frametrail:rotation"` on the FragmentSelector; while the box moves it is `r` on each keyframe instead (mirroring position: switching motion on moves `data.rotation` into the first keyframe, switching it off writes the rotation at the playhead back). A rotated box is resized in its own frame (opposite corner fixed, no snapping), dragged and snapped by its rotated bounding box.
 - **Keyframe toggle** (`.keyframeToggle`, a diamond at the selected overlay's corner on the video, shown while the playhead is inside its span): hollow sets a keyframe at the playhead, filled removes it. The first keyframe switches motion on; removing the last switches it off and keeps the box where it is.
 - **Auto-keying:** while an overlay has keyframes, every box change — canvas drag/resize, the position inputs, the align buttons — writes the keyframe at `Overlay.editTime()` (the playhead clamped to the span) via `Overlay.setRect()` → `upsertKeyframe()`, snapping to a keyframe within 0.1 s (`keyframeIndexAt()`).
 - **Diamonds** on the overlay's timeline element: click jumps there and opens the keyframe menu (`OverlayAnimationEditor.openKeyframeMenu()`, a `popover="auto"` built from `.contextSelectList`: easing of the segment to the next keyframe — Linear / In / Out / In & Out / Hold — and Delete); drag retimes.
@@ -457,15 +458,26 @@ Media Fragments can only express one static rectangle per time range, and no W3C
     "value": "t=12.5,20&xywh=percent:18,22,47,40",           // union box of the track within the span
     "frametrail:keyframes": [
         { "t": 12.5, "xywh": [18.2, 30.1, 15, 12] },          // t: absolute video seconds (incl. offsetIn)
-        { "t": 15.0, "xywh": [40.6, 24.0, 16, 13], "ease": "easeInOut" },  // ease: segment to the next keyframe
+        { "t": 15.0, "xywh": [40.6, 24.0, 16, 13], "r": 30, "ease": "easeInOut" },  // r: rotation in degrees (missing = 0); ease: segment to the next keyframe
         { "t": 18.0, "xywh": [50.0, 22.4, 15, 12], "ease": "hold" }
     ]
 }
 ```
 
-- Internally `overlay.data.keyframes` has the same shape; `data.position` is kept equal to the union box (`AnimationLibrary.unionBox()`), which is also the fallback `xywh` other consumers see. `xywh` values may be off-frame inside keyframes; the fallback box is clamped to 0–100.
+- Internally `overlay.data.keyframes` has the same shape; `data.position` is kept equal to the union box (`AnimationLibrary.unionBox()`), which is also the fallback `xywh` other consumers see. `xywh` values may be off-frame inside keyframes; the fallback box is clamped to 0–100. The fallback box is always the **unrotated** box; rotation is only in the extensions.
 - Moving the whole overlay in the timeline shifts its keyframes; trimming it does not (keyframes outside the span are kept).
-- At runtime the box is one Web Animation on `.overlayElement` (`left/top/width/height` in percent), cancelled while interact.js drags it (`OverlayAnimator.suspendBox()`).
+- At runtime the box is one Web Animation on `.overlayElement` (`left/top/width/height` in percent, plus `rotate` when a keyframe is rotated), cancelled while interact.js drags it or the rotate handle turns it (`OverlayAnimator.suspendBox()`).
+- Rotation-aware geometry lives on `Overlay`: `getBoxPx(t)`, `stageToLocal(px, py)` / `localToStage(u, v)` (stage pixels ↔ 0–100 box coordinates at `editTime()`, in the box's rotated frame) and `fitBoxToLocal(u0, v0, u1, v1)` (make a region of the box the whole box, keeping rotation; with keyframes every keyframe box is changed the same way).
+
+## Freeform Hotspot Shape
+
+The outline of a freeform hotspot is drawn and edited on the video by `FreeformShapeEditor` (`src/player/modules/FreeformShapeEditor/`); there is no path field.
+
+- **Data:** `attributes.points: [{ x, y, smooth? }]` in 0–100 box coordinates. Smooth points let the outline curve through them (Catmull-Rom tangents → cubic Béziers, `ResourceHotspot.freeformSegments()`), the others are corners. `attributes.path` is still written, derived by `freeformPath()`, for consumers and older versions. A legacy path-only shape renders as written (the stroke scaled exactly by `scalePathData()`, arcs sampled) and is converted to points on its first edit (`parseFreeformPath()`).
+- **Editing:** while a freeform hotspot is selected its points are handles in `.freeformHandles` (a child of `.overlayElement`, so they follow box motion and rotation). Drag a point; drag a "+" between two points to insert one; double-click a point for corner / smooth; select it and press Delete / Backspace to remove it (at least three stay); Esc clears the point selection first.
+- **Drawing:** the "Draw shape" button, and right after the Freeform Hotspot tile is dropped (`tile.draw`): a layer over the stage takes clicks that place points; clicking the first point, double-clicking or Enter closes, Backspace takes back the last point, Esc cancels and keeps the previous outline.
+- **Fitting:** every edit fits the box to the outline (sampled curves, not just the points) through `Overlay.fitBoxToLocal()`, keeping the rotation — a shape drawn on a rotated overlay gets its bounding box in that rotated frame — and stores the points relative to the new box. One undo step per edit (`registerStateUndo(…, { rerender: true })`).
+- **Rendering:** the stroke is laid out in pixels of the box (like the other shapes), not as a stretched 0–100 viewBox with a non-scaling stroke: `pathLength="1"` dashes (the Draw entrance) would otherwise only cover part of the outline. The click area is a `clipPath` in object-bounding-box units.
 
 ## Editor Selection
 
@@ -479,7 +491,7 @@ Overlays, annotations and code snippets share one selection model in their edit 
 
 ## Custom Overlay Gallery
 
-The "Custom Overlay" tab of the overlay editing panel is one flat gallery built from `getCustomOverlayTiles()` in `OverlaysController`: Text, Custom HTML, Quiz, Hotspot (unchanged defaults), then Card, Quote, Notification (pre-styled Text overlays), Arrow, Curved Arrow, Underline, Freeform Hotspot (Hotspot variants that draw themselves in), Cursor (starts with box motion on), Counter, and Bar / Line / Donut Chart and Progress Ring. A tile is `{ id, type, icon, label, attributes, size, events?, motion? }`; the drop handler builds the overlay from it. Tiles that pass `events: {}` opt out of the pause-on-start default of hotspots and quizzes. The former "Presets" tab (Pause & Continue, Choice Buttons) has been removed.
+The "Custom Overlay" tab of the overlay editing panel is one flat gallery built from `getCustomOverlayTiles()` in `OverlaysController`: Text, Custom HTML, Quiz, Hotspot (unchanged defaults), then Card, Quote, Notification (pre-styled Text overlays), Arrow, Curved Arrow, Underline, Freeform Hotspot (Hotspot variants that draw themselves in; the freeform one starts in draw mode), Cursor (starts with box motion on), Counter, and Bar / Line / Donut Chart and Progress Ring. A tile is `{ id, type, icon, label, attributes, size, events?, motion?, draw? }`; the drop handler builds the overlay from it. Tiles that pass `events: {}` opt out of the pause-on-start default of hotspots and quizzes. The former "Presets" tab (Pause & Continue, Choice Buttons) has been removed.
 
 ## Localization
 

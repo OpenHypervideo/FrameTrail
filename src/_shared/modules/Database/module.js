@@ -341,9 +341,21 @@
     }
 
     /**
+     * Parse the static rotation of an overlay (the frametrail:rotation
+     * extension on its FragmentSelector). Returns undefined for none.
+     * @private
+     */
+    function _parseRotation(rawRotation) {
+        var rotation = parseFloat(rawRotation);
+        return (isFinite(rotation) && rotation !== 0) ? rotation : undefined;
+    }
+
+    /**
      * Build the target selector of an overlay. A moving overlay keeps a plain
      * Media Fragments box (the union of its track within its span) for every
      * consumer, and adds its keyframes as the frametrail:keyframes extension.
+     * A rotated overlay keeps its unrotated box and adds frametrail:rotation
+     * (degrees; with keyframes the rotation lives in each keyframe's r).
      * @private
      */
     function _overlayTargetSelector(overlay) {
@@ -368,6 +380,8 @@
         };
         if (keyframes) {
             selector["frametrail:keyframes"] = keyframes;
+        } else if (_parseRotation(overlay.rotation) !== undefined) {
+            selector["frametrail:rotation"] = _parseRotation(overlay.rotation);
         }
         return selector;
     }
@@ -1107,6 +1121,7 @@
                             "licenseAttribution":   contentItem.body['frametrail:licenseAttribution'] || null,
                             "position": _parseSpatialSelector(contentItem.target.selector.value),
                             "keyframes": _parseKeyframes(contentItem.target.selector['frametrail:keyframes']),
+                            "rotation": _parseRotation(contentItem.target.selector['frametrail:rotation']),
                             "events": contentItem["frametrail:events"],
                             "tags": contentItem["frametrail:tags"]
                         });

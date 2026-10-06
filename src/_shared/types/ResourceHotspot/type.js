@@ -201,8 +201,9 @@ FrameTrail.defineType(
                 /**
                  * I add the SVG stroke of a hotspot to its rendered content. Geometry is
                  * laid out in pixels of the hotspot box (re-laid out on resize), so
-                 * arrowheads and rounded corners never distort; the freeform path is
-                 * given in 0–100 box coordinates and stretches with the box.
+                 * arrowheads and rounded corners never distort; the freeform outline is
+                 * given in 0–100 box coordinates (attributes.points, or a legacy
+                 * attributes.path) and stretches with the box.
                  *
                  * The arrow shape is ported from the hw-arrow / svg-stroke-trace recipes
                  * of HyperFrames (https://github.com/heygen-com/hyperframes), Copyright
@@ -239,11 +240,25 @@ FrameTrail.defineType(
 
                     if (shape === 'freeform') {
 
-                        var pathData = attrs.path || 'M50,4 L96,36 L80,94 L20,94 L4,36 Z';
-                        svg.setAttribute('viewBox', '0 0 100 100');
-                        svg.setAttribute('preserveAspectRatio', 'none');
-                        stroke.setAttribute('d', pathData);
-                        stroke.setAttribute('vector-effect', 'non-scaling-stroke');
+                        var hotspot = this,
+                            // Points (edited on the video) win; a path-only legacy shape clips as written
+                            pathData = this.validFreeformPoints(attrs.points)
+                                ? this.freeformPath(attrs.points)
+                                : (attrs.path || this.freeformPath(this.defaultFreeformPoints()));
+
+                        // The stroke is laid out in pixels (not a stretched 0–100 viewBox with a
+                        // non-scaling stroke, where the dash of a Draw animation would not span
+                        // the whole outline)
+                        resourceDetail._ftFreeformPoints = this.freeformPoints(attrs);
+                        resourceDetail._ftFreeformLegacyPath = this.validFreeformPoints(attrs.points) ? null : (attrs.path || null);
+                        resourceDetail._ftFreeformLayout = function() {
+                            var w = wrapper.offsetWidth, h = wrapper.offsetHeight;
+                            if (!w || !h) { return; }
+                            var legacy = resourceDetail._ftFreeformLegacyPath && hotspot.scalePathData(resourceDetail._ftFreeformLegacyPath, w / 100, h / 100);
+                            svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+                            stroke.setAttribute('stroke-width', Math.max(0.5, Math.min(w, h) * widthPct / 100));
+                            stroke.setAttribute('d', legacy || hotspot.freeformPath(resourceDetail._ftFreeformPoints, w / 100, h / 100));
+                        };
 
                         // Clicks only inside the shape
                         var clipId = 'ftHotspotClip' + Math.random().toString(36).slice(2, 10),
@@ -260,11 +275,7 @@ FrameTrail.defineType(
                         link.style.clipPath = 'url(#' + clipId + ')';
                         link.style.borderRadius = '0';
 
-                        var updateFreeformWidth = function() {
-                            var w = wrapper.offsetWidth, h = wrapper.offsetHeight;
-                            stroke.setAttribute('stroke-width', Math.max(0.5, Math.min(w, h) * widthPct / 100));
-                        };
-                        this._observeSize(resourceDetail, wrapper, updateFreeformWidth);
+                        this._observeSize(resourceDetail, wrapper, resourceDetail._ftFreeformLayout);
                         return;
                     }
 
@@ -279,6 +290,249 @@ FrameTrail.defineType(
                         stroke.setAttribute('d', self.svgShapePath(shape, w, h, sw, attrs));
                     };
                     this._observeSize(resourceDetail, wrapper, layout);
+
+                },
+
+                /**
+                 * The shape a new freeform hotspot starts with (a pentagon).
+                 * @method defaultFreeformPoints
+                 * @return {Array}
+                 */
+                defaultFreeformPoints: function() {
+
+                    return [{ x: 50, y: 4 }, { x: 96, y: 36 }, { x: 80, y: 94 }, { x: 20, y: 94 }, { x: 4, y: 36 }];
+
+                },
+
+                /**
+                 * I tell whether a points list can describe a freeform outline.
+                 * @method validFreeformPoints
+                 * @param {Array} points
+                 * @return {Boolean}
+                 */
+                validFreeformPoints: function(points) {
+
+                    return Array.isArray(points) && points.length >= 3 && points.every(function(p) {
+                        return p && isFinite(p.x) && isFinite(p.y);
+                    });
+
+                },
+
+                /**
+                 * I return the editable points of a freeform outline: its points, or
+                 * points read from a legacy path, or the default shape. Points are in
+                 * 0–100 box coordinates; smooth points let the outline curve through
+                 * them, the others are corners.
+                 * @method freeformPoints
+                 * @param {Object} attrs
+                 * @return {Array} [{ x, y, smooth? }]
+                 */
+                freeformPoints: function(attrs) {
+
+                    attrs = attrs || {};
+                    if (this.validFreeformPoints(attrs.points)) {
+                        return attrs.points.map(function(p) {
+                            var point = { x: parseFloat(p.x), y: parseFloat(p.y) };
+                            if (p.smooth) { point.smooth = true; }
+                            return point;
+                        });
+                    }
+                    return (attrs.path && this.parseFreeformPath(attrs.path)) || this.defaultFreeformPoints();
+
+                },
+
+                /**
+                 * I read the points of a legacy freeform path (its first subpath).
+                 * Straight paths (M/L/H/V/Z) are read exactly; paths with curves are
+                 * sampled into smooth points.
+                 * @method parseFreeformPath
+                 * @param {String} path
+                 * @return {Array|null}
+                 */
+                parseFreeformPath: function(path) {
+
+                    path = String(path || '');
+
+                    if (/[CcSsQqTtAa]/.test(path)) {
+                        var SVG_NS = 'http://www.w3.org/2000/svg',
+                            svg    = document.createElementNS(SVG_NS, 'svg'),
+                            el     = document.createElementNS(SVG_NS, 'path'),
+                            sampled = [];
+                        svg.setAttribute('style', 'position:absolute;width:0;height:0;overflow:hidden;visibility:hidden');
+                        el.setAttribute('d', path);
+                        svg.appendChild(el);
+                        document.body.appendChild(svg);
+                        try {
+                            var length = el.getTotalLength();
+                            for (var s = 0; s < 24 && length > 0; s++) {
+                                var pt = el.getPointAtLength(length * s / 24);
+                                sampled.push({ x: Math.round(pt.x * 100) / 100, y: Math.round(pt.y * 100) / 100, smooth: true });
+                            }
+                        } catch (e) {}
+                        svg.remove();
+                        return sampled.length >= 3 ? sampled : null;
+                    }
+
+                    var tokens = path.match(/[MmLlHhVvZz]|-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g) || [],
+                        points = [],
+                        x = 0, y = 0,
+                        cmd = null,
+                        i = 0;
+
+                    var num = function() { return parseFloat(tokens[i++]); };
+
+                    while (i < tokens.length) {
+                        var token = tokens[i];
+                        if (/[A-Za-z]/.test(token)) {
+                            if ((token === 'M' || token === 'm') && points.length) { break; }
+                            cmd = token;
+                            i++;
+                            continue;
+                        }
+                        switch (cmd) {
+                            case 'M': x = num(); y = num(); cmd = 'L'; break;
+                            case 'm': x += num(); y += num(); cmd = 'l'; break;
+                            case 'L': x = num(); y = num(); break;
+                            case 'l': x += num(); y += num(); break;
+                            case 'H': x = num(); break;
+                            case 'h': x += num(); break;
+                            case 'V': y = num(); break;
+                            case 'v': y += num(); break;
+                            default:  i++; continue;
+                        }
+                        if (isFinite(x) && isFinite(y)) {
+                            points.push({ x: x, y: y });
+                        }
+                    }
+
+                    var first = points[0], last = points[points.length - 1];
+                    if (points.length > 1 && Math.abs(first.x - last.x) < 0.001 && Math.abs(first.y - last.y) < 0.001) {
+                        points.pop();
+                    }
+
+                    return points.length >= 3 ? points : null;
+
+                },
+
+                /**
+                 * I scale legacy freeform path data from 0–100 box coordinates to
+                 * pixels, exactly. I return null for paths with arcs (which do not
+                 * survive a non-uniform scale) or anything I cannot read.
+                 * @method scalePathData
+                 * @param {String} path
+                 * @param {Number} scaleX
+                 * @param {Number} scaleY
+                 * @return {String|null}
+                 */
+                scalePathData: function(path, scaleX, scaleY) {
+
+                    path = String(path || '');
+                    if (/[Aa]/.test(path)) { return null; }
+
+                    var tokens = path.match(/[MmLlHhVvCcSsQqTtZz]|-?(?:\d+\.?\d*|\.\d+)(?:[eE][-+]?\d+)?/g),
+                        axes   = { M: 'xy', L: 'xy', T: 'xy', H: 'x', V: 'y', C: 'xyxyxy', S: 'xyxy', Q: 'xyxy', Z: '' },
+                        out    = [],
+                        cmd    = null,
+                        k      = 0;
+
+                    if (!tokens || !/[Mm]/.test(tokens[0])) { return null; }
+
+                    for (var i = 0; i < tokens.length; i++) {
+                        var token = tokens[i];
+                        if (/[A-Za-z]/.test(token)) {
+                            cmd = token.toUpperCase();
+                            k = 0;
+                            out.push(token);
+                            continue;
+                        }
+                        var pattern = axes[cmd];
+                        if (!pattern) { return null; }
+                        var axis = pattern.charAt(k % pattern.length);
+                        k++;
+                        out.push(Math.round(parseFloat(token) * (axis === 'x' ? scaleX : scaleY) * 100) / 100);
+                    }
+
+                    return out.join(' ');
+
+                },
+
+                /**
+                 * I return the segments of a closed freeform outline as cubic curves
+                 * (Catmull-Rom tangents at smooth points, none at corners).
+                 * @method freeformSegments
+                 * @param {Array} points
+                 * @return {Array} [{ a, c1, c2, b, straight }]
+                 */
+                freeformSegments: function(points) {
+
+                    var n = points.length,
+                        tangent = function(i) {
+                            var p = points[i], prev = points[(i - 1 + n) % n], next = points[(i + 1) % n];
+                            return p.smooth ? [(next.x - prev.x) / 6, (next.y - prev.y) / 6] : [0, 0];
+                        };
+
+                    return points.map(function(a, i) {
+                        var j  = (i + 1) % n,
+                            b  = points[j],
+                            ta = tangent(i),
+                            tb = tangent(j);
+                        return {
+                            a:        a,
+                            c1:       { x: a.x + ta[0], y: a.y + ta[1] },
+                            c2:       { x: b.x - tb[0], y: b.y - tb[1] },
+                            b:        b,
+                            straight: !a.smooth && !b.smooth
+                        };
+                    });
+
+                },
+
+                /**
+                 * I return the SVG path data of a closed freeform outline, in 0–100
+                 * box coordinates or, with scale factors, in pixels of the box.
+                 * @method freeformPath
+                 * @param {Array} points
+                 * @param {Number} scaleX (optional)
+                 * @param {Number} scaleY (optional)
+                 * @return {String}
+                 */
+                freeformPath: function(points, scaleX, scaleY) {
+
+                    var sx = scaleX || 1,
+                        sy = scaleY || 1,
+                        r2 = function(v) { return Math.round(v * 100) / 100; },
+                        pt = function(p) { return r2(p.x * sx) + ',' + r2(p.y * sy); },
+                        segments = this.freeformSegments(points),
+                        d = 'M' + pt(points[0]);
+
+                    segments.forEach(function(seg, idx) {
+                        if (seg.straight) {
+                            // the closing segment is drawn by Z
+                            if (idx < segments.length - 1) { d += ' L' + pt(seg.b); }
+                        } else {
+                            d += ' C' + pt(seg.c1) + ' ' + pt(seg.c2) + ' ' + pt(seg.b);
+                        }
+                    });
+
+                    return d + ' Z';
+
+                },
+
+                /**
+                 * While a freeform outline is edited, I show new points without
+                 * re-rendering: the stroke and the clip area of the link follow them.
+                 * @method setFreeformPreview
+                 * @param {HTMLElement} resourceDetail
+                 * @param {Array} points
+                 */
+                setFreeformPreview: function(resourceDetail, points) {
+
+                    if (!resourceDetail || !resourceDetail._ftFreeformLayout) { return; }
+                    resourceDetail._ftFreeformPoints     = points;
+                    resourceDetail._ftFreeformLegacyPath = null;
+                    resourceDetail._ftFreeformLayout();
+                    var clipShape = resourceDetail.querySelector('clipPath path');
+                    if (clipShape) { clipShape.setAttribute('d', this.freeformPath(points)); }
 
                 },
 
@@ -1057,7 +1311,7 @@ FrameTrail.defineType(
                     layoutRow.append(shapeColumn, colorColumn, borderWidthColumn, borderRadiusColumn);
                     hotspotEditorContainer.appendChild(layoutRow);
 
-                    // --- Shape specific settings: arrow direction / curve, freeform path ---
+                    // --- Shape specific settings: arrow direction / curve, freeform drawing ---
                     var directions = ['right', 'downRight', 'down', 'downLeft', 'left', 'upLeft', 'up', 'upRight'],
                         directionLabels = {
                             right: 'SettingsHotspotDirectionRight', downRight: 'SettingsHotspotDirectionDownRight',
@@ -1085,19 +1339,26 @@ FrameTrail.defineType(
                         + '</div>'
                         + '<div class="layoutRow hotspotFreeformRow">'
                         + '    <div class="column-12">'
-                        + '        <label>' + this.labels['SettingsHotspotPath'] + '</label>'
-                        + '        <textarea class="hotspotPropPath" rows="2" spellcheck="false"></textarea>'
-                        + '        <div class="fieldHint">' + this.labels['MessageHotspotPath'] + '</div>'
+                        + '        <button type="button" class="hotspotDrawShape"><span class="icon-pencil"></span> ' + this.labels['SettingsHotspotDrawShape'] + '</button>'
+                        + '        <div class="fieldHint">' + this.labels['MessageHotspotFreeformEdit'] + '</div>'
                         + '    </div>'
                         + '</div>'
                         + '</div>';
                     var shapeSettings = _shw.firstElementChild;
                     hotspotEditorContainer.appendChild(shapeSettings);
-                    shapeSettings.querySelector('.hotspotPropPath').value = currentAttributes.path || 'M50,4 L96,36 L80,94 L20,94 L4,36 Z';
+
+                    // The outline is drawn and edited on the video (overlays only)
+                    shapeSettings.querySelector('.hotspotDrawShape').addEventListener('click', function(evt) {
+                        evt.preventDefault();
+                        var FreeformShapeEditor = FrameTrail.module('FreeformShapeEditor');
+                        if (FreeformShapeEditor && overlayOrAnnotation.overlayElement) {
+                            FreeformShapeEditor.startDrawing(overlayOrAnnotation);
+                        }
+                    });
 
                     var syncShapeRows = function(shapeValue) {
                         shapeSettings.querySelector('.hotspotArrowRow').style.display    = (shapeValue === 'arrow') ? '' : 'none';
-                        shapeSettings.querySelector('.hotspotFreeformRow').style.display = (shapeValue === 'freeform') ? '' : 'none';
+                        shapeSettings.querySelector('.hotspotFreeformRow').style.display = (shapeValue === 'freeform' && overlayOrAnnotation.overlayElement) ? '' : 'none';
                     };
                     syncShapeRows(currentAttributes.shape);
 
@@ -1128,7 +1389,7 @@ FrameTrail.defineType(
                         });
                     };
 
-                    ['direction', 'curve', 'path'].forEach(function(key) {
+                    ['direction', 'curve'].forEach(function(key) {
                         var control = shapeSettings.querySelector('.hotspotProp' + key.charAt(0).toUpperCase() + key.slice(1)),
                             valueBefore = null;
                         control.addEventListener('focus', function() {
@@ -1136,10 +1397,6 @@ FrameTrail.defineType(
                         });
                         control.addEventListener('change', function() {
                             var value = this.value.trim();
-                            if (key === 'path' && !/^[MmLlHhVvCcSsQqTtAaZz0-9\s.,\-]+$/.test(value)) {
-                                this.value = overlayOrAnnotation.data.attributes.path || '';
-                                return;
-                            }
                             var oldValue = (valueBefore !== null) ? valueBefore : overlayOrAnnotation.data.attributes[key];
                             overlayOrAnnotation.data.attributes[key] = value;
                             rerenderHotspot(overlayOrAnnotation);

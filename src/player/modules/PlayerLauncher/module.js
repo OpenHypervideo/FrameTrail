@@ -144,6 +144,9 @@
     // Set up the overlay animation editor (Animation / Motion tabs)
     FrameTrail.initModule('OverlayAnimationEditor');
 
+    // Set up the on-video editor of freeform hotspot outlines
+    FrameTrail.initModule('FreeformShapeEditor');
+
 
     // Initialize storage, then start the actual init process
 

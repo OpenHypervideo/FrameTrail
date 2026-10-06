@@ -328,7 +328,7 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
 .editPropertiesContainer .timeControls {
     float: left;
     position: relative;
-    width: 300px;
+    width: 240px;
     margin-bottom: 14px;
 }
 
@@ -371,27 +371,37 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
 .editPropertiesContainer .positionControls {
     float: right;
     position: relative;
-    width: 220px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+    width: 280px;
 }
 
+/* Labels sit centred under their inputs (50px each incl. margins, 4px gap,
+   right aligned in the 280px row) */
 .editPropertiesContainer .positionControls label {
-    left: auto;
+    transform: translateX(-50%);
+    white-space: nowrap;
 }
 
 .editPropertiesContainer label[for="PositionTop"] {
-    right: 195px;
+    left: 39px;
 }
 
 .editPropertiesContainer label[for="PositionLeft"] {
-    right: 139px;
+    left: 93px;
 }
 
 .editPropertiesContainer label[for="PositionWidth"] {
-    right: 74px;
+    left: 147px;
 }
 
 .editPropertiesContainer label[for="PositionHeight"] {
-    right: 24px;
+    left: 201px;
+}
+
+.editPropertiesContainer label[for="PositionRotation"] {
+    left: 255px;
 }
 
 .editPropertiesContainer .positionControls .ft-spinner {

@@ -249,6 +249,59 @@
     background: var(--editing-bg-color);
 }
 
+/* Rotate handle below the selected overlay (above it at the bottom of the
+   stage, inside it when it fills the height). Same palette as the toggle. */
+.overlayContainer .overlayElement .rotateHandle {
+    display: none;
+    position: absolute;
+    bottom: -30px;
+    left: 50%;
+    width: 22px;
+    height: 22px;
+    margin-left: -11px;
+    border: 1px solid var(--editing-fg-color);
+    border-radius: 50%;
+    background: var(--editing-bg-color);
+    color: var(--editing-fg-color);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+    box-sizing: border-box;
+    font-size: 12px;
+    line-height: 20px;
+    text-align: center;
+    cursor: grab;
+    pointer-events: auto;
+    touch-action: none;
+    z-index: 3;
+}
+
+.overlayContainer .overlayElement .rotateHandle [class^="icon-"]::before {
+    margin: 0;
+}
+
+.overlayContainer .overlayElement .rotateHandle.above {
+    bottom: auto;
+    top: -30px;
+}
+
+.overlayContainer .overlayElement .rotateHandle.inside {
+    bottom: 4px;
+}
+
+.mainContainer.editActive .overlayContainer .overlayElement.highlighted .rotateHandle {
+    display: block;
+}
+
+.overlayContainer .overlayElement .rotateHandle:hover,
+.overlayContainer .overlayElement .rotateHandle:active {
+    background: var(--editing-fg-color);
+    border-color: var(--editing-bg-color);
+    color: var(--editing-bg-color);
+}
+
+.overlayContainer .overlayElement .rotateHandle:active {
+    cursor: grabbing;
+}
+
 /* Menu of a keyframe diamond (a popover in the top layer) */
 .contextSelectList.keyframeMenu {
     position: fixed;

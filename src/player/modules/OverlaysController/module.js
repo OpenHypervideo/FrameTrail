@@ -492,6 +492,12 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
                     registerAddUndo(newOverlay);
 
+                    // Kinds whose shape is drawn (the freeform hotspot) start in draw mode
+                    if (tile && tile.draw) {
+                        selectOverlay(newOverlay);
+                        FrameTrail.module('FreeformShapeEditor').startDrawing(newOverlay);
+                    }
+
                     var _sh = ViewVideo.PlayerProgress.querySelector('.ui-slider-handle'); if (_sh) _sh.classList.remove('highlight');
                 }
             });
@@ -614,8 +620,12 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             },
             {
                 id: 'freeform', type: 'hotspot', icon: 'icon-brush', label: labels['CustomOverlayFreeform'],
-                attributes: hotspotVariant('freeform', { "path": "M50,4 L96,36 L80,94 L20,94 L4,36 Z", "borderWidth": 4 }),
-                size: [20, 30], events: {}
+                attributes: hotspotVariant('freeform', {
+                    "points": [{ "x": 50, "y": 4 }, { "x": 96, "y": 36 }, { "x": 80, "y": 94 }, { "x": 20, "y": 94 }, { "x": 4, "y": 36 }],
+                    "path": "M50,4 L96,36 L80,94 L20,94 L4,36 Z",
+                    "borderWidth": 4
+                }),
+                size: [20, 30], events: {}, draw: true
             },
             {
                 id: 'cursor', type: 'cursor', icon: 'icon-mouse-pointer', label: labels['ResourceTypeCursor'],
@@ -740,6 +750,11 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             overlayInFocus.gotInFocus();
         }
 
+        var FreeformShapeEditor = FrameTrail.module('FreeformShapeEditor');
+        if (FreeformShapeEditor) {
+            FreeformShapeEditor.select(overlayInFocus);
+        }
+
         updateStatesOfOverlays(FrameTrail.module('HypervideoController').currentTime);
 
         return overlay;
@@ -835,10 +850,10 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
 
     /**
-     * I update the keyframe controls of the overlay in focus after its box or
-     * the playhead changed: the position inputs follow the moving box, the
-     * keyframe toggle on the video and the diamonds mark the keyframe at the
-     * playhead.
+     * I update the box controls of the overlay in focus after its box or the
+     * playhead changed: the position and rotation inputs follow the (moving)
+     * box, the keyframe toggle on the video and the diamonds mark the keyframe
+     * at the playhead, the rotate handle finds room next to the box.
      *
      * @method refreshMotionControls
      * @param {Overlay} overlay
@@ -849,20 +864,19 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             return;
         }
 
-        var t = FrameTrail.module('HypervideoController').currentTime;
+        var t    = FrameTrail.module('HypervideoController').currentTime,
+            rect = overlay.getRectAt(overlay.editTime());
 
-        if (overlay.hasKeyframes()) {
-            var rect = overlay.getRectAt(overlay.editTime());
-            ['top', 'left', 'width', 'height'].forEach(function(prop) {
-                var input = ViewVideo.EditPropertiesContainer.querySelector('.position' + prop.charAt(0).toUpperCase() + prop.slice(1));
-                if (input && document.activeElement !== input) {
-                    input.value = Math.round(rect[prop] * 1000) / 1000;
-                }
-            });
-        }
+        ['top', 'left', 'width', 'height', 'rotation'].forEach(function(prop) {
+            var input = ViewVideo.EditPropertiesContainer.querySelector('.position' + prop.charAt(0).toUpperCase() + prop.slice(1));
+            if (input && document.activeElement !== input) {
+                input.value = Math.round(rect[prop] * 1000) / 1000;
+            }
+        });
 
         overlay.updateKeyframeToggle(t);
         overlay.updateKeyframeMarkerState(t);
+        overlay.updateRotateHandle();
 
     }
 
@@ -1091,12 +1105,16 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             vertical   = [0, container.offsetWidth / 2, container.offsetWidth],
             horizontal = [0, container.offsetHeight / 2, container.offsetHeight];
 
+        // Visual bounding boxes, so rotated and moving overlays snap where they are seen
+        var containerRect = container.getBoundingClientRect();
+
         for (var idx in overlays) {
             var el = overlays[idx].overlayElement;
             if (!el || el === excludeElement) { continue; }
             if (!el.classList.contains('active')) { continue; }
-            vertical.push(el.offsetLeft, el.offsetLeft + el.offsetWidth);
-            horizontal.push(el.offsetTop, el.offsetTop + el.offsetHeight);
+            var rect = el.getBoundingClientRect();
+            vertical.push(rect.left - containerRect.left, rect.right - containerRect.left);
+            horizontal.push(rect.top - containerRect.top, rect.bottom - containerRect.top);
         }
 
         return { vertical: vertical, horizontal: horizontal };
@@ -1158,22 +1176,28 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
      * I snap a dragged overlay element to canvas targets (edges, center, other overlays).
      * I show/hide ephemeral snap lines and return the adjusted position.
      *
+     * A rotated element snaps with the edges of its rotated bounding box.
+     *
      * @method snapCanvasDrag
      * @param {HTMLElement} element
      * @param {Number} x
      * @param {Number} y
+     * @param {Number} rotation (optional, degrees)
      * @return {} adjusted x/y
      */
-    function snapCanvasDrag(element, x, y) {
+    function snapCanvasDrag(element, x, y, rotation) {
 
         var ViewVideoModule = FrameTrail.module('ViewVideo'),
             targets   = getCanvasSnapTargets(element),
             tolerance = 5,
             width     = element.offsetWidth,
-            height    = element.offsetHeight;
+            height    = element.offsetHeight,
+            theta     = (rotation || 0) * Math.PI / 180,
+            halfW     = (Math.abs(width * Math.cos(theta)) + Math.abs(height * Math.sin(theta))) / 2,
+            halfH     = (Math.abs(width * Math.sin(theta)) + Math.abs(height * Math.cos(theta))) / 2;
 
         var bestX = null;
-        [{ value: x, offset: 0 }, { value: x + width / 2, offset: width / 2 }, { value: x + width, offset: width }].forEach(function(candidate) {
+        [{ value: x + width / 2 - halfW, offset: width / 2 - halfW }, { value: x + width / 2, offset: width / 2 }, { value: x + width / 2 + halfW, offset: width / 2 + halfW }].forEach(function(candidate) {
             var snapped = ViewVideoModule.closestSnapTarget(candidate.value, targets.vertical, tolerance);
             if (snapped !== null) {
                 var distance = Math.abs(snapped - candidate.value);
@@ -1190,7 +1214,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         }
 
         var bestY = null;
-        [{ value: y, offset: 0 }, { value: y + height / 2, offset: height / 2 }, { value: y + height, offset: height }].forEach(function(candidate) {
+        [{ value: y + height / 2 - halfH, offset: height / 2 - halfH }, { value: y + height / 2, offset: height / 2 }, { value: y + height / 2 + halfH, offset: height / 2 + halfH }].forEach(function(candidate) {
             var snapped = ViewVideoModule.closestSnapTarget(candidate.value, targets.horizontal, tolerance);
             if (snapped !== null) {
                 var distance = Math.abs(snapped - candidate.value);

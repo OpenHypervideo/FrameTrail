@@ -535,7 +535,8 @@ FrameTrail.defineModule('AnimationLibrary', function(FrameTrail){
      * nothing valid is left, so the caller can drop the key.
      *
      * Keyframe shape: { t: absolute seconds, xywh: [left, top, width, height] in
-     * percent of the video frame, ease?: id of the segment to the next keyframe }
+     * percent of the video frame, r?: rotation in degrees (missing = 0),
+     * ease?: id of the segment to the next keyframe }
      *
      * @method normalizeKeyframes
      * @param {Array} raw
@@ -554,7 +555,11 @@ FrameTrail.defineModule('AnimationLibrary', function(FrameTrail){
             if (!isFinite(t) || xywh.some(function(v) { return !isFinite(v); })) { return; }
             xywh[2] = Math.max(0, xywh[2]);
             xywh[3] = Math.max(0, xywh[3]);
-            var clean = { t: t, xywh: xywh };
+            var clean = { t: t, xywh: xywh },
+                r = parseFloat(kf.r);
+            if (isFinite(r) && Math.round(r * 100) !== 0) {
+                clean.r = Math.round(r * 100) / 100;
+            }
             if (kf.ease && kf.ease !== 'linear' && EASES[kf.ease]) {
                 clean.ease = kf.ease;
             }
@@ -613,10 +618,40 @@ FrameTrail.defineModule('AnimationLibrary', function(FrameTrail){
     }
 
     /**
+     * I sample the rotation (degrees) of a keyframe track at time t, with the
+     * same segment easing as sampleKeyframes. Keyframes without r are at 0.
+     * @method sampleRotation
+     * @param {Array} kfs
+     * @param {Number} t
+     * @return {Number}
+     */
+    function sampleRotation(kfs, t) {
+
+        if (!kfs || !kfs.length) { return 0; }
+        if (t <= kfs[0].t) { return kfs[0].r || 0; }
+        var last = kfs[kfs.length - 1];
+        if (t >= last.t) { return last.r || 0; }
+
+        var lo = 0, hi = kfs.length - 1;
+        while (hi - lo > 1) {
+            var mid = (lo + hi) >> 1;
+            if (kfs[mid].t <= t) { lo = mid; } else { hi = mid; }
+        }
+
+        var a = kfs[lo], b = kfs[hi],
+            p = (t - a.t) / (b.t - a.t),
+            e = easeFn(a.ease || 'linear')(p);
+
+        return (a.r || 0) + ((b.r || 0) - (a.r || 0)) * e;
+
+    }
+
+    /**
      * I return the union bounding box of a track within [start, end], clamped
      * to the video frame (0..100). It is written as the plain xywh of the
      * overlay's FragmentSelector: the fallback for consumers that do not know
-     * the frametrail:keyframes extension.
+     * the frametrail:keyframes extension. Rotation is ignored (the union of the
+     * unrotated boxes).
      * @method unionBox
      * @param {Array} kfs
      * @param {Number} start
@@ -663,8 +698,9 @@ FrameTrail.defineModule('AnimationLibrary', function(FrameTrail){
 
     /**
      * I translate a keyframe track into Web Animations keyframes for the
-     * overlay box (left/top/width/height in percent). The animation starts at
-     * the first keyframe; fill 'both' holds the first and last box outside it.
+     * overlay box (left/top/width/height in percent, plus rotate when any
+     * keyframe is rotated). The animation starts at the first keyframe; fill
+     * 'both' holds the first and last box outside it.
      * @method boxAnimation
      * @param {Array} kfs
      * @return {Object|null} { keyframes, durationMs, startT }
@@ -678,6 +714,8 @@ FrameTrail.defineModule('AnimationLibrary', function(FrameTrail){
 
         if (duration <= 0) { return null; }
 
+        var rotates = kfs.some(function(kf) { return !!kf.r; });
+
         var frames = kfs.map(function(kf, idx) {
             var frame = {
                 offset: (kf.t - startT) / duration,
@@ -686,6 +724,9 @@ FrameTrail.defineModule('AnimationLibrary', function(FrameTrail){
                 width:  kf.xywh[2] + '%',
                 height: kf.xywh[3] + '%'
             };
+            if (rotates) {
+                frame.rotate = (kf.r || 0) + 'deg';
+            }
             if (idx < kfs.length - 1) {
                 frame.easing = easeCss(kf.ease || 'linear');
             }
@@ -870,6 +911,7 @@ FrameTrail.defineModule('AnimationLibrary', function(FrameTrail){
 
         normalizeKeyframes: normalizeKeyframes,
         sampleKeyframes:    sampleKeyframes,
+        sampleRotation:     sampleRotation,
         unionBox:           unionBox,
         boxAnimation:       boxAnimation,
 

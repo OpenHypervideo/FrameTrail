@@ -1,0 +1,149 @@
+/* Point handles of a selected freeform hotspot (see FreeformShapeEditor).
+   Editing palette, not the theme's: they act on the overlay, they are not part
+   of the hypervideo. The outline is drawn twice (light under dark, dashed) so
+   it stays visible on any video. */
+.overlayContainer .overlayElement .freeformHandles {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 4;
+}
+
+.freeformHandles .freeformOutline,
+.freeformDrawLayer svg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+}
+
+.freeformHandles .freeformOutline path,
+.freeformDrawLayer svg path {
+    fill: none;
+    vector-effect: non-scaling-stroke;
+    stroke-linejoin: round;
+}
+
+.freeformHandles .freeformOutlineUnder,
+.freeformDrawLayer .freeformDrawUnder {
+    stroke: var(--editing-bg-color);
+    stroke-width: 3;
+}
+
+.freeformHandles .freeformOutlineOver,
+.freeformDrawLayer .freeformDrawOver,
+.freeformDrawLayer .freeformDrawRubber {
+    stroke: var(--editing-fg-color);
+    stroke-width: 1;
+    stroke-dasharray: 4 3;
+}
+
+.freeformHandles .freeformPoint,
+.freeformDrawLayer .freeformDrawPoint {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    margin: -5px 0 0 -5px;
+    background: var(--editing-bg-color);
+    border: 1px solid var(--editing-fg-color);
+    box-sizing: border-box;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.freeformHandles .freeformPoint {
+    pointer-events: auto;
+    touch-action: none;
+    cursor: pointer;
+}
+
+.freeformHandles .freeformPoint.smooth {
+    border-radius: 50%;
+}
+
+.freeformHandles .freeformPoint.selected,
+.freeformHandles .freeformPoint:hover {
+    background: var(--editing-fg-color);
+    border-color: var(--editing-bg-color);
+}
+
+.freeformHandles .freeformInsert {
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    margin: -4px 0 0 -4px;
+    border-radius: 50%;
+    background: var(--editing-bg-color);
+    border: 1px solid var(--editing-fg-color);
+    box-sizing: border-box;
+    opacity: 0.55;
+    pointer-events: auto;
+    touch-action: none;
+    cursor: copy;
+}
+
+.freeformHandles .freeformInsert:hover {
+    opacity: 1;
+}
+
+/* Draw mode: a layer over the whole stage that takes the clicks */
+.overlayContainer .freeformDrawLayer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10000;
+    cursor: crosshair;
+    pointer-events: auto;
+}
+
+.freeformDrawLayer .freeformDrawPoint {
+    pointer-events: none;
+}
+
+.freeformDrawLayer .freeformDrawPoint.closing {
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+}
+
+.freeformDrawLayer .freeformDrawPoint.closing.active {
+    background: var(--editing-fg-color);
+    border-color: var(--editing-bg-color);
+}
+
+.freeformDrawLayer .freeformDrawHint {
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - 32px);
+    padding: 5px 10px;
+    border-radius: var(--input-border-radius);
+    background: var(--editing-fg-color);
+    color: var(--editing-bg-color);
+    font-size: 12px;
+    line-height: 16px;
+    text-align: center;
+    pointer-events: none;
+}
+
+/* Bigger touch targets */
+@media (pointer: coarse) {
+    .freeformHandles .freeformPoint {
+        width: 18px;
+        height: 18px;
+        margin: -9px 0 0 -9px;
+    }
+    .freeformHandles .freeformInsert {
+        width: 14px;
+        height: 14px;
+        margin: -7px 0 0 -7px;
+    }
+}
