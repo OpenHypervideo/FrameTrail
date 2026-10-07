@@ -15,12 +15,23 @@
 	Deny from all
 </Files>
 ########################################################
-# Deny access to ephemeral collaboration state (_data/.collab)
-# and to external-auth state (_data/.auth)
+# Deny access to ephemeral collaboration state (_data/.collab),
+# to secrets and external-auth state (_data/.auth) and to
+# server extensions' private storage (_data/.extensions)
 ########################################################
 <IfModule mod_rewrite.c>
 	RewriteRule (^|/)\.collab(/|$) - [F,L]
 	RewriteRule (^|/)\.auth(/|$) - [F,L]
+	RewriteRule (^|/)\.extensions(/|$) - [F,L]
+</IfModule>
+########################################################
+# Hand the Authorization header to PHP, which needs it for
+# personal API tokens. mod_php passes it on by itself; PHP
+# behind FastCGI or CGI does not get it without this
+########################################################
+<IfModule mod_rewrite.c>
+	RewriteCond %{HTTP:Authorization} .
+	RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
 </IfModule>
 ########################################################
 # No script runs outside _server/, whatever lands in a

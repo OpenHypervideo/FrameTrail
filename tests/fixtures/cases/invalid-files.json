@@ -21,6 +21,26 @@
             ]
         },
         {
+            "name": "apiTokens as a string",
+            "schema": "config.schema.json",
+            "data": {
+                "defaultTheme": "",
+                "defaultLanguage": "en",
+                "videoFit": "contain",
+                "overviewMode": "grid",
+                "allowUploads": true,
+                "alwaysForceLogin": false,
+                "userNeedsConfirmation": true,
+                "apiTokens": "true"
+            },
+            "errors": [
+                {
+                    "path": "/apiTokens",
+                    "message": "must be boolean, is string"
+                }
+            ]
+        },
+        {
             "name": "overview mode list",
             "schema": "config.schema.json",
             "data": {

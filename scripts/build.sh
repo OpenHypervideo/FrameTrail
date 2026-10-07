@@ -457,6 +457,9 @@ cp "$SRC_DIR/favico.png" "$BUILD_DIR/"
 cp "$SRC_DIR/.htaccess" "$BUILD_DIR/"
 cp "$SRC_DIR/.user.ini" "$BUILD_DIR/"
 cp -r "$SRC_DIR/_server" "$BUILD_DIR/_server"
+# The drop-in folder for server extensions ships empty: whatever was installed
+# into src/_server/extensions/ to try it out is not part of a release.
+find "$BUILD_DIR/_server/extensions" -mindepth 1 -maxdepth 1 ! -name README.md -exec rm -rf {} +
 
 # ──────────────────────────────────────────────
 #  Add release README and LICENSE

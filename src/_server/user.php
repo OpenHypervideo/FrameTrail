@@ -35,7 +35,7 @@ function userGet($userID) {
     $publicFields = array("name", "color", "avatar");
 
     foreach ($uDB["user"] as $k=>$u) {
-        unset($uDB["user"][$k]["passwd"]);
+        $uDB["user"][$k] = ftUserWithoutSecrets($uDB["user"][$k]);
         if (!$isLoggedIn) {
             $uDB["user"][$k] = array_intersect_key($uDB["user"][$k], array_flip($publicFields));
         }
@@ -227,7 +227,9 @@ function userLogin($mail, $passwd) {
     session_regenerate_id(true);
 
     $_SESSION["ohv"]["login"] = 1;
+    // Token hashes stay in users.json; nothing reads them from a session.
     $_SESSION["ohv"]["user"] = $user;
+    unset($_SESSION["ohv"]["user"]["tokens"]);
 
     $return["status"] = "success";
     $return["code"] = 0;
@@ -330,6 +332,7 @@ function userCheckLogin($userRole = false) {
         $tmpUserID = $_SESSION["ohv"]["user"]["id"];
         $_SESSION["ohv"]["user"] = $userdb["user"][$tmpUserID];
         $_SESSION["ohv"]["user"]["id"] = $tmpUserID;
+        unset($_SESSION["ohv"]["user"]["tokens"]);
         $file->close();
 
         $return["status"] = "success";
@@ -363,8 +366,7 @@ function userCheckLogin($userRole = false) {
         }
 
 
-        $return["response"] = $_SESSION["ohv"]["user"];
-        unset($return["response"]["passwd"]);
+        $return["response"] = ftUserWithoutSecrets($_SESSION["ohv"]["user"]);
     } else {
         $return["status"] = "fail";
         $return["code"] = 0;
@@ -435,6 +437,7 @@ function userChange($userID,$mail,$name,$passwd,$color,$role,$active,$avatar = n
         $tmpUserID = $_SESSION["ohv"]["user"]["id"];
         $_SESSION["ohv"]["user"] = $userdb["user"][$tmpUserID];
         $_SESSION["ohv"]["user"]["id"] = $tmpUserID;
+        unset($_SESSION["ohv"]["user"]["tokens"]);
         if ((($_SESSION["ohv"]["user"]["role"] != "admin") && ($userID != $tmpUserID))) {
             $return["status"] = "fail";
             $return["code"] = 2;
@@ -489,8 +492,7 @@ function userChange($userID,$mail,$name,$passwd,$color,$role,$active,$avatar = n
 
                 $return["status"] = "success";
                 $return["string"] = "User data updated";
-                $return["response"] = $userdb["user"][$userID];
-                unset($return["response"]["passwd"]);
+                $return["response"] = ftUserWithoutSecrets($userdb["user"][$userID]);
             } else {
                 $return["status"] = "fail";
                 $return["code"] = 6;
@@ -823,7 +825,7 @@ function ftExternalLoginEstablish($identity) {
     // that a page it serves itself. Never keep it across a privilege change.
     session_regenerate_id(true);
 
-    unset($user["passwd"]);
+    $user = ftUserWithoutSecrets($user);
 
     // "psid" is the platform's session generation as it stood at this moment.
     // Every later request compares it to the cookie still on the browser, which

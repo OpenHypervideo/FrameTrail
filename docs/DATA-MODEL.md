@@ -67,7 +67,7 @@ A name is resolved against `https://frametrail.org/schemas/1/`; a fragment selec
 ```
 _data/
 ├── config.json                  # instance settings (public on a public instance)
-├── users.json                   # accounts — not covered here, never exported
+├── users.json                   # accounts and their API token hashes — not covered here, never exported
 ├── tagdefinitions.json          # tag labels and descriptions per language
 ├── custom.css                   # global CSS, including custom themes
 ├── resources/
@@ -84,6 +84,7 @@ _data/
 │           └── <lang>.vtt       # WebVTT, one file per language
 ├── .auth/                       # secrets and external-auth state — never served, never exported
 ├── .collab/                     # presence and locks — ephemeral, never exported
+├── .extensions/<name>/          # server extensions' own state — never served, never exported
 └── .htaccess                    # privacy gate of a private instance (Apache), written by FrameTrail
 ```
 
@@ -167,9 +168,9 @@ Inside the player, scripts and extensions read and change the open hypervideo in
 
 Instance settings. Missing keys mean the defaults in the schema. On a public instance anyone can read this file, so it must never hold a secret: the secret half of external authentication lives in `_data/.auth/config.php`, and an extension's secrets in `_data/.auth/<name>.php`.
 
-Booleans are strict. The server refuses uploads only when `allowUploads` is `false` and treats an instance as private only when `alwaysForceLogin` is `true`; the strings `"false"` and `"true"` do neither. [docs/INTEGRATION.md](INTEGRATION.md#writing-the-settings) lists the settings with what a missing key means and when a change takes effect; [docs/DEPLOYMENT.md](DEPLOYMENT.md#configuration) covers `externalAuth`, `externalSettings` and `userAvatars`.
+Booleans are strict. The server refuses uploads only when `allowUploads` is `false` and treats an instance as private only when `alwaysForceLogin` is `true`; the strings `"false"` and `"true"` do neither. [docs/INTEGRATION.md](INTEGRATION.md#writing-the-settings) lists the settings with what a missing key means and when a change takes effect; [docs/DEPLOYMENT.md](DEPLOYMENT.md#configuration) covers `externalAuth`, `externalSettings`, `userAvatars` and `apiTokens`.
 
-`extensions` lists extensions the instance loads, each `{ name, script, style, settings }` ([docs/EXTENDING.md](EXTENDING.md#writing-an-extension)). `script` and `style` are paths relative to the page, so on its origin; the player refuses anything else. `settings` is handed to the extension's `init()` untouched; FrameTrail neither reads nor validates it, so the schema leaves it open. An extension that cannot be loaded is skipped, so a `_data` directory naming one works on an installation that does not have it.
+`extensions` lists extensions the instance loads, each `{ name, script, style, settings }` ([docs/EXTENDING.md](EXTENDING.md#writing-an-extension)). `script` and `style` are paths relative to the page, so on its origin; the player refuses anything else. `settings` is handed to the extension's `init()` untouched; FrameTrail neither reads nor validates it, so the schema leaves it open. An extension that cannot be loaded is skipped, so a `_data` directory naming one works on an installation that does not have it. An entry also switches on the extension's server part, if the installation has one in `_server/extensions/<name>/`.
 
 ### `tagdefinitions.json`
 

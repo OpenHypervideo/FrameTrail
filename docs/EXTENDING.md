@@ -322,7 +322,7 @@ FrameTrail.defineModule('MyCustomModule', function(FrameTrail) {
 
 ## Writing an Extension
 
-An extension is code that is not part of FrameTrail and plugs into it from outside: nothing in `index.html`, `scripts/build.sh` or any module changes. It can add a panel beside the player, a button to the title bar and an edit mode of its own, follows the interface through lifecycle hooks and state changes, reads and changes the hypervideo through [`edit`](#editing-the-hypervideo), and reaches every module the way FrameTrail's own modules do. A complete example is in [`examples/extension-hello/`](../examples/extension-hello/).
+An extension is code that is not part of FrameTrail and plugs into it from outside: nothing in `index.html`, `scripts/build.sh` or any module changes. It can add a panel beside the player, a button to the title bar and an edit mode of its own, follows the interface through lifecycle hooks and state changes, reads and changes the hypervideo through [`edit`](#editing-the-hypervideo), and reaches every module the way FrameTrail's own modules do. It can also have a server part that adds actions and routes to the PHP backend ([Server Extensions](#server-extensions)). A complete example is in [`examples/extension-hello/`](../examples/extension-hello/).
 
 ### Register It
 
@@ -380,7 +380,7 @@ An extension named in both places is loaded once: the init option's entry wins, 
 
 Extensions are loaded after the data, which is when `config.json` is known, and before the interface is built. Anything that goes wrong is reported in the browser console and skipped, never fatal: a script or stylesheet that does not load (after at most 10 seconds), an entry that is not valid, a factory or `init()` that throws. A `_data` directory is portable and may name an extension that another installation does not have. An exception in one of an extension's hooks or handlers is reported, and the rest carry on.
 
-`settings` are handed to `init()` untouched; FrameTrail neither reads nor validates them. On a public instance anyone can read `config.json`, so settings must never hold a secret. Secrets belong on the server, in `_data/.auth/<name>.php`, which is never served.
+`settings` are handed to `init()` untouched; FrameTrail neither reads nor validates them. On a public instance anyone can read `config.json`, so settings must never hold a secret. Secrets belong on the server, in `_data/.auth/<name>.php`, which is never served, and only a [server part](#server-extensions) can use them.
 
 ### Lifecycle
 
@@ -650,18 +650,81 @@ The theme selector in `HypervideoSettingsDialog` automatically picks up themes d
 
 ## Extending the Backend
 
-### Adding a New API Action
+### Server Extensions
 
-Edit `src/_server/ajaxServer.php`:
+An extension can bring a server part: actions and routes added to FrameTrail's PHP backend without changing any of its files. It is a folder `_server/extensions/<name>/`, named like the extension, whose `extension.php` returns what it offers:
+
+```php
+<?php
+
+// Only ever run by FrameTrail's routers, never on its own (see Files below).
+if (!function_exists("ftExtensionStorage")) { http_response_code(404); exit; }
+
+function ftHelloPing($ext) {
+    return array(
+        "status"   => "success",
+        "code"     => 0,
+        "response" => array("greeting" => $ext["settings"]["greeting"])
+    );
+}
+
+function ftHelloWhoami($ext) {
+    header("Content-Type: text/plain; charset=utf-8");
+    $login = userCheckLogin();
+    echo ($login["code"] == 1) ? $login["response"]["name"] : "Nobody";
+}
+
+return array(
+    "actions"  => array("helloPing" => "ftHelloPing"),     // ajaxServer.php?a=helloPing
+    "routes"   => array("whoami"    => "ftHelloWhoami"),   // extension.php?e=hello&r=whoami
+    "requires" => array("curl")                            // PHP extensions it needs
+);
+```
+
+The complete example is [`examples/extension-hello/server/`](../examples/extension-hello/server/).
+
+**Switching it on.** The extension's entry in `config.json` → `extensions`, the same entry that loads its browser part, switches the server part on, if the folder is there. An extension named only in the `extensions` init option has no server part: the server never sees init options. An entry without a folder is an extension that only has a browser part, which is not an error.
+
+**Actions** go through `_server/ajaxServer.php`, like FrameTrail's own: a request with `a=<action>` and the `dataPath`, answered with the array the handler returns, as JSON. Name them after the extension (`helloPing`): an action FrameTrail has itself, now or in a later release, always wins, and of two extensions offering the same action, the first in `config.json` does.
+
+**Routes** go through `_server/extension.php?e=<name>&r=<route>` and answer as they like: their own content type, HTTP status codes and methods, a JSON-RPC endpoint, server-sent events. The handler writes its answer itself; an array it returns is sent as JSON. An unknown route answers 404. A route that streams should call `session_write_close()` once it knows who is asking: PHP keeps the session file locked for as long as a request holds it, so an open stream would hold up the same person's heartbeat and saves.
+
+**Handlers** are called with `array("name" => …, "settings" => …)`, where `settings` are the entry's `settings` from `config.json`. Both routers start like every request to FrameTrail's backend (`config.php`): the data directory follows `dataPath`, and the session is there, or the user of a [personal API token](DEPLOYMENT.md#personal-api-tokens-apitokens). FrameTrail checks nothing on a handler's behalf. One that needs a signed-in user asks `requireLogin()` or `requireLogin("admin")`, which re-read the user from `users.json`; `userCheckLogin()` returns the user, `ftIsBearerRequest()` says whether the request came with a token. A handler may include FrameTrail's other server files and call their functions. `hypervideoChange()`, for instance, takes subtitle texts (WebVTT keyed by language) as its last argument, so an extension can write subtitles together with the `hypervideo.json` that lists them, which tells open editors.
+
+**Storage and secrets.** `ftExtensionStorage($name)` returns `_data/.extensions/<name>/`, created on first use: the extension's own folder, never served and never exported. It travels with a copy of `_data/`, so it is no place for secrets. Those belong in `_data/.auth/<name>.php`, a PHP file returning an array, which `ftExtensionSecrets($name)` reads. `config.json` is public on a public instance.
+
+**Requirements.** `requires` names PHP extensions (as `extension_loaded()` knows them). While one is missing, the extension's actions and routes answer with code 503, and admins see the reason in the browser console: `userCheckLogin` reports the server parts of the enabled extensions to admins, as `serverExtensions: [{ name, actions, routes, missing, error }]`. A manifest that throws, or does not return an array, is reported the same way and costs only that extension its answers. A PHP fatal error is the exception: two extensions declaring a function of the same name stop every request that loads both. Prefix your functions, or use closures.
+
+**Files.** The web server never runs a PHP file below `_server/` directly (`.htaccess`), so everything goes through the two routers. PHP's built-in server reads no `.htaccess`: start every PHP file of an extension with the guard above. Keep `extension.php` free of side effects. It is loaded whenever FrameTrail meets an action it does not know, and on every admin's heartbeat.
+
+The files are not part of FrameTrail: copy them again after replacing the code with a new release.
+
+**From JavaScript:**
+
+```javascript
+var Storage = FrameTrail.module('StorageManager');
+
+// An action: serverPost() adds the dataPath and resolves with the answer, whatever its code.
+Storage.serverPost(new URLSearchParams({ a: 'helloPing' })).then(function(answer) {
+    console.log(answer.response.greeting);
+});
+
+// A route: the URL with e, r and the dataPath, or null when there is no server.
+fetch(Storage.extensionURL('hello', 'whoami')).then(function(r) { return r.text(); });
+```
+
+### Adding an Action to FrameTrail Itself
+
+A change to FrameTrail (not an extension) adds a case to `src/_server/ajaxServer.php`:
 
 ```php
 case "myCustomAction":
-    require_once("myCustomModule.php");
-    $return = myCustomFunction($_POST["param1"], $_POST["param2"]);
+    include_once("myCustomModule.php");
+    $return = myCustomFunction($_REQUEST["param1"], $_REQUEST["param2"]);
     break;
 ```
 
-Create `src/_server/myCustomModule.php`:
+and the function to a file of its own, `src/_server/myCustomModule.php`:
 
 ```php
 <?php
@@ -672,49 +735,19 @@ require_once("./user.php");
 function myCustomFunction($param1, $param2) {
     global $conf;
 
-    $login = userCheckLogin("user");
-    if ($login["code"] != 1) {
-        return array(
-            "status" => "fail",
-            "code" => 1,
-            "string" => "Not logged in"
-        );
-    }
+    if ($err = requireLogin()) return $err;
 
     // Your logic here...
 
     return array(
-        "status" => "success",
-        "code" => 0,
+        "status"   => "success",
+        "code"     => 0,
         "response" => $result
     );
 }
 ```
 
-### Call from JavaScript
-
-```javascript
-// Via the FrameTrail Database module (preferred — uses resolveServerURL automatically)
-FrameTrail.module('Database').ajax('myCustomAction', {
-    param1: 'value1',
-    param2: 'value2'
-}, function(response) {
-    if (response.status === 'success') {
-        console.log(response.response);
-    }
-});
-
-// Or directly via fetch
-fetch('_server/ajaxServer.php', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ a: 'myCustomAction', param1: 'value1', param2: 'value2' })
-}).then(function(r) { return r.json(); }).then(function(response) {
-    if (response.status === 'success') {
-        console.log(response.response);
-    }
-});
-```
+Call it with `FrameTrail.module('StorageManager').serverPost(new URLSearchParams({ a: 'myCustomAction', param1: 'value1' }))`, as above. A request made with a personal API token reaches every action except the ones that manage the account and its tokens (`ftBearerRefusesAction()` in `src/_server/tokens.php`); add a new action of that kind there.
 
 ## Adding Custom Events
 

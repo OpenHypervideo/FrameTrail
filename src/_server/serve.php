@@ -81,6 +81,21 @@ if ($basename === "users.json"
     serveError(403, "Forbidden");
 }
 
+// Nor anything inside a dot-directory: .auth/, .collab/, .extensions/ and any
+// later one hold state that is never meant to be read over HTTP. Checked on the
+// path as requested and as resolved, segment by segment, so neither a symlink
+// nor a spelling of the path gets around it. (This used to check the basename
+// only, which served _data/.collab/*.json to anyone signed in.)
+$segments = array_merge(
+    preg_split('#[/\\\\]+#', $requested),
+    explode(DIRECTORY_SEPARATOR, substr($target, strlen($dataRoot) + 1))
+);
+foreach ($segments as $segment) {
+    if ($segment !== "" && $segment[0] === ".") {
+        serveError(403, "Forbidden");
+    }
+}
+
 // Extension allowlist (maps to Content-Type).
 $allowed = array(
     "json" => "application/json",

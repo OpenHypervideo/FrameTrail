@@ -88,6 +88,11 @@
             "type": "boolean",
             "default": false
         },
+        "apiTokens": {
+            "description": "Let signed-in users create, list and revoke personal API tokens in My Settings, with which other programs act as them (\"Authorization: Bearer ft_…\"). Only true (the boolean) does this. Tokens are accepted only while this is true, or while externalAuth is active: then the platform writes them into users.json and My Settings offers none, whatever this says. Server mode only.",
+            "type": "boolean",
+            "default": false
+        },
         "externalAuth": {
             "description": "External authentication, public half. This file is public: secrets (hmacSecret, clientSecret) belong in _data/.auth/config.php, which is merged over this object. Active only when mode and provider are both set. See docs/DEPLOYMENT.md.",
             "type": "object",
@@ -225,7 +230,7 @@
             }
         },
         "extensions": {
-            "description": "Extensions this instance loads, in order, after the data and before the interface. An extension named here and in the extensions init option is loaded once; the init option's entry wins and this one fills in what it lacks. One that cannot be loaded is reported in the browser console and skipped. Releases without extension support ignore the key.",
+            "description": "Extensions this instance loads, in order, after the data and before the interface. An extension named here and in the extensions init option is loaded once; the init option's entry wins and this one fills in what it lacks. One that cannot be loaded is reported in the browser console and skipped. An entry here also switches on the extension's server part, if _server/extensions/<name>/ has one; the init option cannot. Releases without extension support ignore the key.",
             "type": "array",
             "items": {
                 "description": "An extension this instance loads.",

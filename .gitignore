@@ -24,6 +24,10 @@ pids
 *.mov
 *.mpg
 
+#server extensions installed for trying them out (the folder itself ships empty)
+src/_server/extensions/*
+!src/_server/extensions/README.md
+
 #data folder
 _data/
 _data-*

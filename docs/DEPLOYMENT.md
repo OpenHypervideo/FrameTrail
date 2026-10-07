@@ -22,6 +22,8 @@ Then open `http://localhost:8080`. No Apache, no XAMPP needed if PHP is installe
 
 Among those rules, two keep uploaded files inert, and on nginx both need an equivalent of their own: no `.php` (or `.phtml`, `.phar`, …) is executed anywhere except directly in `_server/`, and `.svg` files are served with `Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'; img-src data:`, so an SVG opened directly cannot run script on the instance's origin. With nginx, make sure your `location ~ \.php$` block only matches `_server/`, and add the header in a `location ~* \.svgz?$` block.
 
+The rules also deny the dot-directories in `_data/`: `.auth/` (secrets and external-auth state), `.collab/` (presence and locks) and `.extensions/` (server extensions' private storage). On nginx, deny every path inside `_data/` with a segment that starts with a dot.
+
 **Steps:**
 
 1. Download the [latest release](https://github.com/OpenHypervideo/FrameTrail/releases) zip
@@ -41,7 +43,7 @@ Server mode is also the only mode that can defer identity to a surrounding syste
 - `frametrail.min.js` + `frametrail.min.css` — Minified bundles
 - `frametrail.js` + `frametrail.css` — Unminified bundles (for debugging)
 - `index.html`, `resources.html`, `setup.html` — Entry points
-- `_server/` — Full PHP backend
+- `_server/` — Full PHP backend, with an empty `extensions/` folder for [server extensions](EXTENDING.md#server-extensions)
 - `.htaccess` — Apache rewrite rules
 - `favico.png`, `README.md`, `LICENSE.md`
 
@@ -387,7 +389,7 @@ tar xzf frametrail-data.tar.gz
 ### Configuration
 
 Server-side config is in `src/_server/config.php`:
-- `$conf["dir"]["data"]` — Path to `_data` directory (default: `../_data`). Can be overridden by the client's `dataPath` init option — the PHP backend resolves the URL path to a filesystem path and validates it is within the server root (parent of `_server/`). The resolved path is locked into the session at login.
+- `$conf["dir"]["data"]` — Path to `_data` directory (default: `../_data`). Can be overridden by the client's `dataPath` init option — the PHP backend resolves the URL path to a filesystem path and validates it is within the server root (parent of `_server/`) and holds a `config.json`. It is resolved anew on every request; nothing about it is kept in the session.
 
 Runtime config is in `_data/config.json`:
 - `userNeedsConfirmation` — Require admin approval for new accounts
@@ -400,6 +402,8 @@ Runtime config is in `_data/config.json`:
 - `externalAuth` — Defer identity to a hosting platform or identity provider instead of keeping local passwords (see below)
 - `externalSettings` — Hand every setting in this list, and `custom.css`, to the hosting platform: the settings dialog disappears and `configChange` / `globalCSSChange` are refused (see below)
 - `userAvatars` — Whether profile pictures are shown, and where they may come from (default: `off`, see below)
+- `extensions` — Extensions the instance loads: their browser part, and their server part if `_server/extensions/<name>/` has one ([docs/EXTENDING.md](EXTENDING.md#writing-an-extension))
+- `apiTokens` — Let signed-in users create personal API tokens for other programs (default: off, see below)
 
 #### Private instances (`alwaysForceLogin`)
 
@@ -474,7 +478,7 @@ Which keys the browser may see is a whitelist (`ftExternalAuthPublic()` in [`src
 #### Securing an external-auth install
 
 - **Nothing secret in `config.json`.** The browser fetches it over HTTP. Secrets go in `_data/.auth/config.php`. With an asymmetric algorithm there is no secret at all on the FrameTrail side.
-- **Protect `_data/.auth/`.** The shipped [`src/.htaccess`](../src/.htaccess) denies it — **Apache only**, like the private-instance gate above. On nginx + PHP-FPM add your own `location` rule denying any path containing `/.auth`.
+- **Protect `_data/.auth/`.** The shipped [`src/.htaccess`](../src/.htaccess) denies it, with `.collab/` and `.extensions/` — **Apache only**, like the private-instance gate above. On nginx + PHP-FPM add your own `location` rule denying any path inside `_data/` with a segment that starts with a dot.
 - **Register `redirectUri` explicitly** with your provider and set it in the config. The Host-header fallback is a convenience, not a configuration.
 - **HTTPS throughout.** Behind a reverse proxy, `X-Forwarded-Proto` must be set, or the session cookie ships without its `Secure` flag.
 - **`_data/` must stay writable.** The replay store under `_data/.auth/jti/` is fail-closed: a full or read-only disk makes logins fail rather than letting tokens become replayable.
@@ -504,6 +508,26 @@ Two consequences worth deciding deliberately:
 - **Cached avatars live in `_data/resources/avatars/`**, and are therefore served like any other resource — world-readable on a public instance, and included in `dataExport` ZIPs.
 
 Caching is hardened against SSRF: HTTPS only, DNS resolution checked against private and reserved ranges before and after a redirect, one redirect maximum, a five-second timeout, a 2 MB cap, an `image/*` content type requirement, and a decode-and-re-encode through GD rather than a byte copy. That is a reason to be comfortable with `cache`, not a reason to skip the decision between `cache` and `remote`.
+
+#### Personal API tokens (`apiTokens`)
+
+A personal API token lets a program that is not a browser act as a user: a script, an integration, a tool that talks to a [server extension](EXTENDING.md#server-extensions). It sends the token in a header, and is that user for the one request, with the user's role and permissions:
+
+```bash
+# FRAMETRAIL_TOKEN holds the token, e.g. ft_8a4e63377cb93b3a_KtHeWAOh6soHOqiXSOQ…
+curl -H "Authorization: Bearer $FRAMETRAIL_TOKEN" \
+     -d a=userCheckLogin https://example.org/frametrail/_server/ajaxServer.php
+```
+
+Tokens are off by default; most instances never need them. With `"apiTokens": true` in `_data/config.json`, "My Settings" gets a section where each signed-in user creates, lists and revokes their own tokens. A token is shown once, when it is created; `users.json` keeps only the SHA-256 of its secret. Tokens can expire after 30, 90 or 365 days, or not at all; a user can have up to 20. There is no switch in the settings dialog: set the key in the file.
+
+- **Tokens work only while `apiTokens` is `true`,** or while external authentication is on (then the platform hands tokens out, see [docs/INTEGRATION.md](INTEGRATION.md#personal-api-tokens), and My Settings offers none, whatever `apiTokens` says). Switching it off makes every token stop working at once; they work again if it is switched back on.
+- **Every request is checked against `users.json`:** a revoked or expired token, and the token of a user who has been deactivated or deleted, answers `401` with the next request.
+- **A token request starts no session** and sets no cookie, so a token cannot be turned into a session that outlives its revocation.
+- **A token is not a way into the account:** login, logout, registration, changing or deleting an account and managing tokens are refused with code `403` when a request comes with a token.
+- **Failed attempts are limited:** after 10 failed token requests from one address within 10 minutes, token requests from it answer `429` until the 10 minutes are over. The counts live in `_data/.auth/bearer/`.
+- An `Authorization` header that does not hold a FrameTrail token (`Bearer ft_…`) is ignored, so a proxy that sends its own keeps working.
+- **Apache with PHP behind FastCGI or CGI** (PHP-FPM) drops the `Authorization` header unless told otherwise. The shipped `.htaccess` passes it on for `_server/` with a rewrite rule; with `AllowOverride` that excludes `FileInfo`, set `CGIPassAuth On` instead (Apache 2.4.13+). nginx passes it to PHP-FPM as `HTTP_AUTHORIZATION` by default. On a private instance `_data/` is read through `serve.php`, behind a rewrite of its own that this rule does not reach: reading `_data/` there with a token needs `CGIPassAuth On`.
 
 ### File Permissions
 

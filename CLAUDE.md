@@ -91,8 +91,10 @@ Three HTML entry points in `src/`:
 - `src/_server/files.php` — File upload/download
 - `src/_server/hypervideos.php` — Hypervideo CRUD
 - `src/_server/annotationfiles.php` — Annotation persistence
-- `src/_server/config.php` — Server configuration
+- `src/_server/config.php` — Server configuration; starts the session, or authenticates a personal API token instead
 - `src/_server/functions.incl.php` — Shared utility functions
+- `src/_server/tokens.php` — Personal API tokens: bearer authentication, `userToken*` actions
+- `src/_server/extensionloader.php` + `src/_server/extension.php` — Server extensions (`src/_server/extensions/<name>/`, shipped empty): loader, and the router for their routes
 
 **Data Storage** (`_data/` directory — not in git, created at runtime):
 ```
@@ -312,10 +314,11 @@ git push origin v2.0.0
 5. Add files to `scripts/build.sh`
 
 **Modifying Server Logic:**
-1. Add new action to switch statement in `src/_server/ajaxServer.php`
+1. Add new action to switch statement in `src/_server/ajaxServer.php` (an extension adds actions as a server extension instead, see below)
 2. Implement logic in specialized PHP file
 3. Return JSON response with `success`/`error` keys
-4. Client-side: Call via `FrameTrail.module('Database').ajax(action, data, callback)`
+4. Client-side: Call via `FrameTrail.module('StorageManager').serverPost(new URLSearchParams({ a: action, … }))` (adds `dataPath`, resolves with the answer whatever its code)
+5. An action that manages the account or its tokens goes into `ftBearerRefusesAction()` (`tokens.php`), so a personal API token cannot call it
 
 ### File Conventions
 
@@ -441,6 +444,32 @@ An instance can hand its settings to the platform hosting it, the companion of e
 - **Reserved keys:** even with the switch off, `updateConfigFile()` copies `externalAuth` and `externalSettings` from disk over whatever the request carried (and drops them if the disk has none), and refuses anything that does not decode to a JSON object — it used to write back a config holding only `lastchanged`.
 - **Client:** learned from `userCheckLogin` (`UserManagement.externalSettings()`), on every heartbeat. `Titlebar.updateAdminSettingsButton()` is the one rule for the gear; the user menu gets an "Administration" link to `manageUrl` and "Manage Tags". `AdminSettingsDialog.open()` refuses; a dialog that meets code 8 or notices the takeover closes via `closeAsManaged()`. `Sidebar.refreshSettings()` also reloads `custom.css`, which is how a platform's CSS change reaches an open page.
 - Setup (`setupCheckDetailed`, `setupInit`) treats an instance under either switch as already set up.
+
+## Server Extensions
+
+The server part of an extension: actions and routes added to the PHP backend without changing FrameTrail's files. User documentation: [docs/EXTENDING.md](docs/EXTENDING.md#server-extensions); the example is `examples/extension-hello/server/`.
+
+- **Manifest:** `_server/extensions/<name>/extension.php` returns `{ actions: { name: callable }, routes: { name: callable }, requires: [php extensions] }`. Loaded by `ftExtensionManifest()` (`extensionloader.php`) in a scope of its own, once per request; a throw or a non-array becomes `error`, a missing requirement `missing` — never fatal, the handlers just don't run (500 / 503 answers).
+- **Switch:** only names in `config.json` → `extensions` (`ftExtensionNames()`; strings or `{ name }`), the same list as the browser part. Init-option-only extensions have no server part. The folder `src/_server/extensions/` ships empty (README only; `.gitignore` and `build.sh` keep installed ones out).
+- **Actions:** the `default:` case of `ajaxServer.php` → `ftExtensionFindAction()` → `ftExtensionCall()`, so core names always win; first extension in config order wins among extensions. Answer = the handler's array.
+- **Routes:** `_server/extension.php?e=<name>&r=<route>` (`$_GET`), handler writes its own output; an array return is sent as JSON. Unknown → 404 JSON.
+- **Handlers** get `{ name, settings }`; `extensionloader.php` requires `user.php`, so `requireLogin()` / `userCheckLogin()` are at hand. Helpers: `ftExtensionStorage($name)` (`_data/.extensions/<name>/`, created on demand), `ftExtensionSecrets($name)` (`_data/.auth/<name>.php`), `ftExtensionSettings($name)`, `ftIsBearerRequest()`.
+- **Reporting:** `userCheckLogin` → `serverExtensions` (admins only, `ftExtensionStatus()`); `UserManagement` warns once per problem in the console and exposes `serverExtensions()`.
+- **Unreachable private storage:** `.htaccess` denies `.extensions` (with `.auth`, `.collab`); `serve.php` refuses any dot segment of the requested and the resolved path (it used to check the basename only, which served `.collab/*.json`); `dataExport` skips every dot-directory.
+- **Subtitles from the server:** `hypervideoChange(…, $subtitleTexts)` / `hypervideoAdd(…, $subtitleTexts)` take WebVTT texts keyed by language (code 8 when invalid, checked before any write); `ftWriteSubtitleFiles()` does deletions, uploads and texts for both.
+- **Client helper:** `StorageManager.extensionURL(name, route)` builds the route URL with `dataPath`.
+
+## Personal API Tokens
+
+Non-browser clients act as a user with `Authorization: Bearer ft_<id>_<secret>`. User documentation: [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#personal-api-tokens-apitokens); the record shape for platforms in [docs/INTEGRATION.md](docs/INTEGRATION.md#personal-api-tokens).
+
+- **Switches:** `config.json` → `apiTokens` (strict `true`, default off, no UI switch) turns on the self-service in My Settings (`ftApiTokensSelfService()` = flag and not `externalAuth`). Tokens are *accepted* when the flag is on **or** `externalAuth` is active (`ftApiTokensAccepted()`): under external auth the platform owns the `tokens` key and writes hashes itself, and FrameTrail's self-service stays off whatever the flag says. Flag off without external auth → every token refused (401), kept on disk.
+- **Storage:** `users.json` → user → `tokens: [{ id, label, hash, created, lastUsed, expires }]`, seconds; `hash` = SHA-256 hex of the secret, `hash_equals`; `lastUsed` written at most every 5 min (`ftTokenTouch()`). Format check: `ftTokenParse()` (id `[a-z0-9]{8,64}`, secret `[A-Za-z0-9_-]{32,128}`). Max 20 per user; expiry 1–3650 days or none.
+- **Request flow:** `config.php` resolves the data dir first, then `ftBearerEstablish()`: no `Bearer ft_…` header → `session_start()` + `ftExternalSessionEnforce()` as before; a token → `$_SESSION` filled in memory only (no session, no cookie) and `$GLOBALS["ftBearer"]`; an invalid one → 401 JSON and exit. Other `Authorization` values are ignored (proxies).
+- **Never into the account:** `ftBearerRefusesAction()` refuses login/logout/register/userChange/userDelete/token actions/setup with code 403 before the switch in `ajaxServer.php`.
+- **Rate limit:** 10 failures per address per 10 min → 429 with `Retry-After`, state in `_data/.auth/bearer/`.
+- **No hashes out:** `ftUserWithoutSecrets()` strips `passwd` and `tokens` from `userGet`, `userCheckLogin`, `userChange`; session copies drop `tokens`.
+- **Client:** `userCheckLogin` → `apiTokens` (boolean) → `UserManagement` shows the token section of My Settings (dialog 640 px instead of 340), reusing ManageUsersDialog's `.userList*` rows; the value is shown once and cleared on close.
 
 ## Overlay Scaling Mechanism
 

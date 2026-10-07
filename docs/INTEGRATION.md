@@ -261,6 +261,7 @@ Turning it on takes account management away from FrameTrail. Specifically:
 - **Name, mail, role and active status are rewritten on every sign-in.** Colour and avatar are the person's: colour is seeded only when empty, and the avatar is overwritten only when the identity supplies one.
 - **Existing accounts can be adopted.** Writing an `external` block onto an existing password account links it, annotations and all — which is how you migrate an instance that already has users. Any stored password is stripped on the next write.
 - **Revocation runs through the platform.** Deactivate or delete the record there and the next client heartbeat ends the FrameTrail session.
+- **Personal API tokens are the platform's to hand out.** My Settings offers none, and the token actions are refused, whatever `apiTokens` says; the platform writes token hashes into the records instead ([below](#personal-api-tokens)).
 
 ## Sessions and Logout Propagation
 
@@ -270,6 +271,54 @@ A session established by a platform is bounded from **when it was established**,
 - **`sessionCookie`** names the platform's own session cookie. FrameTrail records its value at hand-off and compares it on every request: if the cookie is gone or different, the person has signed out, signed in as somebody else, or had their platform session expire — all of which end the FrameTrail session too. This is the whole of the propagation mechanism; there is no back channel. It requires the cookie to actually reach FrameTrail, so it is a same-site arrangement. Omit the key and only the absolute bound applies. Also never sent to the browser.
 
 The client puts its next heartbeat just past the known deadline rather than a full session lifetime after it, so an expiry is noticed within seconds.
+
+## Personal API Tokens
+
+A personal API token lets a program that is not a browser act as a user of the instance: it sends `Authorization: Bearer <token>` and is that user for the one request. What tokens do and how a self-hosted instance offers them is in [docs/DEPLOYMENT.md](DEPLOYMENT.md#personal-api-tokens-apitokens). Under external authentication FrameTrail hands out none: the platform mints them, for example in an account page of its own, and writes their hashes into the user's record in `users.json`. FrameTrail accepts them as long as external authentication is on, without `apiTokens`.
+
+**The token** is `ft_` + id + `_` + secret:
+
+- the id: 8–64 lowercase letters and digits, unique within the instance. It finds the record.
+- the secret: 32–128 characters from `A–Z a–z 0–9 - _`, random, at least 128 bits of it. It proves the token.
+
+FrameTrail's own are a 16-character hex id and a 43-character secret (256 bits, base64url).
+
+**The record.** Each user record may carry a `tokens` list:
+
+```json
+"7": {
+    "name": "Ada Lovelace",
+    "external": { "provider": "platform", "sub": "4711", "syncedAt": 1791393436 },
+    "tokens": [
+        {
+            "id":       "lv8f2c41d09a7be3",
+            "label":    "Course assistant",
+            "hash":     "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+            "created":  1791393436,
+            "lastUsed": null,
+            "expires":  1799169436
+        }
+    ]
+}
+```
+
+| Key | Meaning |
+|-----|---------|
+| `id` | The token's id, as in the token |
+| `label` | A name for people; FrameTrail shows it nowhere under external authentication |
+| `hash` | SHA-256 of the secret (the part after the id), lowercase hex. FrameTrail compares it in constant time |
+| `created` | Unix seconds |
+| `lastUsed` | Unix seconds or `null`. FrameTrail writes it, at most every five minutes per token |
+| `expires` | Unix seconds, or `null` for never. An expired token is refused |
+
+Rules a platform's writer has to keep:
+
+- **Write the `tokens` list as a whole, and merge it into the record**, as you merge the rest: FrameTrail's sign-in (`ftPrincipalUpsert()`) and its user writes keep every key they do not own, so a `tokens` list survives sign-ins and profile changes. FrameTrail itself only ever changes `lastUsed`, in place; writing the list without it loses no more than that.
+- **Lock as FrameTrail does:** `flock` on `users.json` itself, in place, and no temporary file renamed over it, which would race FrameTrail's writes.
+- **Revoking** is removing the entry. Deactivating (`active: 0`) or removing the record stops all of the user's tokens with the next request; nothing else needs to be told.
+- Never store the token or the secret, only the hash. FrameTrail never sends token hashes to a browser: `tokens` is stripped from every answer that carries a user record.
+
+A token acts as the user, with the role the record has, on every action except those that manage the account and its tokens, which answer `403`. Requests with a token start no session.
 
 ## Handing the Instance Settings to the Platform
 
@@ -343,6 +392,7 @@ An extension ([docs/EXTENDING.md](EXTENDING.md#writing-an-extension)) is switche
 
 - The files have to be in the instance's code tree: `script` and `style` are paths relative to `index.html`. An upgrade that replaces the code has to bring them along.
 - `settings` are handed to the extension in the browser, so they are public. Secrets belong in `_data/.auth/<name>.php`, which is never served.
+- An extension with a [server part](EXTENDING.md#server-extensions) also needs `_server/extensions/<name>/` in the code tree; the same entry switches it on. It keeps its state in `_data/.extensions/<name>/`: a platform that writes its own `_data/.htaccess` has to deny `.extensions/` there, like `.auth/` and `.collab/`.
 - Removing the entry switches the extension off with the next page load. An entry whose files are missing is skipped with a warning in the browser console, so it does not matter whether the config or the files arrive first.
 - Releases without extension support ignore the key. Without external settings, the settings dialog keeps the key as it is when it saves.
 

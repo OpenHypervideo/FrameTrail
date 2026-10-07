@@ -325,9 +325,37 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
     }
 
 
+    /**
+     * I return the URL of a route of a server extension (_server/extension.php
+     * ?e=<name>&r=<route>), with the dataPath the server needs to find this
+     * instance's data, or null when there is no server.
+     *
+     * Actions of a server extension go through serverPost() like FrameTrail's
+     * own; routes are for answers that need their own HTTP semantics.
+     *
+     * @method extensionURL
+     * @param {String} name   the extension's name
+     * @param {String} route
+     * @return {String|null}
+     */
+    function extensionURL(name, route) {
+
+        var serverURL = FrameTrail.module('RouteNavigation').resolveServerURL('extension.php');
+        if (!serverURL) return null;
+
+        var params  = new URLSearchParams({ e: name, r: route }),
+            adapter = getAdapter();
+        if (adapter && adapter.dataPathAbsolute) params.append('dataPath', adapter.dataPathAbsolute);
+
+        return serverURL + '?' + params.toString();
+
+    }
+
+
     return {
         init:               init,
         serverPost:         serverPost,
+        extensionURL:       extensionURL,
         getAdapter:         getAdapter,
         getServerAdapter:   getServerAdapter,
         getStaticAdapter:   getStaticAdapter,

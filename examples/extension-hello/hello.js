@@ -7,8 +7,13 @@
  * and counts how often a hypervideo has been loaded. See docs/EXTENDING.md,
  * "Writing an Extension".
  *
+ * In server mode the panel can also ask Hello's server part (server/ in this
+ * folder) for an answer: an action of its own, added to FrameTrail's backend
+ * without changing it. See docs/EXTENDING.md, "Server Extensions".
+ *
  * Installing it on a FrameTrail installation: copy this folder to
- * extensions/hello/ next to index.html, and list it in _data/config.json:
+ * extensions/hello/ next to index.html (and server/ to _server/extensions/hello/
+ * for the server part), and list it in _data/config.json:
  *
  *     "extensions": [
  *         {
@@ -38,7 +43,11 @@ FrameTrail.registerExtension('hello', function(FrameTrail) {
             HelloItemCounts:    'Overlays: %o · Chapters: %c',
             HelloLoads:         'Hypervideos loaded',
             HelloNone:          'none',
+            HelloPing:          'Ask the server',
+            HelloPingAnswer:    '%g, %u! Asked %n times.',
+            HelloPingMissing:   'The server part is not installed.',
             HelloSayHello:      'Say hello',
+            HelloStranger:      'stranger',
             HelloTitle:         'Hello'
         },
         de: {
@@ -48,7 +57,11 @@ FrameTrail.registerExtension('hello', function(FrameTrail) {
             HelloItemCounts:    'Overlays: %o · Kapitel: %c',
             HelloLoads:         'Geladene Hypervideos',
             HelloNone:          'keiner',
+            HelloPing:          'Den Server fragen',
+            HelloPingAnswer:    '%g, %u! %n-mal gefragt.',
+            HelloPingMissing:   'Der Serverteil ist nicht installiert.',
             HelloSayHello:      'Hallo sagen',
+            HelloStranger:      'Gast',
             HelloTitle:         'Hallo'
         }
     });
@@ -67,6 +80,30 @@ FrameTrail.registerExtension('hello', function(FrameTrail) {
         element.append(strong, document.createTextNode(value));
 
         return element;
+
+    }
+
+
+    // The server part's action, through the same helper FrameTrail's modules
+    // use: it adds the dataPath, so the server finds this instance's data.
+    function ping(answer) {
+
+        FrameTrail.module('StorageManager').serverPost(new URLSearchParams({ a: 'helloPing' }))
+            .then(function(response) {
+                // Without the server part FrameTrail answers an unknown action
+                // with a success that has no response.
+                if (!response || !response.response) {
+                    answer.textContent = labels['HelloPingMissing'];
+                    return;
+                }
+                answer.textContent = labels['HelloPingAnswer']
+                    .replace('%g', response.response.greeting)
+                    .replace('%u', response.response.user || labels['HelloStranger'])
+                    .replace('%n', response.response.pings);
+            })
+            .catch(function(error) {
+                answer.textContent = String(error);
+            });
 
     }
 
@@ -90,6 +127,15 @@ FrameTrail.registerExtension('hello', function(FrameTrail) {
             row(labels['HelloEditMode'], editMode ? editMode : labels['HelloNone']),
             row(labels['HelloLoads'], String(loads))
         );
+
+        if (FrameTrail.getState('storageMode') === 'server') {
+            var button = document.createElement('button'),
+                answer = document.createElement('p');
+            button.type = 'button';
+            button.textContent = labels['HelloPing'];
+            button.addEventListener('click', function() { ping(answer); });
+            content.append(button, answer);
+        }
 
     }
 

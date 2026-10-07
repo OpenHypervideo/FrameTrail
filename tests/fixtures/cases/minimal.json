@@ -561,6 +561,20 @@
                     }
                 ]
             }
+        },
+        {
+            "name": "personal API tokens switched on",
+            "schema": "config.schema.json",
+            "data": {
+                "defaultTheme": "",
+                "defaultLanguage": "en",
+                "videoFit": "contain",
+                "overviewMode": "grid",
+                "allowUploads": true,
+                "alwaysForceLogin": false,
+                "userNeedsConfirmation": true,
+                "apiTokens": true
+            }
         }
     ]
 }

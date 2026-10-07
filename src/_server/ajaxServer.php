@@ -10,6 +10,13 @@ $return["status"] = "fail";
 $return["code"] = "404";
 $return["string"] = "No action was taken";
 
+// A personal API token acts as its user for the work it is used for, never on
+// the account itself (tokens.php).
+if ($bearerRefusal = ftBearerRefusesAction(isset($_REQUEST["a"]) ? $_REQUEST["a"] : "")) {
+    echo json_encode($bearerRefusal, $conf["settings"]["json_flags"]);
+    exit;
+}
+
 
 switch($_REQUEST["a"]) {
 
@@ -45,6 +52,24 @@ switch($_REQUEST["a"]) {
     case "userCheckLogin":
         include_once("user.php");
         $return = userCheckLogin($_REQUEST["role"]);
+        // Only in the heartbeat, not in userCheckLogin() itself, which every
+        // gated action and every file serve.php hands out calls too.
+        if ($return["code"] == 1) {
+            // Whether this person can manage personal API tokens in My
+            // Settings (config.json → apiTokens, never under external
+            // authentication, where the platform owns them). Asked of the
+            // server rather than worked out in the browser, so the rule lives
+            // in one place (tokens.php).
+            $return["apiTokens"] = ftApiTokensSelfService();
+            // What the server parts of the enabled extensions offer and what
+            // keeps any of them from working (a missing PHP extension, a broken
+            // manifest), for admins only, so it shows up without breaking
+            // anything else.
+            if ($_SESSION["ohv"]["user"]["role"] == "admin") {
+                include_once("extensionloader.php");
+                $return["serverExtensions"] = ftExtensionStatus();
+            }
+        }
         break;
 
     case "userDelete":
@@ -55,6 +80,20 @@ switch($_REQUEST["a"]) {
     case "userChange":
         include_once("user.php");
         $return = userChange($_REQUEST["userID"],$_REQUEST["mail"],$_REQUEST["name"],$_REQUEST["passwd"],$_REQUEST["color"],$_REQUEST["role"],$_REQUEST["active"],$_REQUEST["avatar"]);
+        break;
+
+    // Personal API tokens of the signed-in user, when config.json → apiTokens
+    // offers them (tokens.php).
+    case "userTokenList":
+        $return = userTokenList();
+        break;
+
+    case "userTokenCreate":
+        $return = userTokenCreate(isset($_REQUEST["label"]) ? $_REQUEST["label"] : "", isset($_REQUEST["expiresInDays"]) ? $_REQUEST["expiresInDays"] : "");
+        break;
+
+    case "userTokenRevoke":
+        $return = userTokenRevoke(isset($_REQUEST["tokenID"]) ? $_REQUEST["tokenID"] : "");
         break;
 
 
@@ -622,13 +661,20 @@ switch($_REQUEST["a"]) {
             if ($file->isFile()) {
                 $relativePath = substr($file->getPathname(), strlen($dataDir) + 1);
                 if (basename($relativePath) === "users.json") { continue; }
-                // Collaboration presence/lock state is ephemeral and never part of the portable payload.
-                if (strpos(str_replace(DIRECTORY_SEPARATOR, "/", $relativePath), ".collab/") === 0) { continue; }
-                // Neither is external-auth state. SKIP_DOTS skips "." and ".." only,
-                // not dot-directories, and this export is public on an instance that
-                // does not force login — so without this line an .auth/config.php
-                // holding an HMAC secret would be handed to anyone who asked.
-                if (strpos(str_replace(DIRECTORY_SEPARATOR, "/", $relativePath), ".auth/") === 0) { continue; }
+                // Nothing inside a dot-directory: collaboration state (.collab/) is
+                // ephemeral, .auth/ holds secrets and external-auth state, and
+                // .extensions/ is server extensions' private storage. SKIP_DOTS
+                // skips "." and ".." only, not dot-directories, and this export is
+                // public on an instance that does not force login — so without this
+                // an .auth/config.php holding an HMAC secret would be handed to
+                // anyone who asked. Dotfiles directly in a folder (_data/.htaccess)
+                // are exported as before.
+                $exportDirs = explode("/", dirname(str_replace(DIRECTORY_SEPARATOR, "/", $relativePath)));
+                $inDotDir = false;
+                foreach ($exportDirs as $exportDir) {
+                    if ($exportDir !== "." && $exportDir !== "" && $exportDir[0] === ".") { $inDotDir = true; break; }
+                }
+                if ($inDotDir) { continue; }
                 $zip->addFile($file->getPathname(), "_data/" . str_replace(DIRECTORY_SEPARATOR, "/", $relativePath));
             }
         }
@@ -642,6 +688,26 @@ switch($_REQUEST["a"]) {
         exit;
 
     default:
+        // An action FrameTrail does not know may belong to a server extension
+        // (_server/extensions/<name>/, switched on in config.json → extensions).
+        // Reached only for unknown names, so FrameTrail's own actions always win.
+        include_once("extensionloader.php");
+        $extensionAction = ftExtensionFindAction(isset($_REQUEST["a"]) ? $_REQUEST["a"] : "");
+        if ($extensionAction !== null) {
+            $extensionResult = ftExtensionCall($extensionAction["manifest"], $extensionAction["handler"]);
+            if (!$extensionResult["ok"]) {
+                $return = $extensionResult["answer"];
+            } elseif (is_array($extensionResult["value"])) {
+                $return = $extensionResult["value"];
+            } else {
+                $return = array(
+                    "status" => "fail",
+                    "code"   => 500,
+                    "string" => "The extension \"" . $extensionAction["manifest"]["name"] . "\" gave no answer."
+                );
+            }
+            break;
+        }
         $return["status"] = "success";
         $return["code"] = 0;
         $return["string"] = "No question? No answer!";

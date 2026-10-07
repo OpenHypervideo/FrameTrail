@@ -175,7 +175,7 @@ The `PlayerLauncher` module orchestrates initialization:
 
 ### Extensions
 
-Extensions are code outside FrameTrail that plugs in without changing its files (user documentation: [EXTENDING.md](EXTENDING.md#writing-an-extension)). `FrameTrail.registerExtension(name, factory)` registers the factory globally, like `defineModule`. The `Extensions` module (`src/player/modules/Extensions/`) collects the entries from the `extensions` init option and `config.json` → `extensions`, adds their scripts and stylesheets to the page (relative paths on the page's origin only; once per page), and creates each extension in the instance with `initExtension(name)`. Anything that fails is reported in the console and skipped.
+Extensions are code outside FrameTrail that plugs in without changing its files (user documentation: [EXTENDING.md](EXTENDING.md#writing-an-extension)). `FrameTrail.registerExtension(name, factory)` registers the factory globally, like `defineModule`. The `Extensions` module (`src/player/modules/Extensions/`) collects the entries from the `extensions` init option and `config.json` → `extensions`, adds their scripts and stylesheets to the page (relative paths on the page's origin only; once per page), and creates each extension in the instance with `initExtension(name)`. Anything that fails is reported in the console and skipped. The server part of an extension is loaded by the PHP backend from the same `config.json` entry ([Backend](#api-endpoints)).
 
 The instance keeps its extensions next to its modules: `changeState()` calls their `onChange` handlers after all modules' handlers, each in a `try`/`catch`, so a failing extension cannot stop the state loop. `onReady` and `onHypervideoChange` are called by `PlayerLauncher` and `HypervideoModel.updateHypervideo()`; `destroy()` unloads them.
 
@@ -491,6 +491,8 @@ All AJAX requests go through `src/_server/ajaxServer.php`:
 | `userLogout` | End session |
 | `userChange` | Update user settings |
 | `userDelete` | Remove a user account (admin only; keeps their authored content) |
+| `userCheckLogin` | Session heartbeat: the user, `forceLogin`, `externalAuth`, `externalSettings`, `apiTokens`; for admins `serverExtensions` |
+| `userTokenList` / `userTokenCreate` / `userTokenRevoke` | The signed-in user's personal API tokens (only with `config.apiTokens`, never under `externalAuth`) |
 | `collabSync` | Presence heartbeat + collaboration state for a scope |
 | `collabLock` | Claim / release / take over the soft edit lock |
 | `hypervideoAdd` | Create hypervideo |
@@ -504,9 +506,13 @@ All AJAX requests go through `src/_server/ajaxServer.php`:
 | `globalCSSChange` | Update `custom.css` (admin; refused with code 8 under `externalSettings`) |
 | `annotationfileSave` | Save user annotations (the hypervideo id is looked up in the index, never used as a path) |
 
+An action the switch does not know goes to the server extensions switched on in `config.json` → `extensions` (`src/_server/extensionloader.php`), so FrameTrail's own actions always win. Their routes, which answer with their own HTTP semantics, go through `src/_server/extension.php?e=<name>&r=<route>`. See [EXTENDING.md](EXTENDING.md#server-extensions).
+
 ### Sessions
 
 PHP sessions are used for authentication. Session data is stored in `$_SESSION['ohv']`.
+
+Every entry point (`ajaxServer.php`, `extension.php`, `serve.php`, `sso.php`) starts with `config.php`, which resolves the data directory and then either starts the session or, for a request with `Authorization: Bearer ft_…`, authenticates a personal API token (`src/_server/tokens.php`). A token request starts no session: `$_SESSION['ohv']` is filled for that request only, in the same shape, so everything downstream works unchanged. See [DEPLOYMENT.md](DEPLOYMENT.md#personal-api-tokens-apitokens).
 
 ## Initialization Options
 

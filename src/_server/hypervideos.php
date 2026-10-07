@@ -18,20 +18,109 @@ function ftIsSubtitleKey($key) {
 }
 
 /**
+ * I check subtitle texts before anything is written: an array keyed by
+ * language code, each value a WebVTT document (optional BOM, then "WEBVTT"
+ * followed by the end, a space, a tab or a line break, as the format requires).
+ *
+ * @param $texts array|false
+ * @return String|null  what is wrong, or null
+ */
+function ftSubtitleTextsProblem($texts) {
+
+    if ($texts === false || $texts === null) {
+        return null;
+    }
+
+    if (!is_array($texts)) {
+        return "Subtitle texts must be an array keyed by language.";
+    }
+
+    foreach ($texts as $lang => $text) {
+        if (!ftIsSubtitleKey($lang)) {
+            return "\"" . $lang . "\" is not a language code.";
+        }
+        if (!is_string($text) || !preg_match('/^(\xEF\xBB\xBF)?WEBVTT([ \t\r\n]|$)/', $text)) {
+            return "The subtitles for \"" . $lang . "\" are not WebVTT.";
+        }
+    }
+
+    return null;
+
+}
+
+/**
+ * I write and delete a hypervideo's subtitle files in its subtitles/ folder:
+ * first the deletions, then uploaded files (a $_FILES entry keyed by language),
+ * then texts (language => WebVTT, checked with ftSubtitleTextsProblem() first).
+ * Keys that are no language code are skipped. The subtitles list in
+ * hypervideo.json is the caller's to write, together with these files.
+ *
+ * @param $hypervideoDir String
+ * @param $toDelete      array|false  language codes
+ * @param $uploads       array|false
+ * @param $texts         array|false
+ */
+function ftWriteSubtitleFiles($hypervideoDir, $toDelete = false, $uploads = false, $texts = false) {
+
+    if ($toDelete) {
+        foreach ((array)$toDelete as $lang) {
+            if (!ftIsSubtitleKey($lang)) continue;
+            if (file_exists($hypervideoDir."/subtitles/".$lang.".vtt")) {
+                unlink($hypervideoDir."/subtitles/".$lang.".vtt");
+            }
+        }
+    }
+
+    if (!$uploads && !$texts) {
+        return;
+    }
+
+    if (!is_dir($hypervideoDir."/subtitles")) {
+        mkdir($hypervideoDir."/subtitles");
+    }
+
+    if ($uploads && isset($uploads["name"]) && is_array($uploads["name"])) {
+        foreach ($uploads["name"] as $lang => $fileName) {
+            // The key is a language code and becomes the file name.
+            if (!ftIsSubtitleKey($lang)) continue;
+            move_uploaded_file($uploads["tmp_name"][$lang], $hypervideoDir."/subtitles/".$lang.".vtt");
+        }
+    }
+
+    if ($texts) {
+        foreach ($texts as $lang => $text) {
+            if (!ftIsSubtitleKey($lang) || !is_string($text)) continue;
+            file_put_contents($hypervideoDir."/subtitles/".$lang.".vtt", $text, LOCK_EX);
+        }
+    }
+
+}
+
+/**
  * @param $src
- * @param $subtitles
+ * @param $subtitles      uploaded subtitle files, keyed by language
+ * @param $subtitleTexts  (optional) WebVTT texts keyed by language, for callers
+ *                        on the server (extensions), which have no uploads
  * @return mixed
  *
  * Returning Code:
  * 0       =   Success. Hypervideo has been added. Returns new object in response.
  * 1       =   failed. User not logged in or inactive. See resp["string"]
  * 4       =   failed. Name (min 3 chars) has not been submitted.
+ * 8       =   failed. $subtitleTexts is not WebVTT keyed by language code.
  */
-function hypervideoAdd($src, $subtitles = false) {
+function hypervideoAdd($src, $subtitles = false, $subtitleTexts = false) {
 
     global $conf;
 
     if ($err = requireLogin()) return $err;
+
+    if ($problem = ftSubtitleTextsProblem($subtitleTexts)) {
+        $return["status"] = "fail";
+        $return["code"] = 8;
+        $return["string"] = $problem;
+        return $return;
+    }
 
     if (!is_dir($conf["dir"]["data"]."/resources")) {
         $return["status"] = "fail";
@@ -80,13 +169,7 @@ function hypervideoAdd($src, $subtitles = false) {
     file_put_contents($newHVdir."/annotations/_index.json",json_encode($newAi,$conf["settings"]["json_flags"]));
     file_put_contents($newHVdir."/annotations/1.json","[]");
 
-    if ($subtitles) {
-        foreach ($subtitles["name"] as $subtitleKey=>$subtitleName) {
-            // The key is a language code and becomes the file name.
-            if (!ftIsSubtitleKey($subtitleKey)) continue;
-            move_uploaded_file($subtitles["tmp_name"][$subtitleKey], $newHVdir."/subtitles/".$subtitleKey.".vtt");
-        }
-    }
+    ftWriteSubtitleFiles($newHVdir, false, $subtitles, $subtitleTexts);
 
     //file_put_contents($newHVdir."/hypervideo.json", json_encode(json_decode($src,true), $conf["settings"]["json_flags"]));
     file_put_contents($newHVdir."/hypervideo.json", $src);
@@ -316,6 +399,11 @@ function hypervideoDelete($hypervideoID,$hypervideoName) {
  * @param $src:json
  * @param $subtitlesToDelete:array
  * @param $subtitles:file
+ * @param $baseVersion  the meta.lastchanged the writer loaded (compare-and-swap)
+ * @param $subtitleTexts:array  (optional) WebVTT texts keyed by language, for
+ *                              callers on the server (extensions), which have
+ *                              no uploads. Written together with $src, like
+ *                              uploads, so open editors are told.
  * @return mixed
  *
  * Returning Code:
@@ -325,8 +413,10 @@ function hypervideoDelete($hypervideoID,$hypervideoName) {
  * 4       =   failed. HypervideoID not found.
  * 5       =   failed. Permission denied! The user is not an admin, nor is it their own hypervideo.
  * 6       =   failed. $src too short (< 10 chars)
+ * 7       =   failed. The hypervideo was changed by someone else (baseVersion).
+ * 8       =   failed. $subtitleTexts is not WebVTT keyed by language code.
  */
-function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subtitles = false, $baseVersion = null) {
+function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subtitles = false, $baseVersion = null, $subtitleTexts = false) {
 
     global $conf;
     if ($err = requireLogin()) return $err;
@@ -335,6 +425,13 @@ function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subt
         $return["status"] = "fail";
         $return["code"] = 6;
         $return["string"] = "Hypervideo JSON has not been sent.";
+        return $return;
+    }
+
+    if ($problem = ftSubtitleTextsProblem($subtitleTexts)) {
+        $return["status"] = "fail";
+        $return["code"] = 8;
+        $return["string"] = $problem;
         return $return;
     }
 
@@ -378,40 +475,7 @@ function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subt
     // The folder the index names, like the hypervideo.json path above.
     $hypervideoDir = $conf["dir"]["data"]."/hypervideos/".$hvi["hypervideos"][$hypervideoID];
 
-    if ($subtitlesToDelete) {
-        foreach((array)$subtitlesToDelete as $sd) {
-            if (!ftIsSubtitleKey($sd)) continue;
-            if (file_exists($hypervideoDir."/subtitles/".$sd.".vtt")) {
-                unlink($hypervideoDir."/subtitles/".$sd.".vtt");
-            }
-            /*foreach ($hv["subtitles"] as $sk=>$s) {
-                if ($sd == $s["srclang"]) {
-                    unlink($conf["dir"]["data"]."/hypervideos/".$hypervideoID."/subtitles/".$s["src"]);
-                }
-            } */
-        }
-    }
-    if ($subtitles) {
-        if (!is_dir($hypervideoDir."/subtitles")) {
-            mkdir($hypervideoDir."/subtitles");
-        }
-
-        foreach ($subtitles["name"] as $subtitleKey=>$subtitleName) {
-            if (!ftIsSubtitleKey($subtitleKey)) continue;
-            /*$tmpFound = 0;
-            foreach($hv["subtitles"] as $k=>$v) {
-                if ($v["srclang"] == $subtitleKey) {
-                    $tmpFound++;
-                }
-            }
-            if ($tmpFound === 0) {
-                $tmpObj["src"] = $subtitleKey.".vtt";
-                $tmpObj["srclang"] = $subtitleKey;
-                $hv["subtitles"][] = $tmpObj;
-            }*/
-            move_uploaded_file($subtitles["tmp_name"][$subtitleKey], $hypervideoDir."/subtitles/".$subtitleKey.".vtt");
-        }
-    }
+    ftWriteSubtitleFiles($hypervideoDir, $subtitlesToDelete, $subtitles, $subtitleTexts);
 
     //$file->writeClose(json_encode(json_decode($src,true), $conf["settings"]["json_flags"]));
     $hypervideoPath = $conf["dir"]["data"]."/hypervideos/".$hvi["hypervideos"][$hypervideoID]."/hypervideo.json";

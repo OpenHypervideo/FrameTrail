@@ -44,6 +44,14 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         // heartbeat, so a settings button drawn before the platform took them
         // over goes away without a reload.
         externalSettings        = null,
+        // Whether this person may manage personal API tokens in My Settings:
+        // the server's answer (config.json → apiTokens, never under external
+        // authentication), captured from userCheckLogin.
+        apiTokensOffered        = false,
+        // What the server parts of the enabled extensions offer and lack, sent
+        // to admins only; and which of their problems were reported already.
+        serverExtensions        = [],
+        serverExtensionProblems = {},
         userDialogCtrl          = null,
 
         userBoxCallback         = null,
@@ -71,8 +79,40 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         + '             <input type="submit" value="'+ labels['UserChangeMySettings'] +'">'
         + '         </form>'
         + '    </div>'
+        // Personal API tokens: shown only where the instance offers them
+        // (config.json → apiTokens). The list reuses the user list's rows.
+        + '    <div class="apiTokens">'
+        + '        <div class="mt-1"><label>'+ labels['UserApiTokens'] +'</label></div>'
+        + '        <div class="fieldHint">'+ labels['MessageApiTokens'] +'</div>'
+        + '        <div class="apiTokenNew"></div>'
+        + '        <div class="userList apiTokenList"></div>'
+        + '        <div class="layoutRow">'
+        + '            <div class="column-5"><input type="text" class="apiTokenName" maxlength="80" placeholder="'+ labels['UserApiTokenName'] +'"></div>'
+        + '            <div class="column-4">'
+        + '                <div class="custom-select">'
+        + '                    <select class="apiTokenExpiry">'
+        + '                        <option value="30">'+ labels['UserApiTokenExpiresIn'].replace('%s', '30') +'</option>'
+        + '                        <option value="90" selected>'+ labels['UserApiTokenExpiresIn'].replace('%s', '90') +'</option>'
+        + '                        <option value="365">'+ labels['UserApiTokenExpiresIn'].replace('%s', '365') +'</option>'
+        + '                        <option value="0">'+ labels['UserApiTokenNoExpiry'] +'</option>'
+        + '                    </select>'
+        + '                </div>'
+        + '            </div>'
+        + '            <div class="column-3"><button type="button" class="apiTokenCreateButton">'+ labels['UserApiTokenCreate'] +'</button></div>'
+        + '        </div>'
+        + '        <p class="apiTokenStatus message"></p>'
+        + '    </div>'
         + '</div>';
     domElement = _dmw.firstElementChild;
+    domElement.querySelector('.apiTokens').style.display = 'none';
+
+    domElement.querySelector('.apiTokenCreateButton').addEventListener('click', function() {
+        createApiToken();
+    });
+
+    domElement.querySelector('.apiTokenName').addEventListener('keydown', function(evt) {
+        if (evt.key === 'Enter') { evt.preventDefault(); createApiToken(); }
+    });
 
     var _lbw = document.createElement('div');
     _lbw.innerHTML = '<div class="userLoginOverlay ui-blocking-overlay">'
@@ -783,6 +823,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             // any UI offers one.
             externalAuth = response.externalAuth || null;
             externalSettings = response.externalSettings || null;
+            apiTokensOffered = !!response.apiTokens;
 
             switch(response.code){
 
@@ -830,6 +871,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                     userSessionExpiresIn = (typeof response.session_expires_in === 'number')
                                             ? response.session_expires_in
                                             : null;
+                    reportServerExtensions(response.serverExtensions);
                     login(response.response);
                     callback.call(window, true);
                     break;
@@ -1577,6 +1619,338 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 
     /**
+     * I say whether My Settings offers personal API tokens: the server said so
+     * for this person (config.json → apiTokens, which it never honours under
+     * external authentication, where the platform hands tokens out), and this
+     * is a real account rather than a guest.
+     *
+     * @method apiTokensAvailable
+     * @return {Boolean}
+     * @private
+     */
+    function apiTokensAvailable() {
+
+        return apiTokensOffered
+            && !isGuestMode
+            && !externalAuth
+            && FrameTrail.getState('storageMode') === 'server';
+
+    }
+
+
+    /**
+     * I show or hide the token section of My Settings and, when it is shown,
+     * load the list. A token shown after creating it is cleared: its value is
+     * never shown twice.
+     *
+     * @method refreshApiTokens
+     * @private
+     */
+    function refreshApiTokens() {
+
+        var section = domElement.querySelector('.apiTokens');
+
+        domElement.querySelector('.apiTokenNew').innerHTML = '';
+        apiTokenStatus('', null);
+
+        if (!apiTokensAvailable()) {
+            section.style.display = 'none';
+            return;
+        }
+
+        section.style.display = '';
+
+        _serverPost(new URLSearchParams({ a: 'userTokenList' }))
+        .then(function(response) {
+            if (response.code === 0) {
+                renderApiTokens(response.response || []);
+            } else {
+                apiTokenStatus(apiTokenError(response.code), 'error');
+            }
+        })
+        .catch(function() {
+            apiTokenStatus(labels['ErrorGeneric'], 'error');
+        });
+
+    }
+
+
+    /**
+     * I render the token list, newest first.
+     *
+     * @method renderApiTokens
+     * @param {Array} tokens  as userTokenList returns them (no hashes)
+     * @private
+     */
+    function renderApiTokens(tokens) {
+
+        var list = domElement.querySelector('.apiTokenList'),
+            now  = Date.now() / 1000;
+
+        list.innerHTML = '';
+
+        // Reversed first, so tokens created in the same second (created is in
+        // seconds) still come newest first: the server lists them oldest first.
+        tokens.slice().reverse().sort(function(a, b) { return (b.created || 0) - (a.created || 0); }).forEach(function(token) {
+
+            var _tw = document.createElement('div');
+            _tw.innerHTML = '<div class="userListItem">'
+                + '    <div class="userListInfo">'
+                + '        <div class="userListName"></div>'
+                + '        <div class="userListMeta"></div>'
+                + '    </div>'
+                + '    <div class="userListActions">'
+                + '        <button type="button" class="revokeApiTokenButton" title="'+ labels['UserApiTokenRevoke'] +'"><span class="icon-trash"></span></button>'
+                + '    </div>'
+                + '</div>';
+            var item = _tw.firstElementChild;
+
+            var expired = (token.expires && token.expires <= now);
+            if (expired) item.classList.add('inactive');
+
+            // textContent, not interpolation: the label is user-supplied.
+            item.querySelector('.userListName').textContent = token.label;
+            item.querySelector('.userListMeta').textContent = [
+                labels['UserApiTokenCreatedOn'].replace('%s', formatTokenDate(token.created)),
+                token.lastUsed ? labels['UserApiTokenLastUsed'].replace('%s', formatTokenDate(token.lastUsed)) : labels['UserApiTokenNeverUsed'],
+                expired ? labels['UserApiTokenExpired']
+                        : (token.expires ? labels['UserApiTokenExpiresOn'].replace('%s', formatTokenDate(token.expires)) : labels['UserApiTokenNoExpiry'])
+            ].join('  ·  ');
+
+            item.querySelector('.revokeApiTokenButton').addEventListener('click', function() {
+                revokeApiToken(token);
+            });
+
+            list.appendChild(item);
+
+        });
+
+        if (list.children.length === 0) {
+            list.insertAdjacentHTML('beforeend', '<div class="message active">'+ labels['UserApiTokenNone'] +'</div>');
+        }
+
+    }
+
+
+    /**
+     * I create a token from the name and expiry fields and show its value, the
+     * only time it is ever shown.
+     *
+     * @method createApiToken
+     * @private
+     */
+    function createApiToken() {
+
+        var nameField = domElement.querySelector('.apiTokenName'),
+            name      = nameField.value.trim(),
+            newArea   = domElement.querySelector('.apiTokenNew');
+
+        if (!name) {
+            apiTokenStatus(labels['ErrorApiTokenName'], 'error');
+            nameField.focus();
+            return;
+        }
+
+        _serverPost(new URLSearchParams({
+            a:             'userTokenCreate',
+            label:         name,
+            expiresInDays: domElement.querySelector('.apiTokenExpiry').value
+        }))
+        .then(function(response) {
+
+            if (response.code !== 0) {
+                apiTokenStatus(apiTokenError(response.code), 'error');
+                return;
+            }
+
+            apiTokenStatus('', null);
+            nameField.value = '';
+
+            var _nw = document.createElement('div');
+            _nw.innerHTML = '<div>'
+                + '    <div class="message active success">'+ labels['UserApiTokenCopyNow'] +'</div>'
+                + '    <div class="layoutRow">'
+                + '        <div class="column-9"><input type="text" class="apiTokenValue" readonly></div>'
+                + '        <div class="column-3"><button type="button" class="apiTokenCopyButton">'+ labels['GenericCopy'] +'</button></div>'
+                + '    </div>'
+                + '</div>';
+            var shown = _nw.firstElementChild,
+                field = shown.querySelector('.apiTokenValue');
+
+            field.value = response.response.token;
+            field.addEventListener('focus', function() { field.select(); });
+
+            shown.querySelector('.apiTokenCopyButton').addEventListener('click', function() {
+                var button = this;
+                copyText(field, function() { button.textContent = labels['GenericCopied']; });
+            });
+
+            newArea.innerHTML = '';
+            newArea.appendChild(shown);
+            field.select();
+
+            refreshApiTokenList();
+
+        })
+        .catch(function() {
+            apiTokenStatus(labels['ErrorGeneric'], 'error');
+        });
+
+    }
+
+
+    /**
+     * I reload the list without touching a token value shown above it.
+     *
+     * @method refreshApiTokenList
+     * @private
+     */
+    function refreshApiTokenList() {
+
+        _serverPost(new URLSearchParams({ a: 'userTokenList' }))
+        .then(function(response) {
+            if (response.code === 0) renderApiTokens(response.response || []);
+        });
+
+    }
+
+
+    /**
+     * I revoke a token after asking. Programs using it lose access with their
+     * next request.
+     *
+     * @method revokeApiToken
+     * @param {Object} token
+     * @private
+     */
+    function revokeApiToken(token) {
+
+        // A function, so a "$&" in the user-supplied label stays literal.
+        if (!window.confirm(labels['UserApiTokenRevokeConfirm'].replace('%s', function() { return token.label; }))) return;
+
+        _serverPost(new URLSearchParams({ a: 'userTokenRevoke', tokenID: token.id }))
+        .then(function(response) {
+            // 4: already gone, which is what was asked for.
+            if (response.code !== 0 && response.code !== 4) {
+                apiTokenStatus(apiTokenError(response.code), 'error');
+            } else {
+                apiTokenStatus('', null);
+            }
+            refreshApiTokenList();
+        })
+        .catch(function() {
+            apiTokenStatus(labels['ErrorGeneric'], 'error');
+        });
+
+    }
+
+
+    /**
+     * @method apiTokenError
+     * @param {Number} code  of userTokenCreate / userTokenList / userTokenRevoke
+     * @return {String}
+     * @private
+     */
+    function apiTokenError(code) {
+
+        switch (code) {
+            case 1:  return labels['ErrorNotLoggedInAnymore'];
+            case 2:  return labels['ErrorApiTokensUnavailable'];
+            case 3:  return labels['ErrorApiTokenName'];
+            case 5:  return labels['ErrorApiTokenLimit'];
+            default: return labels['ErrorGeneric'];
+        }
+
+    }
+
+
+    /**
+     * @method apiTokenStatus
+     * @param {String} text      empty hides the message
+     * @param {String|null} kind 'error', 'success' or null
+     * @private
+     */
+    function apiTokenStatus(text, kind) {
+
+        var status = domElement.querySelector('.apiTokenStatus');
+
+        status.classList.remove('active', 'error', 'success');
+        status.textContent = text;
+        if (text) status.classList.add('active');
+        if (text && kind) status.classList.add(kind);
+
+    }
+
+
+    /**
+     * @method formatTokenDate
+     * @param {Number} seconds  Unix time, as users.json keeps it
+     * @return {String}
+     * @private
+     */
+    function formatTokenDate(seconds) {
+
+        try {
+            return new Date(seconds * 1000).toLocaleDateString(FrameTrail.module('Localization').language);
+        } catch (e) {
+            return new Date(seconds * 1000).toLocaleDateString();
+        }
+
+    }
+
+
+    /**
+     * I copy a field's text to the clipboard.
+     *
+     * @method copyText
+     * @param {HTMLInputElement} field
+     * @param {Function} done
+     * @private
+     */
+    function copyText(field, done) {
+
+        field.select();
+
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(field.value).then(done, function() {
+                if (document.execCommand('copy')) done();
+            });
+        } else if (document.execCommand('copy')) {
+            done();
+        }
+
+    }
+
+
+    /**
+     * I tell admins, in the console and once per page, about server extensions
+     * that cannot work: a missing PHP extension, a manifest that does not load.
+     *
+     * @method reportServerExtensions
+     * @param {Array|undefined} list  userCheckLogin's serverExtensions
+     * @private
+     */
+    function reportServerExtensions(list) {
+
+        serverExtensions = Array.isArray(list) ? list : [];
+
+        serverExtensions.forEach(function(ext) {
+
+            var problem = ext.error
+                ? ext.error
+                : ((ext.missing && ext.missing.length) ? 'needs the PHP extension(s) ' + ext.missing.join(', ') + ', which this server does not have' : null);
+
+            if (!problem || serverExtensionProblems[ext.name] === problem) return;
+
+            serverExtensionProblems[ext.name] = problem;
+            console.warn('FrameTrail: server extension "' + ext.name + '": ' + problem + '.');
+
+        });
+
+    }
+
+
+    /**
      * I open the login box.
      * The UI is a single DOM element
      *
@@ -1698,14 +2072,19 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                 content: domElement,
                 modal: true,
                 width: 600,
-                height: 340,
+                // Taller where the token section is part of it.
+                height: apiTokensAvailable() ? 640 : 340,
                 open: function() {
                     updateView(true);
                     getUserColorCollection(function() {
                         renderUserColorCollectionForm(FrameTrail.getState('userColor'),".userColor")
                     });
+                    refreshApiTokens();
                 },
                 close: function() {
+                    // A token value shown after creating it must not be there
+                    // when the dialog opens again.
+                    domElement.querySelector('.apiTokenNew').innerHTML = '';
                     userDialogCtrl.destroy();
                     userDialogCtrl = null;
                 }
@@ -1812,6 +2191,13 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
          * does not open and its button is not drawn.
          */
         externalSettings:       function() { return externalSettings; },
+
+        /**
+         * For admins: the server parts of the enabled extensions as the
+         * server reports them ([{ name, actions, routes, missing, error }]),
+         * an empty list for everyone else.
+         */
+        serverExtensions:       function() { return serverExtensions; },
 
         /**
          * The current userID or an empty String.
