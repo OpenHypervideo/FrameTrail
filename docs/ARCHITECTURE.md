@@ -44,7 +44,7 @@ The global `FrameTrail` object is the factory/registry. Instance methods like `m
 
 - Modules defined via `FrameTrail.defineModule()` receive the instance as their closure argument and can freely call `FrameTrail.module('X')`.
 - Plain classes (e.g. `StorageAdapter` subclasses in `src/_shared/frametrail-core/storage/`) are **not** FrameTrail modules and do not have access to any instance. If they need to call module APIs, the caller must pass the FrameTrail instance explicitly.
-- The scripts in `src/_shared/frametrail-core/serialization/` (`FrameTrailSerializer`, `FrameTrailKeyframes`) are plain globals as well, and pure: they need neither an instance nor the DOM, and also load in Node.
+- The scripts in `src/_shared/frametrail-core/serialization/` (`FrameTrailSerializer`, `FrameTrailKeyframes`) and `src/_shared/frametrail-core/schema/` (`FrameTrailSchema`, the validator for the JSON Schemas, used by the tests and not loaded by the player) are plain globals as well, and pure: they need neither an instance nor the DOM, and also load in Node.
 - Every module must be initialized with `FrameTrail.initModule('ModuleName')` before it can be accessed via `FrameTrail.module('ModuleName')`.
 
 ## Module System

@@ -1,0 +1,135 @@
+{
+    "description": "The data examples/embed-in-page.html passes to FrameTrail.init(). Written by tests/extract-examples.mjs; change the page, not this file.",
+    "cases": [
+        {
+            "name": "config",
+            "schema": "config.schema.json",
+            "data": {
+                "theme": "bright"
+            }
+        },
+        {
+            "name": "contents[0].hypervideo",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Big Buck Bunny",
+                    "description": "Open-source animated short — embedded in a div with bright theme",
+                    "thumb": "",
+                    "creator": "Demo",
+                    "creatorId": "demo",
+                    "created": 1700000000000,
+                    "lastchanged": 1700000000000
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [],
+                        "areaLeft": [],
+                        "areaRight": []
+                    },
+                    "slidingMode": "overlay"
+                },
+                "clips": [
+                    {
+                        "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                        "duration": 596,
+                        "start": 0,
+                        "end": 596
+                    }
+                ],
+                "contents": [],
+                "subtitles": [],
+                "globalEvents": {
+                    "onReady": "",
+                    "onPlay": "",
+                    "onPause": "",
+                    "onEnded": ""
+                },
+                "customCSS": ""
+            }
+        },
+        {
+            "name": "contents[0].annotations",
+            "schema": "annotation-file.schema.json",
+            "data": [
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        {
+                            "frametrail": "http://frametrail.org/ns/"
+                        }
+                    ],
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "creator": {
+                        "nickname": "Demo",
+                        "type": "Person",
+                        "id": "demo"
+                    },
+                    "created": "2024-01-01T00:00:00Z",
+                    "target": {
+                        "type": "Video",
+                        "source": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                        "selector": {
+                            "type": "FragmentSelector",
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "value": "t=10,25"
+                        }
+                    },
+                    "body": {
+                        "type": "TextualBody",
+                        "frametrail:type": "text",
+                        "format": "text/html",
+                        "value": "<p>The opening scene establishes the pastoral landscape.</p>",
+                        "frametrail:name": "Opening scene",
+                        "frametrail:thumb": null,
+                        "frametrail:resourceId": null,
+                        "frametrail:attributes": {
+                            "text": "<p>The opening scene establishes the pastoral landscape.</p>"
+                        }
+                    },
+                    "frametrail:tags": []
+                },
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        {
+                            "frametrail": "http://frametrail.org/ns/"
+                        }
+                    ],
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "creator": {
+                        "nickname": "Demo",
+                        "type": "Person",
+                        "id": "demo"
+                    },
+                    "created": "2024-01-01T00:01:00Z",
+                    "target": {
+                        "type": "Video",
+                        "source": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                        "selector": {
+                            "type": "FragmentSelector",
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "value": "t=35,55"
+                        }
+                    },
+                    "body": {
+                        "type": "TextualBody",
+                        "frametrail:type": "text",
+                        "format": "text/html",
+                        "value": "<p>The squirrels appear and begin tormenting the butterfly.</p>",
+                        "frametrail:name": "Antagonists introduced",
+                        "frametrail:thumb": null,
+                        "frametrail:resourceId": null,
+                        "frametrail:attributes": {
+                            "text": "<p>The squirrels appear and begin tormenting the butterfly.</p>"
+                        }
+                    },
+                    "frametrail:tags": []
+                }
+            ]
+        }
+    ]
+}

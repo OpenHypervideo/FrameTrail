@@ -68,6 +68,7 @@ FrameTrail/
 │   │   ├── frametrail-core/       # Core framework (module system, state, types)
 │   │   │   ├── frametrail-core.js # defineModule, defineType, init, changeState
 │   │   │   ├── serialization/     # FrameTrailSerializer (stored JSON ⇄ model), FrameTrailKeyframes
+│   │   │   ├── schema/            # FrameTrailSchema (validator for the JSON Schemas)
 │   │   │   └── storage/           # StorageAdapter, StorageAdapterServer/Local/Download
 │   │   ├── modules/               # Shared modules
 │   │   │   ├── Database/          # Data loading and persistence
@@ -101,10 +102,12 @@ FrameTrail/
 │       ├── files.php              # File upload/download
 │       ├── hypervideos.php        # Hypervideo CRUD
 │       └── ...
+├── schemas/                       # JSON Schemas for the files in _data/ and for bundles
+├── tests/                         # Tests and fixtures (node tests/run-js.mjs)
 ├── scripts/
 │   └── build.sh                   # Production build (concat + minify)
 ├── .github/workflows/
-│   ├── build.yml                  # CI: build verification on push/PR
+│   ├── build.yml                  # CI: tests and build verification on push/PR
 │   └── release.yml                # CD: build + package on version tags
 ├── docs/                          # Developer documentation
 ├── build/                         # Build output (git-ignored)
@@ -151,6 +154,7 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture docum
 1. Create `src/_shared/types/ResourceMyType/type.js` and `style.css`
 2. Inherit from the base `Resource` type
 3. Add to HTML entry points and `scripts/build.sh`
+4. Describe its attributes in `schemas/` and add an item of the type to the `all-types` test fixture
 
 See [docs/EXTENDING.md](docs/EXTENDING.md) for the complete guide.
 
@@ -181,12 +185,13 @@ Output goes to `build/` (git-ignored). The build is verified automatically by CI
 ### Build Verification
 
 Every push to `main` or `develop` and every PR triggers the [build workflow](.github/workflows/build.yml):
+- Runs the tests (`node tests/run-js.mjs`, see [Testing](#testing))
 - Checks out code, installs terser + csso
 - Runs `scripts/build.sh`
 - Verifies all expected output files exist
 - Uploads the build as a downloadable artifact (7-day retention)
 
-A green checkmark on your commit/PR means the build succeeded.
+A green checkmark on your commit/PR means the tests passed and the build succeeded.
 
 ### Releases
 
@@ -237,7 +242,15 @@ When `develop` is ready for release:
 
 ## Testing
 
-There is no automated test suite. Test manually:
+Run the automated tests before you open a pull request (Node 20 or later, nothing to install):
+
+```bash
+node tests/run-js.mjs
+```
+
+They check the JSON Schemas, the data fixtures in `tests/fixtures/` and the serializer; CI runs them on every push and pull request. When you change what is stored in `_data/`, add fixtures for it: the `all-types` data set holds an item of every type, `tests/fixtures/cases/` holds legacy shapes and invalid documents. After changing the data in a page in `examples/`, run `node tests/extract-examples.mjs`. [tests/README.md](tests/README.md) has the details.
+
+The tests do not cover the user interface. Test that by hand:
 
 1. Test in Chrome and Firefox
 2. Test with and without edit mode

@@ -1,0 +1,279 @@
+{
+    "meta": {
+        "name": "HV 3",
+        "description": "",
+        "thumb": "1_1773486938_thumb_big-buck-bunny-10s.png",
+        "posterFrame": null,
+        "creator": "demo",
+        "creatorId": "1",
+        "created": 1788878032967,
+        "lastchanged": 1791273435557
+    },
+    "config": {
+        "slidingMode": "adjust",
+        "slidingTrigger": "key",
+        "autohideControls": false,
+        "captionsVisible": false,
+        "clipTimeVisible": false,
+        "theme": "",
+        "layoutArea": {
+            "areaTop": [],
+            "areaBottom": [],
+            "areaLeft": [],
+            "areaRight": []
+        }
+    },
+    "clips": [
+        {
+            "resourceId": "40",
+            "src": "1_1773486938_big-buck-bunny-10s.mp4",
+            "duration": 0,
+            "start": 0,
+            "end": 0,
+            "in": 0,
+            "out": 0
+        }
+    ],
+    "globalEvents": {
+        "onReady": "",
+        "onPlay": "",
+        "onPause": "",
+        "onEnded": ""
+    },
+    "customCSS": "",
+    "contents": [
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Wed Sep 09 2026 12:46:52 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1773486938_big-buck-bunny-10s.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=0,4&xywh=percent:12,40,32,14"
+                }
+            },
+            "body": {
+                "type": "TextualBody",
+                "frametrail:type": "hotspot",
+                "format": "text/html",
+                "frametrail:name": "Option A",
+                "frametrail:thumb": null,
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {
+                    "text": "Option A",
+                    "action": "jumpToTime",
+                    "actionTarget": "",
+                    "color": "#0096ff",
+                    "textColor": "#ffffff",
+                    "backgroundColor": "#0096ff",
+                    "borderWidth": 0,
+                    "shape": "rounded",
+                    "borderRadius": 4,
+                    "linkUrl": ""
+                }
+            },
+            "frametrail:events": {
+                "onStart": "FrameTrail.module('HypervideoController').pause();"
+            }
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Wed Sep 09 2026 12:46:52 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1773486938_big-buck-bunny-10s.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=0,4&xywh=percent:56,40,32,14"
+                }
+            },
+            "body": {
+                "type": "TextualBody",
+                "frametrail:type": "hotspot",
+                "format": "text/html",
+                "frametrail:name": "Option B",
+                "frametrail:thumb": null,
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {
+                    "text": "Option B",
+                    "action": "jumpToTime",
+                    "actionTarget": "",
+                    "color": "#0096ff",
+                    "textColor": "#ffffff",
+                    "backgroundColor": "#0096ff",
+                    "borderWidth": 0,
+                    "shape": "rounded",
+                    "borderRadius": 4,
+                    "linkUrl": ""
+                }
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo test",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Tue Oct 06 2026 09:40:13 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1773486938_big-buck-bunny-10s.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=4.835234474017744,8.833967046894804&xywh=percent:32.014028056112224,31.996434937611408,35.97194388777555,36.007130124777184"
+                }
+            },
+            "body": {
+                "type": "Dataset",
+                "frametrail:type": "chart",
+                "format": "application/x-frametrail-chart",
+                "frametrail:name": "Bar Chart",
+                "frametrail:attributes": {
+                    "chartType": "bars",
+                    "data": "2022: 40\n2023: 65\n2024: 90",
+                    "unit": " Apples",
+                    "color": "#4cc3ff",
+                    "highlight": 0,
+                    "showValues": true,
+                    "duration": 1500,
+                    "textColor": "#ffffff",
+                    "animation": {
+                        "in": {
+                            "preset": "zoomIn",
+                            "duration": 400,
+                            "ease": "power2Out"
+                        },
+                        "emphasis": {
+                            "preset": "heartbeat",
+                            "duration": 1300,
+                            "ease": "easeInOut",
+                            "iterations": 0
+                        },
+                        "out": {
+                            "preset": "rotateOut",
+                            "duration": 400,
+                            "ease": "power2In"
+                        }
+                    }
+                }
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo test",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Tue Oct 06 2026 09:44:37 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1773486938_big-buck-bunny-10s.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=5.934727503168568,9.934727503168567&xywh=percent:46.8938,26.6488,43.7876,59.0909",
+                    "frametrail:keyframes": [
+                        {
+                            "t": 5.944727503168568,
+                            "xywh": [
+                                46.893787575150306,
+                                26.648841354723707,
+                                20.04008016032064,
+                                29.946524064171122
+                            ]
+                        },
+                        {
+                            "t": 6.799746514575412,
+                            "xywh": [
+                                70.64128256513025,
+                                55.79322638146168,
+                                20.04008016032064,
+                                29.946524064171122
+                            ]
+                        }
+                    ]
+                }
+            },
+            "body": {
+                "type": "TextualBody",
+                "frametrail:type": "hotspot",
+                "format": "text/html",
+                "frametrail:name": "Freeform Hotspot",
+                "frametrail:attributes": {
+                    "color": "#ffd23f",
+                    "linkUrl": "",
+                    "borderWidth": 4,
+                    "shape": "freeform",
+                    "borderRadius": 10,
+                    "animation": {
+                        "in": {
+                            "preset": "draw"
+                        },
+                        "out": {
+                            "preset": "fadeOut"
+                        }
+                    },
+                    "path": "M50,4 L96,36 L80,94 L20,94 L4,36 Z",
+                    "text": "",
+                    "textColor": "#ffffff",
+                    "backgroundColor": "#0db8e2"
+                }
+            },
+            "frametrail:events": {}
+        }
+    ],
+    "chapters": [],
+    "subtitles": []
+}

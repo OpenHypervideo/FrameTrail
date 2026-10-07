@@ -133,6 +133,14 @@ bash scripts/build.sh
 
 This creates a `build/` directory with concatenated and minified JS/CSS bundles. See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for details.
 
+### Tests
+
+```bash
+node tests/run-js.mjs
+```
+
+Checks the JSON Schemas, the data fixtures and the serializer; Node 20 or later, nothing to install. See [tests/README.md](tests/README.md).
+
 ### Documentation
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Development setup, code style, branching, CI/CD

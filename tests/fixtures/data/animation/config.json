@@ -1,0 +1,18 @@
+{
+    "updateServiceURL": "https://update.frametrail.org",
+    "autoUpdate": false,
+    "allowCaching": false,
+    "captureUserTraces": false,
+    "userTracesStartAction": "UserLogin",
+    "userTracesEndAction": "UserLogout",
+    "userNeedsConfirmation": true,
+    "alwaysForceLogin": false,
+    "allowUploads": true,
+    "defaultTheme": "studio",
+    "videoFit": "contain",
+    "defaultLanguage": "en",
+    "overviewMode": "map",
+    "lastchanged": 1790271501296,
+    "overviewShowSearchBar": true,
+    "overviewTitle": "Test Project"
+}

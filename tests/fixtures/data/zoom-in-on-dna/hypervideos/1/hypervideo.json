@@ -1,0 +1,347 @@
+{
+    "meta": {
+        "name": "Zoom in on DNA",
+        "description": "",
+        "thumb": "https://img.youtube.com/vi/wZozOrFluiw/hqdefault.jpg",
+        "creator": "demo",
+        "creatorId": "1",
+        "created": 1773150038269,
+        "lastchanged": 1773249134459
+    },
+    "config": {
+        "slidingMode": "adjust",
+        "slidingTrigger": "key",
+        "autohideControls": false,
+        "captionsVisible": false,
+        "clipTimeVisible": false,
+        "theme": "",
+        "layoutArea": {
+            "areaTop": [],
+            "areaBottom": [
+                {
+                    "name": "",
+                    "icon": "",
+                    "type": "TimedContent",
+                    "contentSize": "large",
+                    "cssClass": "",
+                    "collectionFilter": {
+                        "tags": [],
+                        "types": [],
+                        "users": [],
+                        "text": ""
+                    },
+                    "onClickContentItem": "",
+                    "html": "",
+                    "transcriptSource": "",
+                    "initClosed": false,
+                    "filterAspect": "creatorId",
+                    "zoomControls": false
+                }
+            ],
+            "areaLeft": [
+                {
+                    "name": "",
+                    "icon": "",
+                    "type": "CustomHTML",
+                    "contentSize": "medium",
+                    "cssClass": "",
+                    "collectionFilter": {
+                        "tags": [],
+                        "types": [],
+                        "users": [],
+                        "text": ""
+                    },
+                    "onClickContentItem": "",
+                    "html": "<style>\n  .bio-stepper *, .bio-stepper *::before, .bio-stepper *::after {\n    box-sizing: border-box;\n    margin: 0;\n    padding: 0;\n  }\n\n  .bio-stepper {\n    --c: 22, 38, 58;\n    --dot-size: 16px;\n    width: 100%;\n    height: 100%;\n    display: flex;\n    flex-direction: column;\n    align-items: center;\n    padding: 28px 16px;\n    box-sizing: border-box;\n  }\n\n  .bio-stepper__steps-wrap {\n    flex: 1;\n    width: 100%;\n    max-width: 220px;\n    position: relative;\n    display: flex;\n    flex-direction: column;\n    justify-content: space-between;\n  }\n\n  .bio-stepper__track {\n    position: absolute;\n    left: calc(var(--dot-size) / 2);\n    top:    calc(var(--dot-size));\n    bottom: calc(var(--dot-size));\n    width: 2px;\n    transform: translateX(-50%);\n    background: rgba(var(--c), 0.08);\n    border-radius: 2px;\n    overflow: hidden;\n  }\n\n  .bio-stepper__track-fill {\n    position: absolute;\n    top: 0; left: 0; right: 0;\n    height: 0%;\n    background: rgba(var(--c), 0.5);\n    border-radius: 2px;\n    transition: height 0.55s cubic-bezier(0.65, 0, 0.35, 1);\n  }\n\n  .bio-stepper__step {\n    border: none !important;\n    display: flex;\n    align-items: center;\n    gap: 12px;\n    position: relative;\n    z-index: 1;\n    padding: 3px 0;\n    user-select: none;\n    -webkit-tap-highlight-color: transparent;\n  }\n\n  .bio-stepper__dot {\n    width:  var(--dot-size);\n    height: var(--dot-size);\n    border-radius: 50%;\n    border: 1.5px solid rgba(var(--c), 0.15);\n    background: transparent;\n    flex-shrink: 0;\n    transition: border-color 0.3s, background 0.3s, transform 0.25s;\n  }\n\n  .bio-stepper__step-name  { font-size: 1em; text-transform: uppercase; line-height: 0.8em; }\n  .bio-stepper__step-scale { font-size: 0.9em; }\n\n  /* done */\n  .bio-stepper__step.is-done .bio-stepper__dot { background: rgba(var(--c), 0.35); border-color: transparent; }\n\n  /* current */\n  .bio-stepper__step.is-current .bio-stepper__dot {\n    background: rgba(var(--c), 1);\n    border-color: transparent;\n    transform: scale(1.25);\n    box-shadow: 0 0 8px rgba(var(--c), 0.5);\n  }\n  .bio-stepper__step.is-current .bio-stepper__step-name { color: rgba(var(--c), 1); }\n</style>\n\n<div class=\"bio-stepper\">\n  <div class=\"bio-stepper__steps-wrap\" id=\"bioStepperWrap\">\n    <div class=\"bio-stepper__track\">\n      <div class=\"bio-stepper__track-fill\" id=\"bioStepperFill\"></div>\n    </div>\n  </div>\n</div>",
+                    "transcriptSource": "",
+                    "initClosed": false,
+                    "filterAspect": "creatorId",
+                    "zoomControls": false
+                }
+            ],
+            "areaRight": [
+                {
+                    "name": "",
+                    "icon": "",
+                    "type": "CustomHTML",
+                    "contentSize": "medium",
+                    "cssClass": "",
+                    "collectionFilter": {
+                        "tags": [],
+                        "types": [],
+                        "users": [],
+                        "text": ""
+                    },
+                    "onClickContentItem": "",
+                    "html": "<div style=\"background: var(--primary-bg-color); padding: 10px; box-sizing: border-box;\">\n    <p class=\"mb-1\">\n        <span class=\"timebased\" data-start=\"3.000\" data-end=\"14.000\">Large <b>organisms</b> like humans are made up of <b>organ systems</b> such as the <b>circulatory system</b> and <b>digestive system</b>.</span>\n        <span class=\"timebased\" data-start=\"14.000\" data-end=\"19.000\">These systems include a number of <b>organs</b>.</span>\n        <span class=\"timebased\" data-start=\"19.000\" data-end=\"24.000\">One of them is the <b>liver</b>.</span>\n        <span class=\"timebased\" data-start=\"24.000\" data-end=\"32.000\">Look closer, and these organs are made up of <b>tissues</b>.</span>\n        <span class=\"timebased\" data-start=\"32.000\" data-end=\"45.000\">And these tissues are built of <b>cells</b>, each specialized to perform a particular function.</span>\n    </p>\n    <p class=\"mb-1\">\n        <span class=\"timebased\" data-start=\"45.000\" data-end=\"51.000\">Within each cell are structures and compartments called <b>organelles</b>.</span>\n        <span class=\"timebased\" data-start=\"51.000\" data-end=\"67.000\">These include the <b>cell membrane</b>, <b>mitochondria</b>, and <b>nucleus</b>.</span>\n    </p>\n    <p class=\"mb-1\">\n        <span class=\"timebased\" data-start=\"67.000\" data-end=\"80.000\">The nucleus contains 23 pairs of <b>chromosomes</b>, including a pair that determine your biological sex.</span>\n        <span class=\"timebased\" data-start=\"80.000\" data-end=\"90.000\">Each chromosome is one long length of tightly coiled <b>DNA</b>.</span>\n    </p>\n    <p class=\"mb-1\">\n        <span class=\"timebased\" data-start=\"90.000\" data-end=\"97.000\">Unwind it and we see the DNA is wrapped around proteins called <b>histones</b>.</span>\n        <span class=\"timebased\" data-start=\"97.000\" data-end=\"102.000\">The DNA is a double helix like a twisted ladder.</span>\n        <span class=\"timebased\" data-start=\"102.000\" data-end=\"107.000\">It is made up of four nucleotides which contain different bases.</span>\n        <span class=\"timebased\" data-start=\"107.000\" data-end=\"112.000\"><b>Adinine</b>, <b>Cytosine</b>, <b>Guanine</b> and <b>Thymine</b>.</span>\n        <span class=\"timebased\" data-start=\"112.000\" data-end=\"117.000\">A, C, G, and T.</span>\n        <span class=\"timebased\" data-start=\"117.000\" data-end=\"124.000\"><b>A</b> always pairs with <b>T</b> and <b>C</b> always pairs with <b>G</b>.</span>\n    </p>\n    <p class=\"mb-1\">\n        <span class=\"timebased\" data-start=\"124.000\" data-end=\"137.000\">The order or sequence of these bases in specific sections of the DNA - called <b>genes</b> - carries the instructions for a cell's structure and function.</span>\n        <span class=\"timebased\" data-start=\"137.000\" data-end=\"147.000\">One copy of the entire DNA instructions for an organism is known as the <b>genome</b>.</span>\n    </p>\n    <p class=\"mb-1\">\n        <span class=\"timebased\" data-start=\"147.000\" data-end=\"158.000\">The genome, organized in chromosomes within the nucleus, tells each specialized cell how to function with its neighbors.</span>\n        <span class=\"timebased\" data-start=\"158.000\" data-end=\"162.000\">These make the tissues that together build organs, which work in organ systems and collectively enable an organism to grow and live.</span>\n    </p>\n</div>",
+                    "transcriptSource": ""
+                }
+            ]
+        }
+    },
+    "clips": [
+        {
+            "resourceId": "1",
+            "src": "https://www.youtube.com/embed/wZozOrFluiw",
+            "duration": 0,
+            "start": 0,
+            "end": 0,
+            "in": 0,
+            "out": 0
+        }
+    ],
+    "globalEvents": {
+        "onReady": "window.STEPS = [\n  { \n    seconds: 4,\n    name: 'Organism',\n    scale: 'metres'\n  },\n  {\n    seconds: 8,\n    name: 'Organ Systems',\n    scale: 'millimetres'\n  },\n  {\n    seconds: 17,\n    name: 'Organs',\n    scale: 'millimetres'\n  },\n  {\n    seconds: 28,\n    name: 'Tissues',\n    scale: 'millimetres'\n  },\n  {\n    seconds: 35,\n    name: 'Cells',\n    scale: 'micrometres'\n  },\n  {\n    seconds: 50,\n    name: 'Organelles',\n    scale: 'micrometres'\n  },\n  {\n    seconds: 69,\n    name: 'Chromosomes',\n    scale: 'micrometres'\n  },\n  {\n    seconds: 85,\n    name: 'DNA',\n    scale: 'nanometres'\n  }\n]; \n\nconst REVERSE_STEPS = [\n  { seconds: 146, step: 7 },\n  { seconds: 149, step: 6 },\n  { seconds: 153, step: 5 },\n  { seconds: 155, step: 4 },\n  { seconds: 157, step: 3 },\n  { seconds: 158.5, step: 2 },\n  { seconds: 161, step: 1 }\n];\n\nconst wrap   = document.getElementById('bioStepperWrap');\nconst fillEl = document.getElementById('bioStepperFill');\n\nSTEPS.forEach((s, i) => {\n  const el = document.createElement('div');\n  el.className = 'bio-stepper__step timebased';\n  el.dataset.start = (i === 0) ? 0 : s.seconds;\n  el.dataset.end   = (STEPS[i + 1]?.seconds ?? 172) - 1;\n  el.innerHTML = `\n    <div class=\"bio-stepper__dot\"></div>\n    <div>\n      <div class=\"bio-stepper__step-name\">${s.name}</div>\n      <div class=\"bio-stepper__step-scale\">${s.scale}</div>\n    </div>`;\n  el.addEventListener('click', function() { \n    myInstance.currentTime = STEPS[i].seconds;\n    goToStep(i + 1);\n  });\n  wrap.appendChild(el);\n});\n\nfunction updateUI(n) {\n  wrap.querySelectorAll('.bio-stepper__step').forEach((el, i) => {\n    el.classList.toggle('is-done',   i + 1 < n);\n    el.classList.toggle('is-current', i + 1 === n);\n  });\n  fillEl.style.height = ((n - 1) / (STEPS.length - 1) * 100) + '%';\n}\n\nwindow.goToStep = function (n) {\n  updateUI(Math.max(1, Math.min(STEPS.length, Math.round(n))));\n};\n\ngoToStep(1);\n\nmyInstance.addEventListener('timeupdate', function() {\n  const t = myInstance.currentTime;\n\n  // Check reverse overrides first (check from last to first so highest time wins)\n  for (let i = REVERSE_STEPS.length - 1; i >= 0; i--) {\n    if (t >= REVERSE_STEPS[i].seconds) {\n      goToStep(REVERSE_STEPS[i].step);\n      return; // skip normal logic\n    }\n  }\n\n  // Normal forward logic\n  let active = 0;\n  for (let i = 0; i < window.STEPS.length; i++) {\n    if (t >= window.STEPS[i].seconds) active = i;\n    else break;\n  }\n  goToStep(active + 1);\n});",
+        "onPlay": "",
+        "onPause": "",
+        "onEnded": ""
+    },
+    "customCSS": "@container ft-root (min-width: 768px) {\n  .areaLeftContainer[data-size=\"medium\"] {\n    flex: 0 0 250px !important;\n    min-width: 250px !important;\n  }\n}",
+    "contents": [
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Wed Mar 11 2026 17:02:20 GMT+0100 (Central European Standard Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "https://www.youtube.com/embed/wZozOrFluiw",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=0,2.7&xywh=percent:0,0,100,100"
+                }
+            },
+            "body": {
+                "type": "Image",
+                "frametrail:type": "image",
+                "format": "image/jpg",
+                "source": "https://img.youtube.com/vi/wZozOrFluiw/maxresdefault.jpg",
+                "frametrail:name": "Zoom in on DNA",
+                "frametrail:thumb": "https://img.youtube.com/vi/wZozOrFluiw/maxresdefault.jpg",
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {
+                    "animationOut": "fade"
+                }
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Wed Mar 11 2026 17:09:41 GMT+0100 (Central European Standard Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "https://www.youtube.com/embed/wZozOrFluiw",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=0.24554111245465537,2.6880290205562276&xywh=percent:73.48130841121495,70.33195020746888,11.33177570093458,19.502074688796682"
+                }
+            },
+            "body": {
+                "type": "Image",
+                "frametrail:type": "image",
+                "format": "image/svg",
+                "source": "1_1773245345_logoblack.svg",
+                "frametrail:name": "Your Genome Logo",
+                "frametrail:thumb": "1_1773245345_thumb_logoblack.png",
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {}
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Wed Mar 11 2026 17:10:14 GMT+0100 (Central European Standard Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "https://www.youtube.com/embed/wZozOrFluiw",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=0.32747214484679665,2.7&xywh=percent:72.42990654205607,68.67219917012449,13.200934579439252,23.029045643153527"
+                }
+            },
+            "body": {
+                "type": "TextualBody",
+                "frametrail:type": "hotspot",
+                "format": "text/html",
+                "frametrail:name": "Hotspot / Link",
+                "frametrail:thumb": null,
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {
+                    "color": "#d2d8e1",
+                    "linkUrl": "https://www.yourgenome.org/",
+                    "borderWidth": 2,
+                    "shape": "rectangle",
+                    "borderRadius": 10
+                }
+            },
+            "frametrail:events": {
+                "onStart": ""
+            }
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Wed Mar 11 2026 17:16:54 GMT+0100 (Central European Standard Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "https://www.youtube.com/embed/wZozOrFluiw",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=163.55622732769044,170.99999999999997&xywh=percent:0,0,100,100"
+                }
+            },
+            "body": {
+                "type": "Image",
+                "frametrail:type": "image",
+                "format": "image/jpg",
+                "source": "https://img.youtube.com/vi/wZozOrFluiw/maxresdefault.jpg",
+                "frametrail:name": "Zoom in on DNA",
+                "frametrail:thumb": "https://img.youtube.com/vi/wZozOrFluiw/maxresdefault.jpg",
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {}
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Wed Mar 11 2026 17:17:35 GMT+0100 (Central European Standard Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "https://www.youtube.com/embed/wZozOrFluiw",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=164.90024183796857,171&xywh=percent:35.05586592178771,55.132450331125824,16.666666666666664,28.642384105960268"
+                }
+            },
+            "body": {
+                "type": "Image",
+                "frametrail:type": "image",
+                "format": "image/svg",
+                "source": "1_1773245345_logoblack.svg",
+                "frametrail:name": "Your Genome Logo",
+                "frametrail:thumb": "1_1773245345_thumb_logoblack.png",
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {}
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Wed Mar 11 2026 17:18:33 GMT+0100 (Central European Standard Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "https://www.youtube.com/embed/wZozOrFluiw",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=165.00362756952842,171&xywh=percent:34.83483483483483,54.44839857651246,16.916916916916914,30.071174377224196"
+                }
+            },
+            "body": {
+                "type": "TextualBody",
+                "frametrail:type": "hotspot",
+                "format": "text/html",
+                "frametrail:name": "Hotspot / Link",
+                "frametrail:thumb": null,
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {
+                    "color": "#d2d8e1",
+                    "linkUrl": "https://www.yourgenome.org/",
+                    "borderWidth": 2,
+                    "shape": "rectangle",
+                    "borderRadius": 10
+                }
+            },
+            "frametrail:events": {
+                "onStart": ""
+            }
+        }
+    ],
+    "subtitles": []
+}

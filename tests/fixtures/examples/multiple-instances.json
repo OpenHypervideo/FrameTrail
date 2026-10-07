@@ -1,0 +1,97 @@
+{
+    "description": "The data examples/multiple-instances.html passes to FrameTrail.init(). Written by tests/extract-examples.mjs; change the page, not this file.",
+    "cases": [
+        {
+            "name": "init[0].contents[0].hypervideo",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Big Buck Bunny",
+                    "description": "Open-source animated short by Blender Foundation",
+                    "thumb": "",
+                    "creator": "Demo",
+                    "creatorId": "demo",
+                    "created": 1700000000000,
+                    "lastchanged": 1700000000000
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [],
+                        "areaLeft": [],
+                        "areaRight": []
+                    },
+                    "slidingMode": "overlay"
+                },
+                "clips": [
+                    {
+                        "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                        "duration": 596,
+                        "start": 0,
+                        "end": 596
+                    }
+                ],
+                "contents": [],
+                "subtitles": [],
+                "globalEvents": {
+                    "onReady": "",
+                    "onPlay": "",
+                    "onPause": "",
+                    "onEnded": ""
+                },
+                "customCSS": ""
+            }
+        },
+        {
+            "name": "init[0].contents[0].annotations",
+            "schema": "annotation-file.schema.json",
+            "data": []
+        },
+        {
+            "name": "init[1].contents[0].hypervideo",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Elephants Dream",
+                    "description": "First open Blender movie — a surreal animated journey",
+                    "thumb": "",
+                    "creator": "Demo",
+                    "creatorId": "demo",
+                    "created": 1700000001000,
+                    "lastchanged": 1700000001000
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [],
+                        "areaLeft": [],
+                        "areaRight": []
+                    },
+                    "slidingMode": "overlay"
+                },
+                "clips": [
+                    {
+                        "src": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4",
+                        "duration": 654,
+                        "start": 0,
+                        "end": 654
+                    }
+                ],
+                "contents": [],
+                "subtitles": [],
+                "globalEvents": {
+                    "onReady": "",
+                    "onPlay": "",
+                    "onPause": "",
+                    "onEnded": ""
+                },
+                "customCSS": ""
+            }
+        },
+        {
+            "name": "init[1].contents[0].annotations",
+            "schema": "annotation-file.schema.json",
+            "data": []
+        }
+    ]
+}

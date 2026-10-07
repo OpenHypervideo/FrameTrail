@@ -47,6 +47,21 @@ if (!validate(JSON.parse(fs.readFileSync('_data/hypervideos/1/hypervideo.json', 
 }
 ```
 
+FrameTrail has its own validator for exactly this subset, `FrameTrailSchema` ([`src/_shared/frametrail-core/schema/`](../src/_shared/frametrail-core/schema/)). Like the serializer it needs neither the DOM nor a FrameTrail instance, so it works in the browser as a plain script (`window.FrameTrailSchema`) and in Node. It refuses schemas that use anything outside the subset, and reports each error once, as a JSON Pointer into the document and a message, picking the alternative that was meant when a `oneOf` fails:
+
+```javascript
+const FrameTrailSchema = require('./src/_shared/frametrail-core/schema/FrameTrailSchema.js');
+
+const schemas = [];   // every file in schemas/, parsed (load them as above)
+const validator = FrameTrailSchema.create(schemas);
+
+validator.validate('hypervideo.schema.json', JSON.parse(fs.readFileSync('_data/hypervideos/1/hypervideo.json', 'utf8')));
+// [] when valid, otherwise e.g.
+// [{ path: '/contents/3/body/frametrail:attributes/shape', message: 'must be one of "circle", "rectangle", …' }]
+```
+
+A name is resolved against `https://frametrail.org/schemas/1/`; a fragment selects a definition (`common.schema.json#/$defs/keyframe`). The tests in [`tests/`](../tests/README.md) hold valid and invalid documents, with the errors expected for each, and the exact rules for messages, so that validators in other languages can be checked against the same fixtures.
+
 ## File Layout
 
 ```
@@ -429,4 +444,4 @@ The schemas use these keywords and nothing else:
 | `pattern` | A regular expression the string must contain a match for; the schemas anchor theirs with `^…$`. Only syntax that ECMA-262 and PCRE read alike: literals, `\.`, character classes, groups, alternation, `?`, `*`, `+`, `{n,m}`. |
 | `oneOf` | Exactly one alternative matches. Where every alternative is an object that fixes the same property with `const` — `frametrail:type`, a content view's `type`, a bundle's `bundle` — a validator can pick the alternative by that property and report only its errors. The other `oneOf`s set an object against PHP's empty array, or tell legacy forms apart by type or pattern. |
 
-A validator that implements these keywords checks the schemas completely; a full JSON Schema 2020-12 validator gives the same results. Decode JSON so that `{}` and `[]` stay different (in PHP: `json_decode($json)` without `true`, or an equivalent); otherwise an empty object cannot be told from an empty array.
+A validator that implements these keywords checks the schemas completely; a full JSON Schema 2020-12 validator gives the same results. `FrameTrailSchema` implements exactly these and refuses any other keyword, so a schema that needs more fails the tests. Decode JSON so that `{}` and `[]` stay different (in PHP: `json_decode($json)` without `true`, or an equivalent); otherwise an empty object cannot be told from an empty array.

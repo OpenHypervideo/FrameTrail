@@ -1,0 +1,513 @@
+{
+    "meta": {
+        "name": "New Test 5",
+        "description": "",
+        "thumb": "1_1783322343_thumb_functionality-ner-sm.png",
+        "posterFrame": null,
+        "creator": "demo",
+        "creatorId": "1",
+        "created": 1783322367127,
+        "lastchanged": 1791235975527
+    },
+    "config": {
+        "slidingMode": "adjust",
+        "slidingTrigger": "key",
+        "autohideControls": false,
+        "captionsVisible": false,
+        "clipTimeVisible": false,
+        "theme": "",
+        "layoutArea": {
+            "areaTop": [],
+            "areaBottom": [],
+            "areaLeft": [],
+            "areaRight": []
+        }
+    },
+    "clips": [
+        {
+            "resourceId": "51",
+            "src": "1_1783322343_functionality-ner-sm.mp4",
+            "duration": 0,
+            "start": 0,
+            "end": 0,
+            "in": 0,
+            "out": 0
+        }
+    ],
+    "globalEvents": {
+        "onReady": "",
+        "onPlay": "",
+        "onPause": "",
+        "onEnded": ""
+    },
+    "customCSS": "",
+    "contents": [
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Mon Jul 06 2026 09:36:45 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1783322343_functionality-ner-sm.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=1.5725128205128207,5.572512820512821&xywh=percent:49.62805526036132,22.117202268431,24.22954303931987,17.391304347826086"
+                }
+            },
+            "body": {
+                "frametrail:type": "button",
+                "frametrail:name": "Button",
+                "frametrail:thumb": null,
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {
+                    "label": "Button",
+                    "action": "",
+                    "actionTarget": "",
+                    "buttonColor": "#0096ff",
+                    "textColor": "#ffffff",
+                    "borderRadius": 4
+                }
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Mon Jul 06 2026 09:42:29 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1783322343_functionality-ner-sm.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=6.4990000000000006,11.499&xywh=percent:38,62,24,13"
+                }
+            },
+            "body": {
+                "frametrail:type": "button",
+                "frametrail:name": "Replay",
+                "frametrail:thumb": null,
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {
+                    "label": "Replay",
+                    "action": "customJS",
+                    "actionTarget": "hypervideo.currentTime = 0; hypervideo.play();",
+                    "buttonColor": "#0096ff",
+                    "textColor": "#ffffff",
+                    "borderRadius": 20
+                }
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Tue Jul 07 2026 09:54:48 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1783322343_functionality-ner-sm.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=1.6447111021069696,3.4990879254457052&xywh=percent:42.0635,16.5785,51.3393,83.4215",
+                    "frametrail:keyframes": [
+                        {
+                            "t": 1.6547111021069696,
+                            "xywh": [
+                                42.06349206349206,
+                                70.45855379188713,
+                                31.944444444444443,
+                                14.109347442680775
+                            ]
+                        },
+                        {
+                            "t": 2.2845935138539044,
+                            "xywh": [
+                                61.458333333333336,
+                                85.89065255731923,
+                                31.944444444444443,
+                                14.109347442680775
+                            ]
+                        },
+                        {
+                            "t": 2.8457852644836272,
+                            "xywh": [
+                                52.43055555555556,
+                                16.57848324514991,
+                                31.944444444444443,
+                                14.109347442680775
+                            ]
+                        }
+                    ]
+                }
+            },
+            "body": {
+                "type": "TextualBody",
+                "frametrail:type": "hotspot",
+                "format": "text/html",
+                "frametrail:name": "Option B",
+                "frametrail:thumb": null,
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {
+                    "text": "Option B",
+                    "action": "jumpToTime",
+                    "actionTarget": "",
+                    "color": "#0096ff",
+                    "textColor": "#ffffff",
+                    "backgroundColor": "#0096ff",
+                    "borderWidth": 0,
+                    "shape": "rounded",
+                    "borderRadius": 4,
+                    "linkUrl": ""
+                }
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo test",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Mon Oct 05 2026 22:48:56 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1783322343_functionality-ner-sm.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=0.8354949622166247,4.835494962216624&xywh=percent:8.6806,4.9383,35.0198,46.1199",
+                    "frametrail:keyframes": [
+                        {
+                            "t": 0.8454949622166247,
+                            "xywh": [
+                                12.847222222222221,
+                                4.938271604938271,
+                                30.853174603174605,
+                                39.50617283950617
+                            ]
+                        },
+                        {
+                            "t": 3.866121,
+                            "xywh": [
+                                8.680555555555555,
+                                11.552028218694884,
+                                30.853174603174605,
+                                39.50617283950617
+                            ]
+                        }
+                    ]
+                }
+            },
+            "body": {
+                "type": "TextualBody",
+                "frametrail:type": "text",
+                "format": "text/html",
+                "value": "",
+                "frametrail:name": "Card",
+                "frametrail:thumb": null,
+                "frametrail:licenseType": null,
+                "frametrail:licenseAttribution": null,
+                "frametrail:attributes": {
+                    "title": "Title",
+                    "text": "&lt;p&gt;&lt;span style=\"font-size: 22px;\"&gt;Some text that explains the scene.&lt;/span&gt;&lt;/p&gt;",
+                    "animation": {
+                        "in": {
+                            "preset": "slideFromBottom",
+                            "duration": 450,
+                            "ease": "power2Out",
+                            "params": {
+                                "distance": 21
+                            }
+                        },
+                        "emphasis": {
+                            "preset": "wobble",
+                            "duration": 2000,
+                            "ease": "easeInOut",
+                            "iterations": 0
+                        },
+                        "out": {
+                            "preset": "fadeOut",
+                            "duration": 300,
+                            "ease": "easeIn"
+                        },
+                        "text": {
+                            "preset": "typewriter",
+                            "duration": 10,
+                            "ease": "hold",
+                            "stagger": 40,
+                            "mode": "letter"
+                        }
+                    },
+                    "box": {
+                        "background": "#ffffff",
+                        "titleColor": "#14161a",
+                        "padding": 24,
+                        "radius": 12,
+                        "shadow": true
+                    }
+                }
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo test",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Mon Oct 05 2026 23:02:04 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1783322343_functionality-ner-sm.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=10.926751,11.499&xywh=percent:50.148809523809526,25.282186948853617,22,18"
+                }
+            },
+            "body": {
+                "type": "TextualBody",
+                "frametrail:type": "hotspot",
+                "format": "text/html",
+                "frametrail:name": "Curved Arrow",
+                "frametrail:attributes": {
+                    "color": "#ffd23f",
+                    "linkUrl": "",
+                    "borderWidth": 6,
+                    "shape": "arrow",
+                    "borderRadius": 10,
+                    "animation": {
+                        "in": {
+                            "preset": "draw"
+                        },
+                        "out": {
+                            "preset": "fadeOut"
+                        }
+                    },
+                    "direction": "right",
+                    "curve": "curved",
+                    "text": "",
+                    "textColor": "#ffffff",
+                    "backgroundColor": ""
+                }
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo test",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Mon Oct 05 2026 23:02:20 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1783322343_functionality-ner-sm.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=4.909522670025189,6.7922304785894205&xywh=percent:13.988095238095239,48.76543209876543,24.00793650793651,16.049382716049383"
+                }
+            },
+            "body": {
+                "type": "Dataset",
+                "frametrail:type": "counter",
+                "format": "application/x-frametrail-counter",
+                "frametrail:name": "Counter",
+                "frametrail:attributes": {
+                    "from": 0,
+                    "to": 1250,
+                    "decimals": 0,
+                    "prefix": "",
+                    "suffix": "",
+                    "duration": 1500,
+                    "ease": "power2Out",
+                    "style": "count",
+                    "color": "#fd4003",
+                    "weight": 700,
+                    "align": "center"
+                }
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo test",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Mon Oct 05 2026 23:06:41 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1783322343_functionality-ner-sm.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=7.049292506297229,11.04929250629723&xywh=percent:21.775793650793652,45.94356261022928,20.03968253968254,34.038800705467374"
+                }
+            },
+            "body": {
+                "type": "Dataset",
+                "frametrail:type": "chart",
+                "format": "application/x-frametrail-chart",
+                "frametrail:name": "Progress Ring",
+                "frametrail:attributes": {
+                    "chartType": "bars",
+                    "data": "72",
+                    "unit": "%",
+                    "color": "#fd0a00",
+                    "highlight": -1,
+                    "showValues": true,
+                    "duration": 1500,
+                    "textColor": "#fe1e00"
+                }
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                {
+                    "frametrail": "http://frametrail.org/ns/"
+                }
+            ],
+            "creator": {
+                "nickname": "demo test",
+                "type": "Person",
+                "id": "1"
+            },
+            "created": "Mon Oct 05 2026 23:31:30 GMT+0200 (Central European Summer Time)",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1783322343_functionality-ner-sm.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=1.328757241813602,5.3287572418136016&xywh=percent:39.682539682539684,24.691358024691358,40.57539682539682,41.44620811287478"
+                }
+            },
+            "body": {
+                "type": "TextualBody",
+                "frametrail:type": "text",
+                "format": "text/html",
+                "value": "",
+                "frametrail:name": "Quote",
+                "frametrail:attributes": {
+                    "text": "&lt;p&gt;&lt;span style=\"font-size: 30px;\"&gt;“A short, &lt;/span&gt;&lt;a href=\"https://linked.video\" rel=\"noopener noreferrer\" target=\"_blank\" style=\"font-size: 30px;\"&gt;memorable&lt;/a&gt;&lt;span style=\"font-size: 30px;\"&gt; quote.”&lt;/span&gt;&lt;/p&gt;&lt;p&gt;&lt;span style=\"color: rgb(96, 102, 112); font-size: 18px;\"&gt;— Name, Role&lt;/span&gt;&lt;/p&gt;",
+                    "animation": {
+                        "in": {
+                            "preset": "fadeIn",
+                            "duration": 600
+                        },
+                        "out": {
+                            "preset": "fadeOut"
+                        }
+                    },
+                    "box": {
+                        "background": "#ffffff",
+                        "titleColor": "#14161a",
+                        "padding": 24,
+                        "radius": 12,
+                        "shadow": true
+                    }
+                }
+            },
+            "frametrail:events": {}
+        }
+    ],
+    "chapters": [
+        {
+            "start": 1.6295149744338935,
+            "title": "Chapter 1 qerg345g3 34g345h"
+        },
+        {
+            "start": 3.375272815533981,
+            "title": "Chapter 2"
+        },
+        {
+            "start": 8,
+            "title": "Chapter 3 "
+        }
+    ],
+    "subtitles": []
+}

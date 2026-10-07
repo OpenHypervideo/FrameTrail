@@ -3,6 +3,7 @@
 .gitignore
 docs
 examples
+tests
 CONTRIBUTING.md
 CLAUDE.md
 build

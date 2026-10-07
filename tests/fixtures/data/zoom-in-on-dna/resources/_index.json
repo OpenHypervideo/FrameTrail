@@ -1,0 +1,625 @@
+{
+    "resources-increment": 39,
+    "resources": {
+        "1": {
+            "name": "Zoom in on DNA",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773148476,
+            "description": null,
+            "src": "https://www.youtube.com/embed/wZozOrFluiw",
+            "type": "youtube",
+            "attributes": [],
+            "thumb": "https://img.youtube.com/vi/wZozOrFluiw/hqdefault.jpg",
+            "licenseType": "CC-BY",
+            "licenseAttribution": "yourgenome.org, Genome Research Limited"
+        },
+        "2": {
+            "name": "DNA Replication",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773148499,
+            "description": null,
+            "src": "https://www.youtube.com/embed/TNKWgcFPHqw",
+            "type": "youtube",
+            "attributes": [],
+            "thumb": "https://img.youtube.com/vi/TNKWgcFPHqw/hqdefault.jpg",
+            "licenseType": "CC-BY",
+            "licenseAttribution": "yourgenome.org, Genome Research Limited"
+        },
+        "3": {
+            "name": "From DNA to Protein",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773148527,
+            "description": null,
+            "src": "https://www.youtube.com/embed/gG7uCskUOrA?start=3",
+            "type": "youtube",
+            "attributes": [],
+            "thumb": "https://img.youtube.com/vi/gG7uCskUOrA/hqdefault.jpg",
+            "licenseType": "CC-BY",
+            "licenseAttribution": "yourgenome.org, Genome Research Limited"
+        },
+        "4": {
+            "name": "DNA Sequencing",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773148551,
+            "description": null,
+            "src": "https://www.youtube.com/embed/ONGdehkB8jU?start=1",
+            "type": "youtube",
+            "attributes": [],
+            "thumb": "https://img.youtube.com/vi/ONGdehkB8jU/hqdefault.jpg",
+            "licenseType": "CC-BY",
+            "licenseAttribution": "yourgenome.org, Genome Research Limited"
+        },
+        "5": {
+            "name": "Sequencing at Speed",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773148579,
+            "description": null,
+            "src": "https://www.youtube.com/embed/v10bUR2aL5g",
+            "type": "youtube",
+            "attributes": [],
+            "thumb": "https://img.youtube.com/vi/v10bUR2aL5g/hqdefault.jpg",
+            "licenseType": "CC-BY",
+            "licenseAttribution": "yourgenome.org, Genome Research Limited"
+        },
+        "6": {
+            "name": "DNA extraction explained",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773148633,
+            "description": null,
+            "src": "https://www.youtube.com/embed/f3dZH6Yi7Po",
+            "type": "youtube",
+            "attributes": [],
+            "thumb": "https://img.youtube.com/vi/f3dZH6Yi7Po/hqdefault.jpg",
+            "licenseType": "CC-BY",
+            "licenseAttribution": "yourgenome.org, Genome Research Limited"
+        },
+        "7": {
+            "name": "PCR explained",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773148685,
+            "description": null,
+            "src": "https://www.youtube.com/embed/Q2847XA-Rfk",
+            "type": "youtube",
+            "attributes": [],
+            "thumb": "https://img.youtube.com/vi/Q2847XA-Rfk/hqdefault.jpg",
+            "licenseType": "CC-BY",
+            "licenseAttribution": "yourgenome.org, Genome Research Limited"
+        },
+        "8": {
+            "name": "Electrophoresis explained",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773148716,
+            "description": null,
+            "src": "https://www.youtube.com/embed/ELz3MIjZpgA",
+            "type": "youtube",
+            "attributes": [],
+            "thumb": "https://img.youtube.com/vi/ELz3MIjZpgA/hqdefault.jpg",
+            "licenseType": "CC-BY",
+            "licenseAttribution": "yourgenome.org, Genome Research Limited"
+        },
+        "9": {
+            "name": "The Human Genome Project: Personal Stories",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773148745,
+            "description": null,
+            "src": "https://www.youtube.com/embed/BQQEX8rU2tY",
+            "type": "youtube",
+            "attributes": [],
+            "thumb": "https://img.youtube.com/vi/BQQEX8rU2tY/hqdefault.jpg",
+            "licenseType": "CC-BY",
+            "licenseAttribution": "yourgenome.org, Genome Research Limited"
+        },
+        "10": {
+            "name": "Timeline: the past, present and future of DNA sequencing technologies ",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773149447,
+            "description": null,
+            "src": "https://www.yourgenome.org/theme/timeline-the-past-present-and-future-of-sequencing-technologies/",
+            "type": "urlpreview",
+            "attributes": {
+                "description": "Since the 1970s, scientists’ ability to sequence a genome has evolved from a laborious, expensive process to one that is quick, accurate and able to reveal important information about biology and medicine."
+            },
+            "thumb": "1_1773149447_thumb_timeline-the-past-present-and-future-of-dna-sequencing-technologies.png"
+        },
+        "11": {
+            "name": "History of genomics timeline from 1871 to present day",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773149471,
+            "description": null,
+            "src": "https://www.yourgenome.org/theme/timeline-history-of-genomics/",
+            "type": "urlpreview",
+            "attributes": {
+                "description": "Explore key events in genomics and genetics research alongside those in historical and popular culture."
+            },
+            "thumb": "1_1773149471_thumb_history-of-genomics-timeline-from-1871-to-present-day.png"
+        },
+        "12": {
+            "name": "What is DNA sequencing? | The History of DNA Sequencing",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773149516,
+            "description": null,
+            "src": "https://www.yourgenome.org/theme/what-is-dna-sequencing/",
+            "type": "urlpreview",
+            "attributes": {
+                "description": "DNA sequencing is the process of working out the exact order of the four chemical building blocks – called bases – in a section of DNA."
+            },
+            "thumb": "1_1773149517_thumb_what-is-dna-sequencing-the-history-of-dna-sequencing.png"
+        },
+        "13": {
+            "name": "What is DNA and its stucture? | Definition of DNA",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773149576,
+            "description": null,
+            "src": "https://www.yourgenome.org/theme/what-is-dna/",
+            "type": "urlpreview",
+            "attributes": {
+                "description": "DNA is the long molecule that contains your unique genetic code. A bit like a recipe book, it holds the instructions your cells need to make all the proteins in your body."
+            },
+            "thumb": "1_1773149576_thumb_what-is-dna-and-its-stucture-definition-of-dna.png"
+        },
+        "14": {
+            "name": "What is a cell?",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773149588,
+            "description": null,
+            "src": "https://www.yourgenome.org/theme/what-is-a-cell/",
+            "type": "urlpreview",
+            "attributes": {
+                "description": "All living things are made of cells. They are the basic building blocks of life. The human body is composed of trillions of cells, all with their own specialised function."
+            },
+            "thumb": "1_1773149589_thumb_what-is-a-cell.png"
+        },
+        "15": {
+            "name": "Introduction to genetics",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773149760,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Introduction_to_genetics",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "Genetics is the study of genes and tries to explain what they are and how they work. Genes are how living organisms inherit features or traits from their ancestors; for example, children usually look like their parents because they have inherited their parents' genes. Genetics tries to identify which traits are inherited and to explain how these traits are passed from generation to generation.",
+                "extract_html": "<p><b>Genetics</b> is the study of genes and tries to explain what they are and how they work. Genes are how living organisms inherit features or traits from their ancestors; for example, children usually look like their parents because they have inherited their parents' genes. Genetics tries to identify which traits are inherited and to explain how these traits are passed from generation to generation.</p>",
+                "description": "Non-technical introduction to genetics",
+                "articleUrl": "https://en.wikipedia.org/wiki/Introduction_to_genetics",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773149760_thumb_introduction-to-genetics.png"
+        },
+        "16": {
+            "name": "DNA",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773149780,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/DNA",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "Deoxyribonucleic acid is a polymer composed of two polynucleotide chains that coil around each other to form a double helix. The polymer carries genetic instructions for the development, functioning, growth and reproduction of all known organisms and many viruses. DNA and ribonucleic acid (RNA) are nucleic acids. Alongside proteins, lipids and complex carbohydrates (polysaccharides), nucleic acids are one of the four major types of macromolecules that are essential for all known forms of life.",
+                "extract_html": "<p><b>Deoxyribonucleic acid</b> is a polymer composed of two polynucleotide chains that coil around each other to form a double helix. The polymer carries genetic instructions for the development, functioning, growth and reproduction of all known organisms and many viruses. DNA and ribonucleic acid (RNA) are nucleic acids. Alongside proteins, lipids and complex carbohydrates (polysaccharides), nucleic acids are one of the four major types of macromolecules that are essential for all known forms of life.</p>",
+                "description": "Molecule that carries genetic information",
+                "articleUrl": "https://en.wikipedia.org/wiki/DNA",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773149780_thumb_dna.png"
+        },
+        "17": {
+            "name": "DNA sequencing",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773149824,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/DNA_sequencing",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "DNA sequencing is the process of determining the nucleic acid sequence – the order of nucleotides in DNA. It includes any method or technology that is used to determine the order of the four bases: adenine, thymine, cytosine, and guanine. The advent of rapid DNA sequencing methods has greatly accelerated biological and medical research and discovery.",
+                "extract_html": "<p><b>DNA sequencing</b> is the process of determining the nucleic acid sequence – the order of nucleotides in DNA. It includes any method or technology that is used to determine the order of the four bases: adenine, thymine, cytosine, and guanine. The advent of rapid DNA sequencing methods has greatly accelerated biological and medical research and discovery.</p>",
+                "description": "Process of determining the nucleic acid sequence",
+                "articleUrl": "https://en.wikipedia.org/wiki/DNA_sequencing",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773149824_thumb_dna-sequencing.png"
+        },
+        "18": {
+            "name": "Electrophoresis",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773149869,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Electrophoresis",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "Electrophoresis is the motion of charged dispersed particles or dissolved charged molecules relative to a fluid under the influence of a spatially uniform electric field. As a rule, these zwitterionic particles and molecules have either a positive or negative net charge, which is often characterized with zeta potential.",
+                "extract_html": "<p><b>Electrophoresis</b> is the motion of charged dispersed particles or dissolved charged molecules relative to a fluid under the influence of a spatially uniform electric field. As a rule, these zwitterionic particles and molecules have either a positive or negative net charge, which is often characterized with zeta potential.</p>",
+                "description": "Motion of charged particles in electric field",
+                "articleUrl": "https://en.wikipedia.org/wiki/Electrophoresis",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773149869_thumb_electrophoresis.png"
+        },
+        "19": {
+            "name": "Polymerase chain reaction",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773149922,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Polymerase_chain_reaction",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "The polymerase chain reaction (PCR) is a laboratory method widely used to amplify copies of specific DNA sequences rapidly, to enable detailed study. PCR was invented in 1983 by American biochemist Kary Mullis at Cetus Corporation. Mullis and biochemist Michael Smith, who had developed other essential ways of manipulating DNA, were jointly awarded the Nobel Prize in Chemistry in 1993.",
+                "extract_html": "<p>The <b>polymerase chain reaction</b> (<b>PCR</b>) is a laboratory method widely used to amplify copies of specific DNA sequences rapidly, to enable detailed study. PCR was invented in 1983 by American biochemist Kary Mullis at Cetus Corporation. Mullis and biochemist Michael Smith, who had developed other essential ways of manipulating DNA, were jointly awarded the Nobel Prize in Chemistry in 1993.</p>",
+                "description": "Laboratory technique to multiply a DNA sample for study",
+                "articleUrl": "https://en.wikipedia.org/wiki/Polymerase_chain_reaction",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773149922_thumb_polymerase-chain-reaction.png"
+        },
+        "20": {
+            "name": "Organ (biology)",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773225637,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Organ_(biology)",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "In a multicellular organism, an organ is a collection of tissues joined in a structural unit to serve a common function. In the hierarchy of life, an organ lies between tissue and an organ system. Tissues are formed from same type cells to act together in a function. Tissues of different types combine to form an organ which has a specific function. The intestinal wall for example is formed by epithelial tissue and smooth muscle tissue. Two or more organs working together in the execution of a specific body function form an organ system, also called a biological system or body system.",
+                "extract_html": "<p>In a multicellular organism, an <b>organ</b> is a collection of tissues joined in a structural unit to serve a common function. In the hierarchy of life, an organ lies between tissue and an organ system. Tissues are formed from same type cells to act together in a function. Tissues of different types combine to form an organ which has a specific function. The intestinal wall for example is formed by epithelial tissue and smooth muscle tissue. Two or more organs working together in the execution of a specific body function form an organ system, also called a biological system or body system.</p>",
+                "description": "Collection of tissues with similar functions",
+                "articleUrl": "https://en.wikipedia.org/wiki/Organ_(biology)",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773225637_thumb_organ-biology.png"
+        },
+        "21": {
+            "name": "Circulatory system",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773225703,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Circulatory_system",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "In vertebrates, the circulatory system is a system of organs that includes the heart, blood vessels, and blood which is circulated throughout the body. It includes the cardiovascular system, or vascular system, that consists of the heart and blood vessels. The circulatory system has two divisions, a systemic circulation or circuit, and a pulmonary circulation or circuit. Some sources use the terms cardiovascular system and vascular system interchangeably with circulatory system.",
+                "extract_html": "<p>In vertebrates, the <b>circulatory system</b> is a system of organs that includes the heart, blood vessels, and blood which is circulated throughout the body. It includes the cardiovascular system, or vascular system, that consists of the heart and blood vessels. The circulatory system has two divisions, a systemic circulation or circuit, and a pulmonary circulation or circuit. Some sources use the terms <i>cardiovascular system</i> and <i>vascular system</i> interchangeably with <i>circulatory system</i>.</p>",
+                "description": "Organ system for circulating blood in animals",
+                "articleUrl": "https://en.wikipedia.org/wiki/Circulatory_system",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773225703_thumb_circulatory-system.png"
+        },
+        "22": {
+            "name": "Human digestive system",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773225760,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Human_digestive_system",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "The human digestive system consists of the gastrointestinal tract plus the accessory organs of digestion. Digestion involves the breakdown of food into smaller and smaller components, until they can be absorbed and assimilated into the body. The process of digestion has three stages: the cephalic phase, the gastric phase, and the intestinal phase.",
+                "extract_html": "<p>The <b>human digestive system</b> consists of the gastrointestinal tract plus the accessory organs of digestion. Digestion involves the breakdown of food into smaller and smaller components, until they can be absorbed and assimilated into the body. The process of digestion has three stages: the cephalic phase, the gastric phase, and the intestinal phase.</p>",
+                "description": "Digestive system in humans",
+                "articleUrl": "https://en.wikipedia.org/wiki/Human_digestive_system",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773225760_thumb_human-digestive-system.png"
+        },
+        "23": {
+            "name": "Liver",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773225856,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Liver",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "The liver is a major metabolic organ exclusively found in vertebrates, which performs many essential biological functions such as detoxification of the organism, and the synthesis of various proteins and various other biochemicals necessary for digestion and growth. In humans, it is located in the right upper quadrant of the abdomen, below the diaphragm and mostly shielded by the lower right rib cage. Its other metabolic roles include carbohydrate metabolism, the production of a number of hormones, conversion and storage of nutrients such as glucose and glycogen, and the decomposition of red blood cells. Anatomical and medical terminology often use the prefix hepat- from ἡπατο-, from the Greek word for liver, such as hepatology, and hepatitis.",
+                "extract_html": "<p>The <b>liver</b> is a major metabolic organ exclusively found in vertebrates, which performs many essential biological functions such as detoxification of the organism, and the synthesis of various proteins and various other biochemicals necessary for digestion and growth. In humans, it is located in the right upper quadrant of the abdomen, below the diaphragm and mostly shielded by the lower right rib cage. Its other metabolic roles include carbohydrate metabolism, the production of a number of hormones, conversion and storage of nutrients such as glucose and glycogen, and the decomposition of red blood cells. Anatomical and medical terminology often use the prefix <span><i>hepat-</i></span> from ἡπατο-, from the Greek word for liver, such as hepatology, and hepatitis.</p>",
+                "description": "Vertebrate organ involved in metabolism",
+                "articleUrl": "https://en.wikipedia.org/wiki/Liver",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773225856_thumb_liver.png"
+        },
+        "24": {
+            "name": "Tissue (biology)",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773225944,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Tissue_(biology)",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "In biology, tissue is an assembly of similar cells and their extracellular matrix from the same embryonic origin that together carry out a specific function. Tissues occupy a biological organizational level between cells and a complete organ. Accordingly, organs are formed by the functional grouping together of multiple tissues.",
+                "extract_html": "<p>In biology, <b>tissue</b> is an assembly of similar cells and their extracellular matrix from the same embryonic origin that together carry out a specific function. Tissues occupy a biological organizational level between cells and a complete organ. Accordingly, organs are formed by the functional grouping together of multiple tissues.</p>",
+                "description": "Group of similar cells performing a specific function",
+                "articleUrl": "https://en.wikipedia.org/wiki/Tissue_(biology)",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773225944_thumb_tissue-biology.png"
+        },
+        "25": {
+            "name": "Cell (biology)",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773226005,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Cell_(biology)",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "The cell is the basic structural and functional unit of all forms of life or organisms. The term comes from the Latin word cellula meaning 'small room'. A biological cell basically consists of a semipermeable cell membrane enclosing cytoplasm that contains genetic material. Most cells are only visible under a microscope. Except for highly-differentiated cell types most cells are capable of replication, and protein synthesis. Some types of cell are motile. Cells emerged on Earth about four billion years ago.",
+                "extract_html": "<p>The <b>cell</b> is the basic structural and functional unit of all forms of life or organisms. The term comes from the Latin word <span><i lang=\"la\">cellula</i></span> meaning 'small room'. A biological cell basically consists of a semipermeable cell membrane enclosing cytoplasm that contains genetic material. Most cells are only visible under a microscope. Except for highly-differentiated cell types most cells are capable of replication, and protein synthesis. Some types of cell are motile. Cells emerged on Earth about four billion years ago.</p>",
+                "description": "Basic unit of life forms",
+                "articleUrl": "https://en.wikipedia.org/wiki/Cell_(biology)",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773226005_thumb_cell-biology.png"
+        },
+        "26": {
+            "name": "Organelle",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773226079,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Organelle",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "An organelle is a specialized subunit, within a biological cell, that has a specific function. The name organelle comes from the idea that these structures are parts of cells, as organs are to the body, hence organelle, the suffix -elle being a diminutive. Organelles are either separately enclosed within their own lipid bilayers or are spatially distinct functional units without a surrounding lipid bilayer. Although most organelles are functional units within cells, some functional units that extend outside of cells are often termed organelles, such as cilia, the flagellum and archaellum, and the trichocyst.",
+                "extract_html": "<p>An <b>organelle</b> is a specialized subunit, within a biological cell, that has a specific function. The name <i>organelle</i> comes from the idea that these structures are parts of cells, as organs are to the body, hence <i>organelle,</i> the suffix <i>-elle</i> being a diminutive. Organelles are either separately enclosed within their own lipid bilayers or are spatially distinct functional units without a surrounding lipid bilayer. Although most organelles are functional units within cells, some functional units that extend outside of cells are often termed organelles, such as cilia, the flagellum and archaellum, and the trichocyst.</p>",
+                "description": "Specialized subunit within a cell",
+                "articleUrl": "https://en.wikipedia.org/wiki/Organelle",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": null
+        },
+        "27": {
+            "name": "Cell membrane",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773226123,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Cell_membrane",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "The cell membrane is a semipermeable biological membrane that separates and protects the interior of a cell from the outside environment. The cell membrane is a lipid bilayer, usually consisting of phospholipids and glycolipids; eukaryotes and some archaea typically have sterols interspersed between them as well, maintaining appropriate membrane fluidity at various temperatures. The membrane also contains membrane proteins, including integral proteins that span the membrane and serve as transporters, and peripheral proteins that attach to the surface of the cell membrane, acting as enzymes to facilitate interaction with the cell's environment. Glycolipids embedded in the outer lipid layer serve a similar purpose.",
+                "extract_html": "<p>The <b>cell membrane</b> is a semipermeable biological membrane that separates and protects the interior of a cell from the outside environment. The cell membrane is a lipid bilayer, usually consisting of phospholipids and glycolipids; eukaryotes and some archaea typically have sterols interspersed between them as well, maintaining appropriate membrane fluidity at various temperatures. The membrane also contains membrane proteins, including integral proteins that span the membrane and serve as transporters, and peripheral proteins that attach to the surface of the cell membrane, acting as enzymes to facilitate interaction with the cell's environment. Glycolipids embedded in the outer lipid layer serve a similar purpose.</p>",
+                "description": "Biological membrane that separates the interior of a cell from its outside environment",
+                "articleUrl": "https://en.wikipedia.org/wiki/Cell_membrane",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773226124_thumb_cell-membrane.png"
+        },
+        "28": {
+            "name": "Mitochondrion",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773226195,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Mitochondrion",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "A mitochondrion is an organelle found in the cells of most eukaryotes, such as animals, plants and fungi. Mitochondria have a double membrane structure and use aerobic respiration to generate adenosine triphosphate (ATP), which is used throughout the cell as a source of chemical energy. They were discovered by Albert von Kölliker in 1857 in the voluntary muscles of insects. The term mitochondrion, meaning a thread-like granule, was coined by Carl Benda in 1898. The mitochondrion is popularly nicknamed the \"powerhouse of the cell\", a phrase popularized by Philip Siekevitz in a 1957 Scientific American article of the same name.",
+                "extract_html": "<p>A <b>mitochondrion</b> is an organelle found in the cells of most eukaryotes, such as animals, plants and fungi. Mitochondria have a double membrane structure and use aerobic respiration to generate adenosine triphosphate (ATP), which is used throughout the cell as a source of chemical energy. They were discovered by Albert von Kölliker in 1857 in the voluntary muscles of insects. The term <i>mitochondrion</i>, meaning a thread-like granule, was coined by Carl Benda in 1898. The mitochondrion is popularly nicknamed the \"powerhouse of the cell\", a phrase popularized by Philip Siekevitz in a 1957 <i>Scientific American</i> article of the same name.</p>",
+                "description": "Organelle in eukaryotic cells responsible for respiration",
+                "articleUrl": "https://en.wikipedia.org/wiki/Mitochondrion",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773226195_thumb_mitochondrion.png"
+        },
+        "29": {
+            "name": "Cell nucleus",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773226308,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Cell_nucleus",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "The cell nucleus is a membrane-bound organelle found in eukaryotic cells. Eukaryotic cells usually have a single nucleus, but a few cell types, such as mammalian red blood cells, have no nuclei, and a few others including osteoclasts have many. The main structures making up the nucleus are the nuclear envelope, a double membrane that encloses the entire organelle and isolates its contents from the cellular cytoplasm; and the nuclear matrix, a network within the nucleus that adds mechanical support.",
+                "extract_html": "<p>The <b>cell nucleus</b> is a membrane-bound organelle found in eukaryotic cells. Eukaryotic cells usually have a single nucleus, but a few cell types, such as mammalian red blood cells, have <span class=\"mw-selflink-fragment\">no nuclei</span>, and a few others including osteoclasts have many. The main structures making up the nucleus are the nuclear envelope, a double membrane that encloses the entire organelle and isolates its contents from the cellular cytoplasm; and the nuclear matrix, a network within the nucleus that adds mechanical support.</p>",
+                "description": "Eukaryotic membrane-bounded organelle containing DNA",
+                "articleUrl": "https://en.wikipedia.org/wiki/Cell_nucleus",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773226308_thumb_cell-nucleus.png"
+        },
+        "30": {
+            "name": "Chromosome",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773226654,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Chromosome",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "A chromosome is a package of DNA containing part or all of the genetic material of an organism. In most chromosomes, the very long thin DNA fibers are coated with nucleosome-forming packaging proteins; in eukaryotic cells, the most important of these proteins are the histones. Aided by chaperone proteins, the histones bind to and condense the DNA molecule to maintain its integrity. These eukaryotic chromosomes display a complex three-dimensional structure that has a significant role in transcriptional regulation.",
+                "extract_html": "<p>A <b>chromosome</b> is a package of DNA containing part or all of the genetic material of an organism. In most chromosomes, the very long thin DNA fibers are coated with nucleosome-forming packaging proteins; in eukaryotic cells, the most important of these proteins are the histones. Aided by chaperone proteins, the histones bind to and condense the DNA molecule to maintain its integrity. These eukaryotic chromosomes display a complex three-dimensional structure that has a significant role in transcriptional regulation.</p>",
+                "description": "DNA molecule containing genetic material of a cell",
+                "articleUrl": "https://en.wikipedia.org/wiki/Chromosome",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773226654_thumb_chromosome.png"
+        },
+        "31": {
+            "name": "Histone",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773226759,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Histone",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "In biology, histones are highly-basic proteins abundant in lysine and arginine residues that are found in eukaryotic cell nuclei and in most Archaeal phyla. They act as spools around which DNA winds to create structural units called nucleosomes. Nucleosomes in turn are wrapped into 30-nanometer fibers that form tightly packed chromatin. Histones prevent DNA from becoming tangled and protect it from DNA damage. In addition, histones play important roles in gene regulation and DNA replication. Without histones, unwound DNA in chromosomes would be very long. For example, each human cell has about 1.8 meters of DNA if completely stretched out; however, when wound about histones, this length is reduced to about 9 micrometers (0.009 mm) of 30 nm diameter chromatin fibers.",
+                "extract_html": "<p>In biology, <b>histones</b> are highly-basic proteins abundant in lysine and arginine residues that are found in eukaryotic cell nuclei and in most Archaeal phyla. They act as spools around which DNA winds to create structural units called nucleosomes. Nucleosomes in turn are wrapped into 30-nanometer fibers that form tightly packed chromatin. Histones prevent DNA from becoming tangled and protect it from DNA damage. In addition, histones play important roles in gene regulation and DNA replication. Without histones, unwound DNA in chromosomes would be very long. For example, each human cell has about 1.8 meters of DNA if completely stretched out; however, when wound about histones, this length is reduced to about 9 micrometers (0.009 mm) of 30 nm diameter chromatin fibers.</p>",
+                "description": "Protein family around which DNA winds to form nucleosomes",
+                "articleUrl": "https://en.wikipedia.org/wiki/Histone",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773226759_thumb_histone.png"
+        },
+        "32": {
+            "name": "Adenine",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773226874,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Adenine",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "Adenine is a purine nucleotide base that is found in DNA, RNA, and ATP. Usually a white crystalline subtance. The shape of adenine is complementary and pairs to either thymine in DNA or uracil in RNA. In cells adenine, as an independent molecule, is rare. It is almost always covalently bound to become a part of a larger biomolecule.",
+                "extract_html": "<p><b>Adenine</b> is a purine nucleotide base that is found in DNA, RNA, and ATP. Usually a white crystalline subtance. The shape of adenine is complementary and pairs to either thymine in DNA or uracil in RNA. In cells adenine, as an independent molecule, is rare. It is almost always covalently bound to become a part of a larger biomolecule.</p>",
+                "description": "Chemical compound in DNA and RNA",
+                "articleUrl": "https://en.wikipedia.org/wiki/Adenine",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773226874_thumb_adenine.png"
+        },
+        "33": {
+            "name": "Cytosine",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773227084,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Cytosine",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "Cytosine is one of the four nucleotide bases found in DNA and RNA, along with adenine, guanine, and thymine. It is a pyrimidine derivative, with a heterocyclic aromatic ring and two substituents attached. The nucleoside of cytosine is cytidine. In Watson–Crick base pairing, it forms three hydrogen bonds with guanine.",
+                "extract_html": "<p><b>Cytosine</b> is one of the four nucleotide bases found in DNA and RNA, along with adenine, guanine, and thymine. It is a pyrimidine derivative, with a heterocyclic aromatic ring and two substituents attached. The nucleoside of cytosine is cytidine. In Watson–Crick base pairing, it forms three hydrogen bonds with guanine.</p>",
+                "description": "Chemical compound in nucleic acids",
+                "articleUrl": "https://en.wikipedia.org/wiki/Cytosine",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773227084_thumb_cytosine.png"
+        },
+        "34": {
+            "name": "Guanine",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773227114,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Guanine",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "Guanine is one of the four main nucleotide bases found in the nucleic acids DNA and RNA, the others being adenine, cytosine, and thymine. In DNA, guanine is paired with cytosine. The guanine nucleoside is called guanosine.",
+                "extract_html": "<p><b>Guanine</b> is one of the four main nucleotide bases found in the nucleic acids DNA and RNA, the others being adenine, cytosine, and thymine. In DNA, guanine is paired with cytosine. The guanine nucleoside is called guanosine.</p>",
+                "description": "Chemical compound of DNA and RNA",
+                "articleUrl": "https://en.wikipedia.org/wiki/Guanine",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773227115_thumb_guanine.png"
+        },
+        "35": {
+            "name": "Thymine",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773227135,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Thymine",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "Thymine is one of the four nucleotide bases in the nucleic acid of DNA that are represented by the letters G–C–A–T. The others are adenine, guanine, and cytosine. Thymine is also known as 5-methyluracil, a pyrimidine nucleobase. In RNA, thymine is replaced by the nucleobase uracil. Thymine was first isolated in 1893 by Albrecht Kossel and Albert Neumann from calf thymus glands, hence its name.",
+                "extract_html": "<p><b>Thymine</b> is one of the four nucleotide bases in the nucleic acid of DNA that are represented by the letters G–C–A–T. The others are adenine, guanine, and cytosine. Thymine is also known as <b>5-methyluracil,</b> a pyrimidine nucleobase. In RNA, thymine is replaced by the nucleobase uracil. Thymine was first isolated in 1893 by Albrecht Kossel and Albert Neumann from calf thymus glands, hence its name.</p>",
+                "description": "Chemical compound of DNA",
+                "articleUrl": "https://en.wikipedia.org/wiki/Thymine",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773227135_thumb_thymine.png"
+        },
+        "36": {
+            "name": "Gene",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773227470,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Gene",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "In biology, the word gene has two meanings. The Mendelian gene is a basic unit of heredity. The molecular gene is a sequence of nucleotides in DNA that is transcribed to produce RNA. There are two types of molecular genes: protein-coding genes and non-coding genes. During gene expression, DNA is first copied into RNA. RNA can be directly functional or be the intermediate template for the synthesis of a protein.",
+                "extract_html": "<p>In biology, the word <b>gene</b> has two meanings. The Mendelian gene is a basic unit of heredity. The molecular gene is a sequence of nucleotides in DNA that is transcribed to produce RNA. There are two types of molecular genes: protein-coding genes and non-coding genes. During gene expression, DNA is first copied into RNA. RNA can be directly functional or be the intermediate template for the synthesis of a protein.</p>",
+                "description": "Sequence of DNA that determines traits in an organism",
+                "articleUrl": "https://en.wikipedia.org/wiki/Gene",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773227470_thumb_gene.png"
+        },
+        "37": {
+            "name": "Genome",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773227539,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/Genome",
+            "type": "wikipedia",
+            "attributes": {
+                "extract": "A genome is all the genetic information of an organism or cell. It consists of nucleotide sequences of DNA. The nuclear genome includes protein-coding genes and non-coding genes, other functional regions of the genome such as regulatory sequences, and often a substantial fraction of junk DNA with no evident function. Almost all eukaryotes have mitochondria and a small mitochondrial genome. Algae and plants also contain chloroplasts with a chloroplast genome.",
+                "extract_html": "<p>A <b>genome</b> is all the genetic information of an organism or cell. It consists of nucleotide sequences of DNA. The nuclear genome includes protein-coding genes and non-coding genes, other functional regions of the genome such as regulatory sequences, and often a substantial fraction of junk DNA with no evident function. Almost all eukaryotes have mitochondria and a small mitochondrial genome. Algae and plants also contain chloroplasts with a chloroplast genome.</p>",
+                "description": "All genetic material of an organism",
+                "articleUrl": "https://en.wikipedia.org/wiki/Genome",
+                "wikiLang": "en",
+                "dir": "ltr"
+            },
+            "thumb": "1_1773227539_thumb_genome.png"
+        },
+        "38": {
+            "name": "Zoom in on DNA",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773244922,
+            "description": null,
+            "src": "https://img.youtube.com/vi/wZozOrFluiw/maxresdefault.jpg",
+            "type": "image",
+            "attributes": [],
+            "thumb": "https://img.youtube.com/vi/wZozOrFluiw/maxresdefault.jpg"
+        },
+        "39": {
+            "name": "Your Genome Logo",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1773245345,
+            "description": null,
+            "src": "1_1773245345_logoblack.svg",
+            "type": "image",
+            "attributes": [],
+            "thumb": "1_1773245345_thumb_logoblack.png",
+            "licenseType": "",
+            "licenseAttribution": ""
+        }
+    }
+}

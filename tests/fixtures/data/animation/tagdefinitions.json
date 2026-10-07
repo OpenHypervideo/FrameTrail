@@ -1,0 +1,14 @@
+{
+    "test": {
+        "en": {
+            "label": "Test",
+            "description": ""
+        }
+    },
+    "test3": {
+        "en": {
+            "label": "Test 3",
+            "description": ""
+        }
+    }
+}

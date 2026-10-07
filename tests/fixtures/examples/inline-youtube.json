@@ -1,0 +1,78 @@
+{
+    "description": "The data examples/inline-youtube.html passes to FrameTrail.init(). Written by tests/extract-examples.mjs; change the page, not this file.",
+    "cases": [
+        {
+            "name": "config",
+            "schema": "config.schema.json",
+            "data": {
+                "theme": "",
+                "alwaysForceLogin": false,
+                "allowCaching": false
+            }
+        },
+        {
+            "name": "contents[0].hypervideo",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Big Buck Bunny",
+                    "description": "Open-source animated short film — inline FrameTrail demo",
+                    "thumb": "",
+                    "creator": "Demo",
+                    "creatorId": "demo",
+                    "created": 1700000000000,
+                    "lastchanged": 1700000000000
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [],
+                        "areaLeft": [],
+                        "areaRight": []
+                    },
+                    "slidingMode": "overlay",
+                    "theme": ""
+                },
+                "clips": [
+                    {
+                        "src": "https://www.youtube.com/embed/YE7VzlLtp-4",
+                        "duration": 596,
+                        "start": 0,
+                        "end": 596
+                    }
+                ],
+                "contents": [],
+                "subtitles": [],
+                "globalEvents": {
+                    "onReady": "",
+                    "onPlay": "",
+                    "onPause": "",
+                    "onEnded": ""
+                },
+                "customCSS": ""
+            }
+        },
+        {
+            "name": "contents[0].annotations",
+            "schema": "annotation-file.schema.json",
+            "data": []
+        },
+        {
+            "name": "resources[0].data",
+            "schema": "resources-index.schema.json",
+            "data": {
+                "resources": {
+                    "yt-bbb": {
+                        "name": "Big Buck Bunny (YouTube)",
+                        "type": "youtube",
+                        "src": "https://www.youtube.com/embed/YE7VzlLtp-4",
+                        "thumb": "",
+                        "licenseType": "cc-by",
+                        "attributes": {},
+                        "tags": []
+                    }
+                }
+            }
+        }
+    ]
+}

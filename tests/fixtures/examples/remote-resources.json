@@ -1,0 +1,163 @@
+{
+    "description": "The data examples/remote-resources.html passes to FrameTrail.init(). Written by tests/extract-examples.mjs; change the page, not this file.",
+    "cases": [
+        {
+            "name": "contents[0].hypervideo",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Zoom in on DNA",
+                    "description": "Demonstrates merging local and remote resource indices",
+                    "thumb": "",
+                    "creator": "Demo",
+                    "creatorId": "demo",
+                    "created": 1700000000000,
+                    "lastchanged": 1700000000000
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [],
+                        "areaLeft": [],
+                        "areaRight": []
+                    },
+                    "slidingMode": "overlay"
+                },
+                "clips": [
+                    {
+                        "src": "https://www.youtube.com/embed/wZozOrFluiw",
+                        "duration": 255,
+                        "start": 0,
+                        "end": 255
+                    }
+                ],
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            {
+                                "frametrail": "http://frametrail.org/ns/"
+                            }
+                        ],
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "creator": {
+                            "nickname": "Demo",
+                            "type": "Person",
+                            "id": "demo"
+                        },
+                        "created": "2024-01-01T00:00:00Z",
+                        "target": {
+                            "type": "Video",
+                            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+                            "selector": {
+                                "type": "FragmentSelector",
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "value": "t=30,90&xywh=percent:55,5,40,55"
+                            }
+                        },
+                        "body": {
+                            "type": "Video",
+                            "frametrail:type": "youtube",
+                            "format": "text/html",
+                            "source": "https://www.youtube.com/embed/TNKWgcFPHqw",
+                            "frametrail:name": "DNA Replication",
+                            "frametrail:thumb": "https://img.youtube.com/vi/TNKWgcFPHqw/hqdefault.jpg",
+                            "frametrail:resourceId": "2",
+                            "frametrail:attributes": {}
+                        },
+                        "frametrail:tags": []
+                    }
+                ],
+                "subtitles": [],
+                "globalEvents": {
+                    "onReady": "",
+                    "onPlay": "",
+                    "onPause": "",
+                    "onEnded": ""
+                },
+                "customCSS": ""
+            }
+        },
+        {
+            "name": "contents[0].annotations",
+            "schema": "annotation-file.schema.json",
+            "data": [
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        {
+                            "frametrail": "http://frametrail.org/ns/"
+                        }
+                    ],
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "creator": {
+                        "nickname": "Demo",
+                        "type": "Person",
+                        "id": "demo"
+                    },
+                    "created": "2024-01-01T00:01:00Z",
+                    "target": {
+                        "type": "Video",
+                        "source": "https://www.youtube.com/embed/wZozOrFluiw",
+                        "selector": {
+                            "type": "FragmentSelector",
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "value": "t=5,30"
+                        }
+                    },
+                    "body": {
+                        "type": "TextualBody",
+                        "frametrail:type": "text",
+                        "format": "text/html",
+                        "value": "<p>This demo loads resources from both a <strong>local</strong> JSON file and a <strong>remote</strong> index on GitHub Pages. Open the resource manager to browse all merged resources.</p>",
+                        "frametrail:name": "About this demo",
+                        "frametrail:thumb": null,
+                        "frametrail:resourceId": null,
+                        "frametrail:attributes": {
+                            "text": "<p>This demo loads resources from both a <strong>local</strong> JSON file and a <strong>remote</strong> index on GitHub Pages. Open the resource manager to browse all merged resources.</p>"
+                        }
+                    },
+                    "frametrail:tags": []
+                },
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        {
+                            "frametrail": "http://frametrail.org/ns/"
+                        }
+                    ],
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "creator": {
+                        "nickname": "Demo",
+                        "type": "Person",
+                        "id": "demo"
+                    },
+                    "created": "2024-01-01T00:02:00Z",
+                    "target": {
+                        "type": "Video",
+                        "source": "https://www.youtube.com/embed/wZozOrFluiw",
+                        "selector": {
+                            "type": "FragmentSelector",
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "value": "t=100,150"
+                        }
+                    },
+                    "body": {
+                        "type": "Video",
+                        "frametrail:type": "youtube",
+                        "format": "text/html",
+                        "source": "https://www.youtube.com/embed/YE7VzlLtp-4",
+                        "frametrail:name": "Big Buck Bunny (from local index)",
+                        "frametrail:thumb": "",
+                        "frametrail:resourceId": "yt-bbb",
+                        "frametrail:attributes": {}
+                    },
+                    "frametrail:tags": []
+                }
+            ]
+        }
+    ]
+}

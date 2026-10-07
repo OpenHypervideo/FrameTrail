@@ -1,0 +1,260 @@
+{
+    "resources-increment": 19,
+    "resources": {
+        "1": {
+            "name": "Fixture lecture",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279060,
+            "description": null,
+            "src": "1_1790000000_fixture-lecture.mp4",
+            "type": "video",
+            "attributes": [],
+            "thumb": "1_1790000000_thumb_fixture-lecture.png"
+        },
+        "2": {
+            "name": "DNA double helix",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279120,
+            "description": null,
+            "src": "1_1790000060_dna-double-helix.png",
+            "type": "image",
+            "attributes": [],
+            "thumb": "1_1790000060_thumb_dna-double-helix.png",
+            "licenseType": "CC-BY-SA",
+            "licenseAttribution": "Example Author"
+        },
+        "3": {
+            "name": "Narration",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279180,
+            "description": null,
+            "src": "1_1790000120_narration.mp3",
+            "type": "audio",
+            "attributes": [],
+            "thumb": null
+        },
+        "4": {
+            "name": "Handout",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279240,
+            "description": null,
+            "src": "1_1790000180_handout.pdf",
+            "type": "pdf",
+            "attributes": [],
+            "thumb": "1_1790000180_thumb_handout.png"
+        },
+        "5": {
+            "name": "Zoom in on DNA",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279300,
+            "description": null,
+            "src": "https://www.youtube.com/embed/wZozOrFluiw",
+            "type": "youtube",
+            "attributes": [],
+            "thumb": "https://img.youtube.com/vi/wZozOrFluiw/hqdefault.jpg",
+            "licenseType": "CC-BY",
+            "licenseAttribution": "yourgenome.org, Genome Research Limited"
+        },
+        "6": {
+            "name": "A Vimeo video",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279360,
+            "description": null,
+            "src": "https://player.vimeo.com/video/76979871",
+            "type": "vimeo",
+            "attributes": {},
+            "thumb": "https://i.vimeocdn.com/video/452001751-640.jpg"
+        },
+        "7": {
+            "name": "A Wistia video",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279420,
+            "description": null,
+            "src": "https://fast.wistia.net/embed/iframe/e4a27b971d",
+            "type": "wistia",
+            "attributes": {},
+            "thumb": null
+        },
+        "8": {
+            "name": "A Loom recording",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279480,
+            "description": null,
+            "src": "https://www.loom.com/embed/0281766fa2d04bb788eaf19e65135184",
+            "type": "loom",
+            "attributes": {},
+            "thumb": null
+        },
+        "9": {
+            "name": "A Twitch video",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279540,
+            "description": null,
+            "src": "https://player.twitch.tv/?video=106400740&parent=localhost",
+            "type": "twitch",
+            "attributes": {},
+            "thumb": null
+        },
+        "10": {
+            "name": "A SoundCloud track",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279600,
+            "description": null,
+            "src": "https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fforss%2Fflickermood&auto_play=false&show_artwork=true",
+            "type": "soundcloud",
+            "attributes": {},
+            "thumb": null
+        },
+        "11": {
+            "name": "A Spotify track",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279660,
+            "description": null,
+            "src": "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",
+            "type": "spotify",
+            "attributes": {
+                "contentType": "track",
+                "contentId": "4uLU6hMCjMI75M1A2tKUQC"
+            },
+            "thumb": null
+        },
+        "12": {
+            "name": "FrameTrail",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279720,
+            "description": null,
+            "src": "https://frametrail.org/",
+            "type": "webpage",
+            "attributes": {
+                "embed": "allowed",
+                "description": "An open hypervideo environment."
+            },
+            "thumb": null
+        },
+        "13": {
+            "name": "DNA",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279780,
+            "description": null,
+            "src": "https://en.wikipedia.org/wiki/DNA",
+            "type": "wikipedia",
+            "attributes": {
+                "articleUrl": "https://en.wikipedia.org/wiki/DNA",
+                "wikiLang": "en",
+                "dir": "ltr",
+                "description": "Molecule that carries genetic information",
+                "extract": "Deoxyribonucleic acid (DNA) is a polymer composed of two polynucleotide chains that coil around each other to form a double helix.",
+                "extract_html": "<p><b>Deoxyribonucleic acid</b> (<b>DNA</b>) is a polymer composed of two polynucleotide chains that coil around each other to form a double helix.</p>"
+            },
+            "thumb": "1_1790000780_thumb_dna.png"
+        },
+        "14": {
+            "name": "Rosalind Franklin",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279840,
+            "description": null,
+            "src": "https://www.wikidata.org/wiki/Q7474",
+            "type": "entity",
+            "attributes": {
+                "text": "British chemist and X-ray crystallographer."
+            },
+            "thumb": null
+        },
+        "15": {
+            "name": "Cold Spring Harbor Laboratory",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279900,
+            "description": null,
+            "src": "",
+            "type": "location",
+            "attributes": {
+                "lat": 40.8604,
+                "lon": -73.4651,
+                "boundingBox": [
+                    "40.8504",
+                    "40.8704",
+                    "-73.4751",
+                    "-73.4551"
+                ],
+                "zoom": 14,
+                "tileStyle": "carto-light",
+                "marker": {
+                    "show": true,
+                    "color": "#e74c3c"
+                },
+                "controls": {
+                    "dragging": true,
+                    "scrollWheelZoom": false,
+                    "zoomControl": true
+                }
+            },
+            "thumb": null
+        },
+        "16": {
+            "name": "A Mastodon post",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791279960,
+            "description": null,
+            "src": "https://mastodon.social/@Mastodon/109275488113452146",
+            "type": "mastodon",
+            "attributes": {
+                "instance": "mastodon.social"
+            },
+            "thumb": null
+        },
+        "17": {
+            "name": "A CodePen",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791280020,
+            "description": null,
+            "src": "https://codepen.io/team/codepen/embed/PNaGbb?default-tab=result",
+            "type": "codepen",
+            "attributes": {},
+            "thumb": null
+        },
+        "18": {
+            "name": "A Figma file",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791280080,
+            "description": null,
+            "src": "https://www.figma.com/design/LKQ4FJ4bTnCSjedbRpk931/Sample-File",
+            "type": "figma",
+            "attributes": {},
+            "thumb": null
+        },
+        "19": {
+            "name": "A Bluesky post",
+            "creator": "demo",
+            "creatorId": "1",
+            "created": 1791280140,
+            "description": null,
+            "src": "https://bsky.app/profile/bsky.app/post/3l6oveex3ii2l",
+            "type": "urlpreview",
+            "attributes": {
+                "originalType": "bluesky",
+                "description": "A post on Bluesky.",
+                "embed": "allowed",
+                "html": "<blockquote class=\"bluesky-embed\"><p lang=\"en\">Hello from Bluesky.</p></blockquote>"
+            },
+            "thumb": null
+        }
+    }
+}

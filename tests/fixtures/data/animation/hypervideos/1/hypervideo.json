@@ -1,0 +1,90 @@
+{
+    "meta": {
+        "name": "Zoom in on DNA",
+        "description": "",
+        "thumb": "https://img.youtube.com/vi/wZozOrFluiw/hqdefault.jpg",
+        "posterFrame": null,
+        "creator": "demo",
+        "creatorId": "1",
+        "created": 1773150038269,
+        "lastchanged": 1789386189601
+    },
+    "config": {
+        "slidingMode": "adjust",
+        "slidingTrigger": "key",
+        "autohideControls": false,
+        "captionsVisible": false,
+        "clipTimeVisible": false,
+        "theme": "lagoon",
+        "layoutArea": {
+            "areaTop": [],
+            "areaBottom": [],
+            "areaLeft": [],
+            "areaRight": [
+                {
+                    "type": "Chapters",
+                    "name": "",
+                    "description": "",
+                    "cssClass": "",
+                    "html": "",
+                    "collectionFilter": {
+                        "tags": [],
+                        "types": [],
+                        "text": "",
+                        "users": []
+                    },
+                    "transcriptSource": "",
+                    "mode": "slide",
+                    "axis": "y",
+                    "contentSize": "small",
+                    "autoSync": false,
+                    "onClickContentItem": "",
+                    "icon": "",
+                    "showTranscriptSearch": false,
+                    "initClosed": false,
+                    "filterAspect": "creatorId",
+                    "zoomControls": false
+                },
+                {
+                    "name": "",
+                    "icon": "",
+                    "cssClass": "",
+                    "initClosed": false,
+                    "type": "Transcript",
+                    "contentSize": "large",
+                    "collectionFilter": {
+                        "tags": [],
+                        "types": [],
+                        "users": [],
+                        "text": ""
+                    },
+                    "onClickContentItem": "",
+                    "html": "",
+                    "transcriptSource": "",
+                    "showTranscriptSearch": false
+                }
+            ]
+        }
+    },
+    "clips": [
+        {
+            "resourceId": "1",
+            "src": "https://www.youtube.com/embed/wZozOrFluiw",
+            "duration": 0,
+            "start": 0,
+            "end": 0,
+            "in": 0,
+            "out": 0
+        }
+    ],
+    "globalEvents": {},
+    "customCSS": "",
+    "contents": [],
+    "chapters": [],
+    "subtitles": [
+        {
+            "src": "de.vtt",
+            "srclang": "de"
+        }
+    ]
+}

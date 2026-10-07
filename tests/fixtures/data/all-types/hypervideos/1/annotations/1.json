@@ -1,0 +1,866 @@
+[
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:27.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [
+            "demo"
+        ],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=2,6"
+            }
+        },
+        "body": {
+            "type": "TextualBody",
+            "frametrail:type": "text",
+            "format": "text/html",
+            "value": "",
+            "frametrail:name": "Note",
+            "frametrail:attributes": {
+                "text": "&lt;p&gt;An annotation with &lt;strong&gt;rich text&lt;/strong&gt;.&lt;/p&gt;"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:28.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=5,9"
+            }
+        },
+        "body": {
+            "frametrail:type": "html",
+            "source": "",
+            "frametrail:name": "HTML note",
+            "frametrail:attributes": {
+                "text": "<p>Raw <em>HTML</em>.</p>"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:29.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=8,12"
+            }
+        },
+        "body": {
+            "type": "TextualBody",
+            "frametrail:type": "quiz",
+            "format": "text/html",
+            "value": "",
+            "frametrail:name": "Rating",
+            "frametrail:attributes": {
+                "questionType": "rating",
+                "question": "How clear was this part?",
+                "ratingScale": 5,
+                "onAnswered": {
+                    "showText": "Thanks!",
+                    "resumePlayback": true
+                }
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:30.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=11,15"
+            }
+        },
+        "body": {
+            "type": "Image",
+            "frametrail:type": "image",
+            "format": "image/png",
+            "source": "1_1790000060_dna-double-helix.png",
+            "frametrail:name": "DNA double helix",
+            "frametrail:thumb": "1_1790000060_thumb_dna-double-helix.png",
+            "frametrail:licenseType": "CC-BY-SA",
+            "frametrail:licenseAttribution": "Example Author",
+            "frametrail:resourceId": "2",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:31.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=14,18"
+            }
+        },
+        "body": {
+            "type": "Video",
+            "frametrail:type": "video",
+            "format": "video/mp4",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "frametrail:name": "Fixture lecture",
+            "frametrail:thumb": "1_1790000000_thumb_fixture-lecture.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "selector": {
+                "type": "FragmentSelector",
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "value": "t=60,75"
+            },
+            "frametrail:resourceId": "1",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:32.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [
+            "demo"
+        ],
+        "frametrail:uri": null,
+        "frametrail:graphdata": "0.1 0.4 0.8 0.6 0.3 0.2",
+        "frametrail:graphdatatype": "soundwave",
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=17,21"
+            }
+        },
+        "body": {
+            "frametrail:type": "audio",
+            "source": "1_1790000120_narration.mp3",
+            "frametrail:name": "Narration",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "3",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:33.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=20,24"
+            }
+        },
+        "body": {
+            "frametrail:type": "pdf",
+            "source": "1_1790000180_handout.pdf",
+            "frametrail:name": "Handout",
+            "frametrail:thumb": "1_1790000180_thumb_handout.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "4",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:34.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=23,27"
+            }
+        },
+        "body": {
+            "type": "Video",
+            "frametrail:type": "youtube",
+            "format": "text/html",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "frametrail:name": "Zoom in on DNA",
+            "frametrail:thumb": "https://img.youtube.com/vi/wZozOrFluiw/hqdefault.jpg",
+            "frametrail:licenseType": "CC-BY",
+            "frametrail:licenseAttribution": "yourgenome.org, Genome Research Limited",
+            "frametrail:resourceId": "5",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:35.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=26,30"
+            }
+        },
+        "body": {
+            "type": "Video",
+            "frametrail:type": "vimeo",
+            "format": "text/html",
+            "source": "https://player.vimeo.com/video/76979871",
+            "frametrail:name": "A Vimeo video",
+            "frametrail:thumb": "https://i.vimeocdn.com/video/452001751-640.jpg",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "6",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:36.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=29,33"
+            }
+        },
+        "body": {
+            "type": "Video",
+            "frametrail:type": "wistia",
+            "format": "text/html",
+            "source": "https://fast.wistia.net/embed/iframe/e4a27b971d",
+            "frametrail:name": "A Wistia video",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "7",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:37.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [
+            "demo"
+        ],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=32,36"
+            }
+        },
+        "body": {
+            "type": "Video",
+            "frametrail:type": "loom",
+            "format": "text/html",
+            "source": "https://www.loom.com/embed/0281766fa2d04bb788eaf19e65135184",
+            "frametrail:name": "A Loom recording",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "8",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:38.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=35,39"
+            }
+        },
+        "body": {
+            "type": "Video",
+            "frametrail:type": "twitch",
+            "format": "text/html",
+            "source": "https://player.twitch.tv/?video=106400740&parent=localhost",
+            "frametrail:name": "A Twitch video",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "9",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:39.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=38,42"
+            }
+        },
+        "body": {
+            "type": "Sound",
+            "frametrail:type": "soundcloud",
+            "format": "text/html",
+            "source": "https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fforss%2Fflickermood&auto_play=false&show_artwork=true",
+            "frametrail:name": "A SoundCloud track",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "10",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:40.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=41,45"
+            }
+        },
+        "body": {
+            "type": "Sound",
+            "frametrail:type": "spotify",
+            "format": "text/html",
+            "source": "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",
+            "frametrail:name": "A Spotify track",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "11",
+            "frametrail:attributes": {
+                "contentType": "track",
+                "contentId": "4uLU6hMCjMI75M1A2tKUQC"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:41.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=44,48"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "webpage",
+            "format": "text/html",
+            "value": "https://frametrail.org/",
+            "frametrail:name": "FrameTrail",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "12",
+            "frametrail:attributes": {
+                "embed": "allowed",
+                "description": "An open hypervideo environment."
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:42.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [
+            "demo"
+        ],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=47,51"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/DNA",
+            "frametrail:name": "DNA",
+            "frametrail:thumb": "1_1790000780_thumb_dna.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "13",
+            "frametrail:attributes": {
+                "articleUrl": "https://en.wikipedia.org/wiki/DNA",
+                "wikiLang": "en",
+                "dir": "ltr",
+                "description": "Molecule that carries genetic information",
+                "extract": "Deoxyribonucleic acid (DNA) is a polymer composed of two polynucleotide chains that coil around each other to form a double helix.",
+                "extract_html": "<p><b>Deoxyribonucleic acid</b> (<b>DNA</b>) is a polymer composed of two polynucleotide chains that coil around each other to form a double helix.</p>"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:43.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": "https://www.wikidata.org/wiki/Q7474",
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=50,54"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "entity",
+            "format": "text/html",
+            "value": "https://www.wikidata.org/wiki/Q7474",
+            "frametrail:name": "Rosalind Franklin",
+            "frametrail:thumb": null,
+            "frametrail:attributes": {
+                "text": "British chemist and X-ray crystallographer."
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:44.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=53,57"
+            }
+        },
+        "body": {
+            "type": "Dataset",
+            "frametrail:type": "location",
+            "format": "application/x-frametrail-location",
+            "source": "",
+            "frametrail:name": "Cold Spring Harbor Laboratory",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "15",
+            "frametrail:attributes": {
+                "lat": 40.8604,
+                "lon": -73.4651,
+                "boundingBox": [
+                    "40.8504",
+                    "40.8704",
+                    "-73.4751",
+                    "-73.4551"
+                ],
+                "zoom": 14,
+                "tileStyle": "carto-light",
+                "marker": {
+                    "show": true,
+                    "color": "#e74c3c"
+                },
+                "controls": {
+                    "dragging": true,
+                    "scrollWheelZoom": false,
+                    "zoomControl": true
+                }
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:45.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=56,60"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "mastodon",
+            "format": "text/html",
+            "source": "https://mastodon.social/@Mastodon/109275488113452146",
+            "frametrail:name": "A Mastodon post",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "16",
+            "frametrail:attributes": {
+                "instance": "mastodon.social"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:46.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=59,63"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "codepen",
+            "format": "text/html",
+            "source": "https://codepen.io/team/codepen/embed/PNaGbb?default-tab=result",
+            "frametrail:name": "A CodePen",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "17",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:47.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [
+            "demo"
+        ],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=62,66"
+            }
+        },
+        "body": {
+            "type": "Image",
+            "frametrail:type": "figma",
+            "format": "text/html",
+            "source": "https://www.figma.com/design/LKQ4FJ4bTnCSjedbRpk931/Sample-File",
+            "frametrail:name": "A Figma file",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "18",
+            "frametrail:attributes": {}
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:48.137Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=65,69"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "urlpreview",
+            "format": "text/html",
+            "source": "https://bsky.app/profile/bsky.app/post/3l6oveex3ii2l",
+            "frametrail:name": "A Bluesky post",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "19",
+            "frametrail:attributes": {
+                "originalType": "bluesky",
+                "description": "A post on Bluesky.",
+                "embed": "allowed",
+                "html": "<blockquote class=\"bluesky-embed\"><p lang=\"en\">Hello from Bluesky.</p></blockquote>"
+            }
+        }
+    }
+]

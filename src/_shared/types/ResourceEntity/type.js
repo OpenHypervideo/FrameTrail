@@ -42,7 +42,14 @@ FrameTrail.defineType(
                  */
                 renderContent: function() {
 
-                    var iFrameSource = (this.resourceData.src.indexOf('//') != -1) ? this.resourceData.uri.replace(/^\/\//, 'https://') : FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.uri);
+                    // Annotations carry the entity's IRI as uri (frametrail:uri); overlays
+                    // and library resources only have src. Either stands in for the other.
+                    var uri = this.resourceData.uri || this.resourceData.src || '',
+                        src = this.resourceData.src || uri;
+
+                    var iFrameSource = !uri
+                        ? 'about:blank'
+                        : (src.indexOf('//') != -1) ? uri.replace(/^\/\//, 'https://') : FrameTrail.module('RouteNavigation').getResourceURL(uri);
 
                     var resourceDetail = document.createElement('div');
                     resourceDetail.className = 'resourceDetail';

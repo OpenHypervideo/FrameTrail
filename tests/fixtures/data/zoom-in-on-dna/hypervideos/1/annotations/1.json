@@ -1,0 +1,915 @@
+[
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:40:42 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=6.720072551390568,10.855501813784763"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Organ_(biology)",
+            "frametrail:name": "Organ (biology)",
+            "frametrail:thumb": "1_1773225637_thumb_organ-biology.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "20",
+            "frametrail:attributes": {
+                "extract": "In a multicellular organism, an organ is a collection of tissues joined in a structural unit to serve a common function. In the hierarchy of life, an organ lies between tissue and an organ system. Tissues are formed from same type cells to act together in a function. Tissues of different types combine to form an organ which has a specific function. The intestinal wall for example is formed by epithelial tissue and smooth muscle tissue. Two or more organs working together in the execution of a specific body function form an organ system, also called a biological system or body system.",
+                "extract_html": "<p>In a multicellular organism, an <b>organ</b> is a collection of tissues joined in a structural unit to serve a common function. In the hierarchy of life, an organ lies between tissue and an organ system. Tissues are formed from same type cells to act together in a function. Tissues of different types combine to form an organ which has a specific function. The intestinal wall for example is formed by epithelial tissue and smooth muscle tissue. Two or more organs working together in the execution of a specific body function form an organ system, also called a biological system or body system.</p>",
+                "description": "Collection of tissues with similar functions",
+                "articleUrl": "https://en.wikipedia.org/wiki/Organ_(biology)",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:41:46 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=9.408101571946796,12.044437726723096"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Circulatory_system",
+            "frametrail:name": "Circulatory system",
+            "frametrail:thumb": "1_1773225703_thumb_circulatory-system.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "21",
+            "frametrail:attributes": {
+                "extract": "In vertebrates, the circulatory system is a system of organs that includes the heart, blood vessels, and blood which is circulated throughout the body. It includes the cardiovascular system, or vascular system, that consists of the heart and blood vessels. The circulatory system has two divisions, a systemic circulation or circuit, and a pulmonary circulation or circuit. Some sources use the terms cardiovascular system and vascular system interchangeably with circulatory system.",
+                "extract_html": "<p>In vertebrates, the <b>circulatory system</b> is a system of organs that includes the heart, blood vessels, and blood which is circulated throughout the body. It includes the cardiovascular system, or vascular system, that consists of the heart and blood vessels. The circulatory system has two divisions, a systemic circulation or circuit, and a pulmonary circulation or circuit. Some sources use the terms <i>cardiovascular system</i> and <i>vascular system</i> interchangeably with <i>circulatory system</i>.</p>",
+                "description": "Organ system for circulating blood in animals",
+                "articleUrl": "https://en.wikipedia.org/wiki/Circulatory_system",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:42:44 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=12.199516324062877,14.939238210399031"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Human_digestive_system",
+            "frametrail:name": "Human digestive system",
+            "frametrail:thumb": "1_1773225760_thumb_human-digestive-system.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "22",
+            "frametrail:attributes": {
+                "extract": "The human digestive system consists of the gastrointestinal tract plus the accessory organs of digestion. Digestion involves the breakdown of food into smaller and smaller components, until they can be absorbed and assimilated into the body. The process of digestion has three stages: the cephalic phase, the gastric phase, and the intestinal phase.",
+                "extract_html": "<p>The <b>human digestive system</b> consists of the gastrointestinal tract plus the accessory organs of digestion. Digestion involves the breakdown of food into smaller and smaller components, until they can be absorbed and assimilated into the body. The process of digestion has three stages: the cephalic phase, the gastric phase, and the intestinal phase.</p>",
+                "description": "Digestive system in humans",
+                "articleUrl": "https://en.wikipedia.org/wiki/Human_digestive_system",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:44:20 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=19.85006045949214,24.08887545344619"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Liver",
+            "frametrail:name": "Liver",
+            "frametrail:thumb": "1_1773225856_thumb_liver.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "23",
+            "frametrail:attributes": {
+                "extract": "The liver is a major metabolic organ exclusively found in vertebrates, which performs many essential biological functions such as detoxification of the organism, and the synthesis of various proteins and various other biochemicals necessary for digestion and growth. In humans, it is located in the right upper quadrant of the abdomen, below the diaphragm and mostly shielded by the lower right rib cage. Its other metabolic roles include carbohydrate metabolism, the production of a number of hormones, conversion and storage of nutrients such as glucose and glycogen, and the decomposition of red blood cells. Anatomical and medical terminology often use the prefix hepat- from ἡπατο-, from the Greek word for liver, such as hepatology, and hepatitis.",
+                "extract_html": "<p>The <b>liver</b> is a major metabolic organ exclusively found in vertebrates, which performs many essential biological functions such as detoxification of the organism, and the synthesis of various proteins and various other biochemicals necessary for digestion and growth. In humans, it is located in the right upper quadrant of the abdomen, below the diaphragm and mostly shielded by the lower right rib cage. Its other metabolic roles include carbohydrate metabolism, the production of a number of hormones, conversion and storage of nutrients such as glucose and glycogen, and the decomposition of red blood cells. Anatomical and medical terminology often use the prefix <span><i>hepat-</i></span> from ἡπατο-, from the Greek word for liver, such as hepatology, and hepatitis.</p>",
+                "description": "Vertebrate organ involved in metabolism",
+                "articleUrl": "https://en.wikipedia.org/wiki/Liver",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:45:47 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=26.88029020556227,33.96221281741233"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Tissue_(biology)",
+            "frametrail:name": "Tissue (biology)",
+            "frametrail:thumb": "1_1773225944_thumb_tissue-biology.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "24",
+            "frametrail:attributes": {
+                "extract": "In biology, tissue is an assembly of similar cells and their extracellular matrix from the same embryonic origin that together carry out a specific function. Tissues occupy a biological organizational level between cells and a complete organ. Accordingly, organs are formed by the functional grouping together of multiple tissues.",
+                "extract_html": "<p>In biology, <b>tissue</b> is an assembly of similar cells and their extracellular matrix from the same embryonic origin that together carry out a specific function. Tissues occupy a biological organizational level between cells and a complete organ. Accordingly, organs are formed by the functional grouping together of multiple tissues.</p>",
+                "description": "Group of similar cells performing a specific function",
+                "articleUrl": "https://en.wikipedia.org/wiki/Tissue_(biology)",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:46:57 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=34,49"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Cell_(biology)",
+            "frametrail:name": "Cell (biology)",
+            "frametrail:thumb": "1_1773226005_thumb_cell-biology.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "25",
+            "frametrail:attributes": {
+                "extract": "The cell is the basic structural and functional unit of all forms of life or organisms. The term comes from the Latin word cellula meaning 'small room'. A biological cell basically consists of a semipermeable cell membrane enclosing cytoplasm that contains genetic material. Most cells are only visible under a microscope. Except for highly-differentiated cell types most cells are capable of replication, and protein synthesis. Some types of cell are motile. Cells emerged on Earth about four billion years ago.",
+                "extract_html": "<p>The <b>cell</b> is the basic structural and functional unit of all forms of life or organisms. The term comes from the Latin word <span><i lang=\"la\">cellula</i></span> meaning 'small room'. A biological cell basically consists of a semipermeable cell membrane enclosing cytoplasm that contains genetic material. Most cells are only visible under a microscope. Except for highly-differentiated cell types most cells are capable of replication, and protein synthesis. Some types of cell are motile. Cells emerged on Earth about four billion years ago.</p>",
+                "description": "Basic unit of life forms",
+                "articleUrl": "https://en.wikipedia.org/wiki/Cell_(biology)",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:48:03 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=49.314993954050784,54.484280532043535"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Organelle",
+            "frametrail:name": "Organelle",
+            "frametrail:thumb": null,
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "26",
+            "frametrail:attributes": {
+                "extract": "An organelle is a specialized subunit, within a biological cell, that has a specific function. The name organelle comes from the idea that these structures are parts of cells, as organs are to the body, hence organelle, the suffix -elle being a diminutive. Organelles are either separately enclosed within their own lipid bilayers or are spatially distinct functional units without a surrounding lipid bilayer. Although most organelles are functional units within cells, some functional units that extend outside of cells are often termed organelles, such as cilia, the flagellum and archaellum, and the trichocyst.",
+                "extract_html": "<p>An <b>organelle</b> is a specialized subunit, within a biological cell, that has a specific function. The name <i>organelle</i> comes from the idea that these structures are parts of cells, as organs are to the body, hence <i>organelle,</i> the suffix <i>-elle</i> being a diminutive. Organelles are either separately enclosed within their own lipid bilayers or are spatially distinct functional units without a surrounding lipid bilayer. Although most organelles are functional units within cells, some functional units that extend outside of cells are often termed organelles, such as cilia, the flagellum and archaellum, and the trichocyst.</p>",
+                "description": "Specialized subunit within a cell",
+                "articleUrl": "https://en.wikipedia.org/wiki/Organelle",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:49:02 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=52.623337363966144,55.13044135429262"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Cell_membrane",
+            "frametrail:name": "Cell membrane",
+            "frametrail:thumb": "1_1773226124_thumb_cell-membrane.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "27",
+            "frametrail:attributes": {
+                "extract": "The cell membrane is a semipermeable biological membrane that separates and protects the interior of a cell from the outside environment. The cell membrane is a lipid bilayer, usually consisting of phospholipids and glycolipids; eukaryotes and some archaea typically have sterols interspersed between them as well, maintaining appropriate membrane fluidity at various temperatures. The membrane also contains membrane proteins, including integral proteins that span the membrane and serve as transporters, and peripheral proteins that attach to the surface of the cell membrane, acting as enzymes to facilitate interaction with the cell's environment. Glycolipids embedded in the outer lipid layer serve a similar purpose.",
+                "extract_html": "<p>The <b>cell membrane</b> is a semipermeable biological membrane that separates and protects the interior of a cell from the outside environment. The cell membrane is a lipid bilayer, usually consisting of phospholipids and glycolipids; eukaryotes and some archaea typically have sterols interspersed between them as well, maintaining appropriate membrane fluidity at various temperatures. The membrane also contains membrane proteins, including integral proteins that span the membrane and serve as transporters, and peripheral proteins that attach to the surface of the cell membrane, acting as enzymes to facilitate interaction with the cell's environment. Glycolipids embedded in the outer lipid layer serve a similar purpose.</p>",
+                "description": "Biological membrane that separates the interior of a cell from its outside environment",
+                "articleUrl": "https://en.wikipedia.org/wiki/Cell_membrane",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:50:02 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=55.41475211608222,58.25785973397823"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Mitochondrion",
+            "frametrail:name": "Mitochondrion",
+            "frametrail:thumb": "1_1773226195_thumb_mitochondrion.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "28",
+            "frametrail:attributes": {
+                "extract": "A mitochondrion is an organelle found in the cells of most eukaryotes, such as animals, plants and fungi. Mitochondria have a double membrane structure and use aerobic respiration to generate adenosine triphosphate (ATP), which is used throughout the cell as a source of chemical energy. They were discovered by Albert von Kölliker in 1857 in the voluntary muscles of insects. The term mitochondrion, meaning a thread-like granule, was coined by Carl Benda in 1898. The mitochondrion is popularly nicknamed the \"powerhouse of the cell\", a phrase popularized by Philip Siekevitz in a 1957 Scientific American article of the same name.",
+                "extract_html": "<p>A <b>mitochondrion</b> is an organelle found in the cells of most eukaryotes, such as animals, plants and fungi. Mitochondria have a double membrane structure and use aerobic respiration to generate adenosine triphosphate (ATP), which is used throughout the cell as a source of chemical energy. They were discovered by Albert von Kölliker in 1857 in the voluntary muscles of insects. The term <i>mitochondrion</i>, meaning a thread-like granule, was coined by Carl Benda in 1898. The mitochondrion is popularly nicknamed the \"powerhouse of the cell\", a phrase popularized by Philip Siekevitz in a 1957 <i>Scientific American</i> article of the same name.</p>",
+                "description": "Organelle in eukaryotic cells responsible for respiration",
+                "articleUrl": "https://en.wikipedia.org/wiki/Mitochondrion",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:51:53 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=58.41293833131802,62.96191051995163"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Cell_nucleus",
+            "frametrail:name": "Cell nucleus",
+            "frametrail:thumb": "1_1773226308_thumb_cell-nucleus.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "29",
+            "frametrail:attributes": {
+                "extract": "The cell nucleus is a membrane-bound organelle found in eukaryotic cells. Eukaryotic cells usually have a single nucleus, but a few cell types, such as mammalian red blood cells, have no nuclei, and a few others including osteoclasts have many. The main structures making up the nucleus are the nuclear envelope, a double membrane that encloses the entire organelle and isolates its contents from the cellular cytoplasm; and the nuclear matrix, a network within the nucleus that adds mechanical support.",
+                "extract_html": "<p>The <b>cell nucleus</b> is a membrane-bound organelle found in eukaryotic cells. Eukaryotic cells usually have a single nucleus, but a few cell types, such as mammalian red blood cells, have <span class=\"mw-selflink-fragment\">no nuclei</span>, and a few others including osteoclasts have many. The main structures making up the nucleus are the nuclear envelope, a double membrane that encloses the entire organelle and isolates its contents from the cellular cytoplasm; and the nuclear matrix, a network within the nucleus that adds mechanical support.</p>",
+                "description": "Eukaryotic membrane-bounded organelle containing DNA",
+                "articleUrl": "https://en.wikipedia.org/wiki/Cell_nucleus",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:54:45 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=34,49"
+            }
+        },
+        "body": {
+            "frametrail:type": "urlpreview",
+            "source": "https://www.yourgenome.org/theme/what-is-a-cell/",
+            "frametrail:name": "What is a cell?",
+            "frametrail:thumb": "1_1773149589_thumb_what-is-a-cell.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "14",
+            "frametrail:attributes": {
+                "description": "All living things are made of cells. They are the basic building blocks of life. The human body is composed of trillions of cells, all with their own specialised function."
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:57:38 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=69.73367593712213,83.30305320435309"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Chromosome",
+            "frametrail:name": "Chromosome",
+            "frametrail:thumb": "1_1773226654_thumb_chromosome.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "30",
+            "frametrail:attributes": {
+                "extract": "A chromosome is a package of DNA containing part or all of the genetic material of an organism. In most chromosomes, the very long thin DNA fibers are coated with nucleosome-forming packaging proteins; in eukaryotic cells, the most important of these proteins are the histones. Aided by chaperone proteins, the histones bind to and condense the DNA molecule to maintain its integrity. These eukaryotic chromosomes display a complex three-dimensional structure that has a significant role in transcriptional regulation.",
+                "extract_html": "<p>A <b>chromosome</b> is a package of DNA containing part or all of the genetic material of an organism. In most chromosomes, the very long thin DNA fibers are coated with nucleosome-forming packaging proteins; in eukaryotic cells, the most important of these proteins are the histones. Aided by chaperone proteins, the histones bind to and condense the DNA molecule to maintain its integrity. These eukaryotic chromosomes display a complex three-dimensional structure that has a significant role in transcriptional regulation.</p>",
+                "description": "DNA molecule containing genetic material of a cell",
+                "articleUrl": "https://en.wikipedia.org/wiki/Chromosome",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:58:14 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=83.74244256348246,105.50513905683191"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/DNA",
+            "frametrail:name": "DNA",
+            "frametrail:thumb": "1_1773149780_thumb_dna.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "16",
+            "frametrail:attributes": {
+                "extract": "Deoxyribonucleic acid is a polymer composed of two polynucleotide chains that coil around each other to form a double helix. The polymer carries genetic instructions for the development, functioning, growth and reproduction of all known organisms and many viruses. DNA and ribonucleic acid (RNA) are nucleic acids. Alongside proteins, lipids and complex carbohydrates (polysaccharides), nucleic acids are one of the four major types of macromolecules that are essential for all known forms of life.",
+                "extract_html": "<p><b>Deoxyribonucleic acid</b> is a polymer composed of two polynucleotide chains that coil around each other to form a double helix. The polymer carries genetic instructions for the development, functioning, growth and reproduction of all known organisms and many viruses. DNA and ribonucleic acid (RNA) are nucleic acids. Alongside proteins, lipids and complex carbohydrates (polysaccharides), nucleic acids are one of the four major types of macromolecules that are essential for all known forms of life.</p>",
+                "description": "Molecule that carries genetic information",
+                "articleUrl": "https://en.wikipedia.org/wiki/DNA",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 11:59:24 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=93.79670495767836,98.73337363966142"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Histone",
+            "frametrail:name": "Histone",
+            "frametrail:thumb": "1_1773226759_thumb_histone.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "31",
+            "frametrail:attributes": {
+                "extract": "In biology, histones are highly-basic proteins abundant in lysine and arginine residues that are found in eukaryotic cell nuclei and in most Archaeal phyla. They act as spools around which DNA winds to create structural units called nucleosomes. Nucleosomes in turn are wrapped into 30-nanometer fibers that form tightly packed chromatin. Histones prevent DNA from becoming tangled and protect it from DNA damage. In addition, histones play important roles in gene regulation and DNA replication. Without histones, unwound DNA in chromosomes would be very long. For example, each human cell has about 1.8 meters of DNA if completely stretched out; however, when wound about histones, this length is reduced to about 9 micrometers (0.009 mm) of 30 nm diameter chromatin fibers.",
+                "extract_html": "<p>In biology, <b>histones</b> are highly-basic proteins abundant in lysine and arginine residues that are found in eukaryotic cell nuclei and in most Archaeal phyla. They act as spools around which DNA winds to create structural units called nucleosomes. Nucleosomes in turn are wrapped into 30-nanometer fibers that form tightly packed chromatin. Histones prevent DNA from becoming tangled and protect it from DNA damage. In addition, histones play important roles in gene regulation and DNA replication. Without histones, unwound DNA in chromosomes would be very long. For example, each human cell has about 1.8 meters of DNA if completely stretched out; however, when wound about histones, this length is reduced to about 9 micrometers (0.009 mm) of 30 nm diameter chromatin fibers.</p>",
+                "description": "Protein family around which DNA winds to form nucleosomes",
+                "articleUrl": "https://en.wikipedia.org/wiki/Histone",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 12:01:18 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=107.82038834951457,108.94409347583561"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Adenine",
+            "frametrail:name": "Adenine",
+            "frametrail:thumb": "1_1773226874_thumb_adenine.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "32",
+            "frametrail:attributes": {
+                "extract": "Adenine is a purine nucleotide base that is found in DNA, RNA, and ATP. Usually a white crystalline subtance. The shape of adenine is complementary and pairs to either thymine in DNA or uracil in RNA. In cells adenine, as an independent molecule, is rare. It is almost always covalently bound to become a part of a larger biomolecule.",
+                "extract_html": "<p><b>Adenine</b> is a purine nucleotide base that is found in DNA, RNA, and ATP. Usually a white crystalline subtance. The shape of adenine is complementary and pairs to either thymine in DNA or uracil in RNA. In cells adenine, as an independent molecule, is rare. It is almost always covalently bound to become a part of a larger biomolecule.</p>",
+                "description": "Chemical compound in DNA and RNA",
+                "articleUrl": "https://en.wikipedia.org/wiki/Adenine",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 12:04:49 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=108.98867313915856,109.85873936526598"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Cytosine",
+            "frametrail:name": "Cytosine",
+            "frametrail:thumb": "1_1773227084_thumb_cytosine.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "33",
+            "frametrail:attributes": {
+                "extract": "Cytosine is one of the four nucleotide bases found in DNA and RNA, along with adenine, guanine, and thymine. It is a pyrimidine derivative, with a heterocyclic aromatic ring and two substituents attached. The nucleoside of cytosine is cytidine. In Watson–Crick base pairing, it forms three hydrogen bonds with guanine.",
+                "extract_html": "<p><b>Cytosine</b> is one of the four nucleotide bases found in DNA and RNA, along with adenine, guanine, and thymine. It is a pyrimidine derivative, with a heterocyclic aromatic ring and two substituents attached. The nucleoside of cytosine is cytidine. In Watson–Crick base pairing, it forms three hydrogen bonds with guanine.</p>",
+                "description": "Chemical compound in nucleic acids",
+                "articleUrl": "https://en.wikipedia.org/wiki/Cytosine",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 12:05:18 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=109.94174757281553,110.50744411628993"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Guanine",
+            "frametrail:name": "Guanine",
+            "frametrail:thumb": "1_1773227115_thumb_guanine.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "34",
+            "frametrail:attributes": {
+                "extract": "Guanine is one of the four main nucleotide bases found in the nucleic acids DNA and RNA, the others being adenine, cytosine, and thymine. In DNA, guanine is paired with cytosine. The guanine nucleoside is called guanosine.",
+                "extract_html": "<p><b>Guanine</b> is one of the four main nucleotide bases found in the nucleic acids DNA and RNA, the others being adenine, cytosine, and thymine. In DNA, guanine is paired with cytosine. The guanine nucleoside is called guanosine.</p>",
+                "description": "Chemical compound of DNA and RNA",
+                "articleUrl": "https://en.wikipedia.org/wiki/Guanine",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 12:05:39 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=110.62273276904475,116.58033555018139"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Thymine",
+            "frametrail:name": "Thymine",
+            "frametrail:thumb": "1_1773227135_thumb_thymine.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "35",
+            "frametrail:attributes": {
+                "extract": "Thymine is one of the four nucleotide bases in the nucleic acid of DNA that are represented by the letters G–C–A–T. The others are adenine, guanine, and cytosine. Thymine is also known as 5-methyluracil, a pyrimidine nucleobase. In RNA, thymine is replaced by the nucleobase uracil. Thymine was first isolated in 1893 by Albrecht Kossel and Albert Neumann from calf thymus glands, hence its name.",
+                "extract_html": "<p><b>Thymine</b> is one of the four nucleotide bases in the nucleic acid of DNA that are represented by the letters G–C–A–T. The others are adenine, guanine, and cytosine. Thymine is also known as <b>5-methyluracil,</b> a pyrimidine nucleobase. In RNA, thymine is replaced by the nucleobase uracil. Thymine was first isolated in 1893 by Albrecht Kossel and Albert Neumann from calf thymus glands, hence its name.</p>",
+                "description": "Chemical compound of DNA",
+                "articleUrl": "https://en.wikipedia.org/wiki/Thymine",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 12:11:14 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=129.20631801692866,135.18976723095528"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Gene",
+            "frametrail:name": "Gene",
+            "frametrail:thumb": "1_1773227470_thumb_gene.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "36",
+            "frametrail:attributes": {
+                "extract": "In biology, the word gene has two meanings. The Mendelian gene is a basic unit of heredity. The molecular gene is a sequence of nucleotides in DNA that is transcribed to produce RNA. There are two types of molecular genes: protein-coding genes and non-coding genes. During gene expression, DNA is first copied into RNA. RNA can be directly functional or be the intermediate template for the synthesis of a protein.",
+                "extract_html": "<p>In biology, the word <b>gene</b> has two meanings. The Mendelian gene is a basic unit of heredity. The molecular gene is a sequence of nucleotides in DNA that is transcribed to produce RNA. There are two types of molecular genes: protein-coding genes and non-coding genes. During gene expression, DNA is first copied into RNA. RNA can be directly functional or be the intermediate template for the synthesis of a protein.</p>",
+                "description": "Sequence of DNA that determines traits in an organism",
+                "articleUrl": "https://en.wikipedia.org/wiki/Gene",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Wed Mar 11 2026 12:12:24 GMT+0100 (Central European Standard Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=140.60459492140265,165.67563482466747"
+            }
+        },
+        "body": {
+            "type": "Text",
+            "frametrail:type": "wikipedia",
+            "format": "text/html",
+            "value": "https://en.wikipedia.org/wiki/Genome",
+            "frametrail:name": "Genome",
+            "frametrail:thumb": "1_1773227539_thumb_genome.png",
+            "frametrail:licenseType": null,
+            "frametrail:licenseAttribution": null,
+            "frametrail:resourceId": "37",
+            "frametrail:attributes": {
+                "extract": "A genome is all the genetic information of an organism or cell. It consists of nucleotide sequences of DNA. The nuclear genome includes protein-coding genes and non-coding genes, other functional regions of the genome such as regulatory sequences, and often a substantial fraction of junk DNA with no evident function. Almost all eukaryotes have mitochondria and a small mitochondrial genome. Algae and plants also contain chloroplasts with a chloroplast genome.",
+                "extract_html": "<p>A <b>genome</b> is all the genetic information of an organism or cell. It consists of nucleotide sequences of DNA. The nuclear genome includes protein-coding genes and non-coding genes, other functional regions of the genome such as regulatory sequences, and often a substantial fraction of junk DNA with no evident function. Almost all eukaryotes have mitochondria and a small mitochondrial genome. Algae and plants also contain chloroplasts with a chloroplast genome.</p>",
+                "description": "All genetic material of an organism",
+                "articleUrl": "https://en.wikipedia.org/wiki/Genome",
+                "wikiLang": "en",
+                "dir": "ltr"
+            }
+        }
+    }
+]

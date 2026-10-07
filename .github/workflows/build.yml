@@ -7,6 +7,22 @@ on:
     branches: [main, develop]
 
 jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # Schemas, fixtures, serializer round trips (see tests/README.md); no dependencies
+      - name: Run tests
+        run: node --test-reporter=spec tests/run-js.mjs
+
   build:
     runs-on: ubuntu-latest
 

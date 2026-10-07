@@ -1,0 +1,1743 @@
+{
+    "description": "Overlays, code snippets and annotations that must be rejected, with the errors FrameTrailSchema reports.",
+    "cases": [
+        {
+            "name": "keyframe xywh with three values",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:04.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "1_1790000000_fixture-lecture.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=12,20&xywh=percent:20,30,54,38",
+                        "frametrail:keyframes": [
+                            {
+                                "t": 12,
+                                "xywh": [
+                                    20,
+                                    40,
+                                    4
+                                ]
+                            },
+                            {
+                                "t": 15,
+                                "xywh": [
+                                    55,
+                                    30,
+                                    4,
+                                    8
+                                ],
+                                "ease": "easeInOut"
+                            },
+                            {
+                                "t": 18,
+                                "xywh": [
+                                    70,
+                                    60,
+                                    4,
+                                    8
+                                ],
+                                "ease": "hold"
+                            },
+                            {
+                                "t": 20,
+                                "xywh": [
+                                    70,
+                                    60,
+                                    4,
+                                    8
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "body": {
+                    "type": "Dataset",
+                    "frametrail:type": "cursor",
+                    "format": "application/x-frametrail-cursor",
+                    "frametrail:name": "Cursor",
+                    "frametrail:attributes": {
+                        "style": "arrow",
+                        "color": "#ffffff",
+                        "outlineColor": "#111111",
+                        "clicks": [
+                            1.5,
+                            4
+                        ]
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/target/selector/frametrail:keyframes/0/xywh",
+                    "message": "must have at least 4 items"
+                }
+            ]
+        },
+        {
+            "name": "unknown keyframe ease",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:04.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "1_1790000000_fixture-lecture.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=12,20&xywh=percent:20,30,54,38",
+                        "frametrail:keyframes": [
+                            {
+                                "t": 12,
+                                "xywh": [
+                                    20,
+                                    40,
+                                    4,
+                                    8
+                                ]
+                            },
+                            {
+                                "t": 15,
+                                "xywh": [
+                                    55,
+                                    30,
+                                    4,
+                                    8
+                                ],
+                                "ease": "bouncy"
+                            },
+                            {
+                                "t": 18,
+                                "xywh": [
+                                    70,
+                                    60,
+                                    4,
+                                    8
+                                ],
+                                "ease": "hold"
+                            },
+                            {
+                                "t": 20,
+                                "xywh": [
+                                    70,
+                                    60,
+                                    4,
+                                    8
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "body": {
+                    "type": "Dataset",
+                    "frametrail:type": "cursor",
+                    "format": "application/x-frametrail-cursor",
+                    "frametrail:name": "Cursor",
+                    "frametrail:attributes": {
+                        "style": "arrow",
+                        "color": "#ffffff",
+                        "outlineColor": "#111111",
+                        "clicks": [
+                            1.5,
+                            4
+                        ]
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/target/selector/frametrail:keyframes/1/ease",
+                    "message": "must be one of \"linear\", \"hold\", \"ease\", \"easeIn\", \"easeOut\", \"easeInOut\", \"gentleOut\", \"power1In\", \"power1Out\", \"power1InOut\", \"power2In\", \"power2Out\", \"power2InOut\", \"power3In\", \"power3Out\", \"power3InOut\", \"power4In\", \"power4Out\", \"power4InOut\", \"sineIn\", \"sineOut\", \"sineInOut\", \"expoIn\", \"expoOut\", \"expoInOut\", \"circIn\", \"circOut\", \"circInOut\", \"backIn\", \"backOut\", \"backInOut\", \"springGentle\", \"springQuick\", \"springBouncy\", \"springSlow\", \"wiggle\", \"wiggleBounce\""
+                }
+            ]
+        },
+        {
+            "name": "keyframe without t",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:04.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "1_1790000000_fixture-lecture.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=12,20&xywh=percent:20,30,54,38",
+                        "frametrail:keyframes": [
+                            {
+                                "xywh": [
+                                    20,
+                                    40,
+                                    4,
+                                    8
+                                ]
+                            },
+                            {
+                                "t": 15,
+                                "xywh": [
+                                    55,
+                                    30,
+                                    4,
+                                    8
+                                ],
+                                "ease": "easeInOut"
+                            },
+                            {
+                                "t": 18,
+                                "xywh": [
+                                    70,
+                                    60,
+                                    4,
+                                    8
+                                ],
+                                "ease": "hold"
+                            },
+                            {
+                                "t": 20,
+                                "xywh": [
+                                    70,
+                                    60,
+                                    4,
+                                    8
+                                ]
+                            }
+                        ]
+                    }
+                },
+                "body": {
+                    "type": "Dataset",
+                    "frametrail:type": "cursor",
+                    "format": "application/x-frametrail-cursor",
+                    "frametrail:name": "Cursor",
+                    "frametrail:attributes": {
+                        "style": "arrow",
+                        "color": "#ffffff",
+                        "outlineColor": "#111111",
+                        "clicks": [
+                            1.5,
+                            4
+                        ]
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/target/selector/frametrail:keyframes/0/t",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "overlay selector without a box",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/target/selector/value",
+                    "message": "must match the pattern ^t=[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?&xywh=percent:-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?$"
+                }
+            ]
+        },
+        {
+            "name": "overlay box not in percent",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/target/selector/value",
+                    "message": "must match the pattern ^t=[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?&xywh=percent:-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?$"
+                }
+            ]
+        },
+        {
+            "name": "created not a date",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "yesterday",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/created",
+                    "message": "must match the pattern ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$"
+                }
+            ]
+        },
+        {
+            "name": "created as a number",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": 1791361800137,
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/created",
+                    "message": "must be string, is number"
+                }
+            ]
+        },
+        {
+            "name": "creator without id",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/creator/id",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "annotation in hypervideo contents",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Annotation",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/frametrail:type",
+                    "message": "must be one of \"Overlay\", \"CodeSnippet\""
+                }
+            ]
+        },
+        {
+            "name": "unknown body type",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "triangle",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:type",
+                    "message": "must be one of \"text\", \"html\", \"quiz\", \"hotspot\", \"cursor\", \"counter\", \"chart\", \"image\", \"video\", \"audio\", \"pdf\", \"youtube\", \"vimeo\", \"wistia\", \"loom\", \"twitch\", \"soundcloud\", \"spotify\", \"webpage\", \"wikipedia\", \"entity\", \"location\", \"mastodon\", \"codepen\", \"figma\", \"urlpreview\", \"button\""
+                }
+            ]
+        },
+        {
+            "name": "body without a type",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:type",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "event code not a string",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {
+                    "onStart": 42
+                }
+            },
+            "errors": [
+                {
+                    "path": "/frametrail:events/onStart",
+                    "message": "must be string, is number"
+                }
+            ]
+        },
+        {
+            "name": "events as a list",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": [
+                    "FrameTrail.module('HypervideoController').pause();"
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/frametrail:events",
+                    "message": "must be object, is array"
+                }
+            ]
+        },
+        {
+            "name": "hotspot shape triangle",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:01.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "hotspot",
+                    "format": "text/html",
+                    "frametrail:name": "Hotspot",
+                    "frametrail:attributes": {
+                        "shape": "triangle",
+                        "color": "#0096ff",
+                        "borderWidth": 5,
+                        "borderRadius": 10
+                    }
+                },
+                "frametrail:events": {
+                    "onStart": "FrameTrail.module('HypervideoController').pause();"
+                }
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/shape",
+                    "message": "must be one of \"circle\", \"rectangle\", \"rounded\", \"arrow\", \"underline\", \"freeform\""
+                }
+            ]
+        },
+        {
+            "name": "freeform point without y",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:01.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "hotspot",
+                    "format": "text/html",
+                    "frametrail:name": "Hotspot",
+                    "frametrail:attributes": {
+                        "shape": "freeform",
+                        "points": [
+                            {
+                                "x": 1,
+                                "y": 1
+                            },
+                            {
+                                "x": 50
+                            },
+                            {
+                                "x": 90,
+                                "y": 80
+                            }
+                        ]
+                    }
+                },
+                "frametrail:events": {
+                    "onStart": "FrameTrail.module('HypervideoController').pause();"
+                }
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/points/1/y",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "unknown hotspot action",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:01.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "hotspot",
+                    "format": "text/html",
+                    "frametrail:name": "Hotspot",
+                    "frametrail:attributes": {
+                        "shape": "circle",
+                        "color": "#0096ff",
+                        "borderWidth": 5,
+                        "borderRadius": 10,
+                        "action": "runCode"
+                    }
+                },
+                "frametrail:events": {
+                    "onStart": "FrameTrail.module('HypervideoController').pause();"
+                }
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/action",
+                    "message": "must be one of \"\", \"openUrl\", \"jumpToTime\", \"jumpToHypervideo\""
+                }
+            ]
+        },
+        {
+            "name": "chart type pie",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "Dataset",
+                    "frametrail:type": "chart",
+                    "frametrail:attributes": {
+                        "chartType": "pie",
+                        "data": "A: 1"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/chartType",
+                    "message": "must be one of \"bars\", \"line\", \"donut\", \"ring\""
+                }
+            ]
+        },
+        {
+            "name": "counter with seven decimals",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "Dataset",
+                    "frametrail:type": "counter",
+                    "frametrail:attributes": {
+                        "to": 3.1415926,
+                        "decimals": 7
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/decimals",
+                    "message": "must be <= 4"
+                }
+            ]
+        },
+        {
+            "name": "quiz type essay",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "quiz",
+                    "value": "",
+                    "frametrail:attributes": {
+                        "questionType": "essay",
+                        "question": "Why?"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/questionType",
+                    "message": "must be one of \"multipleChoice\", \"multiSelect\", \"freeText\", \"rating\""
+                }
+            ]
+        },
+        {
+            "name": "quiz answer without text",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "quiz",
+                    "value": "",
+                    "frametrail:attributes": {
+                        "question": "Which?",
+                        "answers": [
+                            {
+                                "text": "A",
+                                "correct": true
+                            },
+                            {
+                                "correct": false
+                            }
+                        ]
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/answers/1/text",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "exit preset used as entrance",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;",
+                        "animation": {
+                            "in": {
+                                "preset": "fadeOut"
+                            }
+                        }
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/animation/in/preset",
+                    "message": "must be one of \"fadeIn\", \"slideFromLeft\", \"slideFromRight\", \"slideFromTop\", \"slideFromBottom\", \"zoomIn\", \"popIn\", \"blurIn\", \"wipeFromLeft\", \"wipeFromRight\", \"wipeFromTop\", \"wipeFromBottom\", \"irisIn\", \"dropIn\", \"rotateIn\", \"draw\""
+                }
+            ]
+        },
+        {
+            "name": "negative animation duration",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;",
+                        "animation": {
+                            "in": {
+                                "preset": "fadeIn",
+                                "duration": -5
+                            }
+                        }
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/animation/in/duration",
+                    "message": "must be >= 0"
+                }
+            ]
+        },
+        {
+            "name": "animation phase without a preset",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;",
+                        "animation": {
+                            "out": {
+                                "duration": 300
+                            }
+                        }
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/animation/out/preset",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "opacity 2",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;",
+                        "opacity": 2
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/opacity",
+                    "message": "must be <= 1"
+                }
+            ]
+        },
+        {
+            "name": "attributes as a non-empty list",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": [
+                        "text"
+                    ]
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes",
+                    "message": "must be object, is array"
+                }
+            ]
+        },
+        {
+            "name": "location tile style",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "Dataset",
+                    "frametrail:type": "location",
+                    "frametrail:attributes": {
+                        "lat": 1,
+                        "lon": 2,
+                        "tileStyle": "satellite"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/tileStyle",
+                    "message": "must be one of \"osm-standard\", \"carto-light\", \"carto-dark\", \"carto-voyager\""
+                }
+            ]
+        },
+        {
+            "name": "code snippet with a time range",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:31:00.000Z",
+                "type": "Annotation",
+                "frametrail:type": "CodeSnippet",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=3,4"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "codesnippet",
+                    "format": "text/javascript",
+                    "value": "console.log('hello');",
+                    "frametrail:name": "Log",
+                    "frametrail:thumb": null,
+                    "frametrail:resourceId": null,
+                    "frametrail:attributes": {}
+                }
+            },
+            "errors": [
+                {
+                    "path": "/target/selector/value",
+                    "message": "must match the pattern ^t=[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?$"
+                }
+            ]
+        },
+        {
+            "name": "code snippet without code",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:31:00.000Z",
+                "type": "Annotation",
+                "frametrail:type": "CodeSnippet",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=3.5"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "codesnippet",
+                    "format": "text/javascript",
+                    "frametrail:name": "Log",
+                    "frametrail:thumb": null,
+                    "frametrail:resourceId": null,
+                    "frametrail:attributes": {}
+                }
+            },
+            "errors": [
+                {
+                    "path": "/body/value",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "hotspot as an annotation",
+            "schema": "annotation-file.schema.json",
+            "data": [
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        "https://frametrail.org/ns/context.jsonld"
+                    ],
+                    "creator": {
+                        "nickname": "demo",
+                        "type": "Person",
+                        "id": "1"
+                    },
+                    "created": "2026-10-07T09:32:00.000Z",
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "frametrail:tags": [],
+                    "frametrail:uri": null,
+                    "target": {
+                        "type": "Video",
+                        "source": "video.mp4",
+                        "selector": {
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "type": "FragmentSelector",
+                            "value": "t=2,6"
+                        }
+                    },
+                    "body": {
+                        "frametrail:type": "hotspot",
+                        "frametrail:attributes": {
+                            "shape": "circle"
+                        }
+                    }
+                }
+            ],
+            "errors": [
+                {
+                    "path": "/0/body/frametrail:type",
+                    "message": "must be one of \"text\", \"html\", \"quiz\", \"image\", \"video\", \"audio\", \"pdf\", \"youtube\", \"vimeo\", \"wistia\", \"loom\", \"twitch\", \"soundcloud\", \"spotify\", \"webpage\", \"wikipedia\", \"entity\", \"location\", \"mastodon\", \"codepen\", \"figma\", \"urlpreview\", \"button\""
+                }
+            ]
+        },
+        {
+            "name": "annotation selector with only a start",
+            "schema": "annotation-file.schema.json",
+            "data": [
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        "https://frametrail.org/ns/context.jsonld"
+                    ],
+                    "creator": {
+                        "nickname": "demo",
+                        "type": "Person",
+                        "id": "1"
+                    },
+                    "created": "2026-10-07T09:32:00.000Z",
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "frametrail:tags": [],
+                    "frametrail:uri": null,
+                    "target": {
+                        "type": "Video",
+                        "source": "video.mp4",
+                        "selector": {
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "type": "FragmentSelector",
+                            "value": "t=2,6"
+                        }
+                    },
+                    "body": {
+                        "type": "Text",
+                        "frametrail:type": "wikipedia",
+                        "format": "text/html",
+                        "value": "https://en.wikipedia.org/wiki/DNA",
+                        "frametrail:name": "DNA",
+                        "frametrail:thumb": null,
+                        "frametrail:licenseType": null,
+                        "frametrail:licenseAttribution": null,
+                        "frametrail:resourceId": "13",
+                        "frametrail:attributes": {
+                            "wikiLang": "en",
+                            "dir": "ltr"
+                        }
+                    }
+                },
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        "https://frametrail.org/ns/context.jsonld"
+                    ],
+                    "creator": {
+                        "nickname": "demo",
+                        "type": "Person",
+                        "id": "1"
+                    },
+                    "created": "2026-10-07T09:33:00.000Z",
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "frametrail:tags": [],
+                    "frametrail:uri": null,
+                    "target": {
+                        "type": "Video",
+                        "source": "video.mp4",
+                        "selector": {
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "type": "FragmentSelector",
+                            "value": "t=1"
+                        }
+                    },
+                    "body": {
+                        "type": "Text",
+                        "frametrail:type": "wikipedia",
+                        "format": "text/html",
+                        "value": "https://en.wikipedia.org/wiki/DNA",
+                        "frametrail:name": "DNA",
+                        "frametrail:thumb": null,
+                        "frametrail:licenseType": null,
+                        "frametrail:licenseAttribution": null,
+                        "frametrail:resourceId": "13",
+                        "frametrail:attributes": {
+                            "wikiLang": "en",
+                            "dir": "ltr"
+                        }
+                    }
+                }
+            ],
+            "errors": [
+                {
+                    "path": "/1/target/selector/value",
+                    "message": "must match the pattern ^t=[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?$"
+                }
+            ]
+        },
+        {
+            "name": "annotation with graph data type pie",
+            "schema": "annotation-file.schema.json",
+            "data": [
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        "https://frametrail.org/ns/context.jsonld"
+                    ],
+                    "creator": {
+                        "nickname": "demo",
+                        "type": "Person",
+                        "id": "1"
+                    },
+                    "created": "2026-10-07T09:32:00.000Z",
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "frametrail:tags": [],
+                    "frametrail:uri": null,
+                    "target": {
+                        "type": "Video",
+                        "source": "video.mp4",
+                        "selector": {
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "type": "FragmentSelector",
+                            "value": "t=2,6"
+                        }
+                    },
+                    "body": {
+                        "type": "Text",
+                        "frametrail:type": "wikipedia",
+                        "format": "text/html",
+                        "value": "https://en.wikipedia.org/wiki/DNA",
+                        "frametrail:name": "DNA",
+                        "frametrail:thumb": null,
+                        "frametrail:licenseType": null,
+                        "frametrail:licenseAttribution": null,
+                        "frametrail:resourceId": "13",
+                        "frametrail:attributes": {
+                            "wikiLang": "en",
+                            "dir": "ltr"
+                        }
+                    },
+                    "frametrail:graphdatatype": "pie"
+                }
+            ],
+            "errors": [
+                {
+                    "path": "/0/frametrail:graphdatatype",
+                    "message": "must be one of \"soundwave\", \"barchart\", null"
+                }
+            ]
+        },
+        {
+            "name": "annotation file that is not a list",
+            "schema": "annotation-file.schema.json",
+            "data": {
+                "0": {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        "https://frametrail.org/ns/context.jsonld"
+                    ],
+                    "creator": {
+                        "nickname": "demo",
+                        "type": "Person",
+                        "id": "1"
+                    },
+                    "created": "2026-10-07T09:32:00.000Z",
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "frametrail:tags": [],
+                    "frametrail:uri": null,
+                    "target": {
+                        "type": "Video",
+                        "source": "video.mp4",
+                        "selector": {
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "type": "FragmentSelector",
+                            "value": "t=2,6"
+                        }
+                    },
+                    "body": {
+                        "type": "Text",
+                        "frametrail:type": "wikipedia",
+                        "format": "text/html",
+                        "value": "https://en.wikipedia.org/wiki/DNA",
+                        "frametrail:name": "DNA",
+                        "frametrail:thumb": null,
+                        "frametrail:licenseType": null,
+                        "frametrail:licenseAttribution": null,
+                        "frametrail:resourceId": "13",
+                        "frametrail:attributes": {
+                            "wikiLang": "en",
+                            "dir": "ltr"
+                        }
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "",
+                    "message": "must be array, is object"
+                }
+            ]
+        },
+        {
+            "name": "several errors in one annotation",
+            "schema": "annotation-file.schema.json",
+            "data": [
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        "https://frametrail.org/ns/context.jsonld"
+                    ],
+                    "creator": {
+                        "nickname": "demo",
+                        "type": "Person",
+                        "id": [
+                            "1"
+                        ]
+                    },
+                    "type": "Note",
+                    "frametrail:type": "Annotation",
+                    "frametrail:tags": [],
+                    "frametrail:uri": null,
+                    "target": {
+                        "type": "Video",
+                        "source": "video.mp4",
+                        "selector": {
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "type": "FragmentSelector",
+                            "value": "t=2,6"
+                        }
+                    },
+                    "body": {
+                        "type": "Text",
+                        "frametrail:type": "wikipedia",
+                        "format": "text/html",
+                        "value": "https://en.wikipedia.org/wiki/DNA",
+                        "frametrail:name": "DNA",
+                        "frametrail:thumb": null,
+                        "frametrail:licenseType": null,
+                        "frametrail:licenseAttribution": null,
+                        "frametrail:resourceId": "13",
+                        "frametrail:attributes": {
+                            "wikiLang": "en",
+                            "dir": "up"
+                        }
+                    }
+                }
+            ],
+            "errors": [
+                {
+                    "path": "/0/created",
+                    "message": "is required"
+                },
+                {
+                    "path": "/0/type",
+                    "message": "must be \"Annotation\""
+                },
+                {
+                    "path": "/0/creator/id",
+                    "message": "must be string or integer, is array"
+                },
+                {
+                    "path": "/0/body/frametrail:attributes/dir",
+                    "message": "must be one of \"ltr\", \"rtl\""
+                }
+            ]
+        }
+    ]
+}

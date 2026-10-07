@@ -1,0 +1,17 @@
+WEBVTT
+
+1
+00:00:00.500 --> 00:00:04.000
+This hypervideo holds one item of every type.
+
+2
+00:00:04.000 --> 00:00:09.500
+Overlays come first, then annotations.
+
+3
+00:00:20.000 --> 00:00:26.000
+Each overlay type appears once, a few seconds apart.
+
+4
+00:00:45.000 --> 00:00:52.000
+The annotations follow in the timeline below.

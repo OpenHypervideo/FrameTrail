@@ -1,0 +1,429 @@
+{
+    "description": "config.json, index files and tag definitions that must be rejected, with the errors FrameTrailSchema reports.",
+    "cases": [
+        {
+            "name": "allowUploads as a string",
+            "schema": "config.schema.json",
+            "data": {
+                "defaultTheme": "",
+                "defaultLanguage": "en",
+                "videoFit": "contain",
+                "overviewMode": "grid",
+                "allowUploads": "false",
+                "alwaysForceLogin": false,
+                "userNeedsConfirmation": true
+            },
+            "errors": [
+                {
+                    "path": "/allowUploads",
+                    "message": "must be boolean, is string"
+                }
+            ]
+        },
+        {
+            "name": "overview mode list",
+            "schema": "config.schema.json",
+            "data": {
+                "defaultTheme": "",
+                "defaultLanguage": "en",
+                "videoFit": "contain",
+                "overviewMode": "list",
+                "allowUploads": true,
+                "alwaysForceLogin": false,
+                "userNeedsConfirmation": true
+            },
+            "errors": [
+                {
+                    "path": "/overviewMode",
+                    "message": "must be one of \"grid\", \"map\""
+                }
+            ]
+        },
+        {
+            "name": "extension script from another origin",
+            "schema": "config.schema.json",
+            "data": {
+                "defaultTheme": "",
+                "defaultLanguage": "en",
+                "videoFit": "contain",
+                "overviewMode": "grid",
+                "allowUploads": true,
+                "alwaysForceLogin": false,
+                "userNeedsConfirmation": true,
+                "extensions": [
+                    {
+                        "name": "hello",
+                        "script": "https://example.org/x.js"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/extensions/0/script",
+                    "message": "must match the pattern ^[^/:?#][^:?#]*$"
+                }
+            ]
+        },
+        {
+            "name": "extension script protocol-relative",
+            "schema": "config.schema.json",
+            "data": {
+                "defaultTheme": "",
+                "defaultLanguage": "en",
+                "videoFit": "contain",
+                "overviewMode": "grid",
+                "allowUploads": true,
+                "alwaysForceLogin": false,
+                "userNeedsConfirmation": true,
+                "extensions": [
+                    {
+                        "name": "hello",
+                        "script": "//example.org/x.js"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/extensions/0/script",
+                    "message": "must match the pattern ^[^/:?#][^:?#]*$"
+                }
+            ]
+        },
+        {
+            "name": "extension script root-relative",
+            "schema": "config.schema.json",
+            "data": {
+                "defaultTheme": "",
+                "defaultLanguage": "en",
+                "videoFit": "contain",
+                "overviewMode": "grid",
+                "allowUploads": true,
+                "alwaysForceLogin": false,
+                "userNeedsConfirmation": true,
+                "extensions": [
+                    {
+                        "name": "hello",
+                        "script": "/abs/x.js"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/extensions/0/script",
+                    "message": "must match the pattern ^[^/:?#][^:?#]*$"
+                }
+            ]
+        },
+        {
+            "name": "extension without a name",
+            "schema": "config.schema.json",
+            "data": {
+                "defaultTheme": "",
+                "defaultLanguage": "en",
+                "videoFit": "contain",
+                "overviewMode": "grid",
+                "allowUploads": true,
+                "alwaysForceLogin": false,
+                "userNeedsConfirmation": true,
+                "extensions": [
+                    {
+                        "script": "extensions/hello/hello.js"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/extensions/0/name",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "external authentication mode magic",
+            "schema": "config.schema.json",
+            "data": {
+                "defaultTheme": "",
+                "defaultLanguage": "en",
+                "videoFit": "contain",
+                "overviewMode": "grid",
+                "allowUploads": true,
+                "alwaysForceLogin": false,
+                "userNeedsConfirmation": true,
+                "externalAuth": {
+                    "mode": "magic",
+                    "provider": "token"
+                }
+            },
+            "errors": [
+                {
+                    "path": "/externalAuth/mode",
+                    "message": "must be one of \"interactive\", \"transparent\""
+                }
+            ]
+        },
+        {
+            "name": "config.json that is a list",
+            "schema": "config.schema.json",
+            "data": [],
+            "errors": [
+                {
+                    "path": "",
+                    "message": "must be object, is array"
+                }
+            ]
+        },
+        {
+            "name": "overview map fit stretch",
+            "schema": "hypervideos-index.schema.json",
+            "data": {
+                "hypervideo-increment": 2,
+                "hypervideos": {
+                    "1": "./1",
+                    "2": "./2"
+                },
+                "overviewMap": {
+                    "background": "map.svg",
+                    "backgroundColor": "#2f3139",
+                    "fit": "stretch",
+                    "lastchanged": 1788942480663,
+                    "markers": {
+                        "1": {
+                            "x": 0.37,
+                            "y": 0.18,
+                            "size": 6
+                        }
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/overviewMap/fit",
+                    "message": "must be one of \"contain\", \"cover\""
+                }
+            ]
+        },
+        {
+            "name": "map marker without y",
+            "schema": "hypervideos-index.schema.json",
+            "data": {
+                "hypervideo-increment": 2,
+                "hypervideos": {
+                    "1": "./1",
+                    "2": "./2"
+                },
+                "overviewMap": {
+                    "background": "map.svg",
+                    "backgroundColor": "#2f3139",
+                    "fit": "contain",
+                    "lastchanged": 1788942480663,
+                    "markers": {
+                        "1": {
+                            "x": 0.5
+                        }
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/overviewMap/markers/1/y",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "hypervideos as a list of ids",
+            "schema": "hypervideos-index.schema.json",
+            "data": {
+                "hypervideo-increment": 2,
+                "hypervideos": [
+                    "1",
+                    "2"
+                ],
+                "overviewMap": {
+                    "background": "map.svg",
+                    "backgroundColor": "#2f3139",
+                    "fit": "contain",
+                    "lastchanged": 1788942480663,
+                    "markers": {
+                        "1": {
+                            "x": 0.37,
+                            "y": 0.18,
+                            "size": 6
+                        }
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/hypervideos",
+                    "message": "must be object, is array"
+                }
+            ]
+        },
+        {
+            "name": "hotspot as a resource",
+            "schema": "resources-index.schema.json",
+            "data": {
+                "resources": {
+                    "1": {
+                        "name": "x",
+                        "type": "hotspot",
+                        "src": ""
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/resources/1/type",
+                    "message": "must be one of \"image\", \"video\", \"audio\", \"pdf\", \"youtube\", \"vimeo\", \"wistia\", \"loom\", \"twitch\", \"soundcloud\", \"spotify\", \"webpage\", \"wikipedia\", \"entity\", \"location\", \"mastodon\", \"codepen\", \"figma\", \"urlpreview\""
+                }
+            ]
+        },
+        {
+            "name": "resource without src",
+            "schema": "resources-index.schema.json",
+            "data": {
+                "resources-increment": 2,
+                "resources": {
+                    "1": {
+                        "name": "Lecture",
+                        "creator": "demo",
+                        "creatorId": "1",
+                        "created": 1790000000,
+                        "description": null,
+                        "type": "video",
+                        "attributes": [],
+                        "thumb": "thumb.png"
+                    },
+                    "2": {
+                        "name": "DNA",
+                        "creator": "demo",
+                        "creatorId": "1",
+                        "created": 1790000060,
+                        "description": null,
+                        "src": "https://en.wikipedia.org/wiki/DNA",
+                        "type": "wikipedia",
+                        "attributes": {
+                            "wikiLang": "en"
+                        },
+                        "thumb": null
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/resources/1/src",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "resource with unknown wikipedia text direction",
+            "schema": "resources-index.schema.json",
+            "data": {
+                "resources-increment": 2,
+                "resources": {
+                    "1": {
+                        "name": "Lecture",
+                        "creator": "demo",
+                        "creatorId": "1",
+                        "created": 1790000000,
+                        "description": null,
+                        "src": "video.mp4",
+                        "type": "video",
+                        "attributes": [],
+                        "thumb": "thumb.png"
+                    },
+                    "2": {
+                        "name": "DNA",
+                        "creator": "demo",
+                        "creatorId": "1",
+                        "created": 1790000060,
+                        "description": null,
+                        "src": "https://en.wikipedia.org/wiki/DNA",
+                        "type": "wikipedia",
+                        "attributes": {
+                            "wikiLang": "en",
+                            "dir": "up"
+                        },
+                        "thumb": null
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/resources/2/attributes/dir",
+                    "message": "must be one of \"ltr\", \"rtl\""
+                }
+            ]
+        },
+        {
+            "name": "annotation file entry with lastchanged as text",
+            "schema": "annotations-index.schema.json",
+            "data": {
+                "mainAnnotation": "1",
+                "annotationfiles": {
+                    "1": {
+                        "name": "demo",
+                        "description": "demo's annotations",
+                        "created": 1790000000,
+                        "lastchanged": "today",
+                        "hidden": false,
+                        "owner": "demo",
+                        "ownerId": 1
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/annotationfiles/1/lastchanged",
+                    "message": "must be integer, is string"
+                }
+            ]
+        },
+        {
+            "name": "tag without a label",
+            "schema": "tagdefinitions.schema.json",
+            "data": {
+                "tag": {
+                    "en": {
+                        "description": "no label"
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/tag/en/label",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "tag whose id holds a slash and a tilde (JSON Pointer escaping)",
+            "schema": "tagdefinitions.schema.json",
+            "data": {
+                "demo": {
+                    "en": {
+                        "label": "Demo",
+                        "description": ""
+                    },
+                    "de": {
+                        "label": "Demo",
+                        "description": ""
+                    }
+                },
+                "a/b~c": {
+                    "en": {
+                        "label": 5
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/a~1b~0c/en/label",
+                    "message": "must be string, is number"
+                }
+            ]
+        }
+    ]
+}

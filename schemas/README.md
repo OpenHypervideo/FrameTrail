@@ -18,3 +18,5 @@ JSON Schemas (draft 2020-12) for the files in a FrameTrail `_data/` folder and f
 | `common.schema.json` | shared definitions |
 
 The schemas reference each other by relative URI against their `$id` (`https://frametrail.org/schemas/1/…`). Load the whole folder into your validator; nothing is fetched.
+
+FrameTrail's own validator for them is `FrameTrailSchema` (`src/_shared/frametrail-core/schema/`). [`tests/`](../tests/README.md) holds valid and invalid documents for them, with the errors expected for each.

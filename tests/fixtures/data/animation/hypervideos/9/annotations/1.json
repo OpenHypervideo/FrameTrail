@@ -1,0 +1,41 @@
+[
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            {
+                "frametrail": "http://frametrail.org/ns/"
+            }
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "Tue Sep 08 2026 09:30:51 GMT+0200 (Central European Summer Time)",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1783322343_functionality-ner-sm.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=1.649370340356564,5.649370340356564"
+            }
+        },
+        "body": {
+            "type": "Video",
+            "frametrail:type": "youtube",
+            "format": "text/html",
+            "source": "https://www.youtube.com/embed/wZozOrFluiw",
+            "frametrail:name": "Zoom in on DNA",
+            "frametrail:thumb": "https://img.youtube.com/vi/wZozOrFluiw/hqdefault.jpg",
+            "frametrail:licenseType": "CC-BY",
+            "frametrail:licenseAttribution": "yourgenome.org, Genome Research Limited",
+            "frametrail:resourceId": "1",
+            "frametrail:attributes": []
+        }
+    }
+]

@@ -1,0 +1,49 @@
+{
+    "description": "The data examples/video-source-init.html passes to FrameTrail.init(). Written by tests/extract-examples.mjs; change the page, not this file.",
+    "cases": [
+        {
+            "name": "annotations",
+            "schema": "annotation-file.schema.json",
+            "data": [
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        {
+                            "frametrail": "http://frametrail.org/ns/"
+                        }
+                    ],
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "creator": {
+                        "nickname": "Demo",
+                        "type": "Person",
+                        "id": "demo"
+                    },
+                    "created": "2024-01-01T00:00:00Z",
+                    "target": {
+                        "type": "Video",
+                        "source": "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4",
+                        "selector": {
+                            "type": "FragmentSelector",
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "value": "t=10,20"
+                        }
+                    },
+                    "body": {
+                        "type": "TextualBody",
+                        "frametrail:type": "text",
+                        "format": "text/html",
+                        "value": "<p>This annotation appears from <strong>10 s</strong> to <strong>20 s</strong>.</p>",
+                        "frametrail:name": "Demo annotation",
+                        "frametrail:thumb": null,
+                        "frametrail:resourceId": null,
+                        "frametrail:attributes": {
+                            "text": "<p>This annotation appears from <strong>10 s</strong> to <strong>20 s</strong>.</p>"
+                        }
+                    },
+                    "frametrail:tags": []
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,18 @@
+{
+    "allowCaching": false,
+    "captureUserTraces": false,
+    "userTracesStartAction": "",
+    "userTracesEndAction": "",
+    "userNeedsConfirmation": true,
+    "alwaysForceLogin": false,
+    "allowUploads": true,
+    "defaultUserRole": "user",
+    "defaultTheme": "",
+    "defaultLanguage": "en",
+    "videoFit": "contain",
+    "overviewMode": "grid",
+    "overviewTitle": "All Item Types",
+    "overviewShowSearchBar": true,
+    "userAvatars": "local",
+    "lastchanged": 1791365400000
+}

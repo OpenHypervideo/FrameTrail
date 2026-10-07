@@ -25,6 +25,7 @@ FrameTrail/
 │   │   ├── frametrail-core/
 │   │   │   ├── frametrail-core.js  # Core: defineModule, defineType, init, state
 │   │   │   ├── serialization/      # FrameTrailSerializer (stored JSON ⇄ model), FrameTrailKeyframes
+│   │   │   ├── schema/             # FrameTrailSchema (validator for the schemas/ subset; tests only so far)
 │   │   │   ├── storage/            # StorageAdapter + Server/Local/Download adapters
 │   │   │   ├── _templateModule.js  # Module boilerplate template
 │   │   │   └── _templateType.js    # Type boilerplate template
@@ -39,10 +40,11 @@ FrameTrail/
 │   │   └── modules/ResourceManagerLauncher/
 │   ├── _server/                    # PHP backend
 ├── schemas/                        # JSON Schemas for the files in _data/ and for bundles
+├── tests/                          # node tests/run-js.mjs; fixtures/ (data folders, cases, examples)
 ├── scripts/
 │   └── build.sh                    # Production build script
 ├── .github/workflows/
-│   ├── build.yml                   # CI: build verification on push/PR
+│   ├── build.yml                   # CI: tests + build verification on push/PR
 │   └── release.yml                 # CD: package + GitHub Release on tags
 ├── docs/                           # Developer documentation (DATA-MODEL.md: the _data contract)
 ├── build/                          # Build output (git-ignored)
@@ -73,6 +75,7 @@ Three HTML entry points in `src/`:
 - `src/_shared/frametrail-core/` — Core framework and module loader
 - `src/_shared/frametrail-core/storage/` — Storage adapters (Server, Local, Download)
 - `src/_shared/frametrail-core/serialization/` — Pure serializer and keyframe math (plain globals, also `require()`-able in Node)
+- `src/_shared/frametrail-core/schema/` — `FrameTrailSchema`, the validator for the schema subset (same wrapper; not loaded by the player yet)
 - `src/_shared/modules/` — Shared modules (Database, UserManagement, ResourceManager, RouteNavigation, StorageManager, Localization, etc.)
 - `src/_shared/types/` — Resource type definitions (26 types, all inherit from base Resource)
 - `src/player/modules/` — Player modules (HypervideoModel, HypervideoController, AnnotationsController, OverlaysController, Interface, Titlebar, Sidebar, etc.)
@@ -166,7 +169,7 @@ _data/
 - The global `FrameTrail` object is the factory/registry. `FrameTrail.module()`, `FrameTrail.changeState()`, etc. are only available on **initialized instances** (the `FrameTrail` parameter passed into `defineModule` callbacks).
 - Modules defined via `FrameTrail.defineModule()` receive the instance as their closure argument — they can freely call `FrameTrail.module('X')`.
 - Plain classes (e.g. `StorageAdapter` subclasses in `src/_shared/frametrail-core/storage/`) are **not** FrameTrail modules and do **not** have access to any instance. If they need to call module APIs, the caller must pass the FrameTrail instance explicitly.
-- `window.FrameTrailSerializer` and `window.FrameTrailKeyframes` (`src/_shared/frametrail-core/serialization/`) are pure globals: no instance, no DOM. Their wrapper also exports them under `require()` in Node; keep it that way (tests and tools load them there).
+- `window.FrameTrailSerializer` and `window.FrameTrailKeyframes` (`src/_shared/frametrail-core/serialization/`) and `window.FrameTrailSchema` (`src/_shared/frametrail-core/schema/`) are pure globals: no instance, no DOM. Their wrapper also exports them under `require()` in Node; keep it that way (tests and tools load them there).
 - Every module must be initialized with `FrameTrail.initModule('ModuleName')` before it can be accessed via `FrameTrail.module('ModuleName')`. Calling `module()` on an uninitialized module returns undefined.
 
 ### Data Flow
@@ -258,8 +261,19 @@ The build script:
 
 **Docker:** `Dockerfile` + `compose.yaml` in the repo root run this same build in a throwaway Node stage and serve the output via PHP + Apache (`docker compose up -d`). See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#option-1-server-deployment-php) for build args (e.g. `WITH_FFMPEG`) and volume details.
 
+### Tests
+
+```bash
+node tests/run-js.mjs                         # Node 20+, no dependencies (node:test)
+node tests/run-js.mjs --data=src/_data        # also check a real _data folder
+node tests/extract-examples.mjs               # after changing the data in an examples/*.html page
+```
+
+`tests/fixtures/`: `data/<name>/` are `_data` folders (no `users.json`, no media; `all-types` has an item of every type and loads in the player), `cases/*.json` and `examples/*.json` are `{ description, cases: [{ name, schema, data, errors? }] }` — no `errors` means valid, otherwise exactly those errors. The runner validates everything with `FrameTrailSchema`, round-trips valid hypervideos, annotation files and content items through the serializer (allowed differences: `@context`, ISO `created` with de-dup bumps, `meta.lastchanged`, contents order overlays → code snippets → others), and reads data folders as bundles. tests/README.md states these rules for runners in other languages. Expected errors in a case are what `FrameTrailSchema` reports; check they name the real problem before committing them.
+
 ### CI/CD
 
+- **Tests** (`.github/workflows/build.yml`, job `test`): `node tests/run-js.mjs` on Node 20, on every push to `main`/`develop` and every PR.
 - **Build verification** (`.github/workflows/build.yml`): Runs on every push to `main`/`develop` and every PR. Builds and verifies output.
 - **Release packaging** (`.github/workflows/release.yml`): Runs on `v*` tags. Builds, zips, creates GitHub Release with the zip attached.
 
@@ -325,7 +339,8 @@ git push origin v2.0.0
 The stored format is documented in [docs/DATA-MODEL.md](docs/DATA-MODEL.md) and described by the JSON Schemas in `schemas/` (draft 2020-12, `$id` `https://frametrail.org/schemas/1/…`): one schema per `_data` file, `content-item` / `annotation-file` for the W3C items, `attributes/<type>.schema.json` per resource type, and `hypervideo-bundle` / `project-bundle` for single-document export.
 
 - **Any change to what is stored** — a new resource type, attribute, config key or file — updates the schemas and DATA-MODEL.md in the same change. Every property the code reads has a `description`; defaults the code applies go into `default`.
-- **Schema subset:** only the keywords listed in DATA-MODEL.md ("Schema Subset"); patterns in syntax common to ECMA-262 and PCRE. Discriminated `oneOf` by a `const` property where possible.
+- **Schema subset:** only the keywords listed in DATA-MODEL.md ("Schema Subset"); patterns in syntax common to ECMA-262 and PCRE. Discriminated `oneOf` by a `const` property where possible (every alternative requires it, each with its own value — that is what lets `FrameTrailSchema` report the meant alternative's errors). `FrameTrailSchema` throws on any other keyword, so the tests fail on a schema outside the subset.
+- **Tests:** a change to what is stored also adds fixtures (an item in `tests/fixtures/data/all-types`, cases in `tests/fixtures/cases/`) and keeps `node tests/run-js.mjs` green.
 - **Legacy shapes stay valid:** older forms (toString `created`, PHP's `[]` for `{}`, local-mode annotation index entries, …) are separate `oneOf` alternatives or descriptions starting "Legacy.". Never drop one without checking that no stored data uses it.
 - **Unknown properties are allowed** almost everywhere; writers keep them.
 - **Serializer:** all reading and writing of `hypervideo.json`, content items and annotation files goes through `FrameTrailSerializer` (`parseHypervideo` / `serializeHypervideo`, `parseAnnotationFile` / `serializeAnnotationFile`, …); `Database` delegates to it. Every parsed object keeps the stored object it came from in `_stored`, and writing is a three-way merge (stored, what the writer makes of stored unchanged, what it makes of the model now): unchanged parts are written byte-for-byte as stored, unknown properties survive, and only `@context` and ISO `created` are always rewritten. Never build stored JSON by hand next to it, and add new stored fields to both the `parse*` and the `write*` side.

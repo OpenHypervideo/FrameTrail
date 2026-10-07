@@ -1,0 +1,12 @@
+{
+    "demo": {
+        "en": {
+            "label": "Demo",
+            "description": "Items made for the demo."
+        },
+        "de": {
+            "label": "Demo",
+            "description": "Für die Demo erstellte Einträge."
+        }
+    }
+}

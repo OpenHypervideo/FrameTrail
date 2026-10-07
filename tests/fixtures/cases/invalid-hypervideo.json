@@ -1,0 +1,2066 @@
+{
+    "description": "hypervideo.json documents that must be rejected, with the errors FrameTrailSchema reports.",
+    "cases": [
+        {
+            "name": "unknown content view",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [
+                            {
+                                "type": "Gallery"
+                            }
+                        ],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/config/layoutArea/areaTop/0/type",
+                    "message": "must be one of \"TimedContent\", \"CustomHTML\", \"Transcript\", \"Timelines\", \"Chapters\""
+                }
+            ]
+        },
+        {
+            "name": "content view without a type",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [
+                            {
+                                "name": "Untitled"
+                            }
+                        ],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/config/layoutArea/areaTop/0/type",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "content size huge",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "huge"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/config/layoutArea/areaRight/0/contentSize",
+                    "message": "must be one of \"small\", \"medium\", \"large\""
+                }
+            ]
+        },
+        {
+            "name": "layout area that is not a list",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": {
+                            "type": "Chapters"
+                        },
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/config/layoutArea/areaLeft",
+                    "message": "must be array, is object"
+                }
+            ]
+        },
+        {
+            "name": "chapter without start",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    },
+                    {
+                        "title": "No start"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/chapters/2/start",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "negative chapter start",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": -1,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/chapters/0/start",
+                    "message": "must be >= 0"
+                }
+            ]
+        },
+        {
+            "name": "subtitle without srclang",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/subtitles/0/srclang",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "subtitles as an object",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": {}
+            },
+            "errors": [
+                {
+                    "path": "/subtitles",
+                    "message": "must be array, is object"
+                }
+            ]
+        },
+        {
+            "name": "sliding mode sideways",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "sideways",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/config/slidingMode",
+                    "message": "must be one of \"adjust\", \"overlay\", \"none\""
+                }
+            ]
+        },
+        {
+            "name": "no meta",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/meta",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "hypervideo without a name",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/meta/name",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "broken overlay inside contents",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;",
+                                "opacity": -1
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/contents/0/body/frametrail:attributes/opacity",
+                    "message": "must be >= 0"
+                }
+            ]
+        },
+        {
+            "name": "global event code not a string",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": "1",
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {
+                    "onPlay": true
+                },
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=3.5"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": "Middle"
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/globalEvents/onPlay",
+                    "message": "must be string, is boolean"
+                }
+            ]
+        },
+        {
+            "name": "several errors in one hypervideo",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Small",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": "today",
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "",
+                                "contentSize": "medium"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": [
+                            {
+                                "type": "Transcript",
+                                "name": "",
+                                "transcriptSource": "en",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": "video.mp4",
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:30:00.137Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=4,12&xywh=percent:10,20,30,15"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:name": "Text",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                            }
+                        },
+                        "frametrail:events": {}
+                    },
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "creator": {
+                            "nickname": "demo",
+                            "type": "Person",
+                            "id": "1"
+                        },
+                        "created": "2026-10-07T09:31:00.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "CodeSnippet",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "video.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=a"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "codesnippet",
+                            "format": "text/javascript",
+                            "value": "console.log('hello');",
+                            "frametrail:name": "Log",
+                            "frametrail:thumb": null,
+                            "frametrail:resourceId": null,
+                            "frametrail:attributes": {}
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Start"
+                    },
+                    {
+                        "start": 30,
+                        "title": 7
+                    }
+                ],
+                "subtitles": [
+                    {
+                        "src": "en.vtt",
+                        "srclang": "en"
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/meta/created",
+                    "message": "must be number, is string"
+                },
+                {
+                    "path": "/clips",
+                    "message": "must be array, is string"
+                },
+                {
+                    "path": "/contents/1/target/selector/value",
+                    "message": "must match the pattern ^t=[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?$"
+                },
+                {
+                    "path": "/chapters/1/title",
+                    "message": "must be string, is number"
+                }
+            ]
+        }
+    ]
+}

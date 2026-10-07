@@ -1,0 +1,10 @@
+{
+    "description": "The data examples/existing-video-element.html passes to FrameTrail.init(). Written by tests/extract-examples.mjs; change the page, not this file.",
+    "cases": [
+        {
+            "name": "annotations",
+            "schema": "annotation-file.schema.json",
+            "data": []
+        }
+    ]
+}
