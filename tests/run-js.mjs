@@ -1,7 +1,8 @@
 /*
  * FrameTrail's tests: the fixtures in tests/fixtures/ against the JSON Schemas
  * in schemas/ (with FrameTrailSchema) and through FrameTrailSerializer, plus
- * unit tests of FrameTrailSchema, FrameTrailSerializer and FrameTrailKeyframes.
+ * unit tests of FrameTrailSchema, FrameTrailSerializer, FrameTrailHTMLFormat
+ * and FrameTrailKeyframes.
  * No dependencies, Node 20 or later:
  *
  *     node tests/run-js.mjs
@@ -27,6 +28,7 @@ const FIXTURES = path.join(ROOT, 'tests', 'fixtures');
 const Schema     = require('../src/_shared/frametrail-core/schema/FrameTrailSchema.js');
 const Serializer = require('../src/_shared/frametrail-core/serialization/FrameTrailSerializer.js');
 const Keyframes  = require('../src/_shared/frametrail-core/serialization/FrameTrailKeyframes.js');
+const HTMLFormat = require('../src/_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js');
 
 const NOW = 1999999999999;
 
@@ -296,11 +298,13 @@ function checkDataFolder(label, dir) {
                   errors  = validator.validate('project-bundle.schema.json', project);
             assert.ok(!errors.length, 'project bundle:\n' + formatErrors(errors));
             assert.deepStrictEqual(Serializer.readBundle(Serializer.writeBundle(project, 'folder'), 'folder'), project);
+            assert.deepStrictEqual(Serializer.readBundle(Serializer.writeBundle(project, 'html'), 'html'), project);
             for (const id of Object.keys(project.hypervideos)) {
                 const bundle = Serializer.readBundle(files, 'folder', { bundle: 'hypervideo', id }),
                       bundleErrors = validator.validate('hypervideo-bundle.schema.json', bundle);
                 assert.ok(!bundleErrors.length, 'hypervideo bundle ' + id + ':\n' + formatErrors(bundleErrors));
                 assert.deepStrictEqual(Serializer.readBundle(Serializer.writeBundle(bundle, 'folder'), 'folder', { bundle: 'hypervideo', id }), bundle);
+                assert.deepStrictEqual(Serializer.readBundle(Serializer.writeBundle(bundle, 'html'), 'html'), bundle);
             }
         });
 
@@ -751,6 +755,86 @@ describe('FrameTrailSerializer', () => {
 /* ---------------------------------------------------------------------- */
 /*  FrameTrailKeyframes                                                   */
 /* ---------------------------------------------------------------------- */
+
+describe('FrameTrailHTMLFormat', () => {
+
+    const allTypes = () => Serializer.readBundle(readDataFolder(path.join(FIXTURES, 'data', 'all-types')), 'folder', { bundle: 'hypervideo', id: '1' });
+
+    // A text overlay whose content tries every way out of a <script> and a <style>.
+    function hostile() {
+        const bundle = allTypes(),
+              text   = bundle.hypervideo.contents.find((item) => item.body && item.body['frametrail:type'] === 'text');
+        text.body['frametrail:attributes'].text = '</script><script>alert(1)</script><!-- <SCRIPT> </style> \u2028 & "quotes"';
+        return bundle;
+    }
+
+    test('a page carries the bundle and the page settings, and reads back as written', () => {
+        const bundle = allTypes(),
+              html   = HTMLFormat.write(bundle, { datapath: 'https://example.org/_data/', config: { defaultTheme: 'dark', defaultLanguage: 'de' }, target: '#player' }),
+              blocks = HTMLFormat.parse(html);
+        assert.equal(blocks.length, 1);
+        assert.deepStrictEqual(blocks[0], { kind: 'hypervideo', format: 1, datapath: 'https://example.org/_data/', config: { defaultTheme: 'dark', defaultLanguage: 'de' }, target: '#player', bundle });
+        assert.match(html, /<html lang="de">/);
+        assert.match(html, /<title>All Item Types<\/title>/);
+        assert.match(html, /<script>FrameTrail\.autoInit\(\);<\/script>/);
+    });
+
+    test('nothing in the content can end the block: every "<" is \\u003c', () => {
+        const bundle = hostile(),
+              html   = HTMLFormat.write(bundle),
+              block  = html.slice(html.indexOf('<script type="application/ld+json"'), html.indexOf('</script>'));
+        assert.ok(block.indexOf('<', 1) < 0, 'a "<" inside the data block');
+        assert.equal((html.match(/<\/script/gi) || []).length, 3, 'one closing tag per script element');
+        assert.deepStrictEqual(Serializer.readBundle(html, 'html'), bundle);
+    });
+
+    test('an embedded library cannot end its element either', () => {
+        const bundle  = hostile(),
+              library = { css: 'body { content: "</style>"; }', js: 'var a = "</script>", b = /<\/script>/u; window.FrameTrail = { autoInit: function(){} };' },
+              html    = HTMLFormat.write(bundle, { library });
+        assert.equal((html.match(/<\/script/gi) || []).length, 3);
+        assert.equal((html.match(/<\/style/gi) || []).length, 1);
+        assert.ok(html.indexOf('var a = "<\\/script>", b = /<\\/script>/u;') > 0);
+        assert.deepStrictEqual(Serializer.readBundle(html, 'html'), bundle);
+        const commented = HTMLFormat.write(bundle, { library: { css: '', js: 'var c = "<!--", d = /<!--/u;' } });
+        assert.ok(commented.indexOf('var c = "<\\x21--", d = /<\\x21--/u;') > 0);
+        assert.deepStrictEqual(new Function('return ["<\\x21--", /<\\x21--/u.test("<!--")]')(), ['<!--', true]);
+    });
+
+    test('pages written by hand: attribute order, quotes, case, entities, whitespace', () => {
+        const bundle = { bundle: 'project', formatVersion: 1, hypervideosIndex: { hypervideos: {} }, hypervideos: {} },
+              html   = '<body><script src="x.js"></script>\n<SCRIPT data-frametrail-config=\'{"defaultTheme":"a&amp;b"}\' Type = "Application/LD+JSON" data-frametrail data-frametrail-datapath=../data/ >\n\n  '
+                     + JSON.stringify(bundle) + '  \n</Script >';
+        assert.deepStrictEqual(HTMLFormat.parse(html), [{ kind: 'project', format: 1, datapath: '../data/', config: { defaultTheme: 'a&b' }, target: null, bundle }]);
+        assert.deepStrictEqual(HTMLFormat.parse('<script type="application/ld+json">{"other":"data"}</script>'), []);
+    });
+
+    test('a newer format or broken JSON is refused, a page without data has no bundle', () => {
+        assert.throws(() => HTMLFormat.parse('<script type="application/ld+json" data-frametrail="project" data-frametrail-format="2">{}</script>'), /format 2/);
+        assert.throws(() => HTMLFormat.parse('<script type="application/ld+json" data-frametrail="project">{ nope }</script>'), /not valid JSON/);
+        assert.throws(() => Serializer.readBundle('<html><body>Hello</body></html>', 'html'), /No FrameTrail data block/);
+    });
+
+    test('an export from before this format is read without running it', () => {
+        const html   = fs.readFileSync(path.join(FIXTURES, 'html', 'legacy-export.html'), 'utf8'),
+              legacy = HTMLFormat.parseLegacy(html),
+              errors = validator.validate('hypervideo-bundle.schema.json', legacy.bundle);
+        assert.ok(!errors.length, formatErrors(errors));
+        assert.equal(legacy.datapath, 'https://example.org/_data/');
+        assert.deepStrictEqual(legacy.config, { defaultLanguage: 'en' });
+        assert.equal(legacy.bundle.hypervideo.meta.name, 'All Item Types');
+        assert.equal(Object.values(legacy.bundle.annotations.files).flat().length, 22);
+        assert.deepStrictEqual(Serializer.readBundle(html, 'html', { legacy: true }), legacy.bundle);
+        assert.equal(HTMLFormat.parseLegacy('<script>FrameTrail.init(window.options)</script>'), null);
+    });
+
+    test('a hypervideo.json exported before bundles makes a valid bundle', () => {
+        const hypervideo = readJSON(path.join(FIXTURES, 'html', 'legacy-hypervideo.json')),
+              errors     = validator.validate('hypervideo-bundle.schema.json', HTMLFormat.hypervideoBundle(hypervideo));
+        assert.ok(!errors.length, formatErrors(errors));
+    });
+
+});
 
 describe('FrameTrailKeyframes', () => {
 

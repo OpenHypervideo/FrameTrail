@@ -108,15 +108,45 @@ The `StorageAdapterDownload` holds all data in memory. Hypervideo data is passed
 
 ### Save As / Export
 
-The Save As dialog is available in all storage modes and offers two scopes:
+The Save As dialog (sidebar, in edit mode; in the overview too) offers, in every storage mode:
 
-**Current Hypervideo**
-- **JSON** — exports a flat `hypervideo.json` matching the server on-disk format; can be reloaded via the `contents` init option
-- **HTML** — generates a self-contained `.html` file with hypervideo data embedded inline and FrameTrail loaded from the jsDelivr CDN; opens in any browser with no server required. An optional *Resource base URL* field prefixes uploaded resource file paths so they resolve correctly (e.g. `https://example.com/_data/`)
+- **Save to Server** / **Save to Local Folder** — save the open hypervideo there;
+- **Download as Files**, for one of three scopes:
+  - **Current Hypervideo** or **Whole Project**, as
+    - **HTML** — one page in the [portable HTML format](HTML-FORMAT.md) that plays anywhere, also opened from the disk, and can be imported again. FrameTrail is either **loaded from the web** (jsDelivr, pinned to the release that wrote the file; small, needs a network connection) or **inside the file** (about 3 MB, works offline; taken from the installation's own `frametrail.min.js`, else from jsDelivr);
+    - **JSON** — the same data as a bundle (`schemas/hypervideo-bundle.schema.json`, `schemas/project-bundle.schema.json`).
 
-**All Data**
-- Downloads a ZIP containing all hypervideos, the resources index, and config as JSON files
-- **Include media files** (requires PHP server) — triggers a full server-side ZIP via the `dataExport` endpoint, including all uploaded media files from `_data/`; `users.json` is excluded
+    The hypervideo comes with all users' annotations, its subtitles and the resource entries it uses; a project with the overview map, the resource library, the tag definitions, the playback settings and the global CSS. Media files are not included: uploaded files are linked to this instance's `_data/` (from a local folder: to a `_data/` folder next to the file), so they play while the instance is reachable — on a private instance only for a signed-in browser.
+  - **All Data** — a zip of the `_data` folder: hypervideos with their annotations and subtitles, the resources index, tag definitions, `config.json` and `custom.css` (never `users.json`). **Include media files** (server mode, signed in) asks the server for the zip instead (`dataExport`), with every uploaded file and without the dot-folders.
+
+Scripts get the same through the player instance:
+
+```javascript
+FrameTrail.instances[0].export({
+    format:   'html',        // 'html' (default), 'json' (the bundle) or 'zip' (the _data folder)
+    scope:    'project',     // 'hypervideo' (default: the open one, or hypervideoID) or 'project'
+    scripts:  'inline',      // where an HTML page gets FrameTrail: 'cdn' (default) or 'inline'
+    download: false          // resolve with { filename, type, data } instead of downloading
+}).then(function(file) { … });
+```
+
+Until a FrameTrail release that reads the portable HTML format is published on npm, pages that load FrameTrail from the web do not play; choose "inside the file" for those.
+
+### Import
+
+The **Import** button next to "Create Hypervideo" (sidebar, edit mode; in server and local-folder mode — in memory there is nothing to import into) reads:
+
+- a page in the portable HTML format, or an HTML export of an earlier FrameTrail (its data is read, never run);
+- a bundle (`.json`), or a `hypervideo.json` that Save As JSON wrote earlier;
+- a zip of a `_data` folder: Save As "All Data", or the server's export with its media files.
+
+The dialog lists the hypervideos, their annotations, subtitles and code, and imports them:
+
+- every hypervideo gets a **new id** and **belongs to you**; jumps between hypervideos of the same file are pointed at the new ids;
+- **resources** this instance already has (the same URL or file) are reused, the others are added. Media files a zip carries are copied (uploaded on a server, which needs uploads to be allowed); all other relative media paths point at the folder the file came from, and files that cannot be found anywhere are listed;
+- **annotations** of all users go into your own annotations of each hypervideo, each keeping its author, so you can edit them from then on (a switch, on by default);
+- **code** — global events, code snippets, the hypervideo's custom CSS and the global CSS — is imported only when "Import code" is switched on, and on a server only by an administrator;
+- of a **project**, the overview map (it replaces this instance's), the playback settings (theme, language, overview) and the global CSS (added to this instance's) are switches of their own: on when this instance has no hypervideos yet, administrators only on a server, and the settings and CSS not at all when a platform manages them (`externalSettings`). Tag definitions this instance lacks are added (by an administrator on a server).
 
 ## Player Initialization
 

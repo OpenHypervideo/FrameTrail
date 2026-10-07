@@ -1453,15 +1453,20 @@
 
 
     /**
-     * I show a "Save As" dialog letting the user choose where to save:
-     * server, local folder, or download as JSON file.
+     * I show a "Save As" dialog letting the user choose where to save the
+     * open hypervideo (server, local folder), or what to download: the open
+     * hypervideo or the whole project as a page in the portable HTML format or
+     * as a bundle (JSON), or all data as a zip (see BundleExport).
      *
      * @method saveAs
+     * @param {Object} [options] { scope: 'project' } to start with the whole project
      */
-    function saveAs() {
+    function saveAs(options) {
 
         var canSaveToServer = FrameTrail.module('StorageManager').canSaveToServer();
         var canSaveToLocal  = FrameTrail.module('StorageManager').canSaveToLocal();
+        var hasHypervideo   = !!FrameTrail.module('Database').hypervideo;
+        var startScope      = (!hasHypervideo || (options && options.scope === 'project')) ? 'project' : 'hypervideo';
 
         var _saveAsWrapper = document.createElement('div');
         _saveAsWrapper.innerHTML = '<div class="saveAsDialog">'
@@ -1473,13 +1478,13 @@
             + '<div class="layoutRow" style="margin-bottom: 4px;">'
             + '<div class="column-4">'
             + '<button class="saveToServer" style="width: 100%; padding: 10px;"'
-            + (canSaveToServer ? '' : ' disabled') + '>'
+            + (canSaveToServer && hasHypervideo ? '' : ' disabled') + '>'
             + '<span class="icon-floppy" style="font-size: 18px;"></span> ' + labels['SaveToServer']
             + '</button>'
             + '</div>'
             + '<div class="column-4">'
             + '<button class="saveToLocal" style="width: 100%; padding: 10px;"'
-            + (canSaveToLocal ? '' : ' disabled') + '>'
+            + (canSaveToLocal && hasHypervideo ? '' : ' disabled') + '>'
             + '<span class="icon-folder" style="font-size: 18px;"></span> ' + labels['SaveToLocalFolder']
             + '</button>'
             + '</div>'
@@ -1495,8 +1500,9 @@
             + '<div class="column-4"></div>'
             + '<div class="column-4"></div>'
             + '<div class="column-4">'
-            + '<div style="display: flex; gap: 12px; margin-top: 4px;">'
-            + '<label><input type="radio" name="downloadScope" value="currentHv" checked> ' + labels['DownloadCurrentHypervideo'] + '</label>'
+            + '<div style="display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px;">'
+            + '<label><input type="radio" name="downloadScope" value="hypervideo"' + (startScope === 'hypervideo' ? ' checked' : '') + (hasHypervideo ? '' : ' disabled') + '> ' + labels['DownloadCurrentHypervideo'] + '</label>'
+            + '<label><input type="radio" name="downloadScope" value="project"' + (startScope === 'project' ? ' checked' : '') + '> ' + labels['DownloadWholeProject'] + '</label>'
             + '<label><input type="radio" name="downloadScope" value="allData"> ' + labels['DownloadAllData'] + '</label>'
             + '</div>'
             + '</div>'
@@ -1514,6 +1520,13 @@
             + '<label><input type="radio" name="downloadFormat" value="html" checked> HTML</label>'
             + '<label><input type="radio" name="downloadFormat" value="json"> JSON</label>'
             + '</div>'
+            + '<div class="downloadLibrarySection">'
+            + '<small>' + labels['DownloadLibrary'] + '</small>'
+            + '<div style="display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px;">'
+            + '<label><input type="radio" name="downloadLibrary" value="cdn" checked> ' + labels['DownloadLibraryCDN'] + '</label>'
+            + '<label><input type="radio" name="downloadLibrary" value="inline"> ' + labels['DownloadLibraryInline'] + '</label>'
+            + '</div>'
+            + '</div>'
             + (videoType === 'youtube' ? '<div class="message warning active youtubeExportWarning" style="margin-top: 8px;">' + labels['WarningYouTubeExport'] + '</div>' : '')
             + '</div>'
             + '<div class="downloadOptionsSection" style="display: none;">'
@@ -1525,28 +1538,38 @@
             + '</div>'
             + '</div>'
 
+            + '<div class="layoutRow"><div class="column-12"><div class="message error"></div></div></div>'
+
             + '</div>';
         var saveAsDialog = _saveAsWrapper.firstElementChild;
 
         var formatSection      = saveAsDialog.querySelector('.downloadFormatSection');
+        var librarySection     = saveAsDialog.querySelector('.downloadLibrarySection');
         var optionsSection     = saveAsDialog.querySelector('.downloadOptionsSection');
         var ytWarning          = saveAsDialog.querySelector('.youtubeExportWarning');
+        var errorMessage       = saveAsDialog.querySelector('.message.error');
 
-        saveAsDialog.querySelectorAll('[name="downloadFormat"]').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                if (ytWarning) {
-                    ytWarning.style.display = radio.value === 'html' && radio.checked ? '' : 'none';
-                }
-            });
-        });
+        function checked(name) {
+            return saveAsDialog.querySelector('[name="' + name + '"]:checked').value;
+        }
 
-        saveAsDialog.querySelectorAll('[name="downloadScope"]').forEach(function(radio) {
-            radio.addEventListener('change', function() {
-                var isAllData = radio.value === 'allData' && radio.checked;
-                formatSection.style.display = isAllData ? 'none' : '';
-                optionsSection.style.display = isAllData ? '' : 'none';
-            });
+        // What applies to the choice: the format and where an HTML page gets
+        // FrameTrail from for a hypervideo or the project, media for the zip.
+        function updateSections() {
+            var scope = checked('downloadScope'),
+                html  = checked('downloadFormat') === 'html';
+            formatSection.style.display  = (scope === 'allData') ? 'none' : '';
+            optionsSection.style.display = (scope === 'allData') ? '' : 'none';
+            librarySection.style.display = html ? '' : 'none';
+            if (ytWarning) {
+                ytWarning.style.display = (html && scope === 'hypervideo') ? '' : 'none';
+            }
+        }
+
+        saveAsDialog.querySelectorAll('[name="downloadFormat"], [name="downloadScope"]').forEach(function(radio) {
+            radio.addEventListener('change', updateSections);
         });
+        updateSections();
 
         var saveAsDialogCtrl;
 
@@ -1566,38 +1589,26 @@
             });
         });
 
-        saveAsDialog.querySelector('.saveToDownload').addEventListener('click', function() {
-            var downloadAdapter = FrameTrail.module('StorageManager').getDownloadAdapter();
-            var hvID = FrameTrail.module('RouteNavigation').hypervideoID;
-            downloadAdapter._frameTrailInstance = FrameTrail;
+        var downloadButton = saveAsDialog.querySelector('.saveToDownload');
 
-            var isAllData = saveAsDialog.querySelector('[name="downloadScope"][value="allData"]').checked;
+        downloadButton.addEventListener('click', function() {
 
-            if (isAllData) {
-                var includeMedia = saveAsDialog.querySelector('[name="includeMedia"]').checked;
-                if (includeMedia) {
-                    var serverUrl = FrameTrail.getState('server') || '_server/';
-                    var adapter = FrameTrail.module('StorageManager').getAdapter();
-                    var dpParam = (adapter && adapter.dataPathAbsolute) ? '&dataPath=' + encodeURIComponent(adapter.dataPathAbsolute) : '';
-                    var a = document.createElement('a');
-                    a.href = serverUrl + 'ajaxServer.php?a=dataExport' + dpParam;
-                    a.download = 'frametrail-data-export.zip';
-                    a.click();
-                } else {
-                    downloadAdapter._performZipDownload({ allHv: true, resources: true, config: true });
-                }
-            } else {
-                var format = saveAsDialog.querySelector('[name="downloadFormat"]:checked').value;
-                if (format === 'html') {
-                    var _resolvedDataURL = FrameTrail.module('RouteNavigation').resolveDataURL('');
-                    var dataPath = new URL(_resolvedDataURL, window.location.href).href;
-                    downloadAdapter._generateStandaloneHTML(hvID, dataPath);
-                } else {
-                    downloadAdapter._performDownload(hvID);
-                }
-            }
+            var scope = checked('downloadScope'),
+                exportOptions = (scope === 'allData')
+                    ? { format: 'zip', includeMedia: saveAsDialog.querySelector('[name="includeMedia"]').checked }
+                    : { format: checked('downloadFormat'), scope: scope, scripts: checked('downloadLibrary') };
 
-            saveAsDialogCtrl.close();
+            downloadButton.disabled = true;
+            errorMessage.classList.remove('active');
+
+            FrameTrail.module('BundleExport').exportData(exportOptions).then(function() {
+                saveAsDialogCtrl.close();
+            }, function(error) {
+                downloadButton.disabled = false;
+                errorMessage.textContent = error.message;
+                errorMessage.classList.add('active');
+            });
+
         });
 
         saveAsDialogCtrl = Dialog({
@@ -1948,20 +1959,6 @@
     }
 
 
-    /**
-     * YET TO IMPLEMENT
-     *
-     * Data exporting can be achieved in various ways.
-     *
-     * @method exportIt
-     */
-    function exportIt() {
-
-        alert('The Export-Feature is currently being implemented');
-
-    }
-
-
     return {
 
         /**
@@ -2239,8 +2236,7 @@
         saveAs:                 saveAs,
         leaveEditMode:          leaveEditMode,
         updateHypervideo:       updateHypervideo,
-        refreshFromServer:      refreshFromServer,
-        exportIt:               exportIt
+        refreshFromServer:      refreshFromServer
 
     }
 

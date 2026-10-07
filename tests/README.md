@@ -13,10 +13,11 @@ CI runs the tests on every push and pull request (`.github/workflows/build.yml`)
 | What | Checked |
 |------|---------|
 | `schemas/` | Every schema uses only the [schema subset](../docs/DATA-MODEL.md#schema-subset), every `$ref` resolves, every schema is named after its `$id`. The player's copy (`FrameTrailSchemas.js`, from `node scripts/bundle-schemas.mjs`) is up to date and judges every case alike. |
-| `fixtures/data/` | Every file follows its schema. Hypervideos and annotation files round-trip through `FrameTrailSerializer`. Each folder, read as a project bundle and as one hypervideo bundle per hypervideo, follows the bundle schemas and survives writing and reading again. |
+| `fixtures/data/` | Every file follows its schema. Hypervideos and annotation files round-trip through `FrameTrailSerializer`. Each folder, read as a project bundle and as one hypervideo bundle per hypervideo, follows the bundle schemas and survives writing and reading again, in the `folder` format and as a page in the [portable HTML format](../docs/HTML-FORMAT.md). |
 | `fixtures/examples/` | Matches the data the pages in `examples/` pass to `FrameTrail.init()`. Each case as below. |
 | `fixtures/cases/` | Each case validates with exactly the expected errors; valid hypervideos, annotation files and content items round-trip. |
-| Unit tests | `FrameTrailSchema`, `FrameTrailSerializer`, `FrameTrailKeyframes`. |
+| `fixtures/html/` | Exports from before the HTML format are read into valid hypervideo bundles. |
+| Unit tests | `FrameTrailSchema`, `FrameTrailSerializer`, `FrameTrailHTMLFormat` (escaping of the data block and of an embedded library, attribute variants, newer formats refused), `FrameTrailKeyframes`. |
 
 The tests do not cover the user interface; see [CONTRIBUTING.md](../CONTRIBUTING.md#testing).
 
@@ -61,6 +62,13 @@ Each folder is a `_data` folder without `users.json` and without media files (`r
 | `cases/minimal.json` | Documents with only the required properties, and documents with properties FrameTrail does not know (`generator`, unknown keys). All valid. |
 | `cases/invalid-*.json` | Broken items, hypervideos, files and bundles, with the errors expected for them. |
 | `examples/<page>.json` | The data `examples/<page>.html` passes to `FrameTrail.init()`. Written by `node tests/extract-examples.mjs`; run it after changing a page's data, the tests fail until then. |
+
+### `fixtures/html/`
+
+| File | |
+|------|---|
+| `legacy-export.html` | Save As HTML of FrameTrail before the portable HTML format (data as the argument of `FrameTrail.init(…)`), written from `fixtures/data/all-types` with its `dataPath` set to `https://example.org/_data/`. |
+| `legacy-hypervideo.json` | Save As JSON of the same version: a flat `hypervideo.json`. |
 
 To add a fixture, add a case to a case file, or a folder to `fixtures/data/`. A case's expected errors come from `FrameTrailSchema`: check that they name the actual problem before you keep them.
 

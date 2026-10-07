@@ -56,7 +56,7 @@ class StorageAdapterStatic extends StorageAdapterDownload {
         return resp.text();
     }
 
-    // writeJSON, exists, createDirectory, showDownloadDialog, _performDownload
-    // are all inherited from StorageAdapterDownload (in-memory storage + Save As export).
+    // writeJSON, exists and createDirectory are inherited from
+    // StorageAdapterDownload (in-memory storage; Save As exports, see BundleExport).
 
 }

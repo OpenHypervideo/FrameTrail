@@ -689,6 +689,47 @@
 
 
     /**
+     * The id of the hypervideo at a position of the contents init option: its
+     * own id when the entry has one (a bundle's), otherwise its position.
+     *
+     * @method contentsID
+     * @param {Number} index
+     * @return {String|Number}
+     * @private
+     */
+    function contentsID(index) {
+
+        var entry = (FrameTrail.getState('contents') || [])[index];
+
+        return (entry && entry.id != null && entry.id !== '') ? String(entry.id) : index;
+
+    }
+
+
+    /**
+     * The entry of the contents init option for a hypervideo id.
+     *
+     * @method contentsEntry
+     * @param {String} id
+     * @return {Object|null}
+     * @private
+     */
+    function contentsEntry(id) {
+
+        var contents = FrameTrail.getState('contents');
+
+        if (!Array.isArray(contents)) return null;
+
+        for (var i = 0; i < contents.length; i++) {
+            if (String(contentsID(i)) === String(id)) return contents[i];
+        }
+
+        return null;
+
+    }
+
+
+    /**
      * I load the hypervideo index data (_data/hypervideos/_index.json) according to the definitions in the init-options
      * and save the data in my attribute {{#crossLink "Database/hypervideos:attribute"}}Database/hypervideos{{/crossLink}}.
      * I call my success or fail callback respectively.
@@ -719,6 +760,9 @@
 
         } else if (Array.isArray(initOptionsHypervideoData)) {
 
+            // A bundle brings the overview map along (see PlayerLauncher).
+            adoptOverviewMap(FrameTrail.getState('overviewMap'));
+
             var countdown = initOptionsHypervideoData.length;
             function ready() {
                 if (!--countdown) success();
@@ -728,7 +772,7 @@
 
                 if (typeof initOptionsHypervideoData[i].hypervideo === 'string') {
 
-                    loadHypervideoData_DefaultServer(i, initOptionsHypervideoData[i].hypervideo, ready, fail)
+                    loadHypervideoData_DefaultServer(contentsID(i), initOptionsHypervideoData[i].hypervideo, ready, fail)
 
                 } else if (typeof initOptionsHypervideoData[i].hypervideo === 'object' && initOptionsHypervideoData[i].hypervideo !== null) {
 
@@ -738,7 +782,7 @@
                         // hypervideos[i] = ...
 
                     } else {
-                        hypervideos[i] = indexEntry(initOptionsHypervideoData[i].hypervideo);
+                        hypervideos[contentsID(i)] = indexEntry(initOptionsHypervideoData[i].hypervideo);
 
                         ready();
                     }
@@ -1101,7 +1145,7 @@
      */
     function loadAnnotationData_Default(success, fail) {
 
-        var initAnnotations = FrameTrail.getState('contents')[hypervideoID].annotations;
+        var initAnnotations = (contentsEntry(hypervideoID) || {}).annotations;
 
         // clear previous data
         annotations = [];
@@ -1246,6 +1290,22 @@
                 if (subtitleCount === 0) {
                     success.call(this);
                 }
+            }
+
+            // A bundle carries the subtitle texts (WebVTT keyed by srclang).
+            var inlineTexts = (FrameTrail.getState('storageMode') !== 'local' && contentsEntry(hypervideoID) || {}).subtitles;
+
+            if (inlineTexts && typeof inlineTexts === 'object') {
+                hypervideo.subtitles.forEach(function(currentSubtitles) {
+                    if (typeof inlineTexts[currentSubtitles.srclang] === 'string') {
+                        parseSubtitleData(inlineTexts[currentSubtitles.srclang], currentSubtitles);
+                    } else {
+                        console.warn(labels['ErrorMissingSubtitleFile']);
+                        subtitleCount--;
+                        if (subtitleCount === 0) { success.call(this); }
+                    }
+                });
+                return;
             }
 
             if (FrameTrail.getState('storageMode') === 'local') {
@@ -2028,6 +2088,23 @@
         return annotations.map(_annotationToW3C);
     }
 
+    /**
+     * The current user's annotations of the open hypervideo as their
+     * annotation file: what saveAnnotations writes.
+     *
+     * @method ownAnnotationFile
+     * @return {Array}
+     */
+    function ownAnnotationFile() {
+
+        var userID = FrameTrail.module('UserManagement').userID;
+
+        return Serializer.serializeAnnotationFile(annotations.filter(function(annotationItem) {
+            return annotationItem.source.frametrail && annotationItem.creatorId === userID;
+        }), { sourcePath: sourcePathOf(hypervideoID) });
+
+    }
+
     function saveAnnotations(callback) {
 
         var userID              = FrameTrail.module('UserManagement').userID,
@@ -2035,21 +2112,7 @@
             name                = FrameTrail.getState('username'),
             description         = FrameTrail.getState('username') + '\'s annotations',
             hidden              = false,
-            annotationsToSave   = [];
-
-
-        for (var i in annotations) {
-            var annotationItem = annotations[i];
-
-            if (!annotationItem.source.frametrail || annotationItem.creatorId !== userID) {
-                continue;
-            }
-
-            annotationsToSave.push(annotationItem);
-
-        }
-
-        annotationsToSave = Serializer.serializeAnnotationFile(annotationsToSave, { sourcePath: sourcePathOf(hypervideoID) });
+            annotationsToSave   = ownAnnotationFile();
 
         //console.log(annotationsToSave);
 
@@ -2313,6 +2376,8 @@
         saveHypervideo:        saveHypervideo,
         saveAnnotations:       saveAnnotations,
         getAnnotationsW3C:     getAnnotationsW3C,
+        ownAnnotationFile:     ownAnnotationFile,
+        contentsEntry:         contentsEntry,
         saveConfig:            saveConfig,
         saveGlobalCSS:         saveGlobalCSS,
         saveOverviewMap:       saveOverviewMap,

@@ -158,6 +158,8 @@ Writing keeps what the model does not cover. Every parsed object remembers what 
 
 The **folder** format maps a bundle to the `_data` layout: a map of paths relative to `_data/` to contents (parsed JSON for `.json` files, text for `.vtt` and `.css`). A project bundle is the whole tree; a hypervideo bundle is its folder under `hypervideos/` plus a `resources/_index.json` with the resources it carries. Reading takes `{ bundle: 'project' }`, or `{ bundle: 'hypervideo', id }` for one hypervideo.
 
+The **html** format is the [portable HTML format](HTML-FORMAT.md): a page with the bundle in a JSON data block, which plays anywhere and is read back without running it. `FrameTrailHTMLFormat`, next to the serializer and loaded the same way, registers it (`readBundle(html, 'html')`, `writeBundle(bundle, 'html', { datapath, config, library })`) and also reads FrameTrail's HTML exports from before this format (`parseLegacy`).
+
 The box-motion math — normalising, sampling and bounding keyframes, and the ease functions — is in `FrameTrailKeyframes`, next to the serializer and loaded the same way.
 
 Inside the player, scripts and extensions read and change the open hypervideo in this format through `instance.edit`, which validates against the schemas and keeps what it does not know ([EXTENDING.md](EXTENDING.md#editing-the-hypervideo)).

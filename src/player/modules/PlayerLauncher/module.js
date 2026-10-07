@@ -27,6 +27,79 @@
 
  FrameTrail.defineModule('PlayerLauncher', function(FrameTrail){
 
+    // ─── Bundle pre-processing ──────────────────────────────────────────────
+    // A hypervideo or project bundle (the bundle init option, which is how
+    // FrameTrail.autoInit plays the portable HTML format) is turned into the
+    // init options the loaders know: contents with the hypervideos' own ids,
+    // their annotations and subtitle texts, the resources, tag definitions,
+    // overview map and global CSS. The playback settings of a project come
+    // first, the page's own config overrides them. Like the shorthand below,
+    // this runs before RouteNavigation captures startID.
+    var _bundle = FrameTrail.getState('bundle');
+
+    if (_bundle && !FrameTrail.getState('contents')) {
+
+        var _bundleEntry = function(id, hypervideoBundle) {
+            var files       = (hypervideoBundle.annotations && hypervideoBundle.annotations.files) || {},
+                annotations = [];
+            Object.keys(files).forEach(function(fileID) {
+                if (Array.isArray(files[fileID])) { annotations = annotations.concat(files[fileID]); }
+            });
+            return {
+                id:          String(id),
+                hypervideo:  hypervideoBundle.hypervideo,
+                annotations: annotations,
+                subtitles:   hypervideoBundle.subtitles || {}
+            };
+        };
+
+        if (_bundle.bundle === 'project') {
+
+            FrameTrail.changeState('contents', Object.keys(_bundle.hypervideos || {}).map(function(id) {
+                return _bundleEntry(id, _bundle.hypervideos[id]);
+            }));
+            if (_bundle.resources && _bundle.resources.resources) {
+                FrameTrail.changeState('resources', [{ label: 'Bundle', type: 'frametrail', data: _bundle.resources.resources }]);
+            }
+            if (_bundle.tagdefinitions && !FrameTrail.getState('tagdefinitions')) {
+                FrameTrail.changeState('tagdefinitions', _bundle.tagdefinitions);
+            }
+            if (_bundle.hypervideosIndex && _bundle.hypervideosIndex.overviewMap) {
+                FrameTrail.changeState('overviewMap', _bundle.hypervideosIndex.overviewMap);
+            }
+            if (typeof _bundle.customCSS === 'string') {
+                // The global CSS (custom.css), in the element the settings dialog
+                // edits and exports read it from.
+                FrameTrail.changeState('customCSS', _bundle.customCSS);
+                var _globalCSS = document.head.querySelector('style.FrameTrailGlobalCustomCSS');
+                if (!_globalCSS) {
+                    _globalCSS = document.createElement('style');
+                    _globalCSS.className = 'FrameTrailGlobalCustomCSS';
+                    document.head.appendChild(_globalCSS);
+                }
+                _globalCSS.textContent = _bundle.customCSS;
+            }
+
+        } else {
+
+            var _bundleID = (_bundle.id != null && _bundle.id !== '') ? String(_bundle.id) : '0';
+
+            FrameTrail.changeState('contents', [_bundleEntry(_bundleID, _bundle)]);
+            if (_bundle.resources) {
+                FrameTrail.changeState('resources', [{ label: 'Bundle', type: 'frametrail', data: _bundle.resources }]);
+            }
+            if (FrameTrail.getState('startID') === undefined) {
+                FrameTrail.changeState('startID', _bundleID);
+            }
+
+        }
+
+        FrameTrail.changeState('config', Object.assign({}, _bundle.config || {}, FrameTrail.getState('config') || {}));
+
+    }
+    // ─── end bundle pre-processing ───────────────────────────────────────────
+
+
     // ─── Simple init shorthand pre-processing ───────────────────────────────
     // Must run BEFORE RouteNavigation.initModule so that `startID: 0` is in
     // state when RouteNavigation captures it into its `hypervideoID` closure.
@@ -149,6 +222,10 @@
 
     // Set up the edit API (instance.edit), before the extensions that use it
     FrameTrail.initModule('EditAPI');
+
+    // Set up export (Save As, instance.export) and import
+    FrameTrail.initModule('BundleExport');
+    FrameTrail.initModule('ImportDialog');
 
     // Set up the loader of extensions (they are loaded once the config is known)
     FrameTrail.initModule('Extensions');

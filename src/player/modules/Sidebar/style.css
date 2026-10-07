@@ -211,10 +211,6 @@
     margin-top: 2px;
 }
 
-.sidebarContainer .viewmodeControls .exportButton {
-    display: none;
-}
-
 /* Edit modes locked by another editor
    A lock badge only — no dimming. These buttons sit in a rail of icons that
    already vary in opacity by state, so fading them read as a glitch rather

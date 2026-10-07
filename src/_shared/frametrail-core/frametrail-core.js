@@ -63,8 +63,19 @@
     }
 
     /**
-     * Scan the document (or a subtree) for <video data-frametrail> elements and
-     * initialise a FrameTrail player around each one.
+     * Scan the document (or a subtree) for FrameTrail data blocks and for
+     * <video data-frametrail> elements, and initialise a player for each.
+     *
+     * A data block is a hypervideo or project bundle in a
+     * <script type="application/ld+json" data-frametrail> element, the portable
+     * HTML format (docs/HTML-FORMAT.md). Its attributes:
+     *   data-frametrail-format       — format version (default 1)
+     *   data-frametrail-datapath     — what relative media paths resolve against
+     *   data-frametrail-config       — inline JSON config (playback settings)
+     *   data-frametrail-language     — language code; maps to config.defaultLanguage
+     *   data-frametrail-target       — where to mount (CSS selector; default: body).
+     *                                  Only the first block per target is played.
+     *   data-frametrail-fullpage     — as below
      *
      * Supported data attributes on the <video> element:
      *   data-frametrail-annotations  — URL of a W3C annotations JSON file
@@ -80,7 +91,48 @@
      */
     function _autoInit(scope) {
         var root   = scope || document;
+        var blocks = root.querySelectorAll('script[type="application/ld+json" i][data-frametrail]');
         var videos = root.querySelectorAll('video[data-frametrail]');
+        var mounted = {};
+
+        for (var b = 0; b < blocks.length; b++) {
+            (function (block) {
+                var target  = block.getAttribute('data-frametrail-target') || 'body',
+                    format  = parseInt(block.getAttribute('data-frametrail-format') || '1', 10),
+                    known   = (window.FrameTrailHTMLFormat && window.FrameTrailHTMLFormat.FORMAT_VERSION) || 1,
+                    bundle, config;
+
+                if (mounted[target]) { return; }
+
+                if (!(format >= 1) || format > known) {
+                    console.error('FrameTrail: a data block in format ' + block.getAttribute('data-frametrail-format') + ' cannot be read by this version (format ' + known + ').');
+                    return;
+                }
+
+                try {
+                    bundle = JSON.parse(block.textContent);
+                    config = JSON.parse(block.getAttribute('data-frametrail-config') || '{}');
+                } catch (e) {
+                    console.error('FrameTrail: a data block is not valid JSON: ' + e.message);
+                    return;
+                }
+
+                var langAttr = block.getAttribute('data-frametrail-language');
+                if (langAttr) { config.defaultLanguage = langAttr; }
+
+                var fullPageAttr = block.getAttribute('data-frametrail-fullpage');
+
+                mounted[target] = true;
+
+                _init({
+                    bundle:   bundle,
+                    target:   target,
+                    config:   config,
+                    dataPath: block.getAttribute('data-frametrail-datapath') || null,
+                    fullPage: (fullPageAttr === null) ? undefined : (fullPageAttr !== 'false')
+                });
+            })(blocks[b]);
+        }
 
         for (var i = 0; i < videos.length; i++) {
             (function (video) {
@@ -253,6 +305,7 @@
                 fullscreenTarget:   options.fullscreenTarget || null,
                 contentTargets:     options.contentTargets || {},
                 contents:           options.contents !== undefined ? options.contents : null,
+                bundle:             options.bundle       || null,
                 startID:            options.startID,
                 resources:          options.resources !== undefined ? options.resources : null,
                 tagdefinitions:     options.tagdefinitions,
@@ -324,45 +377,13 @@
                 }
             },
 
+            // A hypervideo or the project as a page in the portable HTML format,
+            // as a bundle (JSON) or as a zip of the _data folder (see BundleExport).
             export: function(options){
-
-                options = options || {};
-
-                if (!FrameTrail.module('HypervideoModel')) {
-                    return Promise.reject(new Error('No hypervideo loaded'));
+                if (!FrameTrail.module('BundleExport')) {
+                    return Promise.reject(new Error('Export is not available'));
                 }
-
-                var format          = options.format || 'html',
-                    downloadAdapter = FrameTrail.module('StorageManager').getDownloadAdapter(),
-                    hypervideoID    = options.hypervideoID || FrameTrail.module('RouteNavigation').hypervideoID;
-
-                downloadAdapter._frameTrailInstance = FrameTrail;
-
-                if (format === 'html') {
-                    var resolvedDataURL = FrameTrail.module('RouteNavigation').resolveDataURL(''),
-                        dataPath        = new URL(resolvedDataURL, window.location.href).href;
-                    downloadAdapter._generateStandaloneHTML(hypervideoID, dataPath);
-                    return Promise.resolve();
-                }
-
-                if (format === 'json') {
-                    downloadAdapter._performDownload(hypervideoID);
-                    return Promise.resolve();
-                }
-
-                if (format === 'zip') {
-                    if (!options.includeMedia) {
-                        downloadAdapter._performZipDownload({ allHv: true, resources: true, config: true });
-                        return Promise.resolve();
-                    }
-                    if (!FrameTrail.module('StorageManager').canSaveToServer()) {
-                        return Promise.reject(new Error('Media files can only be exported in server mode by a logged-in user'));
-                    }
-                    return _exportServerZip();
-                }
-
-                return Promise.reject(new Error('Unknown export format: ' + format));
-
+                return FrameTrail.module('BundleExport').exportData(options);
             },
 
             destroy: function () {
@@ -437,42 +458,6 @@
         }
 
         instances.push(publicInstanceAPI);
-
-
-        /**
-         * Only the PHP endpoint can bundle the uploaded media files, so this path cannot
-         * run client-side. On a private instance (config.alwaysForceLogin) it answers 403
-         * unless a valid session cookie is sent, hence the explicit status check — an
-         * <a download> click would silently save the error body as a .zip.
-         */
-        function _exportServerZip() {
-
-            var serverUrl = FrameTrail.getState('server') || '_server/',
-                adapter   = FrameTrail.module('StorageManager').getAdapter(),
-                dpParam   = (adapter && adapter.dataPathAbsolute)
-                                ? '&dataPath=' + encodeURIComponent(adapter.dataPathAbsolute)
-                                : '';
-
-            return fetch(serverUrl + 'ajaxServer.php?a=dataExport' + dpParam, { credentials: 'same-origin' })
-                .then(function(response) {
-                    if (response.status === 403) {
-                        throw new Error('Data export denied: this instance is private (config.alwaysForceLogin) and requires a logged-in session');
-                    }
-                    if (!response.ok) {
-                        throw new Error('Data export failed with status ' + response.status);
-                    }
-                    return response.blob();
-                })
-                .then(function(blob) {
-                    var url = URL.createObjectURL(blob),
-                        a   = document.createElement('a');
-                    a.href     = url;
-                    a.download = 'frametrail-data-export.zip';
-                    a.click();
-                    URL.revokeObjectURL(url);
-                });
-
-        }
 
 
         function _initModule(name) {

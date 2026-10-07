@@ -27,7 +27,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '            <div class="viewmodeControls">'
                    + '                <div class="viewModeActionButtonContainer">'
                    + '                    <button class="newHypervideoButton" data-tooltip-bottom-left="'+ labels['HypervideoNew'] +'"><span class="icon-hypervideo-add"></span></button>'
-                   + '                    <button class="exportButton" data-tooltip-bottom-left="'+ labels['GenericExport'] +'"><span class="icon-download"></span></button>'
+                   + '                    <button class="importButton" data-tooltip-bottom-left="'+ labels['GenericImport'] +'"><span class="icon-upload"></span></button>'
+                   + '                    <button class="projectSaveAsButton" data-tooltip-bottom-left="'+ labels['GenericSaveAs'] +'"><span class="icon-export"></span></button>'
                    + '                    <div style="clear: both;"></div>'
                    + '                </div>'
                    // Styled as an edit-mode button because that is what it is:
@@ -43,12 +44,12 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '            <div class="viewmodeControls">'
                    + '                <div class="viewModeActionButtonContainer">'
                    + '                    <button class="newHypervideoButton" data-tooltip-bottom-left="'+ labels['HypervideoNew'] +'"><span class="icon-hypervideo-add"></span></button>'
+                   + '                    <button class="importButton" data-tooltip-bottom-left="'+ labels['GenericImport'] +'"><span class="icon-upload"></span></button>'
                    + '                    <button class="forkButton" data-tooltip-bottom-left="'+ labels['GenericForkHypervideo'] +'"><span class="icon-hypervideo-fork"></span></button>'
                    + '                    <button class="saveButton" data-tooltip-bottom-left="'+ labels['GenericSaveChanges'] +'"><span class="icon-floppy"></span></button>'
                    + '                    <button class="saveAsButton" data-tooltip-bottom-left="'+ labels['GenericSaveAs'] +'"><span class="icon-export"></span></button>'
                    + '                    <button class="undoButton" disabled data-tooltip-bottom-left="'+ labels['GenericUndo'] +'"><span class="icon-ccw"></span></button>'
                    + '                    <button class="redoButton" disabled data-tooltip-bottom-left="'+ labels['GenericRedo'] +'"><span class="icon-cw"></span></button>'
-                   + '                    <button class="exportButton" data-tooltip-bottom-left="'+ labels['GenericExportHypervideo'] +'"><span class="icon-download"></span></button>'
                    + '                    <div style="clear: both;"></div>'
                    + '                </div>'
                    + '                <button class="editMode" data-editmode="preview"><span class="icon-eye"></span><span class="editModeLabel">'+ labels['SidebarPreview'] +'</span></button>'
@@ -74,7 +75,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         SaveButton             = domElement.querySelector('.saveButton'),
         SaveAsButton           = domElement.querySelector('.saveAsButton'),
         ForkButton             = domElement.querySelector('.forkButton'),
-        ExportButton           = domElement.querySelectorAll('.exportButton'),
+        ImportButton           = domElement.querySelectorAll('.importButton'),
+        ProjectSaveAsButton    = domElement.querySelector('.projectSaveAsButton'),
         UndoButton             = domElement.querySelector('.undoButton'),
         RedoButton             = domElement.querySelector('.redoButton'),
 
@@ -801,9 +803,13 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
     });
 
-    ExportButton.forEach(function(btn) { btn.addEventListener('click', function(){
-        FrameTrail.module('HypervideoModel').exportIt();
+    ImportButton.forEach(function(btn) { btn.addEventListener('click', function(){
+        FrameTrail.module('ImportDialog').open();
     }); });
+
+    ProjectSaveAsButton.addEventListener('click', function(){
+        FrameTrail.module('HypervideoModel').saveAs({ scope: 'project' });
+    });
 
     MapEditButton.addEventListener('click', function() {
 
@@ -1439,10 +1445,13 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 var _canSave = FrameTrail.module('StorageManager').canSave();
                 var _isGuest = FrameTrail.module('UserManagement').isGuestMode();
                 NewHypervideoButton.forEach(function(btn) { btn.style.display = ''; btn.disabled = _isGuest && !_canSave; });
+                // Importing writes into the instance: only where saving goes somewhere.
+                var _canImport = _canSave && ['server', 'local'].indexOf(FrameTrail.getState('storageMode')) !== -1;
+                ImportButton.forEach(function(btn) { btn.style.display = ''; btn.disabled = !_canImport; });
                 ForkButton.style.display = ''; ForkButton.disabled = _isGuest && !_canSave;
-                ExportButton.forEach(function(btn) { btn.style.display = 'none'; });
                 SaveButton.style.display = ''; SaveButton.disabled = !_canSave;
                 SaveAsButton.style.display = '';
+                ProjectSaveAsButton.style.display = '';
                 UndoButton.style.display = '';
                 RedoButton.style.display = '';
 
@@ -1464,9 +1473,10 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             domElement.classList.remove('editActive');
 
             NewHypervideoButton.forEach(function(btn) { btn.style.display = 'none'; });
-            //ExportButton.show();
+            ImportButton.forEach(function(btn) { btn.style.display = 'none'; });
             SaveButton.style.display = 'none';
             SaveAsButton.style.display = 'none';
+            ProjectSaveAsButton.style.display = 'none';
             UndoButton.style.display = 'none';
             RedoButton.style.display = 'none';
             ForkButton.style.display = 'none';

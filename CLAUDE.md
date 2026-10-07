@@ -24,7 +24,7 @@ FrameTrail/
 │   ├── _shared/
 │   │   ├── frametrail-core/
 │   │   │   ├── frametrail-core.js  # Core: defineModule, defineType, init, state
-│   │   │   ├── serialization/      # FrameTrailSerializer (stored JSON ⇄ model), FrameTrailKeyframes
+│   │   │   ├── serialization/      # FrameTrailSerializer (stored JSON ⇄ model), FrameTrailKeyframes, FrameTrailHTMLFormat (portable HTML)
 │   │   │   ├── schema/             # FrameTrailSchema (validator for the schemas/ subset), FrameTrailSchemas (generated copy of schemas/)
 │   │   │   ├── storage/            # StorageAdapter + Server/Local/Download adapters
 │   │   │   ├── _templateModule.js  # Module boilerplate template
@@ -34,7 +34,7 @@ FrameTrail/
 │   │   ├── styles/                 # Global CSS (variables, generic, webfont)
 │   │   └── fonts/                  # Webfonts (woff2 only)
 │   ├── player/
-│   │   ├── modules/                # 27 player-specific modules
+│   │   ├── modules/                # 29 player-specific modules
 │   │   └── types/                  # Player types (Annotation, Overlay, etc.)
 │   ├── resourcemanager/
 │   │   └── modules/ResourceManagerLauncher/
@@ -46,7 +46,7 @@ FrameTrail/
 ├── .github/workflows/
 │   ├── build.yml                   # CI: tests + build verification on push/PR
 │   └── release.yml                 # CD: package + GitHub Release on tags
-├── docs/                           # Developer documentation (DATA-MODEL.md: the _data contract)
+├── docs/                           # Developer documentation (DATA-MODEL.md: the _data contract; HTML-FORMAT.md: the portable HTML format)
 ├── build/                          # Build output (git-ignored)
 └── ...                             # README, LICENSE, CONTRIBUTING, etc.
 ```
@@ -138,7 +138,7 @@ _data/
 - `'local'` — File System Access API active, data read/written via `StorageAdapterLocal` to a user-selected folder. Other programs may write the folder meanwhile: `Collaboration` runs in its `localFolder` mode (versions of `hypervideo.json` and `hypervideos/_index.json` — modification time and size — checked on window focus, on entering edit mode and every 30 s while editing; the sidebar's "changed" notice), and `Database.saveHypervideo()` / the hypervideo settings dialog refuse to overwrite a changed `hypervideo.json` (code 7, as on the server). The adapter remembers the version of every file it reads and writes, so its own writes are never reported.
 - `'needsFolder'` — File System Access API supported but no folder selected yet; launcher prompts user to pick a `_data` directory
 - `'download'` — No persistent storage available (Firefox/Safari, or any browser without File System Access API and no PHP); `StorageAdapterDownload` is used, which stores data in memory and lets users export/download it. Viewing and editing work; `canSave` is `false` (no persistent target); changes are exported via Save As. Data persists only until page reload.
-- `'static'` — CDN/static hosting mode (no PHP backend). `StorageAdapterStatic` reads JSON from a CDN base URL (`dataPath` init option) and inherits in-memory write + Save As export from `StorageAdapterDownload`. Used when `dataPath` is set but `server` is omitted.
+- `'static'` — CDN/static hosting mode (no PHP backend). `StorageAdapterStatic` reads JSON from a CDN base URL (`dataPath` init option) and inherits in-memory write from `StorageAdapterDownload`; work leaves through Save As. Used when `dataPath` is set but `server` is omitted.
 
 ### Application Modes
 
@@ -352,7 +352,7 @@ The stored format is documented in [docs/DATA-MODEL.md](docs/DATA-MODEL.md) and 
 - **Serializer:** all reading and writing of `hypervideo.json`, content items and annotation files goes through `FrameTrailSerializer` (`parseHypervideo` / `serializeHypervideo`, `parseAnnotationFile` / `serializeAnnotationFile`, …); `Database` delegates to it. Every parsed object keeps the stored object it came from in `_stored`, and writing is a three-way merge (stored, what the writer makes of stored unchanged, what it makes of the model now): unchanged parts are written byte-for-byte as stored, unknown properties survive, and only `@context` and ISO `created` are always rewritten. Never build stored JSON by hand next to it, and add new stored fields to both the `parse*` and the `write*` side.
 - **Item identity on load:** `parseContents` / `parseAnnotationFile` de-duplicate `created` per collection (annotations per creator) by moving the later item on by 1 ms (`dedupeCreated`).
 - **Cross-hypervideo rule:** `HypervideoSettingsDialog` is also opened from the overview for any hypervideo. Anything it does to items must act on the edited one (`isLoadedHypervideo()` decides live data vs stored data), never on the loaded one. Shortening a duration deletes/truncates that hypervideo's overlays and code snippets — live for the loaded one, otherwise via `cutContents()` on the JSON the dialog writes — and never touches annotations (they belong to their authors).
-- **`convertToDatabaseFormat(id, purpose)`** builds the model from `hypervideos[id]` (meta, config, clips, chapters, subtitles — where the settings dialog edits them) and its `hypervideoData`; only when `id` is the open hypervideo does it take live overlays, code snippets, global events, custom CSS and the `ViewLayout` content views. `purpose: 'export'` turns Transcript views into CustomHTML (Save As HTML/JSON); saves and the "All Data" zip keep them.
+- **`convertToDatabaseFormat(id, purpose)`** builds the model from `hypervideos[id]` (meta, config, clips, chapters, subtitles — where the settings dialog edits them) and its `hypervideoData`; only when `id` is the open hypervideo does it take live overlays, code snippets, global events, custom CSS and the `ViewLayout` content views. `purpose: 'export'` turns Transcript views into CustomHTML; nothing in FrameTrail uses it any more — exports are bundles, which carry the subtitles, so they keep Transcript views like saves.
 - **Namespace:** `http://frametrail.org/ns/` stays HTTP (it is an identifier). The JSON-LD context document is `https://frametrail.org/ns/context.jsonld`, maintained in the FrameTrail-Website repository (`ns/`) together with the namespace page.
 
 ## Server Configuration
@@ -582,6 +582,15 @@ Extensions are code that is not part of FrameTrail (add-ons, a hosting platform'
 - **Busy editor:** while an async transaction is open, state `editBusy` = `{ description }`: other writes and transactions are refused, `UndoManager` refuses undo/redo, `Interface` sets `.editBusy` (CSS in `ViewVideo/style.css` makes video container, edit panel, timelines and layout editor inert; controls, progress bar and timeline zoom stay usable), the freeform editor ignores keys, `HypervideoSettingsDialog.open()` refuses the loaded hypervideo, `Sidebar` shows a fixed notice (`MessageEditBusy`, "Automated editing in progress") and Stop in its collaboration notice. `EditAPI.stop(true)` (Stop, `leaveEditMode()` before its prompt, `editMode` → false) takes the changes back; `stop(false)` in `updateHypervideo()`. The promise rejects with code `stopped`; `tx.signal` is aborted. A new editing surface must respect `.editBusy` (inside the regions above it does automatically).
 - **Saving:** `subtitles` and `config` are save categories of `HypervideoModel` (`Sidebar.newUnsavedChange` tolerates categories without a button). Pending subtitle texts (`{ lang: text | null }`) go with `Database.saveHypervideo(cb, id, { subtitles })`: multipart `subtitles[<lang>]` / `SubtitlesToDelete[]` in `hypervideoChange` on the server, `writeText` / `deleteFile` through the adapter elsewhere; kept for the next save when it fails. `Database.subtitles[lang].vtt` holds the loaded text.
 - **Permissions** as in the editor: edit mode; hypervideo kinds need admin or creator and no foreign collaboration lock (a write claims the lock); annotations only the user's own. Errors are `FrameTrailEditError` with `code` `invalid` (+ `errors: [{ path, message }]`), `notFound`, `notAllowed`.
+
+## Export and Import
+
+Save As and `instance.export()` (`BundleExport`) write a hypervideo or the project as a page in the **portable HTML format** ([docs/HTML-FORMAT.md](docs/HTML-FORMAT.md)), as a bundle (JSON), or the `_data` folder as a zip. The **Import** button (`ImportDialog`; server and local-folder mode, edit mode) reads those, earlier HTML/JSON exports, and the server's zip with media.
+
+- **The format:** the bundle is JSON in `<script type="application/ld+json" data-frametrail="hypervideo|project" data-frametrail-format="1">` (every `<` as `\u003c`), attributes `data-frametrail-datapath` (what relative media paths resolve against), `-config`, `-target`; then the library (jsDelivr pinned to a release version, or inline with `</script` → `<\/script`, `<!--` → `<\x21--`) and `FrameTrail.autoInit()`. `FrameTrailHTMLFormat` (pure, dual-wrapped) parses and writes it, registers `html` with the serializer, and reads earlier exports without evaluating them (`parseLegacy`).
+- **Playing:** `autoInit()` turns each block (first per target) into `FrameTrail.init({ bundle, … })`; `PlayerLauncher` converts the `bundle` option into `contents` entries with the hypervideos' own `id`s, their annotations and subtitle texts, plus resources, tag definitions, and the internal states `overviewMap` and `customCSS`. `Database.contentsEntry(id)` finds an entry by id; inline subtitle texts are parsed instead of fetched. Download mode, nothing fetched: works from `file://`.
+- **Export** builds a folder map (paths → contents) per storage mode — stored files through the adapter, the open hypervideo and the user's own annotations live — and `readBundle(…, 'folder')` makes the bundle. Media are never embedded; the datapath is the instance's `_data/` URL (none from a local folder).
+- **Import rules:** new hypervideo ids, owned by the importer (`meta.creator`/`creatorId`); every source id remapped or dropped (resources in clips and items, `jumpToHypervideo` targets, map markers); resources deduped by absolute URL (re-importing an instance's own export reuses its uploads); relative media → `datapath + 'resources/' + path` unless a zip carries the file (copied: uploaded on a server, written in a local folder), unresolved ones reported; all annotations into the importer's file with their creators; code (global events, code snippets, hypervideo custom CSS, global CSS) only with "Import code", admin-only on a server; a project's map, playback settings and global CSS as switches, on for an empty instance, admin-only on a server, settings/CSS off under `externalSettings`; missing tags added (admin). Not in download/static mode.
 
 ## Localization
 

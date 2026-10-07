@@ -41,7 +41,7 @@ FrameTrail is an open source software that lets you experience, manage and edit 
 
 - All data stored as **JSON files** in a `_data` directory — no database
 - Copy the entire `_data` folder to move your instance between servers
-- Export/download data with the built-in **Save As** feature (anyone can download hypervideos and then continue editing in their own FrameTrail installation or locally)
+- Export a hypervideo or a whole project with the built-in **Save As** feature as one HTML file that plays anywhere, also offline and from the disk, and **import** it into any FrameTrail installation to continue editing
 - Annotations follow the **W3C Web Annotation** data model
 
 ### 3 Ways to Run
@@ -100,7 +100,7 @@ Open `http://localhost:8080` and follow the setup wizard. The image builds the m
 2. **Create a hypervideo** — In the sidebar, click "New Hypervideo" and choose a video source
 3. **Add resources** — Click "Manage Resources" to upload or link media
 4. **Edit** — Drag resources onto the video timeline as overlays or annotations
-5. **Save** — In server/local mode, Ctrl+S saves directly. As a guest, use Save As to export your changes as JSON.
+5. **Save** — In server/local mode, Ctrl+S saves directly. As a guest, use Save As to download your work as an HTML file (or as JSON), which any FrameTrail installation can import.
 6. **Share** — Copy the URL or export and share your hypervideo
 
 (see also the [FrameTrail-Examples](https://github.com/OpenHypervideo/FrameTrail-Examples) repository) 
@@ -146,6 +146,7 @@ Checks the JSON Schemas, the data fixtures and the serializer; Node 20 or later,
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Development setup, code style, branching, CI/CD
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Module system, state management, storage modes
 - [docs/DATA-MODEL.md](docs/DATA-MODEL.md) — The files in `_data/`, with JSON Schemas in [`schemas/`](schemas/) for tools that read or write them
+- [docs/HTML-FORMAT.md](docs/HTML-FORMAT.md) — The portable HTML format: a hypervideo or a whole project as one file that plays anywhere and can be imported again
 - [docs/EXTENDING.md](docs/EXTENDING.md) — Extensions that plug in without changing FrameTrail, in the browser and on the server; editing hypervideos from scripts (`instance.edit`); adding resource types, modules, localization
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Server deployment, local usage, building, releasing
 - [docs/INTEGRATION.md](docs/INTEGRATION.md) — Running FrameTrail inside an LMS or platform: external authentication (OIDC, signed tokens), external settings, personal API tokens

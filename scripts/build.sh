@@ -129,6 +129,7 @@ JS_FILES=(
     # Serialization (pure, no FrameTrail instance; before AnimationLibrary and Database)
     "_shared/frametrail-core/serialization/FrameTrailKeyframes.js"
     "_shared/frametrail-core/serialization/FrameTrailSerializer.js"
+    "_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js"
 
     # Validation against schemas/ (pure; the schemas are bundled by scripts/bundle-schemas.mjs)
     "_shared/frametrail-core/schema/FrameTrailSchema.js"
@@ -234,6 +235,8 @@ JS_FILES=(
     "player/modules/AdminSettingsDialog/module.js"
     "player/modules/OverviewMapSettingsDialog/module.js"
     "player/modules/EditAPI/module.js"
+    "player/modules/BundleExport/module.js"
+    "player/modules/ImportDialog/module.js"
     "player/modules/Extensions/module.js"
 
     # Resource manager module

@@ -67,7 +67,7 @@ FrameTrail/
 │   ├── _shared/
 │   │   ├── frametrail-core/       # Core framework (module system, state, types)
 │   │   │   ├── frametrail-core.js # defineModule, defineType, init, changeState
-│   │   │   ├── serialization/     # FrameTrailSerializer (stored JSON ⇄ model), FrameTrailKeyframes
+│   │   │   ├── serialization/     # FrameTrailSerializer (stored JSON ⇄ model), FrameTrailKeyframes, FrameTrailHTMLFormat (portable HTML)
 │   │   │   ├── schema/            # FrameTrailSchema (validator for the JSON Schemas), FrameTrailSchemas (generated copy)
 │   │   │   └── storage/           # StorageAdapter, StorageAdapterServer/Local/Download
 │   │   ├── modules/               # Shared modules
