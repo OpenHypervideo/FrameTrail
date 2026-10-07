@@ -186,6 +186,7 @@
             unloadExtension: _unloadExtension,
             extensions:     _extensions,
             extension:      _extension,
+            get edit()      { return modules['EditAPI'] ? modules['EditAPI'].edit : undefined },
             getState:       _getState,
             changeState:    _changeState,
             get types()     { return types },
@@ -378,6 +379,9 @@
                 
                 instances.splice(thisInstanceIndex, 1);
             },
+
+            // Reading and changing the open hypervideo (see docs/EXTENDING.md, "Editing the Hypervideo").
+            get edit() { return FrameTrail.module('EditAPI') ? FrameTrail.module('EditAPI').edit : undefined },
 
             play: function() { (FrameTrail.module('HypervideoController')) ? FrameTrail.module('HypervideoController').play() : null },
             pause: function() { (FrameTrail.module('HypervideoController')) ? FrameTrail.module('HypervideoController').pause() : null },

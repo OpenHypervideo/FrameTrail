@@ -60,7 +60,7 @@ validator.validate('hypervideo.schema.json', JSON.parse(fs.readFileSync('_data/h
 // [{ path: '/contents/3/body/frametrail:attributes/shape', message: 'must be one of "circle", "rectangle", …' }]
 ```
 
-A name is resolved against `https://frametrail.org/schemas/1/`; a fragment selects a definition (`common.schema.json#/$defs/keyframe`). The tests in [`tests/`](../tests/README.md) hold valid and invalid documents, with the errors expected for each, and the exact rules for messages, so that validators in other languages can be checked against the same fixtures.
+A name is resolved against `https://frametrail.org/schemas/1/`; a fragment selects a definition (`common.schema.json#/$defs/keyframe`). The player carries a copy of the schemas without titles and descriptions (`FrameTrailSchemas.js` in the same folder, written by `node scripts/bundle-schemas.mjs`) and validates what scripts and extensions give it to store. The tests in [`tests/`](../tests/README.md) hold valid and invalid documents, with the errors expected for each, and the exact rules for messages, so that validators in other languages can be checked against the same fixtures.
 
 ## File Layout
 
@@ -158,6 +158,8 @@ Writing keeps what the model does not cover. Every parsed object remembers what 
 The **folder** format maps a bundle to the `_data` layout: a map of paths relative to `_data/` to contents (parsed JSON for `.json` files, text for `.vtt` and `.css`). A project bundle is the whole tree; a hypervideo bundle is its folder under `hypervideos/` plus a `resources/_index.json` with the resources it carries. Reading takes `{ bundle: 'project' }`, or `{ bundle: 'hypervideo', id }` for one hypervideo.
 
 The box-motion math — normalising, sampling and bounding keyframes, and the ease functions — is in `FrameTrailKeyframes`, next to the serializer and loaded the same way.
+
+Inside the player, scripts and extensions read and change the open hypervideo in this format through `instance.edit`, which validates against the schemas and keeps what it does not know ([EXTENDING.md](EXTENDING.md#editing-the-hypervideo)).
 
 ## The Files
 

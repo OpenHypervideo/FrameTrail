@@ -363,6 +363,11 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
             return;
         }
 
+        // Editing by hand waits while a transaction of the edit API changes the hypervideo.
+        if (FrameTrail.getState('editBusy')) {
+            return;
+        }
+
         if (drawing) {
             if (evt.key === 'Enter') {
                 finishDrawing();

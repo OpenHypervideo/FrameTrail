@@ -281,11 +281,17 @@
         // correct _data directory.
         var postData = opts.data || {};
         var adapter  = FrameTrail.module('StorageManager').getAdapter();
+        // FormData is for requests that upload files (sent as multipart).
+        var isForm   = (typeof FormData !== 'undefined' && postData instanceof FormData);
         if (adapter && adapter.dataPathAbsolute) {
-            postData.dataPath = adapter.dataPathAbsolute;
+            if (isForm) {
+                postData.set('dataPath', adapter.dataPathAbsolute);
+            } else {
+                postData.dataPath = adapter.dataPathAbsolute;
+            }
         }
 
-        fetch(url, { method: 'POST', cache: cachePolicy, body: new URLSearchParams(postData) })
+        fetch(url, { method: 'POST', cache: cachePolicy, body: isForm ? postData : new URLSearchParams(postData) })
             .then(function(r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return (opts.dataType === 'text') ? r.text() : r.json();
@@ -354,7 +360,6 @@
      * @method sourcePathOf
      * @param {String} thisHypervideoID
      * @return {String|undefined} undefined when it cannot be told (items then keep theirs)
-     * @private
      */
     function sourcePathOf(thisHypervideoID) {
 
@@ -1228,18 +1233,14 @@
 
             // Helper to parse VTT data once loaded
             function parseSubtitleData(data, currentSubtitles) {
-                var parsedCues = [];
-                var parser = new WebVTT.Parser(window, WebVTT.StringDecoder());
-                parser.onregion = function(region) {};
-                parser.oncue = function(cue) { parsedCues.push(cue); };
-                parser.onparsingerror = function(e) { console.log(e); };
-                parser.parse(data);
-                parser.flush();
+                var parsed = parseSubtitles(data);
+                parsed.errors.forEach(function(e) { console.log(e); });
 
                 var langLabel = subtitlesLangMapping[currentSubtitles.srclang] || currentSubtitles.srclang;
                 subtitles[currentSubtitles.srclang] = {};
                 subtitles[currentSubtitles.srclang]['label'] = langLabel;
-                subtitles[currentSubtitles.srclang]['cues'] = parsedCues;
+                subtitles[currentSubtitles.srclang]['cues'] = parsed.cues;
+                subtitles[currentSubtitles.srclang]['vtt'] = data;
 
                 subtitleCount--;
                 if (subtitleCount === 0) {
@@ -1280,7 +1281,9 @@
                     }, function () {
                         //fail(labels['ErrorMissingSubtitleFile']);
                         console.warn(labels['ErrorMissingSubtitleFile']);
-                        success.call(this);
+                        // Done with this one; the others may still be loading.
+                        subtitleCount--;
+                        if (subtitleCount === 0) { success.call(this); }
                     });
 
                 }).call(this, i)
@@ -1299,6 +1302,73 @@
 
 
 
+
+
+    /**
+     * I parse WebVTT text into cues (vtt.js VTTCue objects).
+     *
+     * @method parseSubtitles
+     * @param {String} text
+     * @return {Object} { cues, errors }: errors are the parser's complaints, as text
+     */
+    function parseSubtitles(text) {
+
+        var cues   = [],
+            errors = [],
+            parser = new WebVTT.Parser(window, WebVTT.StringDecoder());
+
+        parser.onregion = function(region) {};
+        parser.oncue = function(cue) { cues.push(cue); };
+        parser.onparsingerror = function(e) { errors.push((e && e.message) ? e.message : String(e)); };
+        parser.parse(text);
+        parser.flush();
+
+        return { cues: cues, errors: errors };
+
+    }
+
+
+    /**
+     * I set the subtitles of one language of the open hypervideo, or remove them (text null): the parsed cues, the text, and the entry in the hypervideo's list of subtitle files. Writing the file is left to saveHypervideo().
+     *
+     * @method setSubtitleData
+     * @param {String} lang
+     * @param {String|null} text WebVTT
+     */
+    function setSubtitleData(lang, text) {
+
+        if (!Array.isArray(hypervideo.subtitles)) {
+            hypervideo.subtitles = [];
+        }
+
+        var list  = hypervideo.subtitles,
+            entry = { "src": lang + '.vtt', "srclang": lang },
+            index = -1;
+
+        for (var i = 0; i < list.length; i++) {
+            if (list[i].srclang === lang) { index = i; break; }
+        }
+
+        if (text === null) {
+            if (index >= 0) { list.splice(index, 1); }
+            delete subtitles[lang];
+            return;
+        }
+
+        // The file is always written as <lang>.vtt, on the server too.
+        if (index >= 0) {
+            list[index] = entry;
+        } else {
+            list.push(entry);
+        }
+
+        subtitles[lang] = {
+            label: subtitlesLangMapping[lang] || lang,
+            cues:  parseSubtitles(text).cues,
+            vtt:   text
+        };
+
+    }
 
 
     /**
@@ -1803,22 +1873,35 @@
      * or
      *     { failed: 'hypervideo', error: ... }
      *
-     * @method saveOverlays
+     * The subtitle files of options.subtitles ({ <lang>: WebVTT text, or null to delete the file }) are written with it, in the same request on the server.
+     *
+     * @method saveHypervideo
      * @param {Function} callback
+     * @param {String} [thisHypervideoID] default: the open hypervideo
+     * @param {Object} [options] { subtitles }
      */
-    function saveHypervideo(callback, thisHypervideoID) {
+    function saveHypervideo(callback, thisHypervideoID, options) {
 
         thisHypervideoID = thisHypervideoID || hypervideoID;
 
-        var saveData = convertToDatabaseFormat(thisHypervideoID);
+        var saveData       = convertToDatabaseFormat(thisHypervideoID),
+            subtitleWrites = (options && options.subtitles) || {},
+            subtitleLangs  = Object.keys(subtitleWrites);
         //console.log(saveData);
 
         var storageMode = FrameTrail.getState('storageMode');
 
         if (storageMode !== 'server') {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
-            var path = 'hypervideos/' + thisHypervideoID + '/hypervideo.json';
-            adapter.writeJSON(path, saveData)
+            var dir  = 'hypervideos/' + thisHypervideoID;
+            var path = dir + '/hypervideo.json';
+            // The subtitle files first, so whoever reads the new hypervideo.json finds them.
+            Promise.all(subtitleLangs.map(function(lang) {
+                return writeSubtitleFile(adapter, dir, lang, subtitleWrites[lang]);
+            }))
+                .then(function() {
+                    return adapter.writeJSON(path, saveData);
+                })
                 .then(function() {
                     hypervideos[thisHypervideoID].lastchanged = saveData.meta.lastchanged;
                     callback.call(window, { success: true });
@@ -1832,11 +1915,27 @@
         // stays the version we actually rendered from — the compare-and-swap token.
         var baseVersion = hypervideos[thisHypervideoID].lastchanged;
 
+        var postData = { a: 'hypervideoChange', hypervideoID: thisHypervideoID, src: JSON.stringify(saveData, null, 4), baseVersion: (baseVersion == null ? '' : baseVersion) };
+
+        // Subtitle files go up as uploads, as the settings dialog sends them.
+        if (subtitleLangs.length) {
+            var formData = new FormData();
+            Object.keys(postData).forEach(function(key) { formData.append(key, postData[key]); });
+            subtitleLangs.forEach(function(lang) {
+                if (subtitleWrites[lang] === null) {
+                    formData.append('SubtitlesToDelete[]', lang);
+                } else {
+                    formData.append('subtitles[' + lang + ']', new Blob([subtitleWrites[lang]], { type: 'text/vtt' }), lang + '.vtt');
+                }
+            });
+            postData = formData;
+        }
+
         _ajax({
             type:     'POST',
             url:      '_server/ajaxServer.php',
             dataType: 'json',
-            data:     { a: 'hypervideoChange', hypervideoID: thisHypervideoID, src: JSON.stringify(saveData, null, 4), baseVersion: (baseVersion == null ? '' : baseVersion) }
+            data:     postData
         }, function (data) {
             if (data.code === 0) {
                 hypervideos[thisHypervideoID].lastchanged = saveData.meta.lastchanged;
@@ -1856,6 +1955,33 @@
         });
 
     };
+
+
+    /**
+     * I write a subtitle file through a storage adapter, or delete it (text null).
+     *
+     * @method writeSubtitleFile
+     * @param {StorageAdapter} adapter
+     * @param {String} dir the hypervideo's folder, relative to _data
+     * @param {String} lang
+     * @param {String|null} text
+     * @return {Promise}
+     * @private
+     */
+    function writeSubtitleFile(adapter, dir, lang, text) {
+
+        var path = dir + '/subtitles/' + lang + '.vtt';
+
+        if (text === null) {
+            return adapter.deleteFile ? adapter.deleteFile(path).catch(function() {}) : Promise.resolve();
+        }
+
+        // The in-memory adapters keep any value under a path, text included.
+        return adapter.createDirectory(dir + '/subtitles').then(function() {
+            return adapter.writeText ? adapter.writeText(path, text) : adapter.writeJSON(path, text);
+        });
+
+    }
 
 
     /**
@@ -2173,6 +2299,8 @@
         updateHypervideoData:  updateHypervideoData,
         loadSequenceData:      loadSequenceData,
         loadSubtitleData:      loadSubtitleData,
+        parseSubtitles:        parseSubtitles,
+        setSubtitleData:       setSubtitleData,
 
         saveHypervideo:        saveHypervideo,
         saveAnnotations:       saveAnnotations,
@@ -2183,7 +2311,8 @@
         buildHypervideoIndex:  buildHypervideoIndex,
 
         //TODO only shortcut for now
-        convertToDatabaseFormat: convertToDatabaseFormat
+        convertToDatabaseFormat: convertToDatabaseFormat,
+        sourcePathOf:          sourcePathOf
 
     }
 

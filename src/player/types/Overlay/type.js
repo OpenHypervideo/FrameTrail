@@ -27,17 +27,9 @@ FrameTrail.defineType(
 
                 this.labels = FrameTrail.module('Localization').labels;
 
-                // compatibility fix
-                if ( !data.events || Array.isArray(data.events) ) {
-                    data.events = {};
-                }
-
-                if ( !data.attributes || Array.isArray(data.attributes) ) {
-                    data.attributes = {};
-                }
-
-
                 this.data = data;
+
+                this.normalizeData();
 
                 this.resourceItem = FrameTrail.newObject(
                     ('Resource' + data.type.charAt(0).toUpperCase() + data.type.slice(1)),
@@ -64,16 +56,6 @@ FrameTrail.defineType(
                 this.animationLayer = document.createElement('div');
                 this.animationLayer.className = 'overlayAnimationLayer';
                 this.overlayElement.appendChild(this.animationLayer);
-
-                if (!Array.isArray(this.data.keyframes) || !this.data.keyframes.length) {
-                    delete this.data.keyframes;
-                }
-
-                if (!isFinite(parseFloat(this.data.rotation)) || parseFloat(this.data.rotation) === 0) {
-                    delete this.data.rotation;
-                } else {
-                    this.data.rotation = parseFloat(this.data.rotation);
-                }
 
 
             },
@@ -137,6 +119,35 @@ FrameTrail.defineType(
 
 
                 /**
+                 * I bring my data into the shape the rest of me expects: events and attributes as objects, keyframes only when there are some, rotation as a number other than 0, or not at all.
+                 *
+                 * @method normalizeData
+                 */
+                normalizeData: function () {
+
+                    // compatibility fix
+                    if ( !this.data.events || Array.isArray(this.data.events) ) {
+                        this.data.events = {};
+                    }
+
+                    if ( !this.data.attributes || Array.isArray(this.data.attributes) ) {
+                        this.data.attributes = {};
+                    }
+
+                    if (!Array.isArray(this.data.keyframes) || !this.data.keyframes.length) {
+                        delete this.data.keyframes;
+                    }
+
+                    if (!isFinite(parseFloat(this.data.rotation)) || parseFloat(this.data.rotation) === 0) {
+                        delete this.data.rotation;
+                    } else {
+                        this.data.rotation = parseFloat(this.data.rotation);
+                    }
+
+                },
+
+
+                /**
                  * I render my DOM elements ({{#crossLink "Overlay/timelineElement:attribute"}}Overlay/timelineElement{{/crossLink}}
                  * and {{#crossLink "Overlay/overlayElement:attribute"}}Overlay/overlayElement{{/crossLink}}) into the DOM.
                  *
@@ -152,17 +163,7 @@ FrameTrail.defineType(
                     (timelineScroller || ViewVideo.OverlayTimeline).appendChild(this.timelineElement);
                     ViewVideo.OverlayContainer.appendChild(this.overlayElement);
 
-                    var previewWrapper = this.timelineElement.querySelector('.previewWrapper');
-                    previewWrapper.innerHTML = '';
-                    previewWrapper.append(this.resourceItem.renderThumb());
-
-                    // Set icon from resourceItem
-                    this.timelineElement.querySelector('.timelineElementIcon').innerHTML =
-                        '<span class="' + this.resourceItem.iconClass + '"></span>';
-
-                    // Set label from resourceItem
-                    this.timelineElement.querySelector('.timelineElementLabel').textContent =
-                        this.resourceItem.getDisplayLabel();
+                    this.updateLabel();
 
                     var newOverlayContent = this.resourceItem.renderContent();
                     this.getContentHost().append(newOverlayContent);
@@ -246,6 +247,61 @@ FrameTrail.defineType(
                     });
 
 
+
+                },
+
+
+                /**
+                 * I show my thumbnail, icon and label in my timelineElement.
+                 *
+                 * @method updateLabel
+                 */
+                updateLabel: function () {
+
+                    var previewWrapper = this.timelineElement.querySelector('.previewWrapper');
+                    previewWrapper.innerHTML = '';
+                    previewWrapper.append(this.resourceItem.renderThumb());
+
+                    // Set icon from resourceItem
+                    this.timelineElement.querySelector('.timelineElementIcon').innerHTML =
+                        '<span class="' + this.resourceItem.iconClass + '"></span>';
+
+                    // Set label from resourceItem
+                    this.timelineElement.querySelector('.timelineElementLabel').textContent =
+                        this.resourceItem.getDisplayLabel();
+
+                },
+
+
+                /**
+                 * I take over new data — all of it; my type stays — and show it. My data object stays the same one, since the Database and my resource item hold it.
+                 *
+                 * @method replaceData
+                 * @param {Object} data
+                 */
+                replaceData: function (data) {
+
+                    var self = this;
+
+                    Object.keys(this.data).forEach(function(key) { delete self.data[key]; });
+                    Object.keys(data).forEach(function(key) {
+                        if (data[key] !== undefined) {
+                            self.data[key] = JSON.parse(JSON.stringify(data[key]));
+                        }
+                    });
+
+                    this.normalizeData();
+
+                    this.applyState({}, { rerender: true });
+                    this.updateLabel();
+
+                    // The content was rendered anew, and with it the media element I play in sync.
+                    if (this.syncedMedia) {
+                        this.setSyncedMedia(true);
+                        if (this.mediaElement instanceof HTMLMediaElement) {
+                            this.prepareSyncedHTML5Media(this.mediaElement);
+                        }
+                    }
 
                 },
 

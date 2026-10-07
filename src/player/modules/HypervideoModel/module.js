@@ -51,6 +51,11 @@
         unsavedAnnotations      = false,
         unsavedChapters         = false,
         unsavedLayout           = false,
+        unsavedSubtitles        = false,
+        unsavedConfig           = false,
+
+        // Subtitle files to write with the next save: { <lang>: WebVTT text, or null to delete }.
+        pendingSubtitles        = {},
 
         autoSaveTimeout         = null,
 
@@ -339,6 +344,9 @@
      */
     function initModelOfSubtitles(database) {
 
+        // Called again when subtitles change, so languages that are gone must go here too.
+        subtitles = {};
+
         for (var lang in database.subtitles) {
 
             subtitles[lang] = [];
@@ -355,11 +363,9 @@
             }
         }
 
-        if (subtitles['en']) {
-            selectedLang = 'en';
-        } else if ( Object.keys(database.subtitles).length > 0 ) {
-            for (first in database.subtitles) break;
-                selectedLang = first;
+        // Keep the chosen language while it is there.
+        if (!subtitles[selectedLang]) {
+            selectedLang = subtitles['en'] ? 'en' : (Object.keys(subtitles)[0] || '');
         }
 
 
@@ -627,10 +633,10 @@
      */
     function newChapter(protoData) {
 
-        var newData = {
-                "start": protoData.start,
-                "title": protoData.title || ''
-            };
+        // A copy of all of it, so properties another tool added are kept.
+        var newData = JSON.parse(JSON.stringify(protoData));
+
+        newData.title = newData.title || '';
 
         FrameTrail.module('Database').chapters.push(newData);
 
@@ -739,6 +745,98 @@
             });
 
             return newAnnotationObj;
+
+    };
+
+
+    /**
+     * I set the subtitles of one language (WebVTT text), or remove them (null), and show the change in the captions. The file is written with the next save.
+     *
+     * @method setSubtitles
+     * @param {String} lang
+     * @param {String|null} text
+     */
+    function setSubtitles(lang, text) {
+
+        var database = FrameTrail.module('Database');
+
+        database.setSubtitleData(lang, text);
+
+        subtitleFiles = database.hypervideo.subtitles;
+        initModelOfSubtitles(database);
+
+        pendingSubtitles[lang] = text;
+
+        if (FrameTrail.module('SubtitlesController')) {
+            FrameTrail.module('SubtitlesController').initController();
+        }
+
+        newUnsavedChange('subtitles');
+
+    };
+
+
+    /**
+     * I hand over the subtitle files still to be written ({ <lang>: WebVTT text, or null to delete }) and forget them: for a write of hypervideo.json outside save() — the hypervideo settings dialog — which lists them. When that write fails, it gives them back with returnPendingSubtitles().
+     *
+     * @method takePendingSubtitles
+     * @return {Object}
+     */
+    function takePendingSubtitles() {
+
+        var writes = pendingSubtitles;
+
+        pendingSubtitles = {};
+
+        return writes;
+
+    };
+
+
+    /**
+     * I take back subtitle files that were not written after all; what was set since wins.
+     *
+     * @method returnPendingSubtitles
+     * @param {Object} writes
+     */
+    function returnPendingSubtitles(writes) {
+
+        pendingSubtitles = Object.assign(writes || {}, pendingSubtitles);
+
+    };
+
+
+    /**
+     * I replace the hypervideo's settings (its config, without layoutArea, which belongs to the layout) and apply them. They are written with the next save.
+     *
+     * @method setConfig
+     * @param {Object} newConfig
+     */
+    function setConfig(newConfig) {
+
+        var database = FrameTrail.module('Database'),
+            config   = database.hypervideo.config,
+            keys     = Object.keys(config).concat(Object.keys(newConfig).filter(function(key) { return !config.hasOwnProperty(key); }));
+
+        // The same object stays: the settings dialog and the save read it.
+        keys.forEach(function(key) {
+
+            if (key === 'layoutArea') { return; }
+
+            if (newConfig.hasOwnProperty(key)) {
+                config[key] = JSON.parse(JSON.stringify(newConfig[key]));
+            } else {
+                delete config[key];
+            }
+
+            FrameTrail.changeState('hv_config_' + key, config[key]);
+
+        });
+
+        var theme = config.theme || database.config.defaultTheme || 'classic';
+        document.querySelector(FrameTrail.getState('target')).setAttribute('data-frametrail-theme', theme);
+
+        newUnsavedChange('config');
 
     };
 
@@ -1049,6 +1147,14 @@
 
             unsavedLayout = true;
 
+        } else if (category === 'subtitles') {
+
+            unsavedSubtitles = true;
+
+        } else if (category === 'config') {
+
+            unsavedConfig = true;
+
         }
 
         FrameTrail.module('Sidebar').newUnsavedChange(category);
@@ -1214,9 +1320,19 @@
                 }
 
                 if ( unsavedOverlays || unsavedCodeSnippets
-                    || unsavedEvents || unsavedCustomCSS || unsavedChapters || unsavedLayout) {
+                    || unsavedEvents || unsavedCustomCSS || unsavedChapters || unsavedLayout
+                    || unsavedSubtitles || unsavedConfig || Object.keys(pendingSubtitles).length) {
+                    // Subtitles set from now on belong to the next save.
+                    var subtitleWrites = pendingSubtitles;
+                    pendingSubtitles = {};
                     saveRequests.push(function(){
-                        FrameTrail.module('Database').saveHypervideo(databaseCallback);
+                        FrameTrail.module('Database').saveHypervideo(function(result) {
+                            if (result.failed) {
+                                // Not written: keep them for the next save, under anything set since.
+                                pendingSubtitles = Object.assign(subtitleWrites, pendingSubtitles);
+                            }
+                            databaseCallback(result);
+                        }, null, { subtitles: subtitleWrites });
                     });
                 }
 
@@ -1296,6 +1412,8 @@
             unsavedAnnotations  = false;
             unsavedChapters     = false;
             unsavedLayout       = false;
+            unsavedSubtitles    = false;
+            unsavedConfig       = false;
             FrameTrail.changeState('unsavedChanges', false);
 
             var Collaboration = FrameTrail.module('Collaboration');
@@ -1317,6 +1435,11 @@
             });
 
             releaseSave(true);
+
+            // Subtitles set while this save was running are still to be written.
+            if (Object.keys(pendingSubtitles).length) {
+                newUnsavedChange('subtitles');
+            }
 
             if (callback) {
                 callback.call();
@@ -1502,6 +1625,11 @@
      */
     function leaveEditMode(logoutAfterLeaving) {
 
+        // Changes still being made are taken back first, so the question below is about the rest.
+        if (FrameTrail.module('EditAPI')) {
+            FrameTrail.module('EditAPI').stop(true);
+        }
+
         if (FrameTrail.getState('unsavedChanges')){
 
                 var _confirmWrapper = document.createElement('div');
@@ -1680,6 +1808,9 @@
         unsavedAnnotations  = false;
         unsavedChapters     = false;
         unsavedLayout       = false;
+        unsavedSubtitles    = false;
+        unsavedConfig       = false;
+        pendingSubtitles    = {};
         FrameTrail.changeState('unsavedChanges', false);
 
         var Collaboration = FrameTrail.module('Collaboration');
@@ -1704,6 +1835,11 @@
     function updateHypervideo(newHypervideoID, restartEditMode, update) {
 
         FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateLoading']);
+
+        // A transaction still changing this hypervideo ends with it.
+        if (FrameTrail.module('EditAPI')) {
+            FrameTrail.module('EditAPI').stop(false);
+        }
 
         // Clear undo history when switching hypervideos
         FrameTrail.module('UndoManager').clear();
@@ -2089,6 +2225,11 @@
 
         // Exception: this is exported to be able to update the subtitles on the fly
         initModelOfSubtitles:   initModelOfSubtitles,
+
+        setSubtitles:           setSubtitles,
+        takePendingSubtitles:   takePendingSubtitles,
+        returnPendingSubtitles: returnPendingSubtitles,
+        setConfig:              setConfig,
 
         newUnsavedChange:       newUnsavedChange,
 

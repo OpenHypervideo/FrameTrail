@@ -744,6 +744,59 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
 
 
     /**
+     * I add a code snippet from its data (as FrameTrailSerializer.parseCodeSnippet reads it, with created set) and show it — in the custom code editor ready for editing.
+     * @method addCodeSnippet
+     * @param {Object} data
+     * @return {CodeSnippet}
+     */
+    function addCodeSnippet(data) {
+
+        var codeSnippet = FrameTrail.module('HypervideoModel').newCodeSnippet(data, true);
+
+        codeSnippet.renderTimelineInDOM();
+        codeSnippet.initCodeSnippetFunction();
+
+        if (FrameTrail.getState('editMode') === 'codesnippets') {
+            codeSnippet.startEditing();
+            stackTimelineView();
+        }
+
+        updateStatesOfCodeSnippets(FrameTrail.module('HypervideoController').currentTime);
+        FrameTrail.module('TimelineController').refreshMinimap();
+
+        return codeSnippet;
+
+    }
+
+
+    /**
+     * I replace all data of a code snippet and show the change, also in its code editor when it is selected.
+     * @method replaceCodeSnippetData
+     * @param {CodeSnippet} codeSnippet
+     * @param {Object} data
+     */
+    function replaceCodeSnippetData(codeSnippet, data) {
+
+        codeSnippet.replaceData(data);
+
+        if (FrameTrail.getState('editMode') === 'codesnippets') {
+            stackTimelineView();
+        }
+
+        // The editor shows the code it was opened with.
+        if (codeSnippetInFocus === codeSnippet) {
+            codeSnippet.removedFromFocus();
+            codeSnippet.gotInFocus();
+        }
+
+        FrameTrail.module('TimelineController').refreshMinimap();
+
+        FrameTrail.module('HypervideoModel').newUnsavedChange('codeSnippets');
+
+    }
+
+
+    /**
      * I am the starting point for the process of deleting
      * a codeSnippet. I call other necessary methods for it.
      * @method deleteCodeSnippet
@@ -755,10 +808,15 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
         // Capture data before deletion for undo
         var codeSnippetData = JSON.parse(JSON.stringify(codeSnippet.data));
 
-        setCodeSnippetInFocus(null);
+        if (codeSnippetInFocus === codeSnippet) {
+            setCodeSnippetInFocus(null);
+        }
         codeSnippet.removeFromDOM();
         FrameTrail.module('HypervideoModel').removeCodeSnippet(codeSnippet);
-        stackTimelineView();
+        // Outside the custom code editor the timeline is not stacked.
+        if (FrameTrail.getState('editMode') === 'codesnippets') {
+            stackTimelineView();
+        }
         FrameTrail.module('TimelineController').refreshMinimap();
 
         // Register undo command
@@ -844,6 +902,8 @@ FrameTrail.defineModule('CodeSnippetsController', function(FrameTrail){
         initController:             initController,
         updateStatesOfCodeSnippets:   updateStatesOfCodeSnippets,
         stackTimelineView:          stackTimelineView,
+        addCodeSnippet:               addCodeSnippet,
+        replaceCodeSnippetData:       replaceCodeSnippetData,
         deleteCodeSnippet:            deleteCodeSnippet,
         renderActionPresetPicker:     renderActionPresetPicker,
         selectCodeSnippet:            selectCodeSnippet,

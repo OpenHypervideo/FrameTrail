@@ -56,6 +56,65 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
 
 
     /**
+     * I return the chapter that starts at the given time, or null. A chapter is identified by its start: no two chapters of a hypervideo start at the same time.
+     * @method findChapter
+     * @param {Number} start - seconds
+     * @return {Chapter|null}
+     */
+    function findChapter(start) {
+
+        var chapters = FrameTrail.module('HypervideoModel').chapters;
+
+        for (var i = 0; i < chapters.length; i++) {
+            if (chapters[i].data.start === start) { return chapters[i]; }
+        }
+
+        return null;
+
+    }
+
+
+    /**
+     * I bring everything that shows the chapters up to date after a change: the order, the timeline blocks, the list (in the chapters editor) and the chapter display of the player.
+     * @method chaptersChanged
+     * @private
+     */
+    function chaptersChanged() {
+
+        sortChapters();
+        layoutChapters();
+
+        // The list lives in the edit panel, which belongs to whichever mode is active.
+        if (FrameTrail.getState('editMode') === 'chapters') {
+            renderChapterList();
+        }
+
+        FrameTrail.module('HypervideoController').updateChapterDisplay();
+
+    }
+
+
+    /**
+     * I register an undo step.
+     * @method registerUndo
+     * @param {String} action - label key of the action (GenericAdd, GenericDelete, GenericChange)
+     * @param {Function} undo
+     * @param {Function} redo
+     * @private
+     */
+    function registerUndo(action, undo, redo) {
+
+        FrameTrail.module('UndoManager').register({
+            category:    'chapters',
+            description: labels['SidebarChapters'] + ' ' + labels[action],
+            undo:        undo,
+            redo:        redo
+        });
+
+    }
+
+
+    /**
      * I tell all chapters to render their blocks into the DOM and lay them out.
      * @method initController
      */
@@ -190,11 +249,25 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
         row._chapter = chapter;
         chapter._listRow = row;
 
-        // Title: live update (no re-render, so the input keeps focus while typing)
+        // Title: live update (no re-render, so the input keeps focus while typing).
+        // One undo step per edit of the field, from focus to change.
+        var dataBeforeEdit = null;
+
+        titleInput.addEventListener('focus', function() {
+            dataBeforeEdit = JSON.parse(JSON.stringify(chapter.data));
+        });
+
         titleInput.addEventListener('input', function() {
             chapter.data.title = titleInput.value;
             chapter.updateLabel();
             FrameTrail.module('HypervideoModel').newUnsavedChange('chapters');
+        });
+
+        titleInput.addEventListener('change', function() {
+            if (dataBeforeEdit) {
+                registerChangeUndo(dataBeforeEdit, chapter.data);
+            }
+            dataBeforeEdit = JSON.parse(JSON.stringify(chapter.data));
         });
 
         // Start time: applied on change (blur/enter); may reorder, so re-sort + re-render
@@ -202,16 +275,24 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
             var HypervideoModel = FrameTrail.module('HypervideoModel'),
                 offsetIn        = HypervideoModel.offsetIn,
                 videoEnd        = offsetIn + HypervideoModel.duration,
-                newStart        = formBuilder.timeStringToSeconds(startInput.value);
+                newStart        = formBuilder.timeStringToSeconds(startInput.value),
+                before          = JSON.parse(JSON.stringify(chapter.data));
 
             newStart = Math.max(offsetIn, Math.min(videoEnd, newStart));
+
+            // Two chapters cannot start at the same time (a chapter is known by its start).
+            var other = findChapter(newStart);
+            if (other && other !== chapter) {
+                startInput.value = formBuilder.secondsToTimeString(chapter.data.start);
+                return;
+            }
+
             chapter.data.start = newStart;
 
-            sortChapters();
-            layoutChapters();
-            renderChapterList();
+            chaptersChanged();
             FrameTrail.module('HypervideoModel').newUnsavedChange('chapters');
-            FrameTrail.module('HypervideoController').updateChapterDisplay();
+
+            registerChangeUndo(before, chapter.data);
         });
 
         row.querySelector('.chapterDeleteButton').addEventListener('click', function() {
@@ -249,27 +330,58 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
 
 
     /**
+     * I add a chapter ({ start, title, … }) to the model, the timeline and, in the chapters editor, the list.
+     * @method addChapter
+     * @param {Object} data
+     * @return {Chapter}
+     */
+    function addChapter(data) {
+
+        var chapter = FrameTrail.module('HypervideoModel').newChapter(data);
+
+        chapter.renderTimelineInDOM();
+
+        if (FrameTrail.getState('editMode') === 'chapters') {
+            chapter.startEditing();
+        }
+
+        chaptersChanged();
+
+        return chapter;
+
+    };
+
+
+    /**
      * I create a new chapter at the current playhead position, add it to the timeline and list,
      * and put it into focus.
      * @method addChapterAtPlayhead
      */
     function addChapterAtPlayhead() {
 
-        var startTime  = FrameTrail.module('HypervideoController').currentTime,
-            newChapter = FrameTrail.module('HypervideoModel').newChapter({
-                "start": startTime,
-                "title": ''
-            });
+        var startTime = FrameTrail.module('HypervideoController').currentTime,
+            existing  = findChapter(startTime);
 
-        newChapter.renderTimelineInDOM();
-        newChapter.startEditing();
+        // A chapter already starts here; show that one.
+        if (existing) {
+            setChapterInFocus(existing);
+            return;
+        }
 
-        sortChapters();
-        layoutChapters();
-        renderChapterList();
+        var data       = { "start": startTime, "title": '' },
+            newChapter = addChapter(data);
 
         setChapterInFocus(newChapter);
-        FrameTrail.module('HypervideoController').updateChapterDisplay();
+
+        registerUndo('GenericAdd',
+            function() {
+                var chapter = findChapter(data.start);
+                if (chapter) { deleteChapter(chapter, true); }
+            },
+            function() {
+                addChapter(JSON.parse(JSON.stringify(data)));
+            }
+        );
 
         // Focus the new chapter's title input for immediate naming
         if (newChapter._listRow) {
@@ -284,18 +396,76 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
      * I delete a chapter from the model, the timeline and the list.
      * @method deleteChapter
      * @param {Chapter} chapter
+     * @param {Boolean} skipUndo - If true, don't register an undo step (used during undo/redo)
      */
-    function deleteChapter(chapter) {
+    function deleteChapter(chapter, skipUndo) {
+
+        var data = JSON.parse(JSON.stringify(chapter.data));
 
         if (chapterInFocus === chapter) { chapterInFocus = null; }
 
         chapter.removeFromDOM();
         FrameTrail.module('HypervideoModel').removeChapter(chapter);
 
-        sortChapters();
-        layoutChapters();
-        renderChapterList();
-        FrameTrail.module('HypervideoController').updateChapterDisplay();
+        chaptersChanged();
+
+        if (!skipUndo) {
+            registerUndo('GenericDelete',
+                function() {
+                    addChapter(JSON.parse(JSON.stringify(data)));
+                },
+                function() {
+                    var chapter = findChapter(data.start);
+                    if (chapter) { deleteChapter(chapter, true); }
+                }
+            );
+        }
+
+    };
+
+
+    /**
+     * I replace the data of a chapter ({ start, title, … }); the object stays the same, as the Database holds it.
+     * @method setChapterData
+     * @param {Chapter} chapter
+     * @param {Object} data
+     */
+    function setChapterData(chapter, data) {
+
+        Object.keys(chapter.data).forEach(function(key) { delete chapter.data[key]; });
+        Object.assign(chapter.data, JSON.parse(JSON.stringify(data)));
+
+        chapter.updateLabel();
+        chaptersChanged();
+
+        FrameTrail.module('HypervideoModel').newUnsavedChange('chapters');
+
+    };
+
+
+    /**
+     * I register the undo step for a change of a chapter's start or title (from the list or by dragging), given its data before and after.
+     * @method registerChangeUndo
+     * @param {Object} before
+     * @param {Object} after
+     */
+    function registerChangeUndo(before, after) {
+
+        before = JSON.parse(JSON.stringify(before));
+        after  = JSON.parse(JSON.stringify(after));
+
+        if (JSON.stringify(before) === JSON.stringify(after)) { return; }
+
+        registerUndo('GenericChange',
+            function() {
+                var chapter = findChapter(after.start);
+                if (chapter) { setChapterData(chapter, before); }
+            },
+            function() {
+                var chapter = findChapter(before.start);
+                if (chapter) { setChapterData(chapter, after); }
+            }
+        );
 
     };
 
@@ -392,8 +562,12 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
         clampChapterStart:   clampChapterStart,
         renderChapterList:   renderChapterList,
         syncListRow:         syncListRow,
+        findChapter:         findChapter,
+        addChapter:          addChapter,
         addChapterAtPlayhead: addChapterAtPlayhead,
         deleteChapter:       deleteChapter,
+        setChapterData:      setChapterData,
+        registerChangeUndo:  registerChangeUndo,
         setChapterInFocus:   setChapterInFocus
 
     };

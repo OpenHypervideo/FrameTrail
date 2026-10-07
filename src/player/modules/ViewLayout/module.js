@@ -363,6 +363,61 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     }
 
 
+    /**
+     * I replace the content views of a layout area with new ones made from their data, and return the data of the ones I removed. In the layout editor the preview follows.
+     *
+     * @method setContentViews
+     * @param {String} whichArea - top, bottom, left or right
+     * @param {Array} contentViewsData
+     * @return {Array}
+     */
+    function setContentViews(whichArea, contentViewsData) {
+
+        var arrayOfContentViews = ({
+            'top': contentViewsTop,
+            'bottom': contentViewsBottom,
+            'left': contentViewsLeft,
+            'right': contentViewsRight
+        })[whichArea];
+
+        if (!Array.isArray(arrayOfContentViews)) {
+            throw new Error('whichArea is string top/bottom/left/right');
+        }
+
+        var previous = arrayOfContentViews.map(function(contentView) {
+            return JSON.parse(JSON.stringify(contentView.contentViewData));
+        });
+
+        arrayOfContentViews.slice().forEach(function(contentView) {
+            removeContentView(contentView, true);
+        });
+
+        contentViewsData.forEach(function(contentViewData) {
+            createContentView(whichArea, JSON.parse(JSON.stringify(contentViewData)), false, true);
+        });
+
+        var editMode = FrameTrail.getState('editMode');
+
+        if (editMode === 'layout') {
+            initLayoutManager();
+        } else if (editMode && editMode !== 'preview') {
+            // The other editors hide the layout areas; a change of an area's visibility must not show it.
+            var ViewVideo = FrameTrail.module('ViewVideo');
+            [ViewVideo.AreaTopContainer, ViewVideo.AreaTopDetails, ViewVideo.AreaBottomContainer,
+             ViewVideo.AreaBottomDetails, ViewVideo.AreaLeftContainer, ViewVideo.AreaRightContainer].forEach(function(element) {
+                if (element) { element.style.display = 'none'; }
+            });
+        }
+
+        updateTimedStateOfContentViews(FrameTrail.module('HypervideoController').currentTime);
+
+        FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+
+        return previous;
+
+    }
+
+
     function reorderContentView(whichArea, oldIndex, newIndex, updatePreviewDOM) {
 
         if (oldIndex === newIndex) { return; }
@@ -1615,6 +1670,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         createContentView: createContentView,
         removeContentView: removeContentView,
+        setContentViews:   setContentViews,
 
         updateManagedContent: updateManagedContent,
 

@@ -12,7 +12,7 @@ CI runs the tests on every push and pull request (`.github/workflows/build.yml`)
 
 | What | Checked |
 |------|---------|
-| `schemas/` | Every schema uses only the [schema subset](../docs/DATA-MODEL.md#schema-subset), every `$ref` resolves, every schema is named after its `$id`. |
+| `schemas/` | Every schema uses only the [schema subset](../docs/DATA-MODEL.md#schema-subset), every `$ref` resolves, every schema is named after its `$id`. The player's copy (`FrameTrailSchemas.js`, from `node scripts/bundle-schemas.mjs`) is up to date and judges every case alike. |
 | `fixtures/data/` | Every file follows its schema. Hypervideos and annotation files round-trip through `FrameTrailSerializer`. Each folder, read as a project bundle and as one hypervideo bundle per hypervideo, follows the bundle schemas and survives writing and reading again. |
 | `fixtures/examples/` | Matches the data the pages in `examples/` pass to `FrameTrail.init()`. Each case as below. |
 | `fixtures/cases/` | Each case validates with exactly the expected errors; valid hypervideos, annotation files and content items round-trip. |

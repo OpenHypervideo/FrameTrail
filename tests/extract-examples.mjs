@@ -60,7 +60,8 @@ function initCalls(html, file) {
                 calls.push(JSON.parse(JSON.stringify(options, (key, value) => (typeof value === 'function' ? undefined : value))));
                 return stub;
             },
-            autoInit: noop
+            autoInit: noop,
+            registerExtension: noop
         },
         console, JSON,
         Math: seededMath(1),

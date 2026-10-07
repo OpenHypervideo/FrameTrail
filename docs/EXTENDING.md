@@ -322,7 +322,7 @@ FrameTrail.defineModule('MyCustomModule', function(FrameTrail) {
 
 ## Writing an Extension
 
-An extension is code that is not part of FrameTrail and plugs into it from outside: nothing in `index.html`, `scripts/build.sh` or any module changes. It can add a panel beside the player, a button to the title bar and an edit mode of its own, follows the interface through lifecycle hooks and state changes, and reaches every module the way FrameTrail's own modules do. A complete example is in [`examples/extension-hello/`](../examples/extension-hello/).
+An extension is code that is not part of FrameTrail and plugs into it from outside: nothing in `index.html`, `scripts/build.sh` or any module changes. It can add a panel beside the player, a button to the title bar and an edit mode of its own, follows the interface through lifecycle hooks and state changes, reads and changes the hypervideo through [`edit`](#editing-the-hypervideo), and reaches every module the way FrameTrail's own modules do. A complete example is in [`examples/extension-hello/`](../examples/extension-hello/).
 
 ### Register It
 
@@ -459,7 +459,116 @@ A key that exists already is replaced, so prefix yours with the extension's name
 
 ### Styling
 
-Use FrameTrail's CSS custom properties (`--primary-bg-color`, `--primary-fg-color`, `--secondary-bg-color`, `--highlight-color`, …), so that the themes apply, and the classes in `src/_shared/styles/generic.css` for buttons, inputs, `custom-select`, `message` and `layoutRow`/`column-*`. Scope your selectors to your slots: `.sidePanelItem[data-extension="<name>"]`, `.titlebar [data-extension="<name>"]`, `.mainContainer[data-edit-mode="<name>"]`. A side panel takes the theme in view mode and the editor's palette while editing, through the same variables. A stylesheet listed in `config.json` is added before the global `custom.css`, which can override it.
+Use FrameTrail's CSS custom properties (`--primary-bg-color`, `--primary-fg-color`, `--secondary-bg-color`, `--highlight-color`, …), so that the themes apply, and the classes in `src/_shared/styles/generic.css` for buttons, inputs, `custom-select`, `message` and `layoutRow`/`column-*`. Scope your selectors to your slots: `.sidePanelItem[data-extension="<name>"]`, `.titlebar [data-extension="<name>"]`, `.mainContainer[data-edit-mode="<name>"]`. A side panel takes the theme in view mode and the editor's palette while editing, through the same variables; the buttons of `generic.css` are drawn to suit both. A stylesheet listed in `config.json` is added before the global `custom.css`, which can override it.
+
+## Editing the Hypervideo
+
+`edit` reads and changes the hypervideo that is open in the player: on the instance `FrameTrail.init()` returns (`instance.edit`), and on the instance a module or an extension receives (`FrameTrail.edit`). Changes made through it are the editor's changes: the video, the timelines and the content views show them, they are saved by the normal save and autosave, and they can be undone. The page [`examples/edit-api.html`](../examples/edit-api.html) runs through all of it.
+
+```javascript
+var edit = instance.edit;
+
+var overlay = edit.add('overlays', {
+    body: {
+        'frametrail:type':       'text',
+        'frametrail:name':       'Welcome',
+        'frametrail:attributes': { text: '&lt;p&gt;Hello&lt;/p&gt;' }
+    },
+    target: { selector: { value: 't=12.5,20&xywh=percent:10,10,40,20' } }
+});
+
+edit.update('overlays', overlay.created, { target: { selector: { value: 't=14,22&xywh=percent:10,10,40,20' } } });
+edit.add('chapters', { start: 60, title: 'Part two' });
+edit.remove('overlays', overlay.created);
+```
+
+### The Data
+
+`edit` speaks the stored format described in [DATA-MODEL.md](DATA-MODEL.md) and the schemas in [`schemas/`](../schemas/): what it returns is what a save writes, and what it is given is written as given. Properties FrameTrail does not know, such as a W3C `generator`, are kept.
+
+| Kind | What it is | Referred to by |
+|------|------------|----------------|
+| `overlays` | overlays, as W3C items | their `created` |
+| `codeSnippets` | code snippets, as W3C items | their `created` |
+| `annotations` | annotations of every user, as W3C items | their `created` (the user's own), or `{ creator, created }` |
+| `chapters` | `{ start, title }` | their `start` (seconds) |
+| `contentViews` | the content views of the layout areas | — (set per area) |
+| `subtitles` | `{ src, srclang }`; `get` adds the WebVTT text as `vtt` | their language |
+
+A `created` is the ISO 8601 text an item carries (`"2026-10-07T09:36:45.127Z"`).
+
+### Reading
+
+| Method | Returns |
+|--------|---------|
+| `getHypervideo()` | the hypervideo as its `hypervideo.json` would be saved now (annotations live in their own files) |
+| `list(kind, filter)` | all things of a kind. `filter` is a function, or an object: `{ from, to }` (things whose time overlaps the span), `{ type }` (the body's `frametrail:type`), `{ creator }` (the creator's id), `{ area: 'top' }` (content views of one layout area) |
+| `get(kind, ref)` | one thing, or `null` |
+
+Reading works whenever a hypervideo is open.
+
+### Writing
+
+| Method | Does |
+|--------|------|
+| `add(kind, data)` | adds an overlay, code snippet, annotation or chapter and returns it as stored |
+| `update(kind, ref, patch)` | changes one with a JSON Merge Patch ([RFC 7386](https://www.rfc-editor.org/rfc/rfc7386)) on its stored form: objects are merged, `null` removes a property, everything else is replaced. Returns it as stored |
+| `remove(kind, ref)` | removes one and returns it as it was |
+| `setLayout(area, contentViews)` | replaces the content views of a layout area: `'top'`, `'bottom'`, `'left'`, `'right'` (or `'areaTop'`, …) |
+| `setSubtitles(lang, vttText)` | sets the subtitles of a language to a WebVTT text, or removes them (`null`). The file is written with the next save |
+| `setConfig(patch)` | changes the hypervideo's settings (its `config`, without `layoutArea`) with a JSON Merge Patch |
+
+For a new item `add` fills in what follows from its kind and place: `type`, `frametrail:type`, the `creator` (the signed-in user; for annotations always), a `created` of its own, the target's `type` and `source` (the hypervideo's video) and the selector's `type` and `conformsTo`. What is left to give is the body and `target.selector.value`, with keyframes or a rotation if the overlay moves. A `created` that is given is kept, unless another item of the collection has it already. A chapter cannot start where another one starts, and an item's `created`, `creator` and type cannot be changed: remove it and add a new one.
+
+Before anything changes, the data is validated against the schemas, and a few things the schemas cannot say are checked (an item may not end before it starts; an overlay's type must be one the player can show). What fails is refused with an error, and nothing has changed:
+
+```javascript
+try {
+    edit.add('chapters', { start: -1 });
+} catch (e) {
+    e.code;     // 'invalid'
+    e.errors;   // [{ path: '/start', message: 'must be >= 0' }] — JSON Pointers into the data given
+}
+```
+
+`e.code` is `'invalid'` (with `e.errors`), `'notFound'` (no such thing, or no hypervideo open) or `'notAllowed'` (see below); an async transaction that is stopped rejects with `'stopped'` (see [Undo and Transactions](#undo-and-transactions)).
+
+Writes need the permissions the editor needs: edit mode; for overlays, code snippets, chapters, content views, subtitles and settings an admin or the hypervideo's creator, and no collaboration lock held by someone else (writing claims the lock, as the editors that write the hypervideo do); annotations only in the user's own collection. An item of a type the player cannot show (such as the legacy `button`) is listed and kept, but not changed.
+
+### Undo and Transactions
+
+Each write is an undo step. A transaction makes several writes one step:
+
+```javascript
+edit.transaction('Add the chapters', function(tx) {
+    tx.add('chapters', { start: 0,   title: 'Introduction' });
+    tx.add('chapters', { start: 95,  title: 'Method' });
+    tx.add('chapters', { start: 240, title: 'Results' });
+});
+```
+
+The function gets an object with the same methods as `edit`; what goes through it belongs to the transaction. When the function throws, every change made through it is taken back and the error passed on, so a transaction happens completely or not at all. A transaction is over when its function returns; its object cannot be used afterwards.
+
+The function may be `async`, for changes that wait for something (a request, an answer):
+
+```javascript
+edit.transaction('Add the chapters', async function(tx) {
+    var chapters = await fetch(url, { signal: tx.signal }).then(function(r) { return r.json(); });
+    chapters.forEach(function(chapter) { tx.add('chapters', chapter); });
+}).catch(function(e) {
+    if (e.code === 'stopped') { /* stopped by the user: nothing was changed */ }
+});
+```
+
+`transaction()` then returns a promise for the function's result; the undo step is registered when it resolves, and the changes are taken back when it rejects. Until then the editor is busy, so that nothing comes between the transaction's changes and its undo step:
+
+- editing by hand waits: the video, the edit panel and the timelines take no input, Undo and Redo are unavailable, the hypervideo's settings dialog does not open; playing and scrubbing go on;
+- every other write through `edit`, and every other transaction, is refused (`'notAllowed'`);
+- the sidebar shows "Automated editing in progress" with a Stop button.
+
+Stop and leaving edit mode end the transaction early: its changes are taken back, `tx.signal` (an `AbortSignal`) is aborted and the promise rejects with code `'stopped'`. Switching to another hypervideo or reloading the open one ends it the same way, and its changes go with the hypervideo. While the editor is busy the state `editBusy` is `{ description }`, otherwise `false`.
+
+Undoing a step that changed one kind of thing switches to that kind's editor, as for edits made by hand; a step that changed several kinds stays in the current edit mode.
 
 ## Adding Localization Strings
 
@@ -664,6 +773,8 @@ FrameTrail.module('UndoManager').register({
 FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 ```
 
+Several changes that belong together are registered as one step with `registerGroup(description, commands)`: undo reverses the commands in reverse order, redo repeats them in order. A group of commands of one category switches to its edit mode like a single command; a group across categories stays in the current mode, so its commands must work in any mode. Changes made through [`edit`](#editing-the-hypervideo) are registered for you.
+
 ## Checklist for New Types and Modules
 
 When adding a new resource type or module to FrameTrail itself, make sure to:
@@ -672,7 +783,7 @@ When adding a new resource type or module to FrameTrail itself, make sure to:
 2. Add `<script>` and `<link>` tags to `src/index.html` (and `src/resources.html` if applicable)
 3. Add entries to `scripts/build.sh` in `JS_FILES` and `CSS_FILES` arrays (in correct order)
 4. Add localization strings to all locale files in `src/_shared/modules/Localization/locale/` (`en.js`, `de.js`, `fr.js`), in alphabetical key order
-5. If you change what is stored in `_data/` (a new resource type, a new attribute, a new key), update `schemas/` and [docs/DATA-MODEL.md](DATA-MODEL.md), add test fixtures for it, and run `node tests/run-js.mjs`
+5. If you change what is stored in `_data/` (a new resource type, a new attribute, a new key), update `schemas/` and [docs/DATA-MODEL.md](DATA-MODEL.md), add test fixtures for it, run `node scripts/bundle-schemas.mjs` (the player's copy of the schemas) and `node tests/run-js.mjs`
 6. Test in both development mode (`src/`) and build mode (`build/`)
 7. Test in Chrome and Firefox
 8. Test with edit mode enabled and disabled

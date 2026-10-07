@@ -97,15 +97,7 @@ FrameTrail.defineType(
                     var timelineTarget = ViewVideo.AnnotationTimeline.querySelector('.timelineScroller');
                     (timelineTarget || ViewVideo.AnnotationTimeline).appendChild(this.timelineElement);
 
-                    var _pw = this.timelineElement.querySelector('.previewWrapper');
-                    _pw.innerHTML = '';
-                    _pw.append(this.resourceItem.renderThumb());
-
-                    // Set icon from resourceItem
-                    this.timelineElement.querySelector('.timelineElementIcon').innerHTML = '<span class="' + this.resourceItem.iconClass + '"></span>';
-
-                    // Set label from resourceItem
-                    this.timelineElement.querySelector('.timelineElementLabel').textContent = this.resourceItem.getDisplayLabel();
+                    this.updateLabel();
 
                     this.updateTimelineElement();
 
@@ -143,6 +135,50 @@ FrameTrail.defineType(
                     };
                     this.timelineElement.addEventListener('click', this._annotationClickHandler);
                     */
+
+                },
+
+
+                /**
+                 * I show my thumbnail, icon and label in my timelineElement.
+                 *
+                 * @method updateLabel
+                 */
+                updateLabel: function () {
+
+                    var _pw = this.timelineElement.querySelector('.previewWrapper');
+                    _pw.innerHTML = '';
+                    _pw.append(this.resourceItem.renderThumb());
+
+                    // Set icon from resourceItem
+                    this.timelineElement.querySelector('.timelineElementIcon').innerHTML = '<span class="' + this.resourceItem.iconClass + '"></span>';
+
+                    // Set label from resourceItem
+                    this.timelineElement.querySelector('.timelineElementLabel').textContent = this.resourceItem.getDisplayLabel();
+
+                },
+
+
+                /**
+                 * I take over new data — all of it; my type stays — and show it in my timelineElement. My data object stays the same one, since the Database and my resource item hold it.
+                 *
+                 * @method replaceData
+                 * @param {Object} data
+                 */
+                replaceData: function (data) {
+
+                    var self = this;
+
+                    Object.keys(this.data).forEach(function(key) { delete self.data[key]; });
+                    Object.keys(data).forEach(function(key) {
+                        if (data[key] !== undefined) {
+                            self.data[key] = JSON.parse(JSON.stringify(data[key]));
+                        }
+                    });
+
+                    this.timelineElement.setAttribute('data-uri', this.data.uri);
+                    this.updateLabel();
+                    this.updateTimelineElement();
 
                 },
 

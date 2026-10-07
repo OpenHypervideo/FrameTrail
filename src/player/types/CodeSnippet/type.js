@@ -96,9 +96,7 @@ FrameTrail.defineType(
 
                     var ViewVideo = FrameTrail.module('ViewVideo');
 
-                    // Set label from snippet name
-                    var label = this.data.name || 'Code Snippet';
-                    this.timelineElement.querySelector('.timelineElementLabel').textContent = label;
+                    this.updateLabel();
 
                     if (this._brushInHandler)  { this.timelineElement.removeEventListener('mouseenter', this._brushInHandler); }
                     if (this._brushOutHandler) { this.timelineElement.removeEventListener('mouseleave', this._brushOutHandler); }
@@ -106,6 +104,24 @@ FrameTrail.defineType(
                     this._brushOutHandler = this.brushOut.bind(this);
                     this.timelineElement.addEventListener('mouseenter', this._brushInHandler);
                     this.timelineElement.addEventListener('mouseleave', this._brushOutHandler);
+
+                    var timelineTarget = ViewVideo.CodeSnippetTimeline.querySelector('.timelineScroller');
+                    (timelineTarget || ViewVideo.CodeSnippetTimeline).appendChild(this.timelineElement);
+                    this.updateTimelineElement();
+
+
+                },
+
+                /**
+                 * I show my name and the beginning of my code in my timelineElement.
+                 *
+                 * @method updateLabel
+                 */
+                updateLabel: function () {
+
+                    // Set label from snippet name
+                    var label = this.data.name || 'Code Snippet';
+                    this.timelineElement.querySelector('.timelineElementLabel').textContent = label;
 
                     // Preview wrapper with code snippet preview
                     var snippetPreview = this.data.snippet ? this.data.snippet.substring(0, 100) : '';
@@ -117,12 +133,32 @@ FrameTrail.defineType(
                     previewEl.innerHTML = '';
                     previewEl.append(_pw.firstElementChild);
 
-                    var timelineTarget = ViewVideo.CodeSnippetTimeline.querySelector('.timelineScroller');
-                    (timelineTarget || ViewVideo.CodeSnippetTimeline).appendChild(this.timelineElement);
-                    this.updateTimelineElement();
+                },
 
+
+                /**
+                 * I take over new data — all of it — and show it in my timelineElement. My data object stays the same one, since the Database holds it.
+                 *
+                 * @method replaceData
+                 * @param {Object} data
+                 */
+                replaceData: function (data) {
+
+                    var self = this;
+
+                    Object.keys(this.data).forEach(function(key) { delete self.data[key]; });
+                    Object.keys(data).forEach(function(key) {
+                        if (data[key] !== undefined) {
+                            self.data[key] = JSON.parse(JSON.stringify(data[key]));
+                        }
+                    });
+
+                    this.updateLabel();
+                    this.updateTimelineElement();
+                    this.initCodeSnippetFunction();
 
                 },
+
 
                 /**
                  * I init my ({{#crossLink "CodeSnippet/codeSnippetFunction:attribute"}}this.codeSnippetFunction{{/crossLink}}

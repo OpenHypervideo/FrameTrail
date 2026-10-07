@@ -375,6 +375,25 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
     };
 
 
+    /**
+     * I mirror "a transaction of the edit API is changing the hypervideo" onto the main container, so CSS can make the editing regions inert while it runs; watching and playback stay. A field being edited loses the focus, so typing cannot go on either.
+     *
+     * @method reflectEditBusy
+     * @param {Object|Boolean} editBusy
+     */
+    function reflectEditBusy(editBusy) {
+
+        mainContainer.classList.toggle('editBusy', !!editBusy);
+
+        var focused = document.activeElement;
+        if (editBusy && focused && focused !== document.body && mainContainer.contains(focused)
+                && !focused.closest('.sidePanel, .controls, .playerProgress')) {
+            focused.blur();
+        }
+
+    };
+
+
 
 
 
@@ -388,7 +407,8 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
             sidebarOpen:    toggleSidebarOpen,
             editMode:       toggleEditMode,
             fullscreen:     toggleFullscreen,
-            collabState:    reflectCollaborationLock
+            collabState:    reflectCollaborationLock,
+            editBusy:       reflectEditBusy
         }
 
     };

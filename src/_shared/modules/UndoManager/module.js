@@ -25,8 +25,21 @@ FrameTrail.defineModule('UndoManager', function(FrameTrail){
         'overlays': 'overlays',
         'annotations': 'annotations',
         'codeSnippets': 'codesnippets',
+        'chapters': 'chapters',
         'layout': 'layout'
     };
+
+
+    /**
+     * I tell whether the hypervideo is being changed by an open transaction of the edit API: its undo step comes when it is done, and undoing what lies below meanwhile would leave the history out of order.
+     *
+     * @method isBusy
+     * @return {Boolean}
+     * @private
+     */
+    function isBusy() {
+        return !!FrameTrail.getState('editBusy');
+    }
 
 
     /**
@@ -112,13 +125,54 @@ FrameTrail.defineModule('UndoManager', function(FrameTrail){
 
 
     /**
+     * I register several commands that have already been performed as one step: undo reverses them in reverse order, redo repeats them in order.
+     *
+     * When all commands share a category, undo and redo switch to its edit mode, as for a single command. A group spanning several categories stays in the current mode, so its commands must work in any mode.
+     *
+     * @method registerGroup
+     * @param {String} description - Human-readable description of the whole step
+     * @param {Array} commands - Command objects (undo, redo, category), in the order they were performed
+     */
+    function registerGroup(description, commands) {
+        commands = (commands || []).filter(Boolean);
+
+        if (!commands.length) {
+            return;
+        }
+
+        var category = commands[0].category;
+        for (var i = 1; i < commands.length; i++) {
+            if (commands[i].category !== category) {
+                category = undefined;
+                break;
+            }
+        }
+
+        register({
+            category: category,
+            description: description,
+            undo: function() {
+                for (var i = commands.length - 1; i >= 0; i--) {
+                    commands[i].undo();
+                }
+            },
+            redo: function() {
+                for (var i = 0; i < commands.length; i++) {
+                    commands[i].redo();
+                }
+            }
+        });
+    }
+
+
+    /**
      * I undo the last action.
      *
      * @method undo
      * @return {Boolean} True if an action was undone, false if stack was empty
      */
     function undo() {
-        if (undoStack.length === 0) {
+        if (undoStack.length === 0 || isBusy()) {
             return false;
         }
 
@@ -151,7 +205,7 @@ FrameTrail.defineModule('UndoManager', function(FrameTrail){
      * @return {Boolean} True if an action was redone, false if stack was empty
      */
     function redo() {
-        if (redoStack.length === 0) {
+        if (redoStack.length === 0 || isBusy()) {
             return false;
         }
 
@@ -184,7 +238,7 @@ FrameTrail.defineModule('UndoManager', function(FrameTrail){
      * @return {Boolean}
      */
     function canUndo() {
-        return undoStack.length > 0;
+        return undoStack.length > 0 && !isBusy();
     }
 
 
@@ -195,7 +249,7 @@ FrameTrail.defineModule('UndoManager', function(FrameTrail){
      * @return {Boolean}
      */
     function canRedo() {
-        return redoStack.length > 0;
+        return redoStack.length > 0 && !isBusy();
     }
 
 
@@ -296,8 +350,13 @@ FrameTrail.defineModule('UndoManager', function(FrameTrail){
 
 
     return {
+        onChange: {
+            editBusy: updateUI
+        },
+
         execute: execute,
         register: register,
+        registerGroup: registerGroup,
         undo: undo,
         redo: redo,
         canUndo: canUndo,

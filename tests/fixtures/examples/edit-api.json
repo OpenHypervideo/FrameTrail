@@ -1,0 +1,120 @@
+{
+    "description": "The data examples/edit-api.html passes to FrameTrail.init(). Written by tests/extract-examples.mjs; change the page, not this file.",
+    "cases": [
+        {
+            "name": "contents[0].hypervideo",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Edit API",
+                    "description": "A hypervideo without a video file, changed by a script",
+                    "thumb": "",
+                    "creator": "Demo",
+                    "creatorId": "demo",
+                    "created": 1700000000000,
+                    "lastchanged": 1700000000000
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [
+                            {
+                                "type": "TimedContent",
+                                "name": "Notes",
+                                "contentSize": "small"
+                            }
+                        ],
+                        "areaLeft": [],
+                        "areaRight": []
+                    },
+                    "slidingMode": "overlay"
+                },
+                "clips": [
+                    {
+                        "duration": 60
+                    }
+                ],
+                "contents": [
+                    {
+                        "@context": [
+                            "http://www.w3.org/ns/anno.jsonld",
+                            "https://frametrail.org/ns/context.jsonld"
+                        ],
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "creator": {
+                            "nickname": "Demo",
+                            "type": "Person",
+                            "id": "demo"
+                        },
+                        "created": "2024-01-01T00:00:00.000Z",
+                        "target": {
+                            "type": "Video",
+                            "selector": {
+                                "type": "FragmentSelector",
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "value": "t=2,10&xywh=percent:10,10,40,20"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "text",
+                            "format": "text/html",
+                            "frametrail:name": "Welcome",
+                            "frametrail:attributes": {
+                                "text": "&lt;p&gt;Welcome&lt;/p&gt;"
+                            }
+                        }
+                    }
+                ],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Beginning"
+                    }
+                ],
+                "subtitles": [],
+                "globalEvents": {},
+                "customCSS": ""
+            }
+        },
+        {
+            "name": "contents[0].annotations",
+            "schema": "annotation-file.schema.json",
+            "data": [
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        "https://frametrail.org/ns/context.jsonld"
+                    ],
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "creator": {
+                        "nickname": "Demo",
+                        "type": "Person",
+                        "id": "demo"
+                    },
+                    "created": "2024-01-01T00:01:00.000Z",
+                    "target": {
+                        "type": "Video",
+                        "selector": {
+                            "type": "FragmentSelector",
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "value": "t=5,15"
+                        }
+                    },
+                    "body": {
+                        "type": "TextualBody",
+                        "frametrail:type": "text",
+                        "format": "text/html",
+                        "frametrail:name": "A note",
+                        "frametrail:attributes": {
+                            "text": "A note by Demo"
+                        }
+                    },
+                    "frametrail:tags": []
+                }
+            ]
+        }
+    ]
+}

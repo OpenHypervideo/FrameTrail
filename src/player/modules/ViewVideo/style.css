@@ -1779,3 +1779,25 @@
 .mainContainer.editActive.collabLocked.lockGated .viewVideo .collabBlocker {
     display: block;
 }
+
+/* Changed by a transaction of the edit API
+   While a script or an extension changes the hypervideo in an open transaction (.editBusy, set by Interface), editing by hand waits: a change made in the middle of it would end up out of order in the undo history. Watching does not wait — the controls, the progress bar and the timeline zoom stay usable — so instead of one sheet over the player, the regions where editing happens take no pointer input: the video with its overlays, the edit panel, the timelines and the layout editor. All but the video are dimmed; on the video the changes appear as they are made. */
+.mainContainer.editActive.editBusy .viewVideo .videoContainer,
+.mainContainer.editActive.editBusy .viewVideo .videoContainer *,
+.mainContainer.editActive.editBusy .viewVideo .infoAreaRight,
+.mainContainer.editActive.editBusy .viewVideo .infoAreaRight *,
+.mainContainer.editActive.editBusy .viewVideo .timeline,
+.mainContainer.editActive.editBusy .viewVideo .timeline *,
+.mainContainer.editActive.editBusy .viewVideo .hypervideoLayoutContainer,
+.mainContainer.editActive.editBusy .viewVideo .hypervideoLayoutContainer *,
+.mainContainer.editActive.editBusy .viewVideo .otherUsersContainer,
+.mainContainer.editActive.editBusy .viewVideo .otherUsersContainer * {
+    pointer-events: none !important;
+}
+
+.mainContainer.editActive.editBusy .viewVideo .infoAreaRight,
+.mainContainer.editActive.editBusy .viewVideo .timeline,
+.mainContainer.editActive.editBusy .viewVideo .hypervideoLayoutContainer,
+.mainContainer.editActive.editBusy .viewVideo .otherUsersContainer {
+    opacity: .5 !important;
+}

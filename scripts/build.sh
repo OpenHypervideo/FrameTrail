@@ -130,6 +130,10 @@ JS_FILES=(
     "_shared/frametrail-core/serialization/FrameTrailKeyframes.js"
     "_shared/frametrail-core/serialization/FrameTrailSerializer.js"
 
+    # Validation against schemas/ (pure; the schemas are bundled by scripts/bundle-schemas.mjs)
+    "_shared/frametrail-core/schema/FrameTrailSchema.js"
+    "_shared/frametrail-core/schema/FrameTrailSchemas.js"
+
     # Localization (bundled into JS — must come before modules that use labels)
     "_shared/modules/Localization/locale/en.js"
     "_shared/modules/Localization/locale/de.js"
@@ -229,6 +233,7 @@ JS_FILES=(
     "player/modules/HypervideoSettingsDialog/module.js"
     "player/modules/AdminSettingsDialog/module.js"
     "player/modules/OverviewMapSettingsDialog/module.js"
+    "player/modules/EditAPI/module.js"
     "player/modules/Extensions/module.js"
 
     # Resource manager module

@@ -685,6 +685,57 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
 
     /**
+     * I add an overlay from its data (as FrameTrailSerializer.parseOverlay reads it, with created set) and show it — in the overlays editor ready for editing, in other modes only on the video and its timeline.
+     *
+     * @method addOverlay
+     * @param {Object} data
+     * @return {Overlay}
+     */
+    function addOverlay(data) {
+
+        var overlay = FrameTrail.module('HypervideoModel').newOverlay(data, true);
+
+        overlay.renderInDOM();
+
+        if (FrameTrail.getState('editMode') === 'overlays') {
+            overlay.startEditing();
+            stackTimelineView();
+        }
+
+        updateStatesOfOverlays(FrameTrail.module('HypervideoController').currentTime);
+        FrameTrail.module('TimelineController').refreshMinimap();
+
+        return overlay;
+
+    };
+
+
+    /**
+     * I replace all data of an overlay (its type stays) and show the change, also in its properties controls when it is selected.
+     *
+     * @method replaceOverlayData
+     * @param {Overlay} overlay
+     * @param {Object} data
+     */
+    function replaceOverlayData(overlay, data) {
+
+        overlay.replaceData(data);
+
+        if (FrameTrail.getState('editMode') === 'overlays') {
+            stackTimelineView();
+        }
+
+        refreshPropertiesControls(overlay);
+        refreshMotionControls(overlay);
+        updateStatesOfOverlays(FrameTrail.module('HypervideoController').currentTime);
+        FrameTrail.module('TimelineController').refreshMinimap();
+
+        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+
+    };
+
+
+    /**
      * I register an undo command for a newly added overlay.
      *
      * @method registerAddUndo
@@ -958,10 +1009,15 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         // Capture data before deletion for undo
         var overlayData = JSON.parse(JSON.stringify(overlay.data));
 
-        setOverlayInFocus(null);
+        if (overlayInFocus === overlay) {
+            setOverlayInFocus(null);
+        }
         overlay.removeFromDOM();
         FrameTrail.module('HypervideoModel').removeOverlay(overlay);
-        stackTimelineView();
+        // Outside the overlays editor the timeline is not stacked.
+        if (FrameTrail.getState('editMode') === 'overlays') {
+            stackTimelineView();
+        }
         FrameTrail.module('TimelineController').refreshMinimap();
 
         // Register undo command
@@ -1409,6 +1465,8 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         checkMediaSynchronization: checkMediaSynchronization,
         muteMedia:              muteMedia,
 
+        addOverlay:             addOverlay,
+        replaceOverlayData:     replaceOverlayData,
         deleteOverlay:          deleteOverlay,
         arrangeOverlay:         arrangeOverlay,
 

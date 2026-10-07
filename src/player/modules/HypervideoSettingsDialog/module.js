@@ -179,6 +179,17 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
     }
 
     /**
+     * I take the subtitle files the editor has not written yet, when the edited hypervideo is the loaded one: the hypervideo.json this dialog writes lists them, so their files go with it.
+     *
+     * @method takePendingSubtitles
+     * @param {String} hypervideoID
+     * @return {Object} { <lang>: WebVTT text, or null to delete }
+     */
+    function takePendingSubtitles(hypervideoID) {
+        return isLoadedHypervideo(hypervideoID) ? FrameTrail.module('HypervideoModel').takePendingSubtitles() : {};
+    }
+
+    /**
      * I list what a shorter duration cuts off a hypervideo: overlays and code
      * snippets that start at or after the new end are deleted, overlays that
      * run past it are truncated.
@@ -436,6 +447,13 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
         if (!hypervideo) {
             console.error('Hypervideo not found:', hypervideoID);
+            return;
+        }
+
+        // This dialog writes the whole hypervideo.json; not while a transaction of the edit API is changing it.
+        if (FrameTrail.getState('editBusy') && isLoadedHypervideo(hypervideoID)) {
+            FrameTrail.module('InterfaceModal').showErrorMessage(labels['MessageEditBusy']);
+            FrameTrail.module('InterfaceModal').hideMessage(3000);
             return;
         }
 
@@ -981,8 +999,23 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             var baseVersion = FrameTrail.module('Database').hypervideos[thisID].lastchanged;
             formData.set('baseVersion', (baseVersion == null ? '' : baseVersion));
 
+            // The hypervideo.json written here lists subtitles that were set in the editor and not saved yet; their files go with it.
+            var pendingSubtitles = takePendingSubtitles(thisID),
+                deletedHere      = formData.getAll('SubtitlesToDelete[]');
+            Object.keys(pendingSubtitles).forEach(function(lang) {
+                if (deletedHere.indexOf(lang) !== -1) { return; }
+                if (pendingSubtitles[lang] === null) {
+                    formData.append('SubtitlesToDelete[]', lang);
+                } else {
+                    formData.append('subtitles[' + lang + ']', new Blob([pendingSubtitles[lang]], { type: 'text/vtt' }), lang + '.vtt');
+                }
+            });
+
             _serverPost(formData)
             .then(function(response) {
+                if (response['code'] !== 0 && isLoadedHypervideo(thisID)) {
+                    FrameTrail.module('HypervideoModel').returnPendingSubtitles(pendingSubtitles);
+                }
                 switch(response['code']) {
                     case 7:
                         // Someone else wrote this hypervideo since we opened.
@@ -1137,11 +1170,10 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 newSourcePath = srcInfo.src;
             }
 
-            // Collect subtitle deletions and additions
+            // Collect subtitle deletions (a deleted language leaves a hidden SubtitlesToDelete[] input) and additions
             var subtitlesToDelete = [];
-            EditHypervideoForm.querySelectorAll('.existingSubtitlesItem.markedForDeletion').forEach(function(item) {
-                var lang = item.querySelector('.subtitlesDelete').getAttribute('data-lang');
-                if (lang) { subtitlesToDelete.push(lang); }
+            EditHypervideoForm.querySelectorAll('input[name="SubtitlesToDelete[]"]').forEach(function(input) {
+                if (input.value) { subtitlesToDelete.push(input.value); }
             });
 
             var writeTasks = [adapter.writeJSON(basePath + '/hypervideo.json', hypervideoData)];
@@ -1150,6 +1182,20 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             for (var d = 0; d < subtitlesToDelete.length; d++) {
                 writeTasks.push(adapter.deleteFile(basePath + '/subtitles/' + subtitlesToDelete[d] + '.vtt').catch(function() {}));
             }
+
+            // Subtitles set in the editor and not saved yet, which the hypervideo.json written here lists
+            var pendingSubtitles = takePendingSubtitles(thisID);
+            Object.keys(pendingSubtitles).forEach(function(lang) {
+                if (subtitlesToDelete.indexOf(lang) !== -1) { return; }
+                var subtitlePath = basePath + '/subtitles/' + lang + '.vtt';
+                if (pendingSubtitles[lang] === null) {
+                    writeTasks.push(adapter.deleteFile(subtitlePath).catch(function() {}));
+                } else {
+                    writeTasks.push(adapter.createDirectory(basePath + '/subtitles').then(function() {
+                        return adapter.writeText(subtitlePath, pendingSubtitles[lang]);
+                    }));
+                }
+            });
 
             // Write new subtitle files
             EditHypervideoForm.querySelectorAll('.newSubtitlesContainer input[type=file]').forEach(function(fileInput) {
@@ -1171,6 +1217,9 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             }).then(function() {
                 completeUpdate();
             }).catch(function(err) {
+                if (isLoadedHypervideo(thisID)) {
+                    FrameTrail.module('HypervideoModel').returnPendingSubtitles(pendingSubtitles);
+                }
                 EditHypervideoForm.querySelector('.message.error').classList.add('active');
                 EditHypervideoForm.querySelector('.message.error').innerHTML = 'Local save failed: ' + (err ? err.message : '');
             });

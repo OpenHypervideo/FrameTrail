@@ -147,6 +147,9 @@
     // Set up the on-video editor of freeform hotspot outlines
     FrameTrail.initModule('FreeformShapeEditor');
 
+    // Set up the edit API (instance.edit), before the extensions that use it
+    FrameTrail.initModule('EditAPI');
+
     // Set up the loader of extensions (they are loaded once the config is known)
     FrameTrail.initModule('Extensions');
 

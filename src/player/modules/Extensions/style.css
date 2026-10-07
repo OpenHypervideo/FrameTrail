@@ -84,6 +84,17 @@
     padding: 10px 12px;
 }
 
+/* In view mode the panel has the title bar's palette, on which the buttons of generic.css — drawn in --primary-bg-color for light surfaces like dialogs and the edit panel — would vanish into the background. There they are drawn in the panel's foreground colour instead. Inputs and selects are light boxes and stay as they are. */
+.sidePanel:not(.editActive) .sidePanelContent :is(button, input[type="submit"], input[type="button"], .button) {
+    border-color: var(--primary-fg-color);
+    color: var(--primary-fg-color);
+}
+
+.sidePanel:not(.editActive) .sidePanelContent :is(button, input[type="submit"], input[type="button"], .button):is(:hover, .active) {
+    background-color: var(--primary-fg-color);
+    color: var(--primary-bg-color);
+}
+
 .mainContainer.sidePanelOpen {
     width: calc(100% - var(--ft-side-panel-width, 360px));
 }

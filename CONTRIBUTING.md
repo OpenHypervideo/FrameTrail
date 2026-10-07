@@ -68,7 +68,7 @@ FrameTrail/
 │   │   ├── frametrail-core/       # Core framework (module system, state, types)
 │   │   │   ├── frametrail-core.js # defineModule, defineType, init, changeState
 │   │   │   ├── serialization/     # FrameTrailSerializer (stored JSON ⇄ model), FrameTrailKeyframes
-│   │   │   ├── schema/            # FrameTrailSchema (validator for the JSON Schemas)
+│   │   │   ├── schema/            # FrameTrailSchema (validator for the JSON Schemas), FrameTrailSchemas (generated copy)
 │   │   │   └── storage/           # StorageAdapter, StorageAdapterServer/Local/Download
 │   │   ├── modules/               # Shared modules
 │   │   │   ├── Database/          # Data loading and persistence
@@ -105,7 +105,8 @@ FrameTrail/
 ├── schemas/                       # JSON Schemas for the files in _data/ and for bundles
 ├── tests/                         # Tests and fixtures (node tests/run-js.mjs)
 ├── scripts/
-│   └── build.sh                   # Production build (concat + minify)
+│   ├── build.sh                   # Production build (concat + minify)
+│   └── bundle-schemas.mjs         # Writes the player's copy of schemas/ (run after changing a schema)
 ├── .github/workflows/
 │   ├── build.yml                  # CI: tests and build verification on push/PR
 │   └── release.yml                # CD: build + package on version tags
@@ -250,7 +251,7 @@ Run the automated tests before you open a pull request (Node 20 or later, nothin
 node tests/run-js.mjs
 ```
 
-They check the JSON Schemas, the data fixtures in `tests/fixtures/` and the serializer; CI runs them on every push and pull request. When you change what is stored in `_data/`, add fixtures for it: the `all-types` data set holds an item of every type, `tests/fixtures/cases/` holds legacy shapes and invalid documents. After changing the data in a page in `examples/`, run `node tests/extract-examples.mjs`. [tests/README.md](tests/README.md) has the details.
+They check the JSON Schemas, the data fixtures in `tests/fixtures/` and the serializer; CI runs them on every push and pull request. When you change what is stored in `_data/`, add fixtures for it: the `all-types` data set holds an item of every type, `tests/fixtures/cases/` holds legacy shapes and invalid documents. After changing the data in a page in `examples/`, run `node tests/extract-examples.mjs`; after changing a schema, `node scripts/bundle-schemas.mjs`. [tests/README.md](tests/README.md) has the details.
 
 The tests do not cover the user interface. Test that by hand:
 

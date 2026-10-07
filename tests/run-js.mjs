@@ -18,6 +18,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { extractExamples, serialize, FIXTURES_DIR as EXAMPLE_FIXTURES } from './extract-examples.mjs';
+import { bundleSchemas, OUTPUT as SCHEMA_BUNDLE } from '../scripts/bundle-schemas.mjs';
 
 const require  = createRequire(import.meta.url);
 const ROOT     = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -388,6 +389,19 @@ describe('FrameTrailSchema', () => {
     test('every schema in schemas/ is named after its $id', () => {
         for (const file of SCHEMA_FILES) {
             assert.equal(readJSON(path.join(ROOT, 'schemas', file)).$id, Schema.BASE + file);
+        }
+    });
+
+    test('the copy the player loads is up to date and judges the cases alike', () => {
+        assert.ok(fs.readFileSync(SCHEMA_BUNDLE, 'utf8') === bundleSchemas(),
+            path.relative(ROOT, SCHEMA_BUNDLE) + ' is out of date: run node scripts/bundle-schemas.mjs');
+        const bundled = Schema.create(require(SCHEMA_BUNDLE));
+        for (const dir of [path.join(FIXTURES, 'cases'), EXAMPLE_FIXTURES]) {
+            for (const name of fs.readdirSync(dir).filter((name) => name.endsWith('.json'))) {
+                for (const c of readJSON(path.join(dir, name)).cases) {
+                    assert.deepStrictEqual(bundled.validate(c.schema, c.data), validator.validate(c.schema, c.data), name + ': ' + c.name);
+                }
+            }
         }
     });
 

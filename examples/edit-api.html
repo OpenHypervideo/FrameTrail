@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<!--
+  EXAMPLE: Edit API — reading and changing a hypervideo from a script
+  ────────────────────────────────────────────────────────────────────
+  Requirements: a build in ../build/ (bash scripts/build.sh). Works opened from the filesystem (file://) or served from any static web server; the hypervideo has no video file, so nothing is fetched.
+
+  Demonstrates edit (docs/EXTENDING.md, "Editing the Hypervideo"), used by an extension the page registers itself:
+  - list, get, add, update and remove of overlays, code snippets, annotations and chapters
+  - setLayout, setSubtitles, setConfig and getHypervideo
+  - a transaction: several changes as one undo step
+  - invalid data refused with { path, message } errors, changing nothing
+
+  The checks are in a side panel, which stays beside the player while editing (the editor takes the whole window). Click "Edit" and enter any name, then "Run the checks" in the panel. Each line reports one check; Undo and Redo are pressed in the sidebar, as a user would.
+-->
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>FrameTrail – Edit API</title>
+    <link rel="stylesheet" href="../build/frametrail.min.css">
+    <script src="../build/frametrail.min.js"></script>
+    <style>
+        body { margin: 0; }
+        .sidePanelItem[data-extension="edit-api-checks"] .runChecks { width: 100%; margin-bottom: 10px; text-align: center; }
+        .sidePanelItem[data-extension="edit-api-checks"] ul { margin: 0; padding-left: 20px; font-size: 13px; }
+        .sidePanelItem[data-extension="edit-api-checks"] li { margin-bottom: 4px; }
+        .sidePanelItem[data-extension="edit-api-checks"] .pass::marker { content: '✓  '; color: green; }
+        .sidePanelItem[data-extension="edit-api-checks"] .fail::marker { content: '✗  '; color: red; }
+    </style>
+</head>
+<body>
+    <script>
+
+    // The checks live in a side panel of an extension, so they stay beside the player while editing.
+    FrameTrail.registerExtension('edit-api-checks', function(FrameTrail) {
+
+        var sidePanel = null;
+
+        return {
+            onReady: function() {
+                sidePanel.open();
+            },
+            slots: {
+                sidePanel: {
+                    label:  'Edit API checks',
+                    icon:   'icon-check',
+                    width:  340,
+                    create: function(container, panel) {
+                        sidePanel = panel;
+                        container.innerHTML = '<button type="button" class="runChecks">Run the checks</button><ul class="checksLog"></ul>';
+                        logList = container.querySelector('.checksLog');
+                        container.querySelector('.runChecks').addEventListener('click', function() {
+                            runChecks(FrameTrail.edit);
+                        });
+                    }
+                }
+            }
+        };
+
+    });
+
+    var logList = null;
+
+    document.addEventListener('DOMContentLoaded', function() {
+
+        window.ftInstance = FrameTrail.init({
+            target:     'body',
+            startID:    '0',
+            extensions: ['edit-api-checks'],
+
+            contents: [{
+                hypervideo: {
+                    meta: {
+                        name:        'Edit API',
+                        description: 'A hypervideo without a video file, changed by a script',
+                        thumb:       '',
+                        creator:     'Demo',
+                        creatorId:   'demo',
+                        created:     1700000000000,
+                        lastchanged: 1700000000000
+                    },
+                    config: {
+                        layoutArea: {
+                            areaTop:    [],
+                            areaBottom: [{ type: 'TimedContent', name: 'Notes', contentSize: 'small' }],
+                            areaLeft:   [],
+                            areaRight:  []
+                        },
+                        slidingMode: 'overlay'
+                    },
+                    clips: [{ duration: 60 }],
+                    contents: [{
+                        '@context': [ 'http://www.w3.org/ns/anno.jsonld', 'https://frametrail.org/ns/context.jsonld' ],
+                        'type': 'Annotation', 'frametrail:type': 'Overlay',
+                        'creator': { 'nickname': 'Demo', 'type': 'Person', 'id': 'demo' },
+                        'created': '2024-01-01T00:00:00.000Z',
+                        'target': { 'type': 'Video', 'selector': { 'type': 'FragmentSelector', 'conformsTo': 'http://www.w3.org/TR/media-frags/', 'value': 't=2,10&xywh=percent:10,10,40,20' } },
+                        'body': { 'type': 'TextualBody', 'frametrail:type': 'text', 'format': 'text/html', 'frametrail:name': 'Welcome', 'frametrail:attributes': { 'text': '&lt;p&gt;Welcome&lt;/p&gt;' } }
+                    }],
+                    chapters:     [{ start: 0, title: 'Beginning' }],
+                    subtitles:    [],
+                    globalEvents: {},
+                    customCSS:    ''
+                },
+                annotations: [{
+                    '@context': [ 'http://www.w3.org/ns/anno.jsonld', 'https://frametrail.org/ns/context.jsonld' ],
+                    'type': 'Annotation', 'frametrail:type': 'Annotation',
+                    'creator': { 'nickname': 'Demo', 'type': 'Person', 'id': 'demo' },
+                    'created': '2024-01-01T00:01:00.000Z',
+                    'target': { 'type': 'Video', 'selector': { 'type': 'FragmentSelector', 'conformsTo': 'http://www.w3.org/TR/media-frags/', 'value': 't=5,15' } },
+                    'body': { 'type': 'TextualBody', 'frametrail:type': 'text', 'format': 'text/html', 'frametrail:name': 'A note', 'frametrail:attributes': { 'text': 'A note by Demo' } },
+                    'frametrail:tags': []
+                }]
+            }]
+        }, 'PlayerLauncher');
+
+    });
+
+
+    var log = function(ok, text) {
+        var li = document.createElement('li');
+        li.className = ok ? 'pass' : 'fail';
+        li.textContent = text;
+        logList.appendChild(li);
+        return ok;
+    };
+
+    var same = function(a, b) { return JSON.stringify(a) === JSON.stringify(b); };
+
+    // Everything the checks change, to compare before and after.
+    var snapshot = function(edit) {
+        return JSON.stringify([ edit.getHypervideo(), edit.list('annotations'), edit.list('subtitles') ]);
+    };
+
+    // Undo and Redo as a user presses them.
+    var press = function(name) {
+        var button = document.querySelector('.sidebar .' + name + 'Button');
+        if (!button || button.disabled) { return false; }
+        button.click();
+        return true;
+    };
+
+    var wait = function(ms) { return new Promise(function(resolve) { setTimeout(resolve, ms); }); };
+
+    async function runChecks(edit) {
+
+        logList.innerHTML = '';
+
+        try {
+            edit.update('chapters', 0, { title: 'Beginning' });
+        } catch (e) {
+            log(false, e.code === 'notAllowed' ? 'Click "Edit" first (any name will do).' : e.message);
+            return;
+        }
+
+        var text = { 'frametrail:type': 'text', 'frametrail:name': 'From the script', 'frametrail:attributes': { 'text': '&lt;p&gt;Added by a script&lt;/p&gt;' } };
+
+        var kinds = {
+            overlays: {
+                data:  { body: text, target: { selector: { value: 't=12,20&xywh=percent:50,50,30,15' } } },
+                patch: { target: { selector: { value: 't=14,22&xywh=percent:40,40,30,15' } } },
+                id:    function(item) { return item.created; },
+                check: function(item) { return item.target.selector.value.indexOf('t=14,22') === 0; }
+            },
+            codeSnippets: {
+                data:  { body: { 'frametrail:type': 'codesnippet', 'frametrail:name': 'Log', 'value': 'console.log("at 30 s");' }, target: { selector: { value: 't=30' } } },
+                patch: { body: { value: 'console.log("still at 30 s");' } },
+                id:    function(item) { return item.created; },
+                check: function(item) { return item.body.value.indexOf('still') !== -1; }
+            },
+            annotations: {
+                data:  { body: text, target: { selector: { value: 't=20,30' } } },
+                patch: { body: { 'frametrail:name': 'Renamed by the script' } },
+                id:    function(item) { return item.created; },
+                check: function(item) { return item.body['frametrail:name'] === 'Renamed by the script'; }
+            },
+            chapters: {
+                data:  { start: 25, title: 'Middle' },
+                patch: { title: 'The middle', start: 26 },
+                id:    function(item) { return item.start; },
+                check: function(item) { return item.title === 'The middle' && item.start === 26; }
+            }
+        };
+
+        for (var kind in kinds) {
+            var spec = kinds[kind], count = edit.list(kind).length;
+            try {
+                var added   = edit.add(kind, spec.data),
+                    updated = edit.update(kind, spec.id(added), spec.patch),
+                    shown   = edit.get(kind, spec.id(updated));
+                log(edit.list(kind).length === count + 1 && spec.check(updated) && same(shown, updated), kind + ': add, update, get');
+                edit.remove(kind, spec.id(updated));
+                log(edit.list(kind).length === count && edit.get(kind, spec.id(updated)) === null, kind + ': remove');
+            } catch (e) {
+                log(false, kind + ': ' + e.message);
+            }
+        }
+
+        try {
+            var previous = edit.list('contentViews', { area: 'bottom' });
+            edit.setLayout('bottom', previous.concat([{ type: 'Chapters', name: 'Chapters' }]));
+            var views = edit.list('contentViews', { area: 'bottom' });
+            edit.setLayout('bottom', previous);
+            log(views.length === previous.length + 1 && views[views.length - 1].type === 'Chapters' && edit.list('contentViews', { area: 'bottom' }).length === previous.length, 'content views: setLayout');
+
+            edit.setSubtitles('en', 'WEBVTT\n\n00:00:01.000 --> 00:00:05.000\nHello from the script\n');
+            var subtitles = edit.get('subtitles', 'en');
+            edit.setSubtitles('en', null);
+            log(subtitles && subtitles.vtt.indexOf('Hello from the script') !== -1 && edit.get('subtitles', 'en') === null, 'subtitles: setSubtitles');
+
+            var config = edit.setConfig({ clipTimeVisible: true });
+            edit.setConfig({ clipTimeVisible: null });
+            log(config.clipTimeVisible === true && edit.getHypervideo().config.clipTimeVisible === undefined, 'settings: setConfig');
+        } catch (e) {
+            log(false, e.message);
+        }
+
+        // Invalid data: refused, with errors that point at the problem, and nothing changes.
+        var before = snapshot(edit);
+        var refusals = [
+            function() { edit.add('overlays', { body: { 'frametrail:type': 'text', 'frametrail:attributes': { 'text': 5 } }, target: { selector: { value: 't=1,2&xywh=percent:0,0,10,10' } } }); },
+            function() { edit.add('chapters', { start: 0, title: 'Same start' }); },
+            function() { edit.setLayout('top', [{ type: 'Nonsense' }]); },
+            function() { edit.setSubtitles('en', 'not WebVTT'); },
+            function() { edit.transaction('Half done', function(tx) { tx.add('chapters', { start: 40 }); tx.add('chapters', { start: -1 }); }); }
+        ];
+        refusals.forEach(function(attempt, index) {
+            try {
+                attempt();
+                log(false, 'invalid data ' + (index + 1) + ' was accepted');
+            } catch (e) {
+                log(e.code === 'invalid' && e.errors.length > 0, 'invalid data ' + (index + 1) + ' refused: ' + e.errors.map(function(err) { return (err.path || '(data)') + ' ' + err.message; }).join('; '));
+            }
+        });
+        log(snapshot(edit) === before, 'invalid data changed nothing');
+
+        // A transaction of five changes is one undo step.
+        try {
+            var start = snapshot(edit);
+            edit.transaction('Five changes', function(tx) {
+                tx.add('overlays', kinds.overlays.data);
+                tx.add('annotations', kinds.annotations.data);
+                tx.add('chapters', { start: 45, title: 'End' });
+                tx.update('chapters', 45, { title: 'The end' });
+                tx.setConfig({ clipTimeVisible: true });
+            });
+            var done = snapshot(edit);
+            await wait(100);
+            var undone = press('undo') && snapshot(edit);
+            await wait(100);
+            var redone = press('redo') && snapshot(edit);
+            log(done !== start && undone === start, 'a transaction of five changes: one Undo takes all back');
+            log(redone === done, 'a transaction of five changes: one Redo brings all back');
+            await wait(100);
+            press('undo');
+
+            edit.transaction('Three chapters', function(tx) {
+                tx.add('chapters', { start: 10, title: 'One' });
+                tx.add('chapters', { start: 20, title: 'Two' });
+                tx.add('chapters', { start: 30, title: 'Three' });
+            });
+            var three = edit.list('chapters').length;
+            await wait(100);
+            press('undo');
+            var none = edit.list('chapters').length;
+            await wait(100);
+            press('redo');
+            log(three === none + 3 && edit.list('chapters').length === three, 'a transaction of three chapters: one Undo, one Redo');
+        } catch (e) {
+            log(false, e.message);
+        }
+
+    }
+    </script>
+</body>
+</html>

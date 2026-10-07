@@ -1043,13 +1043,13 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
      */
     function newUnsavedChange(category) {
 
-        if (category == 'codeSnippets' || category == 'events' || category == 'customCSS') {
-            // camelCase not valid in attributes
-            domElement.querySelector('button[data-editmode="codesnippets"]').classList.add('unsavedChanges');
-        } else if (category == 'layout') {
-            domElement.querySelector('button[data-editmode="layout"]').classList.add('unsavedChanges');
-        } else {
-            domElement.querySelector('button[data-editmode="'+category+'"]').classList.add('unsavedChanges');
+        // camelCase not valid in attributes
+        var editMode = (category == 'codeSnippets' || category == 'events' || category == 'customCSS') ? 'codesnippets' : category,
+            button   = domElement.querySelector('button[data-editmode="'+ editMode +'"]');
+
+        // Subtitles and hypervideo settings have no edit mode, nor does an extension whose mode failed to load.
+        if (button) {
+            button.classList.add('unsavedChanges');
         }
 
     };
@@ -1323,6 +1323,25 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         var viewMode  = FrameTrail.getState('viewMode'),
             container = (viewMode === 'overview') ? CollaborationInfoOverview : CollaborationInfoVideo;
 
+        // A transaction of the edit API is changing the hypervideo: say so, and offer to stop it.
+        if (FrameTrail.getState('editBusy') && viewMode === 'video' && container) {
+
+            var busyMsg = document.createElement('div');
+            busyMsg.className = 'message active';
+            busyMsg.textContent = labels['MessageEditBusy'];
+
+            var stopBtn = document.createElement('button');
+            stopBtn.className = 'editBusyStopButton';
+            stopBtn.textContent = labels['GenericStop'];
+            stopBtn.addEventListener('click', function() {
+                FrameTrail.module('EditAPI').stop(true);
+            });
+
+            container.appendChild(busyMsg);
+            container.appendChild(stopBtn);
+
+        }
+
         if (container) {
             COLLAB_SCOPE_ROWS.forEach(function(row) {
                 if (row.viewModes.indexOf(viewMode) === -1) return;
@@ -1515,7 +1534,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             viewMode:       toggleViewMode,
             editMode:       toggleEditMode,
             loggedIn:       changeUserLogin,
-            collabState:    renderCollaborationInfo
+            collabState:    renderCollaborationInfo,
+            editBusy:       renderCollaborationInfo
         },
 
         newUnsavedChange: newUnsavedChange,

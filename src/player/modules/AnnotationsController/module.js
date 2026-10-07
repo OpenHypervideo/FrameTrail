@@ -834,6 +834,57 @@
 
 
     /**
+     * I add an annotation from its data (as FrameTrailSerializer.parseAnnotation reads it, with created set) and show it — in the annotations editor ready for editing.
+     * @method addAnnotation
+     * @param {Object} data
+     * @return {Annotation}
+     */
+    function addAnnotation(data) {
+
+        var annotation = FrameTrail.module('HypervideoModel').newAnnotation(data, true);
+
+        annotation.renderInDOM();
+
+        if (FrameTrail.getState('editMode') === 'annotations') {
+            annotation.startEditing();
+            stackTimelineView();
+        }
+
+        updateStatesOfAnnotations(FrameTrail.module('HypervideoController').currentTime);
+        FrameTrail.module('TimelineController').refreshMinimap();
+
+        return annotation;
+
+    }
+
+
+    /**
+     * I replace all data of an annotation (its type stays) and show the change, also in its properties controls when it is selected.
+     * @method replaceAnnotationData
+     * @param {Annotation} annotation
+     * @param {Object} data
+     */
+    function replaceAnnotationData(annotation, data) {
+
+        annotation.replaceData(data);
+
+        if (FrameTrail.getState('editMode') === 'annotations') {
+            stackTimelineView();
+        }
+
+        if (annotationInFocus === annotation) {
+            annotation.gotInFocus();
+        }
+
+        updateStatesOfAnnotations(FrameTrail.module('HypervideoController').currentTime);
+        FrameTrail.module('TimelineController').refreshMinimap();
+
+        FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+
+    }
+
+
+    /**
      * I am the starting point for the process of deleting
      * an annotation.
      * @method deleteAnnotation
@@ -845,12 +896,17 @@
         // Capture data before deletion for undo
         var annotationData = JSON.parse(JSON.stringify(annotation.data));
 
-        setAnnotationInFocus(null);
+        if (annotationInFocus === annotation) {
+            setAnnotationInFocus(null);
+        }
         annotation.removeFromDOM();
         //distributeTiles();
         FrameTrail.module('HypervideoModel').removeAnnotation(annotation);
 
-        stackTimelineView();
+        // Outside the annotations editor the timeline is not stacked.
+        if (FrameTrail.getState('editMode') === 'annotations') {
+            stackTimelineView();
+        }
         FrameTrail.module('TimelineController').refreshMinimap();
 
         // Register undo command
@@ -1392,6 +1448,8 @@
         updateStatesOfAnnotations:  updateStatesOfAnnotations,
         stackTimelineView:          stackTimelineView,
 
+        addAnnotation:              addAnnotation,
+        replaceAnnotationData:      replaceAnnotationData,
         deleteAnnotation:           deleteAnnotation,
 
         findTopMostActiveAnnotation: findTopMostActiveAnnotation,

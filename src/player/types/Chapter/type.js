@@ -202,6 +202,11 @@ FrameTrail.defineType(
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('chapters');
                                 FrameTrail.module('HypervideoController').updateChapterDisplay();
 
+                                FrameTrail.module('ChaptersController').registerChangeUndo(
+                                    Object.assign({}, self.data, { start: self._dragOldStart }),
+                                    self.data
+                                );
+
                             }
                         }
                     });

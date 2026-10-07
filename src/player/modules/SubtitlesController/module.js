@@ -63,6 +63,8 @@ FrameTrail.defineModule('SubtitlesController', function(FrameTrail){
             if (!!document.fullscreenEnabled) {
                 
                 for (var s = 0; s < subtitleFiles.length; s++) {
+                    // A listed language whose file could not be loaded has nothing to show.
+                    if (!FrameTrail.module('Database').subtitles[subtitleFiles[s].srclang]) { continue; }
                     var captionSelect = document.createElement('div');
                     captionSelect.className = 'captionSelect';
                     captionSelect.dataset.lang = subtitleFiles[s].srclang;
