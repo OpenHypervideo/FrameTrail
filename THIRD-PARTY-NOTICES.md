@@ -1,101 +1,50 @@
 # Third-Party Notices
 
-FrameTrail is licensed under MIT (see [LICENSE.md](LICENSE.md)). It contains third-party code, libraries and fonts under their own licenses. All of them are listed here, followed by the license texts those licenses require. The build strips comments from the bundled files, and this file ships with every build, so this file is where their notices live.
+FrameTrail is licensed under MIT (see [LICENSE.md](LICENSE.md)). It includes the third-party code and fonts below under their own licenses. The build strips comments from the bundled files, so this file carries their copyright notices and license texts.
 
-## Code ported or adapted into FrameTrail files
+## Code adapted into FrameTrail files
 
-### HyperFrames
+| Source | License | Copyright | Used in (modified for FrameTrail) |
+|---|---|---|---|
+| [HyperFrames](https://github.com/heygen-com/hyperframes) | Apache-2.0 | Copyright 2026 HeyGen, Inc. | `FrameTrailKeyframes.js`, `ResourceHotspot`, `ResourceCounter`, `ResourceChart`, `ResourceCursor` |
+| [OpenGraph for PHP](https://github.com/scottmac/opengraph) | Apache-2.0 | Copyright 2010 Scott MacVicar | `src/_server/opengraph.php` |
 
-- Project: HyperFrames — https://github.com/heygen-com/hyperframes
-- Copyright 2026 HeyGen, Inc.
-- License: Apache License, Version 2.0 (full text below)
+## Libraries (`src/_lib/`)
 
-The following FrameTrail files contain code ported or adapted from HyperFrames. All of them were modified for FrameTrail: rewritten in plain JavaScript without GSAP, driven by FrameTrail's video-synced CSS animations, and integrated into FrameTrail's overlay types. Each file names its source in a header comment.
-
-| FrameTrail file | Ported / adapted from (HyperFrames) |
-|---|---|
-| `src/_shared/frametrail-core/serialization/FrameTrailKeyframes.js` | Spring and wiggle easing math (`packages/core/src/parsers/springEase.ts`, `packages/core/src/runtime/wiggleEase.ts`) |
-| `src/_shared/types/ResourceHotspot/type.js` (`renderSvgStroke`, `svgShapePath`) | Arrow stroke geometry after the `hw-arrow` and `svg-stroke-trace` registry components |
-| `src/_shared/types/ResourceCounter/type.js` | `count-up` and `number-wheel` registry components |
-| `src/_shared/types/ResourceChart/type.js` | `chart-story` and `conic-progress-ring` registry components |
-| `src/_shared/types/ResourceCursor/type.js` | Inspired by the `oversized-cursor` and `dart-cursor` registry components |
-
-No HyperFrames catalog assets, fonts or logos are included, and FrameTrail does not use GSAP.
-
-### OpenGraph
-
-- Project: OpenGraph for PHP — https://github.com/scottmac/opengraph
-- Copyright 2010 Scott MacVicar
-- License: Apache License, Version 2.0 (full text below)
-
-`src/_server/opengraph.php` is that project's `OpenGraph.php`, modified for FrameTrail. Among other changes, pages are fetched through `ftFetchPublicUrl()`, which only reaches public addresses.
-
-## Vendored libraries (`src/_lib/`)
-
-| Library | Version | Files | License | Copyright |
-|---|---|---|---|---|
-| CodeMirror 6 | see below | `codemirror6/cm6.bundle.js` | MIT | Marijn Haverbeke and others (see below) |
-| CollisionDetection, based on jQuery Collision Detection | 1.0, modified for FrameTrail | `collisiondetection/collisiondetection.js` | MIT (dual-licensed MIT/GPL upstream, used under MIT) | Copyright (c) 2014 HN Leussink |
-| fflate | 0.8.2 | `fflate/fflate.min.js` | MIT | Copyright (c) 2023 Arjun Barrett |
-| hls.js | 1.6.15 | `hlsjs/hls.min.js` | Apache-2.0 | Copyright (c) 2017 Dailymotion (http://www.dailymotion.com). Parts derived from the HLS library for video.js (https://github.com/videojs/videojs-contrib-hls), Copyright (c) 2013-2015 Brightcove |
-| interact.js | 1.10.27 | `interactjs/interact.min.js` | MIT | Copyright (c) 2012-present Taye Adeyemi <dev@taye.me> |
-| Leaflet | 1.9.4 | `leaflet/leaflet.js`, `leaflet/leaflet.css` | BSD-2-Clause | Copyright (c) 2010-2023, Volodymyr Agafonkin; Copyright (c) 2010-2011, CloudMade |
-| Quill | 2.0.3 | `quill/quill.min.js`, `quill/quill.snow.css` | BSD-3-Clause | Copyright (c) 2017-2024, Slab; Copyright (c) 2014, Jason Chen; Copyright (c) 2013, salesforce.com |
-| SortableJS | 1.15.7 | `sortablejs/Sortable.min.js` | MIT | Copyright (c) 2019 All contributors to Sortable |
-| vtt.js | 0.12.1 | `parsers/vtt.min.js` | Apache-2.0 | Copyright 2013 vtt.js Contributors |
-
-The CodeMirror 6 bundle is built by `scripts/build-codemirror6.sh` from these packages (versions pinned in `scripts/package-lock.json`), all under the MIT License:
-
-| Package | Version | Copyright |
+| Library | License | Copyright |
 |---|---|---|
-| `@codemirror/commands` | 6.10.2 | Copyright (C) 2018-2021 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-| `@codemirror/language` | 6.12.1 | Copyright (C) 2018-2021 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-| `@codemirror/legacy-modes` | 6.5.2 | Copyright (C) 2018-2021 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-| `@codemirror/lint` | 6.9.4 | Copyright (C) 2018-2021 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-| `@codemirror/state` | 6.5.4 | Copyright (C) 2018-2021 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-| `@codemirror/theme-one-dark` | 6.1.3 | Copyright (C) 2018-2021 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-| `@codemirror/view` | 6.39.15 | Copyright (C) 2018-2021 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-| `@lezer/common` | 1.5.1 | Copyright (C) 2018 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-| `@lezer/highlight` | 1.2.3 | Copyright (C) 2018 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-| `@lezer/lr` | 1.4.8 | Copyright (C) 2018 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-| `@marijn/find-cluster-break` | 1.0.2 | Copyright (C) 2024 by Marijn Haverbeke <marijn@haverbeke.berlin> |
-| `crelt` | 1.0.6 | Copyright (C) 2020 by Marijn Haverbeke <marijn@haverbeke.berlin> |
-| `style-mod` | 4.1.3 | Copyright (C) 2018 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-| `w3c-keyname` | 2.2.8 | Copyright (C) 2016 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
-
-`dialog/`, `tabsjs/` and `codemirror6/cm6linters.js` in `src/_lib/` are FrameTrail's own code (MIT).
+| CodeMirror 6 (`@codemirror/*`, `@lezer/*`, `@marijn/find-cluster-break`, `crelt`, `style-mod`, `w3c-keyname`) | MIT | Copyright (C) 2016-2024 by Marijn Haverbeke <marijn@haverbeke.berlin> and others |
+| CollisionDetection (based on jQuery Collision Detection) | MIT (dual MIT/GPL upstream) | Copyright (c) 2014 HN Leussink |
+| fflate | MIT | Copyright (c) 2023 Arjun Barrett |
+| hls.js | Apache-2.0 | Copyright (c) 2017 Dailymotion; parts Copyright (c) 2013-2015 Brightcove |
+| interact.js | MIT | Copyright (c) 2012-present Taye Adeyemi <dev@taye.me> |
+| Leaflet | BSD-2-Clause | Copyright (c) 2010-2023, Volodymyr Agafonkin; Copyright (c) 2010-2011, CloudMade |
+| Quill | BSD-3-Clause | Copyright (c) 2017-2024, Slab; Copyright (c) 2014, Jason Chen; Copyright (c) 2013, salesforce.com |
+| SortableJS | MIT | Copyright (c) 2019 All contributors to Sortable |
+| vtt.js | Apache-2.0 | Copyright 2013 vtt.js Contributors |
 
 ## Fonts
 
-| Font | Files | License | Copyright |
-|---|---|---|---|
-| Titillium Web | `src/_shared/fonts/Titillium_Web/*.woff2` | SIL Open Font License, Version 1.1 | Copyright (c) 2009-2011 by Accademia di Belle Arti di Urbino and students of MA course of Visual design |
-| FrameTrail icon font | `src/_shared/fonts/FrameTrail_Icons/frametrail-icons.woff2` | SIL Open Font License, Version 1.1 (see below) | see below |
+**Titillium Web** — SIL Open Font License 1.1 — Copyright (c) 2009-2011 by Accademia di Belle Arti di Urbino and students of MA course of Visual design.
 
-### FrameTrail icon font
+**FrameTrail icon font** — SIL Open Font License 1.1. It is a modified version of the OFL icon fonts below and also contains glyphs from Apache-2.0 and MIT icon sets, which keep their own licenses.
 
-The icon font was assembled with IcoMoon from the sources below. Most of its glyphs come from fonts under the SIL Open Font License, built with Fontello. Since it is a modified version of those fonts, the icon font as a whole is distributed under the SIL Open Font License as well. Glyphs taken from Apache-2.0, MIT and CC0 icon sets keep their notices here.
-
-| Source | Glyphs | License | Copyright |
-|---|---|---|---|
-| Font Awesome 4, via Fontello | 362 | SIL Open Font License 1.1 | Copyright (C) 2016 by Dave Gandy |
-| Entypo, via Fontello | 36 or more | SIL Open Font License 1.1 | Copyright (C) 2012 by Daniel Bruce |
-| Elusive Icons, via Fontello | 29 or more | SIL Open Font License 1.1 | Copyright (C) 2013 by Aristeides Stathopoulos |
-| Typicons, via Fontello | 6 or more | SIL Open Font License 1.1 | (c) Stephen Hutchings 2012 |
-| MFG Labs iconset, via Fontello | 2 or more | SIL Open Font License 1.1 | MFG Labs |
-| Iconic, Modern Pictograms, Web Symbols and Brandico, via Fontello | possibly some of the 108 glyphs whose names occur in several of the Fontello sets listed here | SIL Open Font License 1.1 | Copyright (C) 2012 by P.J. Onori; Copyright (c) 2012 by John Caserta; Copyright (c) 2011 by Just Be Nice studio; (C) 2012 by Vitaly Puzrin |
-| IBM Carbon Design System icons (`@carbon/icons`) | 110 | Apache License 2.0 | Copyright 2015 IBM Corp. |
-| Bootstrap Icons | 7 | MIT | Copyright (c) 2019-2024 The Bootstrap Authors |
-| Simple Icons (Bluesky logo) | 1 | CC0 1.0 (public domain dedication) | — |
-| FrameTrail's own icons (`hypervideo`, `hypervideo-add`, `hypervideo-fork`, `overview`, `overlays`, `annotations`, `videolinks`, `captions-on`, `captions-off`) | 9 | SIL Open Font License 1.1, as part of the font | FrameTrail contributors |
-
-Entypo, Typicons and the MFG Labs iconset also publish their pictograms under CC BY-SA. The fonts that Fontello builds from, and that this font derives from, are under the SIL Open Font License. The Bluesky logo is a trademark of Bluesky Social PBC.
+| Glyph source | License | Copyright |
+|---|---|---|
+| Font Awesome 4 | OFL-1.1 | Copyright (C) 2016 by Dave Gandy |
+| Entypo | OFL-1.1 | Copyright (C) 2012 by Daniel Bruce |
+| Elusive Icons | OFL-1.1 | Copyright (C) 2013 by Aristeides Stathopoulos |
+| Typicons | OFL-1.1 | (c) Stephen Hutchings 2012 |
+| MFG Labs iconset | OFL-1.1 | MFG Labs |
+| Iconic, Modern Pictograms, Web Symbols, Brandico | OFL-1.1 | Copyright (C) 2012 by P.J. Onori; Copyright (c) 2012 by John Caserta; Copyright (c) 2011 by Just Be Nice studio; (C) 2012 by Vitaly Puzrin |
+| IBM Carbon Design System icons | Apache-2.0 | Copyright 2015 IBM Corp. |
+| Bootstrap Icons | MIT | Copyright (c) 2019-2024 The Bootstrap Authors |
 
 ## License texts
 
 ### MIT License
 
-Applies to the CodeMirror 6 packages, CollisionDetection, fflate, interact.js, SortableJS and the Bootstrap Icons in the FrameTrail icon font. Each one's copyright line is given above.
+Applies to CodeMirror 6, CollisionDetection, fflate, interact.js, SortableJS and the Bootstrap Icons in the FrameTrail icon font, with the copyright lines given above.
 
 ```
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -178,7 +127,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ### SIL Open Font License, Version 1.1
 
-Applies to Titillium Web and to the FrameTrail icon font with its Fontello sources. Their copyright lines are given above.
+Applies to Titillium Web and the FrameTrail icon font, with the copyright lines given above.
 
 ```
 -----------------------------------------------------------
@@ -271,7 +220,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 ### Apache License, Version 2.0
 
-Applies to the code ported from HyperFrames and OpenGraph, to hls.js and vtt.js, and to the IBM Carbon icons in the FrameTrail icon font.
+Applies to the code adapted from HyperFrames and OpenGraph, hls.js, vtt.js and the IBM Carbon icons in the FrameTrail icon font.
 
 ```
                                  Apache License
@@ -450,18 +399,4 @@ Applies to the code ported from HyperFrames and OpenGraph, to hls.js and vtt.js,
       of your accepting any such warranty or additional liability.
 
    END OF TERMS AND CONDITIONS
-
-   Copyright 2026 HeyGen, Inc.
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
 ```
