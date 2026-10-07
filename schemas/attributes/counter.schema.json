@@ -1,0 +1,75 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/counter.schema.json",
+    "title": "frametrail:attributes of type \"counter\"",
+    "description": "Counter overlay: an animated number. Overlay only. This schema describes the frametrail:attributes of items whose type is \"counter\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "type": "object",
+    "properties": {
+        "from": {
+            "description": "Start value.",
+            "type": "number",
+            "default": 0
+        },
+        "to": {
+            "description": "End value.",
+            "type": "number",
+            "default": 100
+        },
+        "decimals": {
+            "description": "Decimal places.",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4,
+            "default": 0
+        },
+        "prefix": {
+            "description": "Text before the number.",
+            "type": "string",
+            "default": ""
+        },
+        "suffix": {
+            "description": "Text after the number.",
+            "type": "string",
+            "default": ""
+        },
+        "style": {
+            "description": "count: the value counts up. roll: the digits roll like an odometer.",
+            "type": "string",
+            "enum": ["count", "roll"],
+            "default": "count"
+        },
+        "duration": {
+            "description": "Duration of the count in milliseconds, from the overlay's start.",
+            "type": "number",
+            "minimum": 0,
+            "default": 1500
+        },
+        "ease": {
+            "$ref": "../common.schema.json#/$defs/ease",
+            "description": "Easing of the count. Default power2Out."
+        },
+        "color": {
+            "description": "CSS text colour.",
+            "type": "string",
+            "default": "#ffffff"
+        },
+        "weight": {
+            "description": "CSS font weight.",
+            "type": "number",
+            "default": 700
+        },
+        "align": {
+            "description": "Horizontal alignment.",
+            "type": "string",
+            "enum": ["left", "center", "right"],
+            "default": "center"
+        },
+        "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
+        "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },
+        "zIndex": { "$ref": "../common.schema.json#/$defs/zIndex" },
+        "animation": { "$ref": "../common.schema.json#/$defs/animation" },
+        "animationIn": { "$ref": "../common.schema.json#/$defs/animationIn" },
+        "animationOut": { "$ref": "../common.schema.json#/$defs/animationOut" },
+        "animationDuration": { "$ref": "../common.schema.json#/$defs/animationDuration" }
+    }
+}

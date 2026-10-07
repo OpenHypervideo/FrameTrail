@@ -136,7 +136,8 @@ This creates a `build/` directory with concatenated and minified JS/CSS bundles.
 ### Documentation
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Development setup, code style, branching, CI/CD
-- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Module system, state management, storage modes, data model
+- [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Module system, state management, storage modes
+- [docs/DATA-MODEL.md](docs/DATA-MODEL.md) — The files in `_data/`, with JSON Schemas in [`schemas/`](schemas/) for tools that read or write them
 - [docs/EXTENDING.md](docs/EXTENDING.md) — Adding resource types, modules, localization
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Server deployment, local usage, building, releasing
 - [docs/INTEGRATION.md](docs/INTEGRATION.md) — Running FrameTrail inside an LMS or platform: external authentication (OIDC, signed tokens)

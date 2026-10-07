@@ -1,0 +1,48 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/project-bundle.schema.json",
+    "title": "FrameTrail project bundle",
+    "description": "A whole library as one JSON document: hypervideos with their annotations and subtitles, the overview map, the resources index, tag definitions and the playback settings. Never contains users.json or anything from the dot-folders of _data/ (.auth/, .collab/ and any other). Media files are referenced by URL or relative path, never embedded.",
+    "type": "object",
+    "required": ["bundle", "formatVersion", "hypervideosIndex", "hypervideos"],
+    "properties": {
+        "bundle": {
+            "description": "Always \"project\".",
+            "type": "string",
+            "const": "project"
+        },
+        "formatVersion": {
+            "description": "Version of the bundle format.",
+            "type": "integer",
+            "const": 1
+        },
+        "hypervideosIndex": {
+            "$ref": "hypervideos-index.schema.json",
+            "description": "The hypervideos index with the overview map."
+        },
+        "hypervideos": {
+            "description": "The hypervideos, keyed by the ids used in hypervideosIndex.",
+            "type": "object",
+            "additionalProperties": { "$ref": "hypervideo-bundle.schema.json" }
+        },
+        "resources": { "$ref": "resources-index.schema.json" },
+        "tagdefinitions": { "$ref": "tagdefinitions.schema.json" },
+        "config": {
+            "description": "The playback-relevant part of config.json. Nothing else from config.json travels: accounts, authentication, privacy and upload settings belong to an instance.",
+            "type": "object",
+            "properties": {
+                "defaultTheme": { "$ref": "config.schema.json#/properties/defaultTheme" },
+                "defaultLanguage": { "$ref": "config.schema.json#/properties/defaultLanguage" },
+                "videoFit": { "$ref": "config.schema.json#/properties/videoFit" },
+                "overviewMode": { "$ref": "config.schema.json#/properties/overviewMode" },
+                "overviewTitle": { "$ref": "config.schema.json#/properties/overviewTitle" },
+                "overviewShowSearchBar": { "$ref": "config.schema.json#/properties/overviewShowSearchBar" }
+            },
+            "additionalProperties": false
+        },
+        "customCSS": {
+            "description": "The global CSS (_data/custom.css), which also defines custom themes.",
+            "type": "string"
+        }
+    }
+}

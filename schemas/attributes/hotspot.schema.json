@@ -1,0 +1,100 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/hotspot.schema.json",
+    "title": "frametrail:attributes of type \"hotspot\"",
+    "description": "Hotspot overlay: a clickable shape (circle, rectangle, rounded rectangle) or a drawn line (arrow, underline, freeform outline). Overlay only. This schema describes the frametrail:attributes of items whose type is \"hotspot\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "type": "object",
+    "properties": {
+        "shape": {
+            "description": "The shape.",
+            "type": "string",
+            "enum": ["circle", "rectangle", "rounded", "arrow", "underline", "freeform"],
+            "default": "circle"
+        },
+        "color": {
+            "description": "CSS colour of the outline or line.",
+            "type": "string",
+            "default": "#0096ff"
+        },
+        "borderWidth": {
+            "description": "Outline or line width in percent of the smaller side of the box.",
+            "type": "number",
+            "minimum": 0,
+            "default": 5
+        },
+        "borderRadius": {
+            "description": "rounded only: corner radius in pixels.",
+            "type": "number",
+            "minimum": 0,
+            "default": 10
+        },
+        "backgroundColor": {
+            "description": "CSS fill colour. Set, it hides the pulse ring so the hotspot reads as a button. Empty means no fill.",
+            "type": "string",
+            "default": ""
+        },
+        "text": {
+            "description": "Label inside the hotspot, plain text.",
+            "type": "string",
+            "default": ""
+        },
+        "textColor": {
+            "description": "CSS colour of the label.",
+            "type": "string",
+            "default": "#ffffff"
+        },
+        "direction": {
+            "description": "arrow only: where the arrow points.",
+            "type": "string",
+            "enum": ["right", "left", "up", "down", "upRight", "upLeft", "downRight", "downLeft"],
+            "default": "right"
+        },
+        "curve": {
+            "description": "arrow only: straight, curved (one bend) or swoop (S-like).",
+            "type": "string",
+            "enum": ["straight", "curved", "swoop"],
+            "default": "straight"
+        },
+        "points": {
+            "description": "freeform only: the outline as points in 0–100 box coordinates. Smooth points let the outline curve through them, the others are corners.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["x", "y"],
+                "properties": {
+                    "x": {
+                        "description": "Horizontal position in percent of the box.",
+                        "type": "number"
+                    },
+                    "y": {
+                        "description": "Vertical position in percent of the box.",
+                        "type": "number"
+                    },
+                    "smooth": {
+                        "description": "Curve through this point instead of a corner.",
+                        "type": "boolean",
+                        "default": false
+                    }
+                }
+            }
+        },
+        "path": {
+            "description": "freeform only: the outline as an SVG path in 0–100 box coordinates. Derived from points and written for other consumers; a shape that has only a path (older data) is drawn from it and converted to points on its first edit.",
+            "type": "string"
+        },
+        "linkUrl": {
+            "description": "Legacy. URL opened on click, from before the action model. Treated as action \"openUrl\" when action is empty.",
+            "type": "string"
+        },
+        "action": { "$ref": "../common.schema.json#/$defs/action" },
+        "actionTarget": { "$ref": "../common.schema.json#/$defs/actionTarget" },
+        "actionTargetTime": { "$ref": "../common.schema.json#/$defs/actionTargetTime" },
+        "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
+        "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },
+        "zIndex": { "$ref": "../common.schema.json#/$defs/zIndex" },
+        "animation": { "$ref": "../common.schema.json#/$defs/animation" },
+        "animationIn": { "$ref": "../common.schema.json#/$defs/animationIn" },
+        "animationOut": { "$ref": "../common.schema.json#/$defs/animationOut" },
+        "animationDuration": { "$ref": "../common.schema.json#/$defs/animationDuration" }
+    }
+}

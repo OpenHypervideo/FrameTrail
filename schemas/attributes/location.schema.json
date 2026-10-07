@@ -1,0 +1,81 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/location.schema.json",
+    "title": "frametrail:attributes of type \"location\"",
+    "description": "Map (OpenStreetMap via Leaflet) centred on a coordinate. This schema describes the frametrail:attributes of items (and the attributes of resources) whose type is \"location\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "type": "object",
+    "properties": {
+        "lat": {
+            "description": "Latitude (WGS 84). Resources store it as a string.",
+            "type": ["number", "string"]
+        },
+        "lon": {
+            "description": "Longitude (WGS 84). Resources store it as a string.",
+            "type": ["number", "string"]
+        },
+        "boundingBox": {
+            "description": "Area to fit the map to when zoom is not set: [south, north, west, east] in degrees, numbers or strings. An empty string or array means none.",
+            "type": ["array", "string"],
+            "items": {
+                "type": ["number", "string"]
+            }
+        },
+        "zoom": {
+            "description": "Zoom level.",
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 20,
+            "default": 15
+        },
+        "tileStyle": {
+            "description": "Map tiles.",
+            "type": "string",
+            "enum": ["osm-standard", "carto-light", "carto-dark", "carto-voyager"],
+            "default": "osm-standard"
+        },
+        "marker": {
+            "description": "The marker.",
+            "type": "object",
+            "properties": {
+                "show": {
+                    "description": "Show a marker at the centre.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "color": {
+                    "description": "CSS colour of the marker.",
+                    "type": "string",
+                    "default": "#e74c3c"
+                }
+            }
+        },
+        "controls": {
+            "description": "Map interaction.",
+            "type": "object",
+            "properties": {
+                "dragging": {
+                    "description": "Allow panning.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "scrollWheelZoom": {
+                    "description": "Allow zooming with the scroll wheel.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "zoomControl": {
+                    "description": "Show the zoom buttons.",
+                    "type": "boolean",
+                    "default": true
+                }
+            }
+        },
+        "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
+        "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },
+        "zIndex": { "$ref": "../common.schema.json#/$defs/zIndex" },
+        "animation": { "$ref": "../common.schema.json#/$defs/animation" },
+        "animationIn": { "$ref": "../common.schema.json#/$defs/animationIn" },
+        "animationOut": { "$ref": "../common.schema.json#/$defs/animationOut" },
+        "animationDuration": { "$ref": "../common.schema.json#/$defs/animationDuration" }
+    }
+}

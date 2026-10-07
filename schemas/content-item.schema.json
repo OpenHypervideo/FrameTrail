@@ -1,0 +1,612 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/content-item.schema.json",
+    "title": "FrameTrail content item",
+    "description": "One item of a hypervideo's contents (hypervideo.json → contents): a W3C Web Annotation with FrameTrail extensions, either an overlay or a code snippet, told apart by frametrail:type. Unknown properties are allowed at every level; writers keep them.",
+    "$defs": {
+        "overlay": {
+            "description": "An overlay: content shown over the video during a time span, in a box positioned in percent of the video frame.",
+            "type": "object",
+            "required": ["type", "frametrail:type", "creator", "created", "target", "body"],
+            "properties": {
+                "@context": { "$ref": "common.schema.json#/$defs/context" },
+                "type": {
+                    "description": "Always \"Annotation\" (W3C).",
+                    "type": "string",
+                    "const": "Annotation"
+                },
+                "frametrail:type": {
+                    "description": "Always \"Overlay\".",
+                    "type": "string",
+                    "const": "Overlay"
+                },
+                "creator": { "$ref": "common.schema.json#/$defs/creator" },
+                "created": { "$ref": "common.schema.json#/$defs/created" },
+                "generator": { "$ref": "common.schema.json#/$defs/generator" },
+                "frametrail:tags": { "$ref": "common.schema.json#/$defs/tags" },
+                "frametrail:events": { "$ref": "common.schema.json#/$defs/overlayEvents" },
+                "frametrail:attributes": {
+                    "description": "Legacy. Attributes at the annotation level, from very old files. Read only when the body has none.",
+                    "type": ["object", "array"]
+                },
+                "target": {
+                    "description": "The hypervideo, the time span and the box.",
+                    "type": "object",
+                    "required": ["selector"],
+                    "properties": {
+                        "type": {
+                            "description": "Always \"Video\".",
+                            "type": "string",
+                            "const": "Video"
+                        },
+                        "source": {
+                            "description": "The hypervideo's video source (the src of its first clip). Absent when the hypervideo has no video file (an empty timeline).",
+                            "type": "string"
+                        },
+                        "selector": { "$ref": "common.schema.json#/$defs/overlaySelector" }
+                    }
+                },
+                "body": {
+                    "description": "What the overlay shows. frametrail:type selects the resource type; the oneOf below lists the types allowed here and the attribute schema of each.",
+                    "type": "object",
+                    "required": ["frametrail:type"],
+                    "properties": {
+                        "frametrail:type": {
+                            "description": "The resource type, which decides how the item is rendered and what frametrail:attributes holds. One of the types listed in oneOf.",
+                            "type": "string"
+                        },
+                        "type": {
+                            "description": "W3C body type, derived from frametrail:type (see docs/DATA-MODEL.md). FrameTrail does not read it.",
+                            "type": "string"
+                        },
+                        "format": {
+                            "description": "Media type, derived from frametrail:type (see docs/DATA-MODEL.md). FrameTrail does not read it.",
+                            "type": "string"
+                        },
+                        "source": {
+                            "description": "The resource's src (a file name in _data/resources/ or a URL) for types that point at something.",
+                            "type": ["string", "null"]
+                        },
+                        "value": {
+                            "description": "The src of text, quiz, webpage, wikipedia and entity bodies (and the code of code snippets).",
+                            "type": "string"
+                        },
+                        "frametrail:name": {
+                            "description": "Display name of the item.",
+                            "type": "string"
+                        },
+                        "frametrail:thumb": {
+                            "description": "Thumbnail: a file name in _data/resources/ or a URL.",
+                            "type": ["string", "null"]
+                        },
+                        "frametrail:resourceId": {
+                            "description": "Id of the resource in _data/resources/_index.json the item was made from. A back-reference only: the item keeps its own copy of the resource data.",
+                            "type": ["string", "null"]
+                        },
+                        "frametrail:licenseType": {
+                            "description": "Licence of the resource, e.g. \"cc-by-sa\".",
+                            "type": ["string", "null"]
+                        },
+                        "frametrail:licenseAttribution": {
+                            "description": "Attribution text for the licence.",
+                            "type": ["string", "null"]
+                        },
+                        "selector": {
+                            "description": "video, youtube and vimeo only: the part of the embedded media to play, \"t=<startOffset>,<endOffset>\" in seconds of that media.",
+                            "type": "object",
+                            "required": ["value"],
+                            "properties": {
+                                "type": {
+                                    "description": "Always \"FragmentSelector\".",
+                                    "type": "string",
+                                    "const": "FragmentSelector"
+                                },
+                                "conformsTo": {
+                                    "description": "Always \"http://www.w3.org/TR/media-frags/\".",
+                                    "type": "string",
+                                    "const": "http://www.w3.org/TR/media-frags/"
+                                },
+                                "value": { "$ref": "common.schema.json#/$defs/timeSpanSelectorValue" }
+                            }
+                        },
+                        "frametrail:attributes": {
+                            "description": "Type-specific settings, see attributes/<frametrail:type>.schema.json.",
+                            "type": ["object", "array"]
+                        }
+                    },
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "text" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/text.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/text.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "html" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/html.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/html.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "quiz" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/quiz.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/quiz.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "hotspot" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/hotspot.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/hotspot.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "cursor" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/cursor.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/cursor.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "counter" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/counter.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/counter.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "chart" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/chart.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/chart.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "image" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/image.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/image.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "video" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/video.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/video.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "audio" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/audio.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/audio.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "pdf" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/pdf.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/pdf.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "youtube" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/youtube.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/youtube.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "vimeo" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/vimeo.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/vimeo.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "wistia" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/wistia.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/wistia.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "loom" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/loom.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/loom.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "twitch" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/twitch.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/twitch.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "soundcloud" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/soundcloud.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/soundcloud.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "spotify" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/spotify.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/spotify.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "webpage" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/webpage.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/webpage.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "wikipedia" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/wikipedia.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/wikipedia.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "entity" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/entity.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/entity.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "location" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/location.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/location.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "mastodon" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/mastodon.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/mastodon.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "codepen" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/codepen.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/codepen.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "figma" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/figma.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/figma.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": { "const": "urlpreview" },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/urlpreview.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/urlpreview.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        },
+                        {
+                            "type": "object",
+                            "required": ["frametrail:type"],
+                            "properties": {
+                                "frametrail:type": {
+                                    "description": "Legacy. No Resource type exists for \"button\"; FrameTrail does not render such items and keeps them unchanged.",
+                                    "const": "button"
+                                },
+                                "frametrail:attributes": {
+                                    "description": "Type-specific settings, see attributes/button.schema.json.",
+                                    "oneOf": [
+                                        { "$ref": "attributes/button.schema.json" },
+                                        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                                    ]
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        },
+        "codeSnippet": {
+            "description": "A code snippet: JavaScript run when playback reaches a point in time.",
+            "type": "object",
+            "required": ["type", "frametrail:type", "creator", "created", "target", "body"],
+            "properties": {
+                "@context": { "$ref": "common.schema.json#/$defs/context" },
+                "type": {
+                    "description": "Always \"Annotation\" (W3C).",
+                    "type": "string",
+                    "const": "Annotation"
+                },
+                "frametrail:type": {
+                    "description": "Always \"CodeSnippet\".",
+                    "type": "string",
+                    "const": "CodeSnippet"
+                },
+                "creator": { "$ref": "common.schema.json#/$defs/creator" },
+                "created": { "$ref": "common.schema.json#/$defs/created" },
+                "generator": { "$ref": "common.schema.json#/$defs/generator" },
+                "frametrail:tags": { "$ref": "common.schema.json#/$defs/tags" },
+                "target": {
+                    "description": "The hypervideo and the time.",
+                    "type": "object",
+                    "required": ["selector"],
+                    "properties": {
+                        "type": {
+                            "description": "Always \"Video\".",
+                            "type": "string",
+                            "const": "Video"
+                        },
+                        "source": {
+                            "description": "The hypervideo's video source (the src of its first clip). Absent when the hypervideo has no video file (an empty timeline).",
+                            "type": "string"
+                        },
+                        "selector": {
+                            "description": "When the code runs.",
+                            "type": "object",
+                            "required": ["value"],
+                            "properties": {
+                                "type": {
+                                    "description": "Always \"FragmentSelector\".",
+                                    "type": "string",
+                                    "const": "FragmentSelector"
+                                },
+                                "conformsTo": {
+                                    "description": "Always \"http://www.w3.org/TR/media-frags/\".",
+                                    "type": "string",
+                                    "const": "http://www.w3.org/TR/media-frags/"
+                                },
+                                "value": {
+                                    "description": "Media Fragments \"t=<start>\": the time in seconds of the video at which the code runs.",
+                                    "type": "string",
+                                    "pattern": "^t=[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?$"
+                                }
+                            }
+                        }
+                    }
+                },
+                "body": {
+                    "description": "The code.",
+                    "type": "object",
+                    "required": ["frametrail:type", "value"],
+                    "properties": {
+                        "type": {
+                            "description": "Always \"TextualBody\".",
+                            "type": "string",
+                            "const": "TextualBody"
+                        },
+                        "frametrail:type": {
+                            "description": "Always \"codesnippet\".",
+                            "const": "codesnippet"
+                        },
+                        "format": {
+                            "description": "Always \"text/javascript\".",
+                            "type": "string",
+                            "const": "text/javascript"
+                        },
+                        "value": {
+                            "description": "The JavaScript: the body of a function called with the arguments FrameTrail and hypervideo when playback reaches the time.",
+                            "type": "string"
+                        },
+                        "frametrail:name": {
+                            "description": "Display name of the snippet.",
+                            "type": "string"
+                        },
+                        "frametrail:thumb": {
+                            "description": "Always null.",
+                            "type": "null"
+                        },
+                        "frametrail:resourceId": {
+                            "description": "Always null.",
+                            "type": "null"
+                        },
+                        "frametrail:attributes": {
+                            "description": "Settings of the snippet. Empty in current files.",
+                            "oneOf": [
+                                { "type": "object" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "oneOf": [
+        { "$ref": "#/$defs/overlay" },
+        { "$ref": "#/$defs/codeSnippet" }
+    ]
+}

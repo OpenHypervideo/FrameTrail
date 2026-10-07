@@ -1,0 +1,136 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/hypervideos-index.schema.json",
+    "title": "FrameTrail hypervideos index",
+    "description": "The hypervideo library: _data/hypervideos/_index.json.",
+    "$defs": {
+        "overviewMap": {
+            "description": "The overview map: a background image with a pin per placed hypervideo. Shown when config.json has overviewMode \"map\". Content, not configuration: it travels with the library.",
+            "type": "object",
+            "properties": {
+                "background": {
+                    "description": "Background image: the src of a resource (a file name in _data/resources/ or a URL).",
+                    "type": "string"
+                },
+                "backgroundColor": {
+                    "description": "CSS colour around and behind the image.",
+                    "type": "string"
+                },
+                "fit": {
+                    "description": "How the image fits the stage.",
+                    "type": "string",
+                    "enum": ["contain", "cover"],
+                    "default": "contain"
+                },
+                "padding": {
+                    "description": "Space between the stage edge and the image.",
+                    "type": "number",
+                    "minimum": 0,
+                    "default": 0
+                },
+                "paddingUnit": {
+                    "description": "Unit of padding: percent of the stage width, or pixels.",
+                    "type": "string",
+                    "enum": ["percent", "px"],
+                    "default": "percent"
+                },
+                "pinStyle": {
+                    "description": "Pins show the hypervideo thumbnail or an icon.",
+                    "type": "string",
+                    "enum": ["thumb", "icon"],
+                    "default": "thumb"
+                },
+                "pinIcon": {
+                    "description": "icon pins only: CSS class of the icon from the FrameTrail icon font.",
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]+$",
+                    "default": "icon-location-2"
+                },
+                "pinAnimation": {
+                    "description": "Animation of the pins.",
+                    "type": "string",
+                    "enum": ["none", "ripple", "pulse", "scale", "wobble", "glow"],
+                    "default": "none"
+                },
+                "lastchanged": {
+                    "description": "Compare-and-swap token: when the map was last saved, in milliseconds since 1970.",
+                    "type": "number"
+                },
+                "markers": {
+                    "description": "Placed hypervideos, keyed by hypervideo id. A hypervideo without a marker is not on the map.",
+                    "oneOf": [
+                        {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "object",
+                                "required": ["x", "y"],
+                                "properties": {
+                                    "x": {
+                                        "description": "Horizontal position of the pin's centre, 0–1 of the background image width.",
+                                        "type": "number"
+                                    },
+                                    "y": {
+                                        "description": "Vertical position of the pin's centre, 0–1 of the background image height.",
+                                        "type": "number"
+                                    },
+                                    "size": {
+                                        "description": "Pin diameter in percent of the stage width.",
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "default": 6
+                                    }
+                                }
+                            }
+                        },
+                        {
+                            "description": "Legacy. Markers as a list, as stored in config.json before 2.0.",
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "required": ["hypervideoID"],
+                                "properties": {
+                                    "hypervideoID": {
+                                        "description": "Id of the hypervideo.",
+                                        "type": ["string", "integer"]
+                                    },
+                                    "x": {
+                                        "description": "See markers.",
+                                        "type": "number"
+                                    },
+                                    "y": {
+                                        "description": "See markers.",
+                                        "type": "number"
+                                    },
+                                    "size": {
+                                        "description": "See markers.",
+                                        "type": "number"
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            }
+        }
+    },
+    "type": "object",
+    "required": ["hypervideos"],
+    "properties": {
+        "hypervideo-increment": {
+            "description": "The highest hypervideo id handed out. A new hypervideo gets the next number.",
+            "type": "integer",
+            "minimum": 0
+        },
+        "hypervideos": {
+            "description": "The hypervideos, keyed by id (numeric strings). Each value is the folder of the hypervideo relative to _data/hypervideos/, e.g. \"./9\".",
+            "oneOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                },
+                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+            ]
+        },
+        "overviewMap": { "$ref": "#/$defs/overviewMap" }
+    }
+}

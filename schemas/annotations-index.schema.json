@@ -1,0 +1,83 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/annotations-index.schema.json",
+    "title": "FrameTrail annotations index",
+    "description": "The index of a hypervideo's annotation files: _data/hypervideos/<hypervideoId>/annotations/_index.json.",
+    "type": "object",
+    "properties": {
+        "mainAnnotation": {
+            "description": "Id of the annotation file of the hypervideo's creator. Not used for display.",
+            "type": ["string", "integer", "null"]
+        },
+        "annotationfiles": {
+            "description": "The annotation files, keyed by id.",
+            "oneOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": {
+                        "description": "An annotation file, keyed by its id (the owner's user id; the file is <id>.json).",
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "description": "Name of the annotation file (the user name when it was created).",
+                                "type": "string"
+                            },
+                            "description": {
+                                "description": "Description, e.g. \"demo's annotations\".",
+                                "type": "string"
+                            },
+                            "created": {
+                                "description": "When the file was created, in seconds since 1970.",
+                                "type": ["integer", "null"]
+                            },
+                            "lastchanged": {
+                                "description": "When the file was last saved, in seconds since 1970.",
+                                "type": "integer"
+                            },
+                            "hidden": {
+                                "description": "Not used.",
+                                "type": ["boolean", "string"],
+                                "default": false
+                            },
+                            "owner": {
+                                "description": "Name of the user who owns the file.",
+                                "type": "string"
+                            },
+                            "ownerId": {
+                                "$ref": "common.schema.json#/$defs/userId",
+                                "description": "Id of the user who owns the file. Numbers in files written by the PHP backend, strings elsewhere."
+                            }
+                        }
+                    }
+                },
+                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+            ]
+        },
+        "annotation-increment": {
+            "description": "Legacy. Counter from the time annotation files had their own ids. Not used.",
+            "type": "integer"
+        }
+    },
+    "additionalProperties": {
+        "description": "Legacy. Local-folder mode wrote the saving user's entry here, at the top level, keyed by user id, next to (or instead of) annotationfiles. Readers that only know annotationfiles miss it.",
+        "type": "object",
+        "properties": {
+            "name": {
+                "description": "Name of the annotation file.",
+                "type": "string"
+            },
+            "description": {
+                "description": "Description.",
+                "type": "string"
+            },
+            "hidden": {
+                "description": "Not used.",
+                "type": ["boolean", "string"]
+            },
+            "src": {
+                "description": "File name, \"<userId>.json\".",
+                "type": "string"
+            }
+        }
+    }
+}

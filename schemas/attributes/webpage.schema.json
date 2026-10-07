@@ -1,0 +1,25 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/webpage.schema.json",
+    "title": "frametrail:attributes of type \"webpage\"",
+    "description": "Web page shown in an iframe, or as a card when the site forbids embedding. This schema describes the frametrail:attributes of items (and the attributes of resources) whose type is \"webpage\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "type": "object",
+    "properties": {
+        "embed": {
+            "description": "Whether the site allows being embedded in an iframe, as detected when the resource was added.",
+            "type": "string",
+            "enum": ["allowed", "forbidden"]
+        },
+        "description": {
+            "description": "Description shown on the card. HTML.",
+            "type": "string"
+        },
+        "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
+        "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },
+        "zIndex": { "$ref": "../common.schema.json#/$defs/zIndex" },
+        "animation": { "$ref": "../common.schema.json#/$defs/animation" },
+        "animationIn": { "$ref": "../common.schema.json#/$defs/animationIn" },
+        "animationOut": { "$ref": "../common.schema.json#/$defs/animationOut" },
+        "animationDuration": { "$ref": "../common.schema.json#/$defs/animationDuration" }
+    }
+}

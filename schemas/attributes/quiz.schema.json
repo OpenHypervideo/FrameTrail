@@ -1,0 +1,110 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/quiz.schema.json",
+    "title": "frametrail:attributes of type \"quiz\"",
+    "description": "Quiz overlay or annotation. Scored question types use onCorrectAnswer and onWrongAnswer, the others onAnswered. This schema describes the frametrail:attributes of items whose type is \"quiz\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "type": "object",
+    "properties": {
+        "questionType": {
+            "description": "multipleChoice: one answer, scored. multiSelect: several answers, scored on submit. freeText: a text response, not scored. rating: a numeric scale, not scored.",
+            "type": "string",
+            "enum": ["multipleChoice", "multiSelect", "freeText", "rating"],
+            "default": "multipleChoice"
+        },
+        "question": {
+            "description": "The question, plain text.",
+            "type": "string"
+        },
+        "answers": {
+            "description": "multipleChoice and multiSelect: the answers.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["text"],
+                "properties": {
+                    "text": {
+                        "description": "Answer text, plain text.",
+                        "type": "string"
+                    },
+                    "correct": {
+                        "description": "Whether this answer is correct.",
+                        "type": "boolean",
+                        "default": false
+                    }
+                }
+            }
+        },
+        "onCorrectAnswer": {
+            "description": "multipleChoice and multiSelect: what happens after a correct answer.",
+            "type": "object",
+            "properties": {
+                "showText": {
+                    "description": "Text shown in a dialog after answering. false means none.",
+                    "type": ["string", "boolean"],
+                    "default": false
+                },
+                "resumePlayback": {
+                    "description": "Resume playback after answering.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "jumpForward": {
+                    "description": "Seconds to jump forward after answering. false or 0 means no jump.",
+                    "type": ["number", "boolean"],
+                    "default": false
+                }
+            }
+        },
+        "onWrongAnswer": {
+            "description": "multipleChoice and multiSelect: what happens after a wrong answer.",
+            "type": "object",
+            "properties": {
+                "showText": {
+                    "description": "Text shown in a dialog after answering. false means none.",
+                    "type": ["string", "boolean"],
+                    "default": false
+                },
+                "resumePlayback": {
+                    "description": "Resume playback after answering.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "jumpBackward": {
+                    "description": "Seconds to jump back after answering. false or 0 means no jump.",
+                    "type": ["number", "boolean"],
+                    "default": 10
+                }
+            }
+        },
+        "onAnswered": {
+            "description": "freeText and rating: what happens after answering.",
+            "type": "object",
+            "properties": {
+                "showText": {
+                    "description": "Text shown in a dialog after answering. false means none.",
+                    "type": ["string", "boolean"],
+                    "default": false
+                },
+                "resumePlayback": {
+                    "description": "Resume playback after answering.",
+                    "type": "boolean",
+                    "default": true
+                }
+            }
+        },
+        "ratingScale": {
+            "description": "rating: number of steps.",
+            "type": "integer",
+            "minimum": 2,
+            "maximum": 10,
+            "default": 5
+        },
+        "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
+        "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },
+        "zIndex": { "$ref": "../common.schema.json#/$defs/zIndex" },
+        "animation": { "$ref": "../common.schema.json#/$defs/animation" },
+        "animationIn": { "$ref": "../common.schema.json#/$defs/animationIn" },
+        "animationOut": { "$ref": "../common.schema.json#/$defs/animationOut" },
+        "animationDuration": { "$ref": "../common.schema.json#/$defs/animationDuration" }
+    }
+}

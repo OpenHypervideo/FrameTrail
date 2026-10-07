@@ -1,0 +1,25 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/video.schema.json",
+    "title": "frametrail:attributes of type \"video\"",
+    "description": "Video file (MP4, WebM or HLS). This schema describes the frametrail:attributes of items (and the attributes of resources) whose type is \"video\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "type": "object",
+    "properties": {
+        "autoPlay": {
+            "description": "Overlays only: play in sync with the hypervideo while the overlay is active.",
+            "type": "boolean",
+            "default": false
+        },
+        "alternateVideoFile": {
+            "description": "Legacy. A second rendition of the video file. Not read.",
+            "type": "string"
+        },
+        "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
+        "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },
+        "zIndex": { "$ref": "../common.schema.json#/$defs/zIndex" },
+        "animation": { "$ref": "../common.schema.json#/$defs/animation" },
+        "animationIn": { "$ref": "../common.schema.json#/$defs/animationIn" },
+        "animationOut": { "$ref": "../common.schema.json#/$defs/animationOut" },
+        "animationDuration": { "$ref": "../common.schema.json#/$defs/animationDuration" }
+    }
+}

@@ -1,0 +1,59 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/chart.schema.json",
+    "title": "frametrail:attributes of type \"chart\"",
+    "description": "Chart overlay: an animated bar, line or donut chart, or a progress ring. Overlay only. This schema describes the frametrail:attributes of items whose type is \"chart\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "type": "object",
+    "properties": {
+        "chartType": {
+            "description": "Kind of chart.",
+            "type": "string",
+            "enum": ["bars", "line", "donut", "ring"],
+            "default": "bars"
+        },
+        "data": {
+            "description": "One \"Label: value\" per line (\"=\" works too); a line with only a number has an empty label. The ring uses the first value as a percentage. Grouping separators and a decimal comma are understood.",
+            "type": "string",
+            "default": ""
+        },
+        "unit": {
+            "description": "Text after each value, e.g. \"%\".",
+            "type": "string",
+            "default": ""
+        },
+        "color": {
+            "description": "CSS colour of the bars, line or segments.",
+            "type": "string",
+            "default": "#4cc3ff"
+        },
+        "textColor": {
+            "description": "CSS colour of labels and values.",
+            "type": "string",
+            "default": "#ffffff"
+        },
+        "highlight": {
+            "description": "Index of the item drawn highlighted. -1 means none.",
+            "type": "integer",
+            "minimum": -1,
+            "default": -1
+        },
+        "showValues": {
+            "description": "Show the values.",
+            "type": "boolean",
+            "default": true
+        },
+        "duration": {
+            "description": "Duration of the build-up in milliseconds, from the overlay's start.",
+            "type": "number",
+            "minimum": 0,
+            "default": 1500
+        },
+        "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
+        "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },
+        "zIndex": { "$ref": "../common.schema.json#/$defs/zIndex" },
+        "animation": { "$ref": "../common.schema.json#/$defs/animation" },
+        "animationIn": { "$ref": "../common.schema.json#/$defs/animationIn" },
+        "animationOut": { "$ref": "../common.schema.json#/$defs/animationOut" },
+        "animationDuration": { "$ref": "../common.schema.json#/$defs/animationDuration" }
+    }
+}

@@ -1,0 +1,288 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/config.schema.json",
+    "title": "FrameTrail configuration",
+    "description": "Instance configuration: _data/config.json. On a public instance the file is readable by anyone, so it must not hold secrets. Missing keys take the defaults given here. Unknown keys are allowed; writers keep them. See docs/INTEGRATION.md (\"Writing the Settings\") and docs/DEPLOYMENT.md.",
+    "type": "object",
+    "properties": {
+        "defaultTheme": {
+            "description": "Colour theme: a built-in theme id or one defined in custom.css. Empty means classic. A hypervideo's config.theme overrides it.",
+            "type": "string",
+            "pattern": "^[a-z0-9_-]*$",
+            "default": ""
+        },
+        "overviewTitle": {
+            "description": "What this instance calls its overview, e.g. a project name; shown as text. Empty means the localized \"Overview\".",
+            "type": "string",
+            "default": ""
+        },
+        "overviewMode": {
+            "description": "How the overview presents the hypervideos. Takes effect on reload.",
+            "type": "string",
+            "enum": ["grid", "map"],
+            "default": "grid"
+        },
+        "overviewShowSearchBar": {
+            "description": "Show a search field for the overview in the title bar.",
+            "type": "boolean",
+            "default": false
+        },
+        "defaultLanguage": {
+            "description": "Language code of the user interface. Takes effect on reload.",
+            "type": "string",
+            "enum": ["en", "de", "fr"],
+            "default": "en"
+        },
+        "videoFit": {
+            "description": "How videos fill the player.",
+            "type": "string",
+            "enum": ["contain", "cover"],
+            "default": "contain"
+        },
+        "allowUploads": {
+            "description": "Allow file uploads. Only false (the boolean) forbids them.",
+            "type": "boolean",
+            "default": true
+        },
+        "alwaysForceLogin": {
+            "description": "Make the instance private: nothing can be read without signing in. Only true (the boolean) does this. Server mode only.",
+            "type": "boolean",
+            "default": false
+        },
+        "userNeedsConfirmation": {
+            "description": "New accounts need an administrator's approval.",
+            "type": "boolean",
+            "default": false
+        },
+        "captureUserTraces": {
+            "description": "Record user traces. Takes effect on reload.",
+            "type": "boolean",
+            "default": false
+        },
+        "userTracesStartAction": {
+            "description": "User action that starts a trace, e.g. \"UserLogin\". Empty means no trace ever starts.",
+            "type": "string",
+            "default": ""
+        },
+        "userTracesEndAction": {
+            "description": "User action that ends a trace, e.g. \"UserLogout\".",
+            "type": "string",
+            "default": ""
+        },
+        "userAvatars": {
+            "description": "Profile pictures. off: initials only. local: pictures from this instance's resources. cache: also provider pictures, fetched once and stored here. remote: also provider pictures, loaded by the visitor's browser from the provider.",
+            "type": "string",
+            "enum": ["off", "local", "cache", "remote"],
+            "default": "off"
+        },
+        "userColorCollection": {
+            "description": "Colours users can pick, as hex without \"#\".",
+            "type": "array",
+            "items": {
+                "type": "string",
+                "pattern": "^[0-9A-Fa-f]{6}$"
+            }
+        },
+        "allowCaching": {
+            "description": "Let the browser cache data requests.",
+            "type": "boolean",
+            "default": false
+        },
+        "externalAuth": {
+            "description": "External authentication, public half. This file is public: secrets (hmacSecret, clientSecret) belong in _data/.auth/config.php, which is merged over this object. Active only when mode and provider are both set. See docs/DEPLOYMENT.md.",
+            "type": "object",
+            "properties": {
+                "mode": {
+                    "description": "interactive: FrameTrail shows a sign-in wall. transparent: identity is the platform's to give.",
+                    "type": "string",
+                    "enum": ["interactive", "transparent"]
+                },
+                "provider": {
+                    "description": "token: a signed token bridge. oidc: an OpenID Connect relying party.",
+                    "type": "string",
+                    "enum": ["token", "oidc"]
+                },
+                "providerId": {
+                    "description": "Tags the accounts this provider creates and namespaces their subjects.",
+                    "type": "string",
+                    "pattern": "^[a-z0-9_-]{1,32}$"
+                },
+                "label": {
+                    "description": "The platform's name, used in sign-in texts.",
+                    "type": "string",
+                    "default": ""
+                },
+                "loginUrl": {
+                    "description": "Where a Login button leads.",
+                    "type": "string",
+                    "default": ""
+                },
+                "logoutUrl": {
+                    "description": "Second hop after sso.php?a=logout.",
+                    "type": "string",
+                    "default": ""
+                },
+                "manageUsersUrl": {
+                    "description": "The platform's user roster; replaces the user management dialog for admins.",
+                    "type": "string",
+                    "default": ""
+                },
+                "renewUrl": {
+                    "description": "Platform URL loaded in a hidden frame for silent re-authentication. Same-site only.",
+                    "type": "string",
+                    "default": ""
+                },
+                "canLogout": {
+                    "description": "false removes the Logout menu entry.",
+                    "type": "boolean",
+                    "default": true
+                },
+                "sessionCookie": {
+                    "description": "Name of the platform's session cookie, compared on every request. Never sent to the browser.",
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_.-]{1,64}$"
+                },
+                "maxSessionAge": {
+                    "description": "Absolute session bound in seconds, clamped to 300…2592000; 0 disables it. Never sent to the browser.",
+                    "type": "integer",
+                    "default": 86400
+                },
+                "algs": {
+                    "description": "Accepted signature algorithms.",
+                    "type": "array",
+                    "items": {
+                        "type": "string",
+                        "enum": ["RS256", "EdDSA", "HS256"]
+                    },
+                    "default": ["RS256"]
+                },
+                "issuer": {
+                    "description": "token: exact match for the token's iss. oidc: discovery base.",
+                    "type": "string"
+                },
+                "audience": {
+                    "description": "token: exact match for the token's aud.",
+                    "type": "string"
+                },
+                "publicKey": {
+                    "description": "token: PEM public key for RS256 and EdDSA. Not secret.",
+                    "type": "string"
+                },
+                "skewSeconds": {
+                    "description": "token: tolerated clock skew in seconds.",
+                    "type": "integer",
+                    "default": 60
+                },
+                "maxAgeSeconds": {
+                    "description": "token: maximum token lifetime in seconds.",
+                    "type": "integer",
+                    "default": 120
+                },
+                "clientId": {
+                    "description": "oidc: client id.",
+                    "type": "string"
+                },
+                "redirectUri": {
+                    "description": "oidc: redirect URI registered with the provider.",
+                    "type": "string"
+                },
+                "scope": {
+                    "description": "oidc: requested scopes.",
+                    "type": "string",
+                    "default": "openid profile email"
+                },
+                "adminClaim": {
+                    "description": "oidc: claim that carries admin membership.",
+                    "type": "string"
+                },
+                "adminValue": {
+                    "description": "oidc: value in adminClaim that means admin.",
+                    "type": "string"
+                },
+                "cacheSeconds": {
+                    "description": "oidc: discovery and JWKS cache lifetime in seconds.",
+                    "type": "integer",
+                    "default": 21600
+                }
+            }
+        },
+        "externalSettings": {
+            "description": "Hands the instance settings to the hosting platform: present (any object), the settings dialog is gone and FrameTrail refuses to write config.json and custom.css. See docs/INTEGRATION.md.",
+            "type": "object",
+            "properties": {
+                "providerId": {
+                    "description": "Id of the platform.",
+                    "type": "string"
+                },
+                "label": {
+                    "description": "Name of the platform.",
+                    "type": "string"
+                },
+                "manageUrl": {
+                    "description": "Where administrators manage the instance; linked from the user menu if it is http(s) or root-relative.",
+                    "type": "string"
+                }
+            }
+        },
+        "extensions": {
+            "description": "Extensions this instance loads, in order. Requires a FrameTrail release with extension support; older releases ignore the key.",
+            "type": "array",
+            "items": {
+                "description": "An extension this instance loads.",
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                    "name": {
+                        "description": "Name of the extension, as it registers itself.",
+                        "type": "string",
+                        "pattern": "^[a-z0-9][a-z0-9-]*$"
+                    },
+                    "script": {
+                        "description": "Script to load: a relative path on the same origin, e.g. \"extensions/hello/hello.js\".",
+                        "type": "string",
+                        "pattern": "^[^/:?#][^:?#]*$"
+                    },
+                    "style": {
+                        "description": "Stylesheet to load: a relative path on the same origin.",
+                        "type": "string",
+                        "pattern": "^[^/:?#][^:?#]*$"
+                    },
+                    "settings": {
+                        "description": "Public settings handed to the extension untouched. FrameTrail neither reads nor validates them. This file is public: secrets belong in _data/.auth/<name>.php.",
+                        "type": "object",
+                        "properties": {}
+                    }
+                }
+            }
+        },
+        "lastchanged": {
+            "description": "Compare-and-swap token: when the file was last saved through FrameTrail, in milliseconds since 1970.",
+            "type": "number"
+        },
+        "updateServiceURL": {
+            "description": "Not used.",
+            "type": "string"
+        },
+        "autoUpdate": {
+            "description": "Not used.",
+            "type": "boolean"
+        },
+        "theme": {
+            "description": "Legacy. Former name of defaultTheme, renamed when read.",
+            "type": "string",
+            "pattern": "^[a-z0-9_-]*$"
+        },
+        "overviewMap": {
+            "description": "Legacy. The overview map, stored here before 2.0. Read when hypervideos/_index.json has none and moved there by the first map save.",
+            "type": "object"
+        },
+        "allowCollaboration": {
+            "description": "Legacy. Not used.",
+            "type": "boolean"
+        },
+        "defaultUserRole": {
+            "description": "Legacy. Not used.",
+            "type": "string"
+        }
+    }
+}

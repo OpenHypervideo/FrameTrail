@@ -1,0 +1,38 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/urlpreview.schema.json",
+    "title": "frametrail:attributes of type \"urlpreview\"",
+    "description": "Link preview card, or the platform's own embed for posts from Bluesky, X, TikTok, SlideShare, Reddit and Flickr. This schema describes the frametrail:attributes of items (and the attributes of resources) whose type is \"urlpreview\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "type": "object",
+    "properties": {
+        "originalType": {
+            "description": "The platform the URL belongs to. Set, html is rendered with the platform's embed script.",
+            "type": "string",
+            "enum": ["bluesky", "xtwitter", "tiktok", "slideshare", "reddit", "flickr"]
+        },
+        "html": {
+            "description": "Embed HTML from the platform's oEmbed answer.",
+            "type": "string"
+        },
+        "photoUrl": {
+            "description": "flickr only: URL of the photo.",
+            "type": "string"
+        },
+        "description": {
+            "description": "Description shown on the card. HTML.",
+            "type": "string"
+        },
+        "embed": {
+            "description": "Legacy. Written by older versions when the resource was added. Not read.",
+            "type": "string",
+            "enum": ["allowed", "forbidden"]
+        },
+        "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
+        "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },
+        "zIndex": { "$ref": "../common.schema.json#/$defs/zIndex" },
+        "animation": { "$ref": "../common.schema.json#/$defs/animation" },
+        "animationIn": { "$ref": "../common.schema.json#/$defs/animationIn" },
+        "animationOut": { "$ref": "../common.schema.json#/$defs/animationOut" },
+        "animationDuration": { "$ref": "../common.schema.json#/$defs/animationDuration" }
+    }
+}

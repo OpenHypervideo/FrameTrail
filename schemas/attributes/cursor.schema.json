@@ -1,0 +1,41 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/cursor.schema.json",
+    "title": "frametrail:attributes of type \"cursor\"",
+    "description": "Cursor overlay: a mouse pointer moved by box motion, with click ripples. Overlay only. This schema describes the frametrail:attributes of items whose type is \"cursor\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "type": "object",
+    "properties": {
+        "style": {
+            "description": "Pointer glyph.",
+            "type": "string",
+            "enum": ["arrow", "hand"],
+            "default": "arrow"
+        },
+        "color": {
+            "description": "CSS fill colour of the pointer and its ripples.",
+            "type": "string",
+            "default": "#ffffff"
+        },
+        "outlineColor": {
+            "description": "CSS outline colour of the pointer.",
+            "type": "string",
+            "default": "#111111"
+        },
+        "clicks": {
+            "description": "Click times in seconds from the overlay's start. A string of numbers separated by commas, semicolons or spaces is read as well.",
+            "type": ["array", "string"],
+            "items": {
+                "type": "number",
+                "minimum": 0
+            },
+            "default": []
+        },
+        "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
+        "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },
+        "zIndex": { "$ref": "../common.schema.json#/$defs/zIndex" },
+        "animation": { "$ref": "../common.schema.json#/$defs/animation" },
+        "animationIn": { "$ref": "../common.schema.json#/$defs/animationIn" },
+        "animationOut": { "$ref": "../common.schema.json#/$defs/animationOut" },
+        "animationDuration": { "$ref": "../common.schema.json#/$defs/animationDuration" }
+    }
+}

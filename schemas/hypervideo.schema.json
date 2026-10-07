@@ -1,0 +1,683 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/hypervideo.schema.json",
+    "title": "FrameTrail hypervideo",
+    "description": "A hypervideo: _data/hypervideos/<hypervideoId>/hypervideo.json. Its annotations are in the annotations/ folder next to it, its subtitles in subtitles/. Unknown properties are allowed; writers keep them.",
+    "$defs": {
+        "contentView": {
+            "description": "A content view in a layout area, told apart by type.",
+            "oneOf": [
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": {
+                            "description": "A collection of annotations, shown in sync with the video.",
+                            "const": "TimedContent"
+                        },
+                        "name": {
+                            "description": "Title of the view (tab label).",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "icon": {
+                            "description": "CSS class of an icon from the FrameTrail icon font.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "cssClass": {
+                            "description": "Extra CSS class(es) on the view.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "contentSize": {
+                            "description": "Size of the view's items.",
+                            "type": "string",
+                            "enum": ["small", "medium", "large"],
+                            "default": "small"
+                        },
+                        "initClosed": {
+                            "description": "Start with the layout area collapsed.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": {
+                            "description": "Not used.",
+                            "type": "string"
+                        },
+                        "collectionFilter": {
+                            "description": "Which annotations the view shows. Empty lists mean no restriction.",
+                            "type": "object",
+                            "properties": {
+                                "tags": {
+                                    "description": "Only annotations with one of these tags.",
+                                    "type": "array",
+                                    "items": { "type": "string" },
+                                    "default": []
+                                },
+                                "types": {
+                                    "description": "Only annotations of these resource types.",
+                                    "type": "array",
+                                    "items": { "type": "string" },
+                                    "default": []
+                                },
+                                "users": {
+                                    "description": "Only annotations of these user ids.",
+                                    "type": "array",
+                                    "items": {
+                                        "type": ["string", "integer"]
+                                    },
+                                    "default": []
+                                },
+                                "text": {
+                                    "description": "Only annotations containing this text.",
+                                    "type": "string",
+                                    "default": ""
+                                }
+                            }
+                        },
+                        "onClickContentItem": {
+                            "description": "JavaScript run when an item is clicked: the body of a function called with the arguments FrameTrail and hypervideo.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "transcriptSource": { "description": "Not used by this view." },
+                        "showTranscriptSearch": { "description": "Not used by this view." },
+                        "html": { "description": "Not used by this view." },
+                        "filterAspect": { "description": "Not used by this view." },
+                        "zoomControls": { "description": "Not used by this view." }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": {
+                            "description": "Custom HTML. Elements with class \"timebased\" and data-start / data-end (seconds) are highlighted in sync with the video.",
+                            "const": "CustomHTML"
+                        },
+                        "name": {
+                            "description": "Title of the view (tab label).",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "icon": {
+                            "description": "CSS class of an icon from the FrameTrail icon font.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "cssClass": {
+                            "description": "Extra CSS class(es) on the view.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "contentSize": {
+                            "description": "Size of the view's items.",
+                            "type": "string",
+                            "enum": ["small", "medium", "large"],
+                            "default": "small"
+                        },
+                        "initClosed": {
+                            "description": "Start with the layout area collapsed.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": {
+                            "description": "Not used.",
+                            "type": "string"
+                        },
+                        "html": {
+                            "description": "The HTML.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "collectionFilter": {
+                            "description": "Which annotations the view shows. Empty lists mean no restriction.",
+                            "type": "object",
+                            "properties": {
+                                "tags": {
+                                    "description": "Only annotations with one of these tags.",
+                                    "type": "array",
+                                    "items": { "type": "string" },
+                                    "default": []
+                                },
+                                "types": {
+                                    "description": "Only annotations of these resource types.",
+                                    "type": "array",
+                                    "items": { "type": "string" },
+                                    "default": []
+                                },
+                                "users": {
+                                    "description": "Only annotations of these user ids.",
+                                    "type": "array",
+                                    "items": {
+                                        "type": ["string", "integer"]
+                                    },
+                                    "default": []
+                                },
+                                "text": {
+                                    "description": "Only annotations containing this text.",
+                                    "type": "string",
+                                    "default": ""
+                                }
+                            }
+                        },
+                        "onClickContentItem": {
+                            "description": "Not used by this view.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "transcriptSource": { "description": "Not used by this view." },
+                        "showTranscriptSearch": { "description": "Not used by this view." },
+                        "filterAspect": { "description": "Not used by this view." },
+                        "zoomControls": { "description": "Not used by this view." }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": {
+                            "description": "An interactive transcript built from the hypervideo's subtitles.",
+                            "const": "Transcript"
+                        },
+                        "name": {
+                            "description": "Title of the view (tab label).",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "icon": {
+                            "description": "CSS class of an icon from the FrameTrail icon font.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "cssClass": {
+                            "description": "Extra CSS class(es) on the view.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "contentSize": {
+                            "description": "Size of the view's items.",
+                            "type": "string",
+                            "enum": ["small", "medium", "large"],
+                            "default": "small"
+                        },
+                        "initClosed": {
+                            "description": "Start with the layout area collapsed.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": {
+                            "description": "Not used.",
+                            "type": "string"
+                        },
+                        "transcriptSource": {
+                            "description": "Language code of the subtitles to show.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "showTranscriptSearch": {
+                            "description": "Show a search field.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "html": {
+                            "description": "Not used by this view.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "collectionFilter": {
+                            "description": "Which annotations the view shows. Empty lists mean no restriction.",
+                            "type": "object",
+                            "properties": {
+                                "tags": {
+                                    "description": "Only annotations with one of these tags.",
+                                    "type": "array",
+                                    "items": { "type": "string" },
+                                    "default": []
+                                },
+                                "types": {
+                                    "description": "Only annotations of these resource types.",
+                                    "type": "array",
+                                    "items": { "type": "string" },
+                                    "default": []
+                                },
+                                "users": {
+                                    "description": "Only annotations of these user ids.",
+                                    "type": "array",
+                                    "items": {
+                                        "type": ["string", "integer"]
+                                    },
+                                    "default": []
+                                },
+                                "text": {
+                                    "description": "Only annotations containing this text.",
+                                    "type": "string",
+                                    "default": ""
+                                }
+                            }
+                        },
+                        "onClickContentItem": {
+                            "description": "Not used by this view.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "filterAspect": { "description": "Not used by this view." },
+                        "zoomControls": { "description": "Not used by this view." }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": {
+                            "description": "Annotation timelines, one per user (or per filterAspect).",
+                            "const": "Timelines"
+                        },
+                        "name": {
+                            "description": "Title of the view (tab label).",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "icon": {
+                            "description": "CSS class of an icon from the FrameTrail icon font.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "cssClass": {
+                            "description": "Extra CSS class(es) on the view.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "contentSize": {
+                            "description": "Size of the view's items.",
+                            "type": "string",
+                            "enum": ["small", "medium", "large"],
+                            "default": "small"
+                        },
+                        "initClosed": {
+                            "description": "Start with the layout area collapsed.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": {
+                            "description": "Not used.",
+                            "type": "string"
+                        },
+                        "collectionFilter": {
+                            "description": "Which annotations the view shows. Empty lists mean no restriction.",
+                            "type": "object",
+                            "properties": {
+                                "tags": {
+                                    "description": "Only annotations with one of these tags.",
+                                    "type": "array",
+                                    "items": { "type": "string" },
+                                    "default": []
+                                },
+                                "types": {
+                                    "description": "Only annotations of these resource types.",
+                                    "type": "array",
+                                    "items": { "type": "string" },
+                                    "default": []
+                                },
+                                "users": {
+                                    "description": "Only annotations of these user ids.",
+                                    "type": "array",
+                                    "items": {
+                                        "type": ["string", "integer"]
+                                    },
+                                    "default": []
+                                },
+                                "text": {
+                                    "description": "Only annotations containing this text.",
+                                    "type": "string",
+                                    "default": ""
+                                }
+                            }
+                        },
+                        "filterAspect": {
+                            "description": "Annotation property the timelines are grouped by.",
+                            "type": "string",
+                            "default": "creatorId"
+                        },
+                        "zoomControls": {
+                            "description": "Show zoom controls.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "transcriptSource": { "description": "Not used by this view." },
+                        "showTranscriptSearch": { "description": "Not used by this view." },
+                        "html": { "description": "Not used by this view." },
+                        "onClickContentItem": { "description": "Not used by this view." }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": {
+                            "description": "The hypervideo's chapters.",
+                            "const": "Chapters"
+                        },
+                        "name": {
+                            "description": "Title of the view (tab label).",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "icon": {
+                            "description": "CSS class of an icon from the FrameTrail icon font.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "cssClass": {
+                            "description": "Extra CSS class(es) on the view.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "contentSize": {
+                            "description": "Size of the view's items.",
+                            "type": "string",
+                            "enum": ["small", "medium", "large"],
+                            "default": "small"
+                        },
+                        "initClosed": {
+                            "description": "Start with the layout area collapsed.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": {
+                            "description": "Not used.",
+                            "type": "string"
+                        },
+                        "collectionFilter": {
+                            "description": "Which annotations the view shows. Empty lists mean no restriction.",
+                            "type": "object",
+                            "properties": {
+                                "tags": {
+                                    "description": "Only annotations with one of these tags.",
+                                    "type": "array",
+                                    "items": { "type": "string" },
+                                    "default": []
+                                },
+                                "types": {
+                                    "description": "Only annotations of these resource types.",
+                                    "type": "array",
+                                    "items": { "type": "string" },
+                                    "default": []
+                                },
+                                "users": {
+                                    "description": "Only annotations of these user ids.",
+                                    "type": "array",
+                                    "items": {
+                                        "type": ["string", "integer"]
+                                    },
+                                    "default": []
+                                },
+                                "text": {
+                                    "description": "Only annotations containing this text.",
+                                    "type": "string",
+                                    "default": ""
+                                }
+                            }
+                        },
+                        "transcriptSource": { "description": "Not used by this view." },
+                        "showTranscriptSearch": { "description": "Not used by this view." },
+                        "html": { "description": "Not used by this view." },
+                        "onClickContentItem": { "description": "Not used by this view." },
+                        "filterAspect": { "description": "Not used by this view." },
+                        "zoomControls": { "description": "Not used by this view." }
+                    }
+                }
+            ]
+        }
+    },
+    "type": "object",
+    "required": ["meta", "config", "clips"],
+    "properties": {
+        "meta": {
+            "description": "Metadata.",
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+                "name": {
+                    "description": "Title.",
+                    "type": "string"
+                },
+                "description": {
+                    "description": "Description.",
+                    "type": "string",
+                    "default": ""
+                },
+                "thumb": {
+                    "description": "Thumbnail: a file name in _data/resources/ or a URL.",
+                    "type": ["string", "null"]
+                },
+                "posterFrame": {
+                    "description": "Image shown before playback: the src of an image resource.",
+                    "type": ["string", "null"]
+                },
+                "creator": {
+                    "description": "Name of the user who created the hypervideo.",
+                    "type": "string"
+                },
+                "creatorId": {
+                    "$ref": "common.schema.json#/$defs/userId",
+                    "description": "Id of the user who created the hypervideo. They (and administrators) may edit it."
+                },
+                "created": {
+                    "description": "When the hypervideo was created, in milliseconds since 1970.",
+                    "type": "number"
+                },
+                "lastchanged": {
+                    "description": "When the file was last saved, in milliseconds since 1970. The compare-and-swap token for saves in server mode.",
+                    "type": "number"
+                }
+            }
+        },
+        "config": {
+            "description": "Settings of the hypervideo. Keys other than layoutArea become the hv_config_<key> states.",
+            "type": "object",
+            "properties": {
+                "slidingMode": {
+                    "description": "How the top and bottom layout areas appear: adjust (the video makes room), overlay (they slide over the video) or none.",
+                    "type": "string",
+                    "enum": ["adjust", "overlay", "none"],
+                    "default": "adjust"
+                },
+                "slidingTrigger": {
+                    "description": "Not used by the current player. Written as \"key\".",
+                    "type": "string",
+                    "default": "key"
+                },
+                "autohideControls": {
+                    "description": "Hide the player controls while playing.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "captionsVisible": {
+                    "description": "Show subtitles from the start.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "clipTimeVisible": {
+                    "description": "Show times relative to the clip's in point.",
+                    "type": "boolean",
+                    "default": false
+                },
+                "theme": {
+                    "description": "Colour theme of this hypervideo. Empty means the instance's defaultTheme.",
+                    "type": "string",
+                    "pattern": "^[a-z0-9_-]*$",
+                    "default": ""
+                },
+                "layoutArea": {
+                    "description": "The content views around the video.",
+                    "type": "object",
+                    "properties": {
+                        "areaTop": {
+                            "description": "Views above the video.",
+                            "type": "array",
+                            "items": { "$ref": "#/$defs/contentView" },
+                            "default": []
+                        },
+                        "areaBottom": {
+                            "description": "Views below the video.",
+                            "type": "array",
+                            "items": { "$ref": "#/$defs/contentView" },
+                            "default": []
+                        },
+                        "areaLeft": {
+                            "description": "Views left of the video.",
+                            "type": "array",
+                            "items": { "$ref": "#/$defs/contentView" },
+                            "default": []
+                        },
+                        "areaRight": {
+                            "description": "Views right of the video.",
+                            "type": "array",
+                            "items": { "$ref": "#/$defs/contentView" },
+                            "default": []
+                        }
+                    }
+                },
+                "hidden": {
+                    "description": "Legacy. Not used.",
+                    "type": "boolean"
+                }
+            }
+        },
+        "clips": {
+            "description": "The video. Only the first clip is used.",
+            "type": "array",
+            "items": {
+                "description": "A clip. Only the first clip is played.",
+                "type": "object",
+                "properties": {
+                    "resourceId": {
+                        "description": "Id of the video resource in _data/resources/_index.json. Null for a URL or an empty timeline.",
+                        "type": ["string", "null"]
+                    },
+                    "src": {
+                        "description": "The video: a file name in _data/resources/ or a URL (MP4, WebM, HLS, YouTube, Vimeo). Missing or null, with no resourceId, makes an empty timeline of duration seconds.",
+                        "type": ["string", "null"]
+                    },
+                    "duration": {
+                        "description": "Duration in seconds. Required for an empty timeline; 0 for a video means \"read it from the media\".",
+                        "type": "number",
+                        "minimum": 0
+                    },
+                    "in": {
+                        "description": "In point in seconds: the hypervideo starts here. All item times are absolute (they include in).",
+                        "type": "number",
+                        "minimum": 0,
+                        "default": 0
+                    },
+                    "out": {
+                        "description": "Out point in seconds. 0 or missing means the end of the media.",
+                        "type": ["number", "null"],
+                        "minimum": 0,
+                        "default": 0
+                    },
+                    "scrubSprite": {
+                        "description": "Scrub preview image: a URL, or false for none. Missing means {videoBasename}_scrub.jpg is probed (same origin only).",
+                        "type": ["string", "boolean"]
+                    },
+                    "start": {
+                        "description": "Not used. Written as 0.",
+                        "type": "number"
+                    },
+                    "end": {
+                        "description": "Not used.",
+                        "type": "number"
+                    }
+                }
+            }
+        },
+        "contents": {
+            "description": "Overlays and code snippets.",
+            "type": "array",
+            "items": { "$ref": "content-item.schema.json" },
+            "default": []
+        },
+        "chapters": {
+            "description": "Chapters, ordered by start.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["start"],
+                "properties": {
+                    "start": {
+                        "description": "Start of the chapter in seconds of the video. Unique within the hypervideo.",
+                        "type": "number",
+                        "minimum": 0
+                    },
+                    "title": {
+                        "description": "Title of the chapter.",
+                        "type": "string",
+                        "default": ""
+                    }
+                }
+            },
+            "default": []
+        },
+        "subtitles": {
+            "description": "Subtitle files, one per language.",
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["src", "srclang"],
+                "properties": {
+                    "src": {
+                        "description": "File name in the hypervideo's subtitles/ folder, \"<srclang>.vtt\".",
+                        "type": "string"
+                    },
+                    "srclang": {
+                        "description": "Language code of the subtitles.",
+                        "type": "string"
+                    }
+                }
+            },
+            "default": []
+        },
+        "globalEvents": {
+            "description": "JavaScript run on player events: the body of a function called with the arguments FrameTrail (the instance) and hypervideo (its HypervideoController).",
+            "oneOf": [
+                {
+                    "type": "object",
+                    "properties": {
+                        "onReady": {
+                            "description": "Runs when the hypervideo is ready.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "onPlay": {
+                            "description": "Runs when playback starts.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "onPause": {
+                            "description": "Runs when playback pauses.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "onEnded": {
+                            "description": "Runs when playback reaches the end.",
+                            "type": "string",
+                            "default": ""
+                        }
+                    }
+                },
+                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+            ]
+        },
+        "customCSS": {
+            "description": "CSS for this hypervideo.",
+            "type": "string",
+            "default": ""
+        },
+        "annotation-increment": {
+            "description": "Legacy. Not used.",
+            "type": "integer"
+        }
+    }
+}

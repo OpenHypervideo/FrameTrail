@@ -37,12 +37,13 @@ FrameTrail/
 │   ├── resourcemanager/
 │   │   └── modules/ResourceManagerLauncher/
 │   ├── _server/                    # PHP backend
+├── schemas/                        # JSON Schemas for the files in _data/ and for bundles
 ├── scripts/
 │   └── build.sh                    # Production build script
 ├── .github/workflows/
 │   ├── build.yml                   # CI: build verification on push/PR
 │   └── release.yml                 # CD: package + GitHub Release on tags
-├── docs/                           # Developer documentation
+├── docs/                           # Developer documentation (DATA-MODEL.md: the _data contract)
 ├── build/                          # Build output (git-ignored)
 └── ...                             # README, LICENSE, CONTRIBUTING, etc.
 ```
@@ -315,6 +316,16 @@ git push origin v2.0.0
 - JSON format with pretty printing (`JSON_PRETTY_PRINT`)
 - Registry files: `_index.json` files list all items in directory
 - Direct file I/O in PHP — no database abstraction layer
+
+## Data Model and Schemas
+
+The stored format is documented in [docs/DATA-MODEL.md](docs/DATA-MODEL.md) and described by the JSON Schemas in `schemas/` (draft 2020-12, `$id` `https://frametrail.org/schemas/1/…`): one schema per `_data` file, `content-item` / `annotation-file` for the W3C items, `attributes/<type>.schema.json` per resource type, and `hypervideo-bundle` / `project-bundle` for single-document export.
+
+- **Any change to what is stored** — a new resource type, attribute, config key or file — updates the schemas and DATA-MODEL.md in the same change. Every property the code reads has a `description`; defaults the code applies go into `default`.
+- **Schema subset:** only the keywords listed in DATA-MODEL.md ("Schema Subset"); patterns in syntax common to ECMA-262 and PCRE. Discriminated `oneOf` by a `const` property where possible.
+- **Legacy shapes stay valid:** older forms (toString `created`, PHP's `[]` for `{}`, local-mode annotation index entries, …) are separate `oneOf` alternatives or descriptions starting "Legacy.". Never drop one without checking that no stored data uses it.
+- **Unknown properties are allowed** almost everywhere; writers keep them.
+- **Namespace:** `http://frametrail.org/ns/` stays HTTP (it is an identifier). The JSON-LD context document is `https://frametrail.org/ns/context.jsonld`, maintained in the FrameTrail-Website repository (`ns/`) together with the namespace page.
 
 ## Server Configuration
 

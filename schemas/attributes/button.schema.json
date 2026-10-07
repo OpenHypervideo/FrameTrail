@@ -1,0 +1,33 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/button.schema.json",
+    "title": "frametrail:attributes of type \"button\" (legacy)",
+    "description": "Legacy. Bodies of type \"button\" exist in older data. There is no Resource type for them: FrameTrail does not render them and keeps them unchanged.",
+    "type": "object",
+    "properties": {
+        "label": {
+            "description": "Button text.",
+            "type": "string"
+        },
+        "action": {
+            "description": "Action on click.",
+            "type": "string"
+        },
+        "actionTarget": {
+            "description": "Target of the action.",
+            "type": ["string", "number"]
+        },
+        "buttonColor": {
+            "description": "CSS background colour.",
+            "type": "string"
+        },
+        "textColor": {
+            "description": "CSS text colour.",
+            "type": "string"
+        },
+        "borderRadius": {
+            "description": "Corner radius in pixels.",
+            "type": "number"
+        }
+    }
+}

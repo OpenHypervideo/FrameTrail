@@ -1,0 +1,30 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/tagdefinitions.schema.json",
+    "title": "FrameTrail tag definitions",
+    "description": "Tag definitions: _data/tagdefinitions.json. Keys are tag names (at least two characters), values hold a label and description per language code.",
+    "oneOf": [
+        {
+            "type": "object",
+            "additionalProperties": {
+                "description": "A tag: label and description per two-letter language code.",
+                "type": "object",
+                "additionalProperties": {
+                    "type": "object",
+                    "required": ["label"],
+                    "properties": {
+                        "label": {
+                            "description": "Label of the tag in this language.",
+                            "type": "string"
+                        },
+                        "description": {
+                            "description": "Description of the tag in this language.",
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+    ]
+}

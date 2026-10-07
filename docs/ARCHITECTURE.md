@@ -324,73 +324,30 @@ In `'download'` and `'static'` modes data is stored in memory and users can expo
 
 ## Data Model
 
-### File-Based Storage
-
-All data is stored as JSON files in `_data/`:
+All data is stored as JSON files in `_data/`, one folder per instance, with no database:
 
 ```
 _data/
-├── config.json           # Instance configuration
-├── users.json            # User accounts
-├── tagdefinitions.json   # Tag definitions
-├── custom.css            # Custom global CSS
+├── config.json               # instance settings
+├── users.json                # user accounts
+├── tagdefinitions.json       # tag definitions
+├── custom.css                # global CSS
 ├── resources/
-│   ├── _index.json       # Resource metadata
-│   └── [files...]        # Uploaded media
+│   ├── _index.json           # the resource library
+│   └── [files...]            # uploaded media
 └── hypervideos/
-    ├── _index.json       # Hypervideo list
+    ├── _index.json           # the hypervideo library and the overview map
     └── [id]/
-        ├── hypervideo.json    # Hypervideo data + content
+        ├── hypervideo.json   # metadata, settings, layout, clip, overlays, code snippets, chapters
         ├── annotations/
-        │   ├── _index.json    # Annotation file index
-        │   └── [userId].json  # Per-user annotations
-        └── subtitles/         # VTT subtitle files
+        │   ├── _index.json   # annotation file index
+        │   └── [userId].json # one user's annotations
+        └── subtitles/        # WebVTT files, one per language
 ```
 
-### Hypervideo Structure
+Overlays, code snippets and annotations are W3C Web Annotations with `frametrail:` extension terms for type, position, box motion and type-specific attributes. Items made from a resource keep their own copy of its data.
 
-```json
-{
-  "meta": {
-    "name": "Video Title",
-    "description": "Description",
-    "thumb": "thumbnail.jpg",
-    "creator": "username",
-    "creatorId": "user-id",
-    "created": 1234567890,
-    "lastchanged": 1234567890
-  },
-  "config": {
-    "layoutArea": { "areaTop": [], "areaBottom": [], "areaLeft": [], "areaRight": [] },
-    "slidingMode": "overlay"
-  },
-  "clips": [
-    { "resourceId": "resource-id", "duration": 120, "start": 0, "end": 120 }
-  ],
-  "contents": [ /* overlays and code snippets (W3C Web Annotation format) */ ],
-  "subtitles": { "en": "subtitles/en.vtt" },
-  "globalEvents": { "onReady": "", "onPlay": "", "onPause": "", "onEnded": "" },
-  "customCSS": ""
-}
-```
-
-Overlays and annotations use the **W3C Web Annotation** data model with `frametrail:` extensions for position, type, and attributes.
-
-### Resource Structure
-
-```json
-{
-  "resource-id": {
-    "name": "My Image",
-    "type": "image",
-    "src": "image.jpg",
-    "thumb": "image_thumb.jpg",
-    "licenseType": "cc-by-sa",
-    "attributes": {},
-    "tags": ["nature", "landscape"]
-  }
-}
-```
+The files, their shapes and the legacy forms readers must accept are documented in [docs/DATA-MODEL.md](DATA-MODEL.md); the JSON Schemas in [`schemas/`](../schemas/) describe every file except `users.json` and `custom.css`.
 
 ## Event System
 

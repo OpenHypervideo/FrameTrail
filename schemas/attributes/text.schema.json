@@ -1,0 +1,66 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/text.schema.json",
+    "title": "frametrail:attributes of type \"text\"",
+    "description": "Text overlay or annotation: rich text with an optional title and card style. This schema describes the frametrail:attributes of items whose type is \"text\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "type": "object",
+    "properties": {
+        "text": {
+            "description": "The text. HTML, stored HTML-escaped (\"&lt;p&gt;Hello&lt;/p&gt;\"); FrameTrail unescapes it before rendering.",
+            "type": "string",
+            "default": ""
+        },
+        "title": {
+            "description": "Optional title, plain text, shown above the text.",
+            "type": "string"
+        },
+        "box": {
+            "description": "Card style. Missing means the text is drawn without a card.",
+            "type": "object",
+            "properties": {
+                "background": {
+                    "description": "CSS background colour.",
+                    "type": "string",
+                    "default": "transparent"
+                },
+                "titleColor": {
+                    "description": "CSS colour of the title.",
+                    "type": "string"
+                },
+                "padding": {
+                    "description": "Padding in pixels.",
+                    "type": "number",
+                    "minimum": 0
+                },
+                "radius": {
+                    "description": "Corner radius in pixels.",
+                    "type": "number",
+                    "minimum": 0
+                },
+                "borderWidth": {
+                    "description": "Border width in pixels. 0 means no border.",
+                    "type": "number",
+                    "minimum": 0,
+                    "default": 0
+                },
+                "borderColor": {
+                    "description": "CSS border colour.",
+                    "type": "string",
+                    "default": "#000000"
+                },
+                "shadow": {
+                    "description": "Draw a drop shadow.",
+                    "type": "boolean",
+                    "default": false
+                }
+            }
+        },
+        "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
+        "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },
+        "zIndex": { "$ref": "../common.schema.json#/$defs/zIndex" },
+        "animation": { "$ref": "../common.schema.json#/$defs/animation" },
+        "animationIn": { "$ref": "../common.schema.json#/$defs/animationIn" },
+        "animationOut": { "$ref": "../common.schema.json#/$defs/animationOut" },
+        "animationDuration": { "$ref": "../common.schema.json#/$defs/animationDuration" }
+    }
+}

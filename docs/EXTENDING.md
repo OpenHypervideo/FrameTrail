@@ -228,6 +228,10 @@ animateContent: function(resourceDetail, ctx) {
 
 `ctx` also offers `spanMs` (length of the overlay), `easeCss(id)` / `easeFn(id)` (the shared ease registry) and `editMode`. Two narrower hooks exist: `getTextRevealRoot(resourceDetail)` (the element whose text the text-reveal presets split) and `getStrokeTargets(resourceDetail)` (SVG strokes with `pathLength="1"` that the Draw preset animates). Render your content in its final state — that is what thumbnails, content views and reduced motion show. If your content is re-rendered after an edit, call `overlay.rerenderContent()` (or `overlay.contentChanged()` after an in-place change) so the animations are rebuilt. See `ResourceCounter`, `ResourceChart` and `ResourceCursor` for complete examples.
 
+### 8. Describe the Data
+
+A new type is a new value of the body's `frametrail:type`, so the data model changes with it. Add `schemas/attributes/<type>.schema.json` listing every attribute your code reads, with a `description` and the `default` your code applies; add your type to the `oneOf` lists that reference attribute schemas (overlay and annotation bodies in `content-item.schema.json` and `annotation-file.schema.json`, resources in `resources-index.schema.json`, as applicable); and add it to the resource type table in [docs/DATA-MODEL.md](DATA-MODEL.md#resource-types). Keep to the [schema subset](DATA-MODEL.md#schema-subset).
+
 ## Creating a Custom Module
 
 ### Module Structure
@@ -520,8 +524,9 @@ When adding a new resource type or module, make sure to:
 2. Add `<script>` and `<link>` tags to `src/index.html` (and `src/resources.html` if applicable)
 3. Add entries to `scripts/build.sh` in `JS_FILES` and `CSS_FILES` arrays (in correct order)
 4. Add localization strings to all locale files in `src/_shared/modules/Localization/locale/` (`en.js`, `de.js`, `fr.js`), in alphabetical key order
-5. Test in both development mode (`src/`) and build mode (`build/`)
-6. Test in Chrome and Firefox
+5. If you change what is stored in `_data/` (a new resource type, a new attribute, a new key), update `schemas/` and [docs/DATA-MODEL.md](DATA-MODEL.md)
+6. Test in both development mode (`src/`) and build mode (`build/`)
+7. Test in Chrome and Firefox
 7. Test with edit mode enabled and disabled
 
 ## Best Practices

@@ -1,0 +1,53 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/hypervideo-bundle.schema.json",
+    "title": "FrameTrail hypervideo bundle",
+    "description": "One hypervideo with everything it needs, as one JSON document: the unit of export and import, independent of the _data folder layout. Media files are referenced by URL or relative path, never embedded.",
+    "type": "object",
+    "required": ["bundle", "formatVersion", "hypervideo"],
+    "properties": {
+        "bundle": {
+            "description": "Always \"hypervideo\".",
+            "type": "string",
+            "const": "hypervideo"
+        },
+        "formatVersion": {
+            "description": "Version of the bundle format.",
+            "type": "integer",
+            "const": 1
+        },
+        "id": {
+            "description": "Id of the hypervideo where it came from. Importers assign a new one.",
+            "type": "string"
+        },
+        "hypervideo": {
+            "$ref": "hypervideo.schema.json",
+            "description": "The hypervideo, as in hypervideo.json. Its globalEvents, customCSS and code snippets are code: importers ask before taking them."
+        },
+        "annotations": {
+            "description": "All users' annotations of the hypervideo, as in its annotations/ folder.",
+            "type": "object",
+            "properties": {
+                "index": { "$ref": "annotations-index.schema.json" },
+                "files": {
+                    "description": "The annotation files, keyed by id (the owner's user id at the source).",
+                    "type": "object",
+                    "additionalProperties": { "$ref": "annotation-file.schema.json" }
+                }
+            }
+        },
+        "resources": {
+            "description": "The resource entries the hypervideo uses (its clip, and items made from resources), keyed by id. Omitted inside a project bundle, which carries the whole resources index.",
+            "type": "object",
+            "additionalProperties": { "$ref": "resources-index.schema.json#/$defs/resource" }
+        },
+        "subtitles": {
+            "description": "The subtitle files as WebVTT text, keyed by srclang.",
+            "type": "object",
+            "additionalProperties": {
+                "description": "WebVTT text, starting with \"WEBVTT\".",
+                "type": "string"
+            }
+        }
+    }
+}

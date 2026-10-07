@@ -1,0 +1,29 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/attributes/spotify.schema.json",
+    "title": "frametrail:attributes of type \"spotify\"",
+    "description": "Spotify player. The open.spotify.com URL is the src. This schema describes the frametrail:attributes of items (and the attributes of resources) whose type is \"spotify\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "type": "object",
+    "properties": {
+        "html": {
+            "description": "Embed HTML from Spotify's oEmbed answer. Used instead of an iframe of src when present.",
+            "type": "string"
+        },
+        "contentType": {
+            "description": "Kind of Spotify item.",
+            "type": "string",
+            "enum": ["track", "album", "playlist", "show", "episode"]
+        },
+        "contentId": {
+            "description": "Spotify id of the item.",
+            "type": "string"
+        },
+        "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
+        "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },
+        "zIndex": { "$ref": "../common.schema.json#/$defs/zIndex" },
+        "animation": { "$ref": "../common.schema.json#/$defs/animation" },
+        "animationIn": { "$ref": "../common.schema.json#/$defs/animationIn" },
+        "animationOut": { "$ref": "../common.schema.json#/$defs/animationOut" },
+        "animationDuration": { "$ref": "../common.schema.json#/$defs/animationDuration" }
+    }
+}

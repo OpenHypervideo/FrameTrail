@@ -248,7 +248,7 @@ FrameTrail.init({
             config: { layoutArea: {} },
             clips: [{ resourceId: 'my-video', duration: 120, start: 0, end: 120 }],
             contents: [],
-            subtitles: {},
+            subtitles: [],
             globalEvents: {},
             customCSS: ''
         },

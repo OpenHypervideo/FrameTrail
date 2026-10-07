@@ -1,0 +1,354 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://frametrail.org/schemas/1/resources-index.schema.json",
+    "title": "FrameTrail resources index",
+    "description": "The resource library: _data/resources/_index.json. Overlays and annotations made from a resource keep their own copy of its data, so changing an entry here does not change them.",
+    "$defs": {
+        "resource": {
+            "description": "A resource: an uploaded file or an external link that overlays and annotations can be made from.",
+            "type": "object",
+            "required": ["name", "type", "src"],
+            "properties": {
+                "name": {
+                    "description": "Display name.",
+                    "type": "string"
+                },
+                "type": { "$ref": "common.schema.json#/$defs/resourceType" },
+                "src": {
+                    "description": "File name in _data/resources/ for uploaded files, otherwise a URL (for embeds, the embed URL). Empty for locations.",
+                    "type": "string"
+                },
+                "thumb": {
+                    "description": "Thumbnail: a file name in _data/resources/ or a URL.",
+                    "type": ["string", "null"]
+                },
+                "description": {
+                    "description": "Description.",
+                    "type": ["string", "null"]
+                },
+                "licenseType": {
+                    "description": "Licence, e.g. \"cc-by-sa\".",
+                    "type": ["string", "null"]
+                },
+                "licenseAttribution": {
+                    "description": "Attribution text for the licence.",
+                    "type": ["string", "null"]
+                },
+                "creator": {
+                    "description": "Name of the user who added the resource.",
+                    "type": "string"
+                },
+                "creatorId": {
+                    "$ref": "common.schema.json#/$defs/userId",
+                    "description": "Id of the user who added the resource."
+                },
+                "created": {
+                    "description": "When the resource was added, in seconds since 1970.",
+                    "type": "integer"
+                },
+                "tags": {
+                    "description": "Tags.",
+                    "type": ["array", "null"],
+                    "items": { "type": "string" }
+                },
+                "subtitles": {
+                    "description": "video only: subtitle files uploaded with the video, file names in _data/resources/ keyed by language code. Not used by the player.",
+                    "type": "object",
+                    "properties": {},
+                    "additionalProperties": { "type": "string" }
+                },
+                "attributes": {
+                    "description": "Type-specific settings, see attributes/<type>.schema.json.",
+                    "type": ["object", "array"]
+                }
+            },
+            "oneOf": [
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "image" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/image.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/image.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "video" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/video.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/video.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "audio" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/audio.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/audio.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "pdf" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/pdf.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/pdf.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "youtube" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/youtube.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/youtube.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "vimeo" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/vimeo.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/vimeo.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "wistia" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/wistia.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/wistia.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "loom" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/loom.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/loom.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "twitch" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/twitch.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/twitch.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "soundcloud" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/soundcloud.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/soundcloud.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "spotify" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/spotify.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/spotify.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "webpage" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/webpage.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/webpage.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "wikipedia" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/wikipedia.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/wikipedia.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "entity" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/entity.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/entity.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "location" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/location.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/location.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "mastodon" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/mastodon.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/mastodon.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "codepen" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/codepen.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/codepen.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "figma" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/figma.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/figma.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": { "const": "urlpreview" },
+                        "attributes": {
+                            "description": "Type-specific settings, see attributes/urlpreview.schema.json.",
+                            "oneOf": [
+                                { "$ref": "attributes/urlpreview.schema.json" },
+                                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                            ]
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "type": "object",
+    "required": ["resources"],
+    "properties": {
+        "resources-increment": {
+            "description": "The highest resource id handed out. The next upload gets the next number.",
+            "type": "integer",
+            "minimum": 0
+        },
+        "resources": {
+            "description": "The resources, keyed by id (numeric strings when added through FrameTrail).",
+            "oneOf": [
+                {
+                    "type": "object",
+                    "additionalProperties": { "$ref": "#/$defs/resource" }
+                },
+                { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+            ]
+        }
+    }
+}
