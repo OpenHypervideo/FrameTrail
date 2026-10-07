@@ -84,6 +84,8 @@ Single-user editing without a server. Uses the [File System Access API](https://
 
 The `StorageAdapterLocal` class uses the File System Access API (`showDirectoryPicker`, `FileSystemDirectoryHandle`, etc.) to read and write JSON files and uploaded media. The browser asks for permission the first time you access a folder, then remembers it for the session.
 
+Other programs (scripts, a text editor, a second browser tab) may change the folder while FrameTrail has it open. FrameTrail notices a changed `hypervideo.json` or `hypervideos/_index.json` when its window gets the focus, and every 30 seconds while editing, and offers to reload it (Refresh in the editor's sidebar). It does not save over such a change: saving shows a conflict dialog instead, and the changes made in the editor are kept until you reload.
+
 **Limitations:**
 - Identity is name-only (a login dialog prompts for a display name before entering edit mode; no account or password required)
 - No media transcoding (no server-side processing)

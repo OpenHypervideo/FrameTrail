@@ -1176,53 +1176,67 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 if (input.value) { subtitlesToDelete.push(input.value); }
             });
 
-            var writeTasks = [adapter.writeJSON(basePath + '/hypervideo.json', hypervideoData)];
+            // In a local folder another program may have written the file since we read it: refuse, as the server does (code 7), before anything is written.
+            (adapter.isUnchanged ? adapter.isUnchanged(basePath + '/hypervideo.json') : Promise.resolve(true)).then(function(unchanged) {
+                if (unchanged) {
+                    writeFiles();
+                    return;
+                }
+                var _conflictEl = EditHypervideoForm.querySelector('.message.error');
+                _conflictEl.classList.add('active');
+                _conflictEl.innerHTML = labels['ErrorSaveConflictInFolder'];
+            });
 
-            // Delete subtitle files
-            for (var d = 0; d < subtitlesToDelete.length; d++) {
-                writeTasks.push(adapter.deleteFile(basePath + '/subtitles/' + subtitlesToDelete[d] + '.vtt').catch(function() {}));
+            function writeFiles() {
+
+                var writeTasks = [adapter.writeJSON(basePath + '/hypervideo.json', hypervideoData)];
+
+                // Delete subtitle files
+                for (var d = 0; d < subtitlesToDelete.length; d++) {
+                    writeTasks.push(adapter.deleteFile(basePath + '/subtitles/' + subtitlesToDelete[d] + '.vtt').catch(function() {}));
+                }
+
+                // Subtitles set in the editor and not saved yet, which the hypervideo.json written here lists
+                var pendingSubtitles = takePendingSubtitles(thisID);
+                Object.keys(pendingSubtitles).forEach(function(lang) {
+                    if (subtitlesToDelete.indexOf(lang) !== -1) { return; }
+                    var subtitlePath = basePath + '/subtitles/' + lang + '.vtt';
+                    if (pendingSubtitles[lang] === null) {
+                        writeTasks.push(adapter.deleteFile(subtitlePath).catch(function() {}));
+                    } else {
+                        writeTasks.push(adapter.createDirectory(basePath + '/subtitles').then(function() {
+                            return adapter.writeText(subtitlePath, pendingSubtitles[lang]);
+                        }));
+                    }
+                });
+
+                // Write new subtitle files
+                EditHypervideoForm.querySelectorAll('.newSubtitlesContainer input[type=file]').forEach(function(fileInput) {
+                    var match = /subtitles\[(.+)\]/g.exec(fileInput.getAttribute('name'));
+                    if (match && fileInput.files && fileInput.files[0]) {
+                        writeTasks.push(
+                            adapter.createDirectory(basePath + '/subtitles').then(function() {
+                                return adapter.writeFile(basePath + '/subtitles/' + match[1] + '.vtt', fileInput.files[0]);
+                            })
+                        );
+                    }
+                });
+
+                Promise.all(writeTasks).then(function() {
+                    // Update annotation sources if video source changed
+                    if (sourceWasChanged && newSourcePath !== null) {
+                        return updateAnnotationSourcesLocally(adapter, thisID, newSourcePath);
+                    }
+                }).then(function() {
+                    completeUpdate();
+                }).catch(function(err) {
+                    if (isLoadedHypervideo(thisID)) {
+                        FrameTrail.module('HypervideoModel').returnPendingSubtitles(pendingSubtitles);
+                    }
+                    EditHypervideoForm.querySelector('.message.error').classList.add('active');
+                    EditHypervideoForm.querySelector('.message.error').innerHTML = 'Local save failed: ' + (err ? err.message : '');
+                });
             }
-
-            // Subtitles set in the editor and not saved yet, which the hypervideo.json written here lists
-            var pendingSubtitles = takePendingSubtitles(thisID);
-            Object.keys(pendingSubtitles).forEach(function(lang) {
-                if (subtitlesToDelete.indexOf(lang) !== -1) { return; }
-                var subtitlePath = basePath + '/subtitles/' + lang + '.vtt';
-                if (pendingSubtitles[lang] === null) {
-                    writeTasks.push(adapter.deleteFile(subtitlePath).catch(function() {}));
-                } else {
-                    writeTasks.push(adapter.createDirectory(basePath + '/subtitles').then(function() {
-                        return adapter.writeText(subtitlePath, pendingSubtitles[lang]);
-                    }));
-                }
-            });
-
-            // Write new subtitle files
-            EditHypervideoForm.querySelectorAll('.newSubtitlesContainer input[type=file]').forEach(function(fileInput) {
-                var match = /subtitles\[(.+)\]/g.exec(fileInput.getAttribute('name'));
-                if (match && fileInput.files && fileInput.files[0]) {
-                    writeTasks.push(
-                        adapter.createDirectory(basePath + '/subtitles').then(function() {
-                            return adapter.writeFile(basePath + '/subtitles/' + match[1] + '.vtt', fileInput.files[0]);
-                        })
-                    );
-                }
-            });
-
-            Promise.all(writeTasks).then(function() {
-                // Update annotation sources if video source changed
-                if (sourceWasChanged && newSourcePath !== null) {
-                    return updateAnnotationSourcesLocally(adapter, thisID, newSourcePath);
-                }
-            }).then(function() {
-                completeUpdate();
-            }).catch(function(err) {
-                if (isLoadedHypervideo(thisID)) {
-                    FrameTrail.module('HypervideoModel').returnPendingSubtitles(pendingSubtitles);
-                }
-                EditHypervideoForm.querySelector('.message.error').classList.add('active');
-                EditHypervideoForm.querySelector('.message.error').innerHTML = 'Local save failed: ' + (err ? err.message : '');
-            });
         }
 
         /**

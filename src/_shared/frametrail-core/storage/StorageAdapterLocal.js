@@ -25,6 +25,8 @@ class StorageAdapterLocal extends StorageAdapter {
         super();
         this._rootHandle = null;
         this._blobURLCache = {};  // path -> blob URL mapping
+        this._seenVersions = {};     // path -> version when this adapter last read or wrote the file
+        this._writtenVersions = {};  // path -> version when this adapter last wrote the file
     }
 
     get type() { return 'local'; }
@@ -102,6 +104,7 @@ class StorageAdapterLocal extends StorageAdapter {
         var handle = await this._getFileHandle(path, false);
         var file = await handle.getFile();
         var text = await file.text();
+        this._seenVersions[StorageAdapterLocal._key(path)] = StorageAdapterLocal._versionOf(file);
         return JSON.parse(text);
     }
 
@@ -110,6 +113,80 @@ class StorageAdapterLocal extends StorageAdapter {
         var writable = await handle.createWritable();
         await writable.write(JSON.stringify(data, null, 4));
         await writable.close();
+        await this._noteWrite(path, handle);
+    }
+
+    /**
+     * The version of a file: its modification time and size. The size tells two writes apart on file systems whose timestamps are coarse (FAT and exFAT count in 2 s steps).
+     * @param {File} file
+     * @return {String}
+     * @private
+     */
+    static _versionOf(file) {
+        return file.lastModified + ':' + file.size;
+    }
+
+    /**
+     * The key of a path in the version maps: the same file is reached as 'hypervideos/./9/…' (index entries are './9') and as 'hypervideos/9/…'.
+     * @private
+     */
+    static _key(path) {
+        return path.split('/').filter(function(p) { return p && p !== '.'; }).join('/');
+    }
+
+    /**
+     * Remember the version a write of this adapter left behind, so a later change can be told apart from our own.
+     * @private
+     */
+    async _noteWrite(path, handle) {
+        var version = StorageAdapterLocal._versionOf(await handle.getFile());
+        this._seenVersions[StorageAdapterLocal._key(path)] = version;
+        this._writtenVersions[StorageAdapterLocal._key(path)] = version;
+    }
+
+    /**
+     * The current version of a file, read from the folder without reading its contents.
+     * @param {String} path - Relative path
+     * @return {Promise<String|null>} null when the file does not exist
+     */
+    async fileVersion(path) {
+        try {
+            var handle = await this._getFileHandle(path, false);
+            return StorageAdapterLocal._versionOf(await handle.getFile());
+        } catch (e) {
+            return null;
+        }
+    }
+
+    /**
+     * The version of a file when this adapter last read or wrote it.
+     * @param {String} path - Relative path
+     * @return {String|null} null when it has done neither
+     */
+    seenVersion(path) {
+        return this._seenVersions[StorageAdapterLocal._key(path)] || null;
+    }
+
+    /**
+     * The version of a file when this adapter last wrote it.
+     * @param {String} path - Relative path
+     * @return {String|null} null when it has not written it
+     */
+    writtenVersion(path) {
+        return this._writtenVersions[StorageAdapterLocal._key(path)] || null;
+    }
+
+    /**
+     * Whether a file is still as this adapter last read or wrote it, i.e. nothing else has written it since.
+     * A file the adapter has not seen, or one that no longer exists, counts as unchanged.
+     * @param {String} path - Relative path
+     * @return {Promise<Boolean>}
+     */
+    async isUnchanged(path) {
+        var seen = this.seenVersion(path);
+        if (!seen) return true;
+        var current = await this.fileVersion(path);
+        return current === null || current === seen;
     }
 
     async exists(path) {
@@ -159,6 +236,9 @@ class StorageAdapterLocal extends StorageAdapter {
             dir = await dir.getDirectoryHandle(parts[i], { create: false });
         }
         await dir.removeEntry(filename);
+
+        delete this._seenVersions[StorageAdapterLocal._key(path)];
+        delete this._writtenVersions[StorageAdapterLocal._key(path)];
 
         // Revoke cached blob URL if any
         if (this._blobURLCache[path]) {
@@ -244,7 +324,9 @@ class StorageAdapterLocal extends StorageAdapter {
     async readText(path) {
         var handle = await this._getFileHandle(path, false);
         var file = await handle.getFile();
-        return await file.text();
+        var text = await file.text();
+        this._seenVersions[StorageAdapterLocal._key(path)] = StorageAdapterLocal._versionOf(file);
+        return text;
     }
 
     /**
@@ -258,6 +340,7 @@ class StorageAdapterLocal extends StorageAdapter {
         var writable = await handle.createWritable();
         await writable.write(text);
         await writable.close();
+        await this._noteWrite(path, handle);
     }
 
     /**
@@ -271,6 +354,7 @@ class StorageAdapterLocal extends StorageAdapter {
         var writable = await handle.createWritable();
         await writable.write(blob);
         await writable.close();
+        await this._noteWrite(path, handle);
     }
 
     /**

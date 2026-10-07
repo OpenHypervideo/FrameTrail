@@ -30,10 +30,12 @@
  * appearing to everyone else as though they had the settings dialog open. All
  * sessions are polled in a single request, so watching more costs nothing.
  *
- * I run in one of three modes, re-evaluated whenever login state changes:
+ * I run in one of four modes, re-evaluated whenever login state or storage
+ * mode changes:
  *
- *   'dormant'         Not a server instance, or nobody is logged in. No timers,
- *                     no requests, nothing.
+ *   'dormant'         No server and no local folder (in-memory and static
+ *                     data), or a server instance nobody is logged in to. No
+ *                     timers, no requests, nothing.
  *   'stalenessOnly'   Server instance, logged in, but unable to save — i.e. a
  *                     guest. Guests can edit but never write to the server, so
  *                     they need no lock and must never be blocked by one. They
@@ -42,6 +44,12 @@
  *                     without any authenticated endpoint.
  *   'full'            Server instance and able to save. Presence, locks and
  *                     staleness.
+ *   'localFolder'     A local folder (File System Access API). Nobody else is
+ *                     present and nothing is locked, but other programs may
+ *                     write the folder while the editor is open: staleness
+ *                     only, from the files' modification times, checked when
+ *                     the window gets the focus and every 30 s while editing.
+ *                     Logged in or not, since there are no accounts.
  *
  * Annotations are deliberately outside the lock: they live in per-user files
  * (annotations/<userId>.json) and are safe to edit concurrently.
@@ -54,12 +62,14 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
     var MODE_DORMANT = 'dormant',
         MODE_STALENESS_ONLY = 'stalenessOnly',
-        MODE_FULL = 'full';
+        MODE_FULL = 'full',
+        MODE_LOCAL = 'localFolder';
 
     // Must stay below the server's COLLAB_LEASE (45s) with room for a missed poll.
     var POLL_EDITING = 5000,
         POLL_IDLE    = 15000,
-        POLL_GUEST   = 30000;
+        POLL_GUEST   = 30000,
+        POLL_LOCAL   = 30000;
 
     var mode       = MODE_DORMANT,
         sessions   = {},
@@ -68,7 +78,8 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         revision   = 0,
 
         boundVisibility = null,
-        boundPageHide   = null;
+        boundPageHide   = null,
+        boundFocus      = null;
 
 
     function keyOf(scope, scopeId) {
@@ -145,6 +156,11 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
     function determineMode() {
 
+        if (FrameTrail.getState('storageMode') === 'local') {
+            var adapter = FrameTrail.module('StorageManager') ? FrameTrail.module('StorageManager').getAdapter() : null;
+            return (adapter && typeof adapter.fileVersion === 'function') ? MODE_LOCAL : MODE_DORMANT;
+        }
+
         if (FrameTrail.getState('storageMode') !== 'server') {
             return MODE_DORMANT;
         }
@@ -182,9 +198,14 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
      * Polling
      * ------------------------------------------------------------------ */
 
+    /**
+     * The delay until the next poll, or null for none: a local folder is only
+     * polled while editing, otherwise the focus handler checks it.
+     */
     function currentInterval() {
 
         if (mode === MODE_STALENESS_ONLY) return POLL_GUEST;
+        if (mode === MODE_LOCAL) return FrameTrail.getState('editMode') ? POLL_LOCAL : null;
 
         var interval = POLL_IDLE;
         for (var key in sessions) {
@@ -204,7 +225,10 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         if (!Object.keys(sessions).length) return;
         if (document.hidden) return;   // resumed by the visibilitychange handler
 
-        pollTimer = window.setTimeout(poll, currentInterval());
+        var interval = currentInterval();
+        if (interval === null) return;
+
+        pollTimer = window.setTimeout(poll, interval);
 
     }
 
@@ -218,6 +242,8 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
         if (mode === MODE_STALENESS_ONLY) {
             pollGuest(keys);
+        } else if (mode === MODE_LOCAL) {
+            pollLocal(keys);
         } else {
             pollBatch(keys);
         }
@@ -270,14 +296,17 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
 
     /**
-     * Scopes whose staleness a guest can detect without an authenticated
-     * endpoint, because the file behind them is plain and static: its
-     * Last-Modified header is a free signal.
+     * Scopes whose staleness can be detected from the file behind them alone:
+     * by a guest without an authenticated endpoint, because the file is plain
+     * and static and its Last-Modified header is a free signal, and in a local
+     * folder from the file's modification time.
      *
-     * A scope absent from here is simply not watched in guest mode, which is
-     * right for settings, users and tags — a guest can act on none of them.
+     * A scope absent from here is simply not watched in those modes, which is
+     * right for settings, users and tags — a guest can act on none of them,
+     * and in a local folder only the hypervideo and the library are worth
+     * interrupting anyone for.
      */
-    var GUEST_STALENESS_PATHS = {
+    var STALENESS_PATHS = {
         hypervideo: function(scopeId) { return 'hypervideos/' + scopeId + '/hypervideo.json'; },
         library:    function()        { return 'hypervideos/_index.json'; }
     };
@@ -294,7 +323,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         Promise.all(keys.map(function(key) {
 
             var session = sessions[key],
-                resolve = GUEST_STALENESS_PATHS[session.scope];
+                resolve = STALENESS_PATHS[session.scope];
 
             if (!resolve) return Promise.resolve();
 
@@ -311,6 +340,66 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
                 if (session.guestLastModified === null) {
                     session.guestLastModified = lastModified;
                 } else if (session.guestLastModified !== lastModified && !session.stale) {
+                    session.stale = true;
+                    broadcast();
+                }
+
+            }).catch(function() {
+                // Ignore — try again on the next tick.
+            });
+
+        })).then(scheduleNextPoll);
+
+    }
+
+
+    /**
+     * A local folder has no server to ask, so the file's own version (its
+     * modification time and size, through the directory handle) is the
+     * signal, and the adapter is the witness of who wrote it: a version that
+     * is the one our own last write left is ours — whichever module wrote it
+     * — and anything else is another program's.
+     *
+     * The baseline is the version the data on screen was read from, which the
+     * adapter remembers, so a change made between loading and the first poll
+     * is not taken for the starting point.
+     */
+    function pollLocal(keys) {
+
+        var adapter = FrameTrail.module('StorageManager').getAdapter();
+        if (!adapter || typeof adapter.fileVersion !== 'function') {
+            scheduleNextPoll();
+            return;
+        }
+
+        Promise.all(keys.map(function(key) {
+
+            var session = sessions[key],
+                resolve = STALENESS_PATHS[session.scope];
+
+            if (!resolve) return Promise.resolve();
+
+            var path = resolve(session.scopeId);
+
+            return adapter.fileVersion(path).then(function(version) {
+
+                // Gone, or stopped while we were reading.
+                if (version === null || sessions[key] !== session) return;
+
+                session.version = version;
+
+                if (session.knownVersion === null) {
+                    session.knownVersion = adapter.seenVersion(path) || version;
+                }
+
+                if (version === adapter.writtenVersion(path)) {
+                    // We wrote it. Adopt it, as for a server write of our own.
+                    session.knownVersion = version;
+                    if (session.stale) {
+                        session.stale = false;
+                        broadcast();
+                    }
+                } else if (version !== session.knownVersion && !session.stale) {
                     session.stale = true;
                     broadcast();
                 }
@@ -397,6 +486,13 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         };
         window.addEventListener('pagehide', boundPageHide);
 
+        // Coming back from another program is when a local folder is most
+        // likely to have changed, and the page was visible all along.
+        boundFocus = function() {
+            if (mode === MODE_LOCAL) poll();
+        };
+        window.addEventListener('focus', boundFocus);
+
     }
 
 
@@ -409,6 +505,10 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         if (boundPageHide) {
             window.removeEventListener('pagehide', boundPageHide);
             boundPageHide = null;
+        }
+        if (boundFocus) {
+            window.removeEventListener('focus', boundFocus);
+            boundFocus = null;
         }
 
     }
@@ -744,8 +844,10 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         var session = sessionFor(scope, scopeId);
         if (!session) return;
 
+        // In a local folder the adapter knows the version just read or written,
+        // which the last poll may not: the next poll takes the baseline from it.
         session.knownVersion = (newVersion === undefined || newVersion === null)
-                             ? session.version
+                             ? (mode === MODE_LOCAL ? null : session.version)
                              : newVersion;
         session.version = session.knownVersion;
         session.guestLastModified = null;
@@ -1171,6 +1273,10 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         mode = determineMode();
         syncAmbientScopes();
 
+        // A local folder is polled while editing only: check it now (before
+        // anything is edited, when entering), and start or stop the timer.
+        if (mode === MODE_LOCAL) poll();
+
     }
 
 
@@ -1218,8 +1324,10 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         mode:               function() { return mode; },
 
         onChange: {
-            'loggedIn': reevaluateMode,
-            'editMode': editModeChanged
+            'loggedIn':    reevaluateMode,
+            // Settled after I am initialised, and a local folder needs no login.
+            'storageMode': reevaluateMode,
+            'editMode':    editModeChanged
         }
 
     };

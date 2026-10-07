@@ -135,7 +135,7 @@ _data/
 ### Storage Modes (`storageMode` state)
 
 - `'server'` — PHP backend available, data loaded/saved via AJAX to `src/_server/ajaxServer.php`
-- `'local'` — File System Access API active, data read/written via `StorageAdapterLocal` to a user-selected folder
+- `'local'` — File System Access API active, data read/written via `StorageAdapterLocal` to a user-selected folder. Other programs may write the folder meanwhile: `Collaboration` runs in its `localFolder` mode (versions of `hypervideo.json` and `hypervideos/_index.json` — modification time and size — checked on window focus, on entering edit mode and every 30 s while editing; the sidebar's "changed" notice), and `Database.saveHypervideo()` / the hypervideo settings dialog refuse to overwrite a changed `hypervideo.json` (code 7, as on the server). The adapter remembers the version of every file it reads and writes, so its own writes are never reported.
 - `'needsFolder'` — File System Access API supported but no folder selected yet; launcher prompts user to pick a `_data` directory
 - `'download'` — No persistent storage available (Firefox/Safari, or any browser without File System Access API and no PHP); `StorageAdapterDownload` is used, which stores data in memory and lets users export/download it. Viewing and editing work; `canSave` is `false` (no persistent target); changes are exported via Save As. Data persists only until page reload.
 - `'static'` — CDN/static hosting mode (no PHP backend). `StorageAdapterStatic` reads JSON from a CDN base URL (`dataPath` init option) and inherits in-memory write + Save As export from `StorageAdapterDownload`. Used when `dataPath` is set but `server` is omitted.

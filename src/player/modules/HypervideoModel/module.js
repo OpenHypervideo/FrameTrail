@@ -1752,11 +1752,13 @@
      */
     function showSaveConflictDialog(conflict) {
 
-        var by = (conflict && conflict.creator) ? conflict.creator : '';
+        var by = (conflict && conflict.creator) ? conflict.creator : '',
+            // In a local folder it was another program, and there is no server.
+            text = (FrameTrail.getState('storageMode') === 'local') ? labels['ErrorSaveConflictInFolder'] : labels['ErrorSaveConflict'];
 
         var _wrapper = document.createElement('div');
         _wrapper.innerHTML = '<div class="saveConflict">'
-                           + '    <div class="message error active">'+ labels['ErrorSaveConflict'] +'</div>'
+                           + '    <div class="message error active">'+ text +'</div>'
                            + '    <p>'+ (by ? labels['ErrorSaveConflictBy'].replace('%s', by) : '') +'</p>'
                            + '</div>';
 

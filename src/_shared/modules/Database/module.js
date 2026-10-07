@@ -1895,16 +1895,24 @@
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             var dir  = 'hypervideos/' + thisHypervideoID;
             var path = dir + '/hypervideo.json';
-            // The subtitle files first, so whoever reads the new hypervideo.json finds them.
-            Promise.all(subtitleLangs.map(function(lang) {
-                return writeSubtitleFile(adapter, dir, lang, subtitleWrites[lang]);
-            }))
-                .then(function() {
-                    return adapter.writeJSON(path, saveData);
-                })
-                .then(function() {
-                    hypervideos[thisHypervideoID].lastchanged = saveData.meta.lastchanged;
-                    callback.call(window, { success: true });
+            // In a local folder another program may have written the file since we read it: refuse, as the server does (code 7), before anything is written.
+            (adapter.isUnchanged ? adapter.isUnchanged(path) : Promise.resolve(true))
+                .then(function(unchanged) {
+                    if (!unchanged) {
+                        callback.call(window, { failed: 'hypervideo', error: 'Conflict', code: 7, conflict: null });
+                        return;
+                    }
+                    // The subtitle files first, so whoever reads the new hypervideo.json finds them.
+                    return Promise.all(subtitleLangs.map(function(lang) {
+                        return writeSubtitleFile(adapter, dir, lang, subtitleWrites[lang]);
+                    }))
+                        .then(function() {
+                            return adapter.writeJSON(path, saveData);
+                        })
+                        .then(function() {
+                            hypervideos[thisHypervideoID].lastchanged = saveData.meta.lastchanged;
+                            callback.call(window, { success: true });
+                        });
                 })
                 .catch(function(error) { callback.call(window, { failed: 'hypervideo', error: error.message }); });
             return;

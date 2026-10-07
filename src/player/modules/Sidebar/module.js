@@ -1117,6 +1117,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         {   scope: null,        scopeId: null,      viewModes: ['video'],
             staleBy:  'MessageCollabChangesBy',
             stale:    'MessageCollabChangesAvailable',
+            staleLocal: 'MessageCollabChangedInFolder',
             lockedBy: 'MessageCollabLockedBy',
             takeover: true,
             refresh:  refreshHypervideoFromServer,
@@ -1144,6 +1145,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         {   scope: 'library',   scopeId: 'global',  viewModes: ['overview'],
             staleBy:  'MessageCollabLibraryChangesBy',
             stale:    'MessageCollabLibraryChanged',
+            staleLocal: 'MessageCollabLibraryChangedInFolder',
             lockedBy: 'MessageCollabOverviewLockedBy',
             takeover: true,
             refresh:  refreshLibrary,
@@ -1245,9 +1247,12 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         if (Collaboration.isStale(row.scope, row.scopeId)) {
 
             // Name whoever actually wrote, not whoever holds the lock — after a
-            // takeover those differ, and the lock holder may well be us.
+            // takeover those differ, and the lock holder may well be us. In a
+            // local folder it was another program, and there is no server.
             var writer = Collaboration.lastWriter(row.scope, row.scopeId),
-                staleText = (writer && writer.name)
+                staleText = (Collaboration.mode() === 'localFolder')
+                          ? labels[row.staleLocal]
+                          : (writer && writer.name)
                           ? labels[row.staleBy].replace('%s', writer.name)
                           : labels[row.stale];
 

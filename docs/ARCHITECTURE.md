@@ -352,6 +352,10 @@ All adapters implement the same interface, so the rest of the application doesn'
 
 In `'download'` and `'static'` modes data is stored in memory and users can export their work via Save As. Once a folder is selected in `'needsFolder'` mode, the state transitions to `'local'`.
 
+### Changes Made Outside the Editor
+
+In `'server'` mode the `Collaboration` module learns of changes through `collabSync` (or, for a guest, from the `Last-Modified` header of `hypervideo.json` and `hypervideos/_index.json`), and saves are compare-and-swap writes (code 7 on a conflict). In `'local'` mode other programs may write the folder while the editor is open, so `Collaboration` runs in its `localFolder` mode: it compares the version of `hypervideo.json` and `hypervideos/_index.json` (modification time and size, `StorageAdapterLocal.fileVersion()`) with the version the data on screen was read from, when the window gets the focus, when edit mode is entered and every 30 s while editing, and shows the sidebar's "changed" notice with Refresh. `StorageAdapterLocal` remembers the version of every file it reads and writes, so its own writes (from any module) are never reported. `Database.saveHypervideo()` and the hypervideo settings dialog refuse to write a `hypervideo.json` that changed since it was read (`StorageAdapterLocal.isUnchanged()`), with the same code 7 as the server: a manual save shows the conflict dialog, an automatic one the notice.
+
 ## Data Model
 
 All data is stored as JSON files in `_data/`, one folder per instance, with no database:
