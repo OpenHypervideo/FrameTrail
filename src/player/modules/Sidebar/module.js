@@ -890,10 +890,58 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
     }
 
     videoContainerControls.querySelectorAll('.editMode').forEach(function(btn) {
-        btn.addEventListener('click', function(evt) {
-            FrameTrail.changeState('editMode', this.dataset.editmode);
-        });
+        btn.addEventListener('click', onEditModeButtonClick);
     });
+
+    function onEditModeButtonClick() {
+        FrameTrail.changeState('editMode', this.dataset.editmode);
+    }
+
+
+    /**
+     * I add the button of an extension's edit mode after the built-in ones.
+     *
+     * A mode that edits the hypervideo (the default) follows the rules of
+     * layout, overlays, custom code and chapters: it is offered only to admins
+     * and the hypervideo's owner, and entering it claims the collaboration
+     * lock. One that does not is open to everyone editing, like annotations.
+     *
+     * @method addEditModeButton
+     * @param {Object} options  { mode, label, icon, editsHypervideo }
+     * @return {HTMLElement} the button
+     */
+    function addEditModeButton(options) {
+
+        var button = document.createElement('button'),
+            icon   = document.createElement('span'),
+            label  = document.createElement('span');
+
+        button.type = 'button';
+        button.className = 'editMode';
+        button.dataset.editmode = options.mode;
+        icon.className = options.icon;
+        label.className = 'editModeLabel';
+        label.textContent = options.label;
+        button.append(icon, label);
+
+        button.addEventListener('click', onEditModeButtonClick);
+
+        if (options.editsHypervideo && LOCK_GATED_EDIT_MODES.indexOf(options.mode) === -1) {
+            LOCK_GATED_EDIT_MODES.push(options.mode);
+        }
+
+        videoContainerControls.insertBefore(button, CollaborationInfoVideo);
+
+        if (FrameTrail.getState('editMode')) {
+            button.classList.add('inEditMode');
+        }
+
+        updateEditModeButtonPermissions();
+        updateLockGatedControls();
+
+        return button;
+
+    }
 
 
     /**
@@ -1038,7 +1086,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
      * Edit modes that write to the shared hypervideo.json and therefore need
      * the soft lock. "annotations" is deliberately absent: annotations live in
      * per-user files and stay concurrently editable, which is how FrameTrail
-     * has always worked. "preview" writes nothing.
+     * has always worked. "preview" writes nothing. Extensions' edit modes that
+     * edit the hypervideo are added by addEditModeButton().
      */
     var LOCK_GATED_EDIT_MODES = ['layout', 'overlays', 'codesnippets', 'chapters'];
 
@@ -1379,7 +1428,9 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
             videoContainerControls.querySelectorAll('.editMode').forEach(function(el) { el.classList.remove('active'); });
 
-            videoContainerControls.querySelector('[data-editmode="' + editMode + '"]').classList.add('active');
+            // An extension's mode has no button if the extension failed to load.
+            var activeButton = videoContainerControls.querySelector('[data-editmode="' + editMode + '"]');
+            if (activeButton) activeButton.classList.add('active');
 
             FrameTrail.changeState('sidebarOpen', true);
 
@@ -1412,8 +1463,10 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
     /**
      * I update the disabled state of edit mode buttons based on user permissions.
-     * Admins and hypervideo owners can edit all aspects (layout, overlays, codesnippets).
-     * Other users can only edit annotations.
+     * Admins and hypervideo owners can use every mode. Other users cannot use
+     * the modes that write to the shared hypervideo (layout, overlays, custom
+     * code, chapters, and extension modes that edit the hypervideo) — the same
+     * set that takes the collaboration lock — and so can only edit annotations.
      * @method updateEditModeButtonPermissions
      */
     function updateEditModeButtonPermissions() {
@@ -1423,17 +1476,12 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         }
 
         if (FrameTrail.module('RouteNavigation').hypervideoID) {
-            if (FrameTrail.module('UserManagement').userRole == 'admin' || parseInt(FrameTrail.module('HypervideoModel').creatorId) == FrameTrail.module('UserManagement').userID) {
-                // Admin or owner: enable all buttons
-                videoContainerControls.querySelectorAll('.editMode').forEach(function(el) { el.classList.remove('disabled'); });
-            } else {
-                // Non-owner: disable layout, overlays, codesnippets (can only edit annotations)
-                videoContainerControls.querySelectorAll('.editMode').forEach(function(el) { el.classList.remove('disabled'); });
-                videoContainerControls.querySelector('.editMode[data-editmode="layout"]').classList.add('disabled');
-                videoContainerControls.querySelector('.editMode[data-editmode="overlays"]').classList.add('disabled');
-                videoContainerControls.querySelector('.editMode[data-editmode="codesnippets"]').classList.add('disabled');
-                videoContainerControls.querySelector('.editMode[data-editmode="chapters"]').classList.add('disabled');
-            }
+            var mayEditHypervideo = FrameTrail.module('UserManagement').userRole == 'admin'
+                || parseInt(FrameTrail.module('HypervideoModel').creatorId) == FrameTrail.module('UserManagement').userID;
+
+            videoContainerControls.querySelectorAll('.editMode').forEach(function(el) {
+                el.classList.toggle('disabled', !mayEditHypervideo && isLockGatedMode(el.dataset.editmode));
+            });
         }
 
     }
@@ -1471,6 +1519,17 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         },
 
         newUnsavedChange: newUnsavedChange,
+
+        addEditModeButton: addEditModeButton,
+
+        /**
+         * I tell whether an edit mode writes to the shared hypervideo, and so
+         * needs the collaboration lock and the hypervideo's owner or an admin.
+         * @method isLockGatedMode
+         * @param {String} editMode
+         * @return {Boolean}
+         */
+        isLockGatedMode: isLockGatedMode,
 
         setOverviewMapSaveFailed:   setOverviewMapSaveFailed,
         refreshOverviewMapControls: updateOverviewMapControls,

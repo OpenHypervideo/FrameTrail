@@ -146,7 +146,7 @@ Checks the JSON Schemas, the data fixtures and the serializer; Node 20 or later,
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Development setup, code style, branching, CI/CD
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Module system, state management, storage modes
 - [docs/DATA-MODEL.md](docs/DATA-MODEL.md) — The files in `_data/`, with JSON Schemas in [`schemas/`](schemas/) for tools that read or write them
-- [docs/EXTENDING.md](docs/EXTENDING.md) — Adding resource types, modules, localization
+- [docs/EXTENDING.md](docs/EXTENDING.md) — Extensions that plug in without changing FrameTrail; adding resource types, modules, localization
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Server deployment, local usage, building, releasing
 - [docs/INTEGRATION.md](docs/INTEGRATION.md) — Running FrameTrail inside an LMS or platform: external authentication (OIDC, signed tokens)
 - [docs/EVENTS.md](docs/EVENTS.md) — The player event API for host pages and analytics

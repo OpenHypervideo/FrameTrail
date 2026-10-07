@@ -142,6 +142,8 @@ See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture docum
 
 ### Adding a Module
 
+Code that does not belong in FrameTrail itself is better written as an extension, which needs none of these steps ([docs/EXTENDING.md](docs/EXTENDING.md#writing-an-extension)).
+
 1. Create your module directory in `src/_shared/modules/` (shared) or `src/player/modules/` (player-specific)
 2. Create `module.js` following the `FrameTrail.defineModule` pattern (see `src/_shared/frametrail-core/_templateModule.js`)
 3. Create `style.css` if the module has UI

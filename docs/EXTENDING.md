@@ -1,6 +1,6 @@
 # Extending FrameTrail
 
-This guide explains how to extend FrameTrail with new resource types, modules, localization, themes, and backend actions.
+This guide explains how to extend FrameTrail with new resource types, modules, localization, themes, and backend actions, and how to write an extension: code that plugs into FrameTrail from outside, without changing its files ([Writing an Extension](#writing-an-extension)).
 
 ## Adding a New Resource Type
 
@@ -320,6 +320,147 @@ FrameTrail.defineModule('MyCustomModule', function(FrameTrail) {
    var myModule = FrameTrail.module('MyCustomModule');
    ```
 
+## Writing an Extension
+
+An extension is code that is not part of FrameTrail and plugs into it from outside: nothing in `index.html`, `scripts/build.sh` or any module changes. It can add a panel beside the player, a button to the title bar and an edit mode of its own, follows the interface through lifecycle hooks and state changes, and reaches every module the way FrameTrail's own modules do. A complete example is in [`examples/extension-hello/`](../examples/extension-hello/).
+
+### Register It
+
+```javascript
+FrameTrail.registerExtension('hello', function(FrameTrail) {
+
+    var labels = FrameTrail.module('Localization').labels;
+
+    return {
+        init:               function(settings) { },      // once, after loading
+        onReady:            function() { },              // once, when the interface is up
+        onHypervideoChange: function(hypervideoID) { },  // whenever a hypervideo has been (re)loaded
+        onChange: {                                      // state changes, like a module's
+            editMode: function(editMode, oldEditMode) { }
+        },
+        onUnload:           function() { },              // when the instance is destroyed
+        slots: { /* see Slots */ }
+    };
+
+});
+```
+
+The name consists of lowercase letters, digits and hyphens. The factory is called once for each FrameTrail instance that loads the extension, and receives that instance: the same object modules get, with `module()`, `getState()`, `changeState()`, `addEventListener()` and the rest, so the extension can use any module (`FrameTrail.module('HypervideoModel').overlays`). Everything in the returned object is optional.
+
+### Load It
+
+Two ways, which can be combined:
+
+- **From `config.json`**, on a FrameTrail installation. Copy the extension's files to `extensions/<name>/` next to `index.html` and list it in `_data/config.json`:
+
+  ```json
+  "extensions": [
+      {
+          "name": "hello",
+          "script": "extensions/hello/hello.js",
+          "style": "extensions/hello/hello.css",
+          "settings": { "greeting": "Hello there" }
+      }
+  ]
+  ```
+
+  `script` and `style` are paths relative to the page. The player refuses absolute URLs, root-relative paths and paths with a query, so an extension always comes from the instance's own origin. A platform hosting the instance can switch an extension on by writing this key ([docs/INTEGRATION.md](INTEGRATION.md#switching-extensions-on)). The files are not part of FrameTrail: copy them again after replacing the code with a new release.
+
+- **From the page**, when you embed FrameTrail yourself. Include the script after FrameTrail's and name the extension in the `extensions` init option, with a name or an entry like the ones in `config.json`:
+
+  ```javascript
+  FrameTrail.init({
+      target: '#player',
+      // …
+      extensions: [{ name: 'hello', settings: { greeting: 'Hello from the page' } }]
+  }, 'PlayerLauncher');
+  ```
+
+An extension named in both places is loaded once: the init option's entry wins, and the one in `config.json` fills in what it lacks. A script already on the page is not loaded again.
+
+Extensions are loaded after the data, which is when `config.json` is known, and before the interface is built. Anything that goes wrong is reported in the browser console and skipped, never fatal: a script or stylesheet that does not load (after at most 10 seconds), an entry that is not valid, a factory or `init()` that throws. A `_data` directory is portable and may name an extension that another installation does not have. An exception in one of an extension's hooks or handlers is reported, and the rest carry on.
+
+`settings` are handed to `init()` untouched; FrameTrail neither reads nor validates them. On a public instance anyone can read `config.json`, so settings must never hold a secret. Secrets belong on the server, in `_data/.auth/<name>.php`, which is never served.
+
+### Lifecycle
+
+| Hook | Called |
+|------|--------|
+| `init(settings)` | once, after loading. Storage, sign-in and the data are known; the interface does not exist yet. |
+| `slots` | read right after, while the interface is built (a side panel's `create`). |
+| `onReady()` | once, when the interface is up: the overview is shown, or the first hypervideo is ready to play. |
+| `onHypervideoChange(hypervideoID)` | whenever a hypervideo has been loaded and is ready to play: the first one, one the user switched to, and the same one reloaded (e.g. after a collaborator's change). |
+| `onChange[state](value, oldValue)` | on every change of that state (`editMode`, `viewMode`, `loggedIn`, `unsavedChanges`, …), after FrameTrail's modules have handled it. |
+| `onUnload()` | when the instance is destroyed (`instance.destroy()`). FrameTrail then removes the slots and, once no instance uses it, the stylesheet. |
+
+Two things to know:
+
+- Switching to another hypervideo rebuilds the video view and clears every timer pending on the page (`setTimeout` and `setInterval`). Restart yours in `onHypervideoChange`, and keep your DOM in your slots, which survive the switch.
+- Types are read once, when the instance starts, before any extension is loaded: an extension cannot add overlay or resource types.
+
+### Slots
+
+`slots` names the places the extension takes in the interface; each one is optional. `label` is the tooltip and title; `icon` is a class of FrameTrail's icon font, e.g. `icon-comment` (default `icon-puzzle`).
+
+**`sidePanel`**: a panel docked to the right of the player and the overview, opened and closed from a button in the title bar. While it is open the main area gives up its width; on screens up to 768 px wide it covers the main area instead. It stays open across edit modes and hypervideo switches. One side panel is open at a time.
+
+```javascript
+sidePanel: {
+    label:   'Hello',
+    icon:    'icon-comment',
+    width:   320,                                   // px, 200–800 (default 360)
+    when:    'always',                              // 'always' (default), 'edit' or 'view'
+    create:  function(container, panel) { },        // once, while the interface is built
+    onOpen:  function() { },
+    onClose: function() { }
+}
+```
+
+`create` builds the content into `container`; `panel` has `open()`, `close()`, `toggle()` and `isOpen`. With `when: 'edit'` the button and the panel are there only while editing, and a panel left open comes back when editing starts again (`'view'` is the reverse).
+
+**`titlebarAction`**: a button in the title bar, before FrameTrail's own.
+
+```javascript
+titlebarAction: {
+    label:   'Say hello',
+    icon:    'icon-chat',
+    when:    'view',                                // 'always' (default), 'edit' or 'view'
+    onClick: function(evt) { }
+}
+```
+
+**`editPanel`**: an edit mode of its own, named after the extension, with a button after the built-in modes in the sidebar. While it is active, the extension has the edit panel beside the video, which the built-in modes share:
+
+```javascript
+editPanel: {
+    label:           'Hello',
+    icon:            'icon-comment',
+    editsHypervideo: true,                          // default; see below
+    enter: function(panel) {
+        // panel.add and panel.properties are the panel's two tabs, empty;
+        // panel.showTab('add' | 'properties') switches between them.
+    },
+    leave: function() { }                           // stop using the panel; the next mode empties it
+}
+```
+
+A mode that edits the hypervideo (the default) follows the rules of layout, overlays, custom code and chapters: it is offered to admins and the hypervideo's owner only, entering it claims the collaboration lock, and while another editor holds that lock the video area is blocked. Set `editsHypervideo: false` for a mode that does not write to the hypervideo; like annotations, it is then open to everyone editing. The names of FrameTrail's own modes (`preview`, `layout`, `overlays`, `codesnippets`, `chapters`, `annotations`) cannot be used. While the mode is active, `.mainContainer` carries `data-edit-mode="<name>"`.
+
+### Labels
+
+```javascript
+FrameTrail.module('Localization').addLabels({
+    en: { HelloTitle: 'Hello' },
+    de: { HelloTitle: 'Hallo' }
+});
+```
+
+A key that exists already is replaced, so prefix yours with the extension's name. A label missing in the current language is shown in English.
+
+### Styling
+
+Use FrameTrail's CSS custom properties (`--primary-bg-color`, `--primary-fg-color`, `--secondary-bg-color`, `--highlight-color`, …), so that the themes apply, and the classes in `src/_shared/styles/generic.css` for buttons, inputs, `custom-select`, `message` and `layoutRow`/`column-*`. Scope your selectors to your slots: `.sidePanelItem[data-extension="<name>"]`, `.titlebar [data-extension="<name>"]`, `.mainContainer[data-edit-mode="<name>"]`. A side panel takes the theme in view mode and the editor's palette while editing, through the same variables. A stylesheet listed in `config.json` is added before the global `custom.css`, which can override it.
+
 ## Adding Localization Strings
 
 ### 1. Add to English Locale
@@ -355,6 +496,8 @@ var labels = FrameTrail.module('Localization').labels;
 var title = labels['MyModuleTitle'];
 ```
 
+A key missing in the current language is looked up in English. Extensions add their labels at runtime with `Localization.addLabels()` ([Labels](#labels)).
+
 ## Adding a Custom Theme
 
 ### Define Theme Variables
@@ -363,10 +506,13 @@ Edit `src/_shared/styles/variables.css`:
 
 ```css
 .frametrail-body[data-frametrail-theme="mytheme"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
+    .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
+    .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="mytheme"] {
@@ -518,9 +664,9 @@ FrameTrail.module('UndoManager').register({
 FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 ```
 
-## Checklist for New Extensions
+## Checklist for New Types and Modules
 
-When adding a new resource type or module, make sure to:
+When adding a new resource type or module to FrameTrail itself, make sure to:
 
 1. Create `type.js` (or `module.js`) and `style.css` in the appropriate directory under `src/`
 2. Add `<script>` and `<link>` tags to `src/index.html` (and `src/resources.html` if applicable)

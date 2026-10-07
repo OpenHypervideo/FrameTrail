@@ -99,6 +99,7 @@ CSS_FILES=(
     "player/modules/ViewLayout/style.css"
     "player/modules/HypervideoSettingsDialog/style.css"
     "player/modules/AdminSettingsDialog/style.css"
+    "player/modules/Extensions/style.css"
     "resourcemanager/modules/ResourceManagerLauncher/style.css"
 )
 
@@ -228,6 +229,7 @@ JS_FILES=(
     "player/modules/HypervideoSettingsDialog/module.js"
     "player/modules/AdminSettingsDialog/module.js"
     "player/modules/OverviewMapSettingsDialog/module.js"
+    "player/modules/Extensions/module.js"
 
     # Resource manager module
     "resourcemanager/modules/ResourceManagerLauncher/module.js"

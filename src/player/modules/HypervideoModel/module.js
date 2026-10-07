@@ -1775,6 +1775,10 @@
 
                             FrameTrail.module('InterfaceModal').hideMessage(600);
 
+                            if (FrameTrail.module('Extensions')) {
+                                FrameTrail.module('Extensions').hypervideoChanged(newHypervideoID);
+                            }
+
                             window.setTimeout(function() {
                                 //FrameTrail.changeState('viewSize', FrameTrail.getState('viewSize'));
                                 window.dispatchEvent(new Event('resize'));

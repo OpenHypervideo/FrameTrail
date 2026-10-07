@@ -12,6 +12,7 @@ The global `FrameTrail` object is defined in `src/_shared/frametrail-core/framet
 window.FrameTrail = {
     defineModule:  // Register a module definition
     defineType:    // Register a type definition
+    registerExtension: // Register an extension (see Extensions below)
     init:          // Create a new FrameTrail instance
     autoInit:      // Scan for [data-frametrail] video elements and init each
     instances:     // Array of all active instances
@@ -29,6 +30,10 @@ When `FrameTrail.init()` is called, it returns an instance with:
     unloadModule:     // Unload a module
     module:           // Get a module's public interface
     modules:          // Get all loaded modules
+    initExtension:    // Create a registered extension in this instance
+    unloadExtension:  // Call an extension's onUnload and drop it
+    extension:        // Get an extension's interface
+    extensions:       // Get all loaded extensions
     getState:         // Read global state
     changeState:      // Update global state (triggers listeners)
     type:             // Get a type constructor
@@ -136,6 +141,7 @@ FrameTrail.defineModule('ModuleName', function(FrameTrail) {
 | `ViewLayout` | Content view layout areas |
 | `HypervideoSettingsDialog` | Hypervideo configuration |
 | `AdminSettingsDialog` | Admin settings panel |
+| `Extensions` | Loads extensions and places their slots (side panel, title bar button, edit mode) |
 
 #### Resource Manager Module (`src/resourcemanager/modules/`)
 
@@ -158,11 +164,20 @@ The `PlayerLauncher` module orchestrates initialization:
 8. ResourceManager
 9. HypervideoFormBuilder
 10. HypervideoModel
-11. Interface (initializes sub-modules)
-12. HypervideoController (if viewing a hypervideo)
-13. UserTraces
-14. UndoManager
+11. UserTraces, UndoManager, Collaboration, Extensions
+    — Database.loadData(); then Extensions.load() loads the extensions named in
+      config.json and the init option —
+12. Interface (initializes sub-modules; Interface.create() places extensions' slots)
+13. HypervideoController (if viewing a hypervideo)
 ```
+
+### Extensions
+
+Extensions are code outside FrameTrail that plugs in without changing its files (user documentation: [EXTENDING.md](EXTENDING.md#writing-an-extension)). `FrameTrail.registerExtension(name, factory)` registers the factory globally, like `defineModule`. The `Extensions` module (`src/player/modules/Extensions/`) collects the entries from the `extensions` init option and `config.json` → `extensions`, adds their scripts and stylesheets to the page (relative paths on the page's origin only; once per page), and creates each extension in the instance with `initExtension(name)`. Anything that fails is reported in the console and skipped.
+
+The instance keeps its extensions next to its modules: `changeState()` calls their `onChange` handlers after all modules' handlers, each in a `try`/`catch`, so a failing extension cannot stop the state loop. `onReady` and `onHypervideoChange` are called by `PlayerLauncher` and `HypervideoModel.updateHypervideo()`; `destroy()` unloads them.
+
+Slots: a side panel (`.sidePanel`, docked right of `.mainContainer`, which narrows by `--ft-side-panel-width`; `ViewVideo.adjustHypervideo()` subtracts `Extensions.sidePanelWidth`), title bar buttons (`Titlebar.addActionButton()`) and edit modes (`Sidebar.addEditModeButton()`; `ViewVideo` gives them the shared edit panel, `Interface` marks them with `.extensionEditMode` and `.lockGated`).
 
 ## Type System
 
@@ -271,6 +286,7 @@ FrameTrail.changeState('editMode', true);
 | `annotations` | String/Array | URL string or array of W3C annotation URLs / inline objects (shorthand API) |
 | `dataPath` | String\|null | Base URL for the `_data/` directory (e.g. `'../_data/'`). `null` = auto-detect. |
 | `server` | String\|null | Base URL for the `_server/` PHP directory (e.g. `'../_server/'`). `null` = auto-detect or no server. |
+| `extensions` | Array\|null | The `extensions` init option: extension names or `{ name, script, style, settings }` entries (see [EXTENDING.md](EXTENDING.md#writing-an-extension)). |
 | `fullPage` | Boolean | Is this instance the whole page, and may it therefore set `document.title`? Always a boolean — resolved once at init from the `fullPage` option or, when that is omitted, by auto-detection. |
 
 ### Reactive Updates
@@ -426,7 +442,7 @@ Themes are defined in `src/_shared/styles/variables.css` using two scoping layer
 .frametrail-body[data-frametrail-theme="bright"] :is(
     .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"],
                         [data-edit-mode="codesnippets"], [data-edit-mode="annotations"]),
-    .loadingScreen, .userLoginOverlay, .titlebar:not(.editActive), .layoutManager
+    .loadingScreen, .userLoginOverlay, .titlebar:not(.editActive), .sidePanel:not(.editActive), .layoutManager
 ),
 .themeItem[data-theme="bright"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -508,6 +524,11 @@ FrameTrail.init({
                                     // (probes '_server/ajaxServer.php' on HTTP/HTTPS).
                                     //   server: '../_server/'          (one level up)
                                     //   server: 'https://api.example.com/ft/_server/'
+
+    // ── Extensions ────────────────────────────────────────────────────────────
+    extensions:     null,           // Extensions to load: names of extensions the page
+                                    // registered, or { name, script, style, settings }
+                                    // entries as in config.json (see EXTENDING.md)
 
     // ── Advanced ──────────────────────────────────────────────────────────────
     contentTargets: {},             // Custom DOM targets for content views

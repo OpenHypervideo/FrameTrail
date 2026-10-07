@@ -225,7 +225,7 @@
             }
         },
         "extensions": {
-            "description": "Extensions this instance loads, in order. Requires a FrameTrail release with extension support; older releases ignore the key.",
+            "description": "Extensions this instance loads, in order, after the data and before the interface. An extension named here and in the extensions init option is loaded once; the init option's entry wins and this one fills in what it lacks. One that cannot be loaded is reported in the browser console and skipped. Releases without extension support ignore the key.",
             "type": "array",
             "items": {
                 "description": "An extension this instance loads.",
@@ -233,24 +233,31 @@
                 "required": ["name"],
                 "properties": {
                     "name": {
-                        "description": "Name of the extension, as it registers itself.",
+                        "description": "Name of the extension, as it registers itself with FrameTrail.registerExtension().",
                         "type": "string",
                         "pattern": "^[a-z0-9][a-z0-9-]*$"
                     },
                     "script": {
-                        "description": "Script to load: a relative path on the same origin, e.g. \"extensions/hello/hello.js\".",
+                        "description": "Script that registers the extension: a path relative to the page (index.html), so on the same origin, e.g. \"extensions/hello/hello.js\". Not loaded again if the page already has it. Without it the page itself must register the extension.",
                         "type": "string",
                         "pattern": "^[^/:?#][^:?#]*$"
                     },
                     "style": {
-                        "description": "Stylesheet to load: a relative path on the same origin.",
+                        "description": "Stylesheet of the extension: a path relative to the page, so on the same origin. Added before the global custom.css.",
                         "type": "string",
                         "pattern": "^[^/:?#][^:?#]*$"
                     },
                     "settings": {
-                        "description": "Public settings handed to the extension untouched. FrameTrail neither reads nor validates them. This file is public: secrets belong in _data/.auth/<name>.php.",
-                        "type": "object",
-                        "properties": {}
+                        "description": "Public settings, handed to the extension's init() untouched (PHP's [] as {}). FrameTrail neither reads nor validates them. This file is public: secrets belong in _data/.auth/<name>.php.",
+                        "default": {},
+                        "oneOf": [
+                            {
+                                "description": "The settings.",
+                                "type": "object",
+                                "properties": {}
+                            },
+                            { "$ref": "common.schema.json#/$defs/phpEmptyObject" }
+                        ]
                     }
                 }
             }

@@ -791,6 +791,23 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
     }
 
 
+    /**
+     * I place a button of an extension among the action buttons, ahead of
+     * FrameTrail's own (settings, resources, user menu, edit). The caller
+     * owns the button: its look, its handler and when it is shown.
+     *
+     * @method addActionButton
+     * @param {HTMLElement} button
+     */
+    function addActionButton(button) {
+
+        var container = domElement.querySelector('.titlebarActionButtonContainer');
+
+        container.insertBefore(button, AdminSettingsButton);
+
+    }
+
+
 
 
     return {
@@ -831,7 +848,8 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             return FrameTrail.getState('fullscreen') ? 0 : domElement.offsetHeight;
         },
 
-        create: create
+        create: create,
+        addActionButton: addActionButton
 
     };
 

@@ -147,6 +147,9 @@
     // Set up the on-video editor of freeform hotspot outlines
     FrameTrail.initModule('FreeformShapeEditor');
 
+    // Set up the loader of extensions (they are loaded once the config is known)
+    FrameTrail.initModule('Extensions');
+
 
     // Initialize storage, then start the actual init process
 
@@ -353,77 +356,88 @@
                     var configLang = (FrameTrail.module('Database').config || {}).defaultLanguage;
                     if (configLang) { FrameTrail.module('Localization').setLanguage(configLang); }
 
-                    // Initialize UI modules after language is set so labels are correct
-                    FrameTrail.initModule('Interface');
-                    FrameTrail.initModule('HypervideoController');
+                    // Extensions are named in the config, which is known only now,
+                    // and their places in the interface are made as it is built.
+                    FrameTrail.module('Extensions').load(initVideoInterface);
 
-                    FrameTrail.module('UserTraces').initTraces();
+                    function initVideoInterface() {
 
-                    if (FrameTrail.module('Database').config.alwaysForceLogin) {
-                        FrameTrail.module('InterfaceModal').hideMessage();
-                        FrameTrail.module('UserManagement').ensureAuthenticated(function() {
+                        // Initialize UI modules after language is set so labels are correct
+                        FrameTrail.initModule('Interface');
+                        FrameTrail.initModule('HypervideoController');
+
+                        FrameTrail.module('UserTraces').initTraces();
+
+                        if (FrameTrail.module('Database').config.alwaysForceLogin) {
+                            FrameTrail.module('InterfaceModal').hideMessage();
+                            FrameTrail.module('UserManagement').ensureAuthenticated(function() {
+                                initHypervideo();
+                            }, function() {}, true);
+                        } else {
                             initHypervideo();
-                        }, function() {}, true);
-                    } else {
-                        initHypervideo();
-                    }
+                        }
 
-                    function initHypervideo() {
+                        function initHypervideo() {
 
-                        FrameTrail.module('TagModel').initTagModel(
+                            FrameTrail.module('TagModel').initTagModel(
 
-                            function () {
-                                try {
+                                function () {
+                                    try {
 
-                                FrameTrail.module('InterfaceModal').setLoadingTitle(FrameTrail.module('Database').hypervideo.name);
+                                    FrameTrail.module('InterfaceModal').setLoadingTitle(FrameTrail.module('Database').hypervideo.name);
 
-                                FrameTrail.module('HypervideoModel').initModel(function(){
+                                    FrameTrail.module('HypervideoModel').initModel(function(){
 
-                                    FrameTrail.module('Interface').create(function(){
+                                        FrameTrail.module('Interface').create(function(){
 
-                                        FrameTrail.module('InterfaceModal').hideLoadingScreen();
+                                            FrameTrail.module('InterfaceModal').hideLoadingScreen();
 
-                                        FrameTrail.module('HypervideoController').initController(
+                                            FrameTrail.module('HypervideoController').initController(
 
-                                            function(){
+                                                function(){
 
-                                                // Finished
-                                                FrameTrail.module('InterfaceModal').hideMessage();
+                                                    // Finished
+                                                    FrameTrail.module('InterfaceModal').hideMessage();
 
-                                                var hvVid = document.querySelector(FrameTrail.getState('target') + ' .hypervideo video.video');
-                                                if (hvVid) { hvVid.classList.remove('nocolor', 'dark'); }
+                                                    var hvVid = document.querySelector(FrameTrail.getState('target') + ' .hypervideo video.video');
+                                                    if (hvVid) { hvVid.classList.remove('nocolor', 'dark'); }
 
-                                                resumeAfterAuth();
+                                                    FrameTrail.module('Extensions').ready();
+                                                    FrameTrail.module('Extensions').hypervideoChanged(FrameTrail.module('RouteNavigation').hypervideoID);
 
-                                            },
+                                                    resumeAfterAuth();
 
-                                            function(errorMsg){
+                                                },
 
-                                                // Fail: Init thread was aborted with:
-                                                FrameTrail.module('InterfaceModal').showErrorMessage(errorMsg);
+                                                function(errorMsg){
 
-                                            }
+                                                    // Fail: Init thread was aborted with:
+                                                    FrameTrail.module('InterfaceModal').showErrorMessage(errorMsg);
 
-                                        );
+                                                }
+
+                                            );
+
+                                        });
+
 
                                     });
 
+                                    } catch (e) {
+                                        console.error('FrameTrail init error:', e);
+                                        FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorGeneric'] + ': ' + e.message);
+                                    }
 
-                                });
+                                },
 
-                                } catch (e) {
-                                    console.error('FrameTrail init error:', e);
-                                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorGeneric'] + ': ' + e.message);
+                                function (errorMsg) {
+                                    console.error('FrameTrail TagModel init error:', errorMsg);
+                                    FrameTrail.module('InterfaceModal').showErrorMessage(errorMsg || labels['ErrorCouldNotInitTagModel']);
                                 }
 
-                            },
+                            );
 
-                            function (errorMsg) {
-                                console.error('FrameTrail TagModel init error:', errorMsg);
-                                FrameTrail.module('InterfaceModal').showErrorMessage(errorMsg || labels['ErrorCouldNotInitTagModel']);
-                            }
-
-                        );
+                        }
 
                     }
 
@@ -464,31 +478,39 @@
                     var configLang = (FrameTrail.module('Database').config || {}).defaultLanguage;
                     if (configLang) { FrameTrail.module('Localization').setLanguage(configLang); }
 
-                    // Initialize UI modules after language is set so labels are correct
-                    FrameTrail.initModule('Interface');
+                    FrameTrail.module('Extensions').load(initOverviewInterface);
 
-                    FrameTrail.module('UserTraces').initTraces();
+                    function initOverviewInterface() {
 
-                    if (FrameTrail.module('Database').config.alwaysForceLogin) {
-                        FrameTrail.module('InterfaceModal').hideMessage();
-                        FrameTrail.module('UserManagement').ensureAuthenticated(function() {
-                            initOverview();
-                        }, function() {}, true);
-                    } else {
-                        initOverview();
-                    }
+                        // Initialize UI modules after language is set so labels are correct
+                        FrameTrail.initModule('Interface');
 
-                    function initOverview() {
+                        FrameTrail.module('UserTraces').initTraces();
 
-                        FrameTrail.module('InterfaceModal').setLoadingTitle(FrameTrail.module('Database').overviewTitle);
-
-                        FrameTrail.module('Interface').create(function(){
-
-                            // Finished
+                        if (FrameTrail.module('Database').config.alwaysForceLogin) {
                             FrameTrail.module('InterfaceModal').hideMessage();
-                            FrameTrail.module('InterfaceModal').hideLoadingScreen();
+                            FrameTrail.module('UserManagement').ensureAuthenticated(function() {
+                                initOverview();
+                            }, function() {}, true);
+                        } else {
+                            initOverview();
+                        }
 
-                        });
+                        function initOverview() {
+
+                            FrameTrail.module('InterfaceModal').setLoadingTitle(FrameTrail.module('Database').overviewTitle);
+
+                            FrameTrail.module('Interface').create(function(){
+
+                                // Finished
+                                FrameTrail.module('InterfaceModal').hideMessage();
+                                FrameTrail.module('InterfaceModal').hideLoadingScreen();
+
+                                FrameTrail.module('Extensions').ready();
+
+                            });
+
+                        }
 
                     }
 

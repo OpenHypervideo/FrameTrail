@@ -424,6 +424,35 @@
                     "message": "must be string, is number"
                 }
             ]
+        },
+        {
+            "name": "extension settings as a list",
+            "schema": "config.schema.json",
+            "data": {
+                "defaultTheme": "",
+                "defaultLanguage": "en",
+                "videoFit": "contain",
+                "overviewMode": "grid",
+                "allowUploads": true,
+                "alwaysForceLogin": false,
+                "userNeedsConfirmation": true,
+                "extensions": [
+                    {
+                        "name": "hello",
+                        "script": "extensions/hello/hello.js",
+                        "settings": [
+                            "key",
+                            "value"
+                        ]
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/extensions/0/settings",
+                    "message": "must be object, is array"
+                }
+            ]
         }
     ]
 }

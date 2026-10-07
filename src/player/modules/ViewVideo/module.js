@@ -900,6 +900,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             editBorder = (FrameTrail.getState('editMode') != false) ? (parseInt(getComputedStyle(domElement).borderTopWidth)*2) : 0,
             mainContainerWidth  = _target.offsetWidth
                                     - ((FrameTrail.getState('sidebarOpen') && !FrameTrail.getState('fullscreen')) ? FrameTrail.module('Sidebar').width : 0)
+                                    - (FrameTrail.module('Extensions') ? FrameTrail.module('Extensions').sidePanelWidth : 0)
                                     - editBorder,
             mainContainerHeight = _target.offsetHeight
                                     - (autohideTitlebar ? 0 : _titlebar.offsetHeight)
@@ -1091,6 +1092,11 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             case 'annotations':
                 enterAnnotationMode();
                 break;
+            default:
+                if (FrameTrail.module('Extensions') && FrameTrail.module('Extensions').hasEditPanel(editMode)) {
+                    enterExtensionMode(editMode);
+                }
+                break;
         }
 
         // Hide sharing widget during editing, show when leaving
@@ -1272,6 +1278,18 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         AnnotationTimeline.classList.add('editable');
 
         EditPropertiesContainer.setAttribute('data-editmode', 'annotations');
+    }
+
+    /**
+     * I am called when the app enters the edit mode of an extension. The
+     * extension fills the edit panel itself (see the Extensions module).
+     * @method enterExtensionMode
+     * @param {String} editMode
+     */
+    function enterExtensionMode(editMode) {
+        initEditMode();
+
+        EditPropertiesContainer.setAttribute('data-editmode', editMode);
     }
 
     /**

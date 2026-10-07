@@ -326,6 +326,26 @@ Three traps worth knowing:
 
 Pages that are already open pick changes up through the collaboration poll on the `settings` scope, which watches both files: an administrator sees the usual "settings have changed" notice with Refresh, which re-reads the config and reloads `custom.css`. Keys marked "on reload" need a page load to show.
 
+### Switching Extensions On
+
+An extension ([docs/EXTENDING.md](EXTENDING.md#writing-an-extension)) is switched on for an instance by an entry in `config.json` → `extensions`, so a platform that writes the settings can offer extensions per instance, for example as part of a plan:
+
+```json
+"extensions": [
+    {
+        "name": "hello",
+        "script": "extensions/hello/hello.js",
+        "style": "extensions/hello/hello.css",
+        "settings": { "greeting": "Hello there" }
+    }
+]
+```
+
+- The files have to be in the instance's code tree: `script` and `style` are paths relative to `index.html`. An upgrade that replaces the code has to bring them along.
+- `settings` are handed to the extension in the browser, so they are public. Secrets belong in `_data/.auth/<name>.php`, which is never served.
+- Removing the entry switches the extension off with the next page load. An entry whose files are missing is skipped with a warning in the browser console, so it does not matter whether the config or the files arrive first.
+- Releases without extension support ignore the key. Without external settings, the settings dialog keeps the key as it is when it saves.
+
 ### Detecting Support
 
 A release supports external settings if it ships `_server/externalsettings.php`. On a running instance, an anonymous `userCheckLogin` that answers with a non-null `externalSettings` proves the deployed code honours the key. Older releases ignore it: their dialog keeps working and keeps writing, so a platform has to treat those instances as settings-owned-by-FrameTrail until they are upgraded.

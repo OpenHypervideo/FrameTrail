@@ -1,0 +1,136 @@
+/* Side panel of an extension
+   Docked to the right of .mainContainer, which gives up the panel's width
+   while it is open. Like the sidebar it spans the full height; the title bar
+   lies over its top 40px. Themed like the title bar in view mode; while
+   editing it uses the editor's palette, like the edit panel. */
+.sidePanel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: var(--ft-side-panel-width, 360px);
+    height: 100%;
+    padding-top: 40px;
+    box-sizing: border-box;
+    display: none;
+    flex-direction: column;
+    background: var(--primary-bg-color);
+    color: var(--primary-fg-color);
+    border-left: 1px solid var(--secondary-bg-color);
+    z-index: 4;
+}
+
+.sidePanel.open {
+    display: flex;
+}
+
+.sidePanel.editActive {
+    background: var(--primary-fg-color);
+    color: var(--primary-bg-color);
+}
+
+.sidePanelItem {
+    display: none;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-height: 0;
+    border-top: 1px solid var(--secondary-bg-color);
+}
+
+.sidePanelItem.active {
+    display: flex;
+}
+
+.sidePanelHeader {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    padding-left: 12px;
+    border-bottom: 1px solid var(--secondary-bg-color);
+}
+
+.sidePanel.editActive .sidePanelHeader {
+    background: var(--primary-fg-color);
+}
+
+.sidePanelTitle {
+    flex: 1 1 auto;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.sidePanelCloseButton {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    text-align: center;
+}
+
+.sidePanel.editActive .sidePanelCloseButton:hover {
+    background: transparent;
+    color: var(--primary-bg-color);
+}
+
+.sidePanelContent {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 10px 12px;
+}
+
+.mainContainer.sidePanelOpen {
+    width: calc(100% - var(--ft-side-panel-width, 360px));
+}
+
+.mainContainer.sidebarOpen.sidePanelOpen {
+    width: calc(100% - 54px - var(--ft-side-panel-width, 360px));
+}
+
+.frametrail-body.inFullscreen .mainContainer.sidePanelOpen:not(.editActive) {
+    width: calc(100% - var(--ft-side-panel-width, 360px));
+}
+
+/* Narrow screens: the panel covers the main container instead of docking
+   beside it (Extensions.sidePanelWidth answers 0 there, too). */
+@container ft-root (max-width: 768px) {
+    .sidePanel {
+        width: 100%;
+    }
+    .mainContainer.sidePanelOpen {
+        width: 100%;
+    }
+    .mainContainer.sidebarOpen.sidePanelOpen {
+        width: calc(100% - 54px);
+    }
+}
+
+/* Title bar buttons of extensions */
+.titlebar .sidePanelToggle {
+    border-radius: 0;
+    border-right: 1px solid transparent;
+    border-left: 1px solid transparent;
+    position: relative;
+}
+
+.titlebar .sidePanelToggle.active {
+    background-color: var(--primary-fg-color);
+    color: var(--primary-bg-color);
+    border-right-color: var(--secondary-bg-color);
+    border-left-color: var(--secondary-bg-color);
+}
+
+.titlebar.editActive .sidePanelToggle.active::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: var(--primary-fg-color);
+}

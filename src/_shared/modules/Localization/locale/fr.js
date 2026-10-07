@@ -201,6 +201,7 @@ window.FrameTrail_L10n['fr'] = {
     "GenericApply": "Appliquer",
     "GenericAuthor": "Auteur·e",
     "GenericCancel": "Annuler",
+    "GenericClose": "Fermer",
     "GenericConfirmDelete": "Confirmer la suppression",
     "GenericContinue": "Continuer",
     "GenericContinuePlayback": "Continuer la lecture",

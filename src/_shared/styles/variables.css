@@ -46,12 +46,13 @@ body > .contentViewPreview,
 }
 
 .frametrail-body[data-frametrail-theme="bright"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="bright"] {
@@ -64,12 +65,13 @@ body > .contentViewPreview,
 }
 
 .frametrail-body[data-frametrail-theme="dark"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="dark"] {
@@ -82,12 +84,13 @@ body > .contentViewPreview,
 
 /* ── Midnight: near-black GitHub-dark inspired ── */
 .frametrail-body[data-frametrail-theme="midnight"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="midnight"] {
@@ -101,12 +104,13 @@ body > .contentViewPreview,
 
 /* ── Slate: Tailwind slate-800/200, enterprise-professional ── */
 .frametrail-body[data-frametrail-theme="slate"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="slate"] {
@@ -118,12 +122,13 @@ body > .contentViewPreview,
 
 /* ── Inspiration 2: warm sandy cream + teal (Ghibli/Totoro poster) ── */
 .frametrail-body[data-frametrail-theme="studio"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="studio"] {
@@ -140,12 +145,13 @@ body > .contentViewPreview,
 
 /* ── Lagoon: dark teal bg + coral fg (split-complementary, modern SaaS) ── */
 .frametrail-body[data-frametrail-theme="lagoon"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="lagoon"] {
@@ -160,12 +166,13 @@ body > .contentViewPreview,
 
 /* ── Dusk: deep navy bg + warm gold fg (complementary luxury) ── */
 .frametrail-body[data-frametrail-theme="dusk"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="dusk"] {
@@ -179,12 +186,13 @@ body > .contentViewPreview,
 
 /* ── Nordic: dusty slate-blue bg + warm amber fg (Scandinavian design) ── */
 .frametrail-body[data-frametrail-theme="nordic"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="nordic"] {
@@ -200,12 +208,13 @@ body > .contentViewPreview,
 
 /* ── Obsidian: near-black bg + rose gold fg (luxury/fashion) ── */
 .frametrail-body[data-frametrail-theme="obsidian"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="obsidian"] {
@@ -220,12 +229,13 @@ body > .contentViewPreview,
 
 /* ── Jungle: dark olive bg + hot pink fg (bold editorial contrast) ── */
 .frametrail-body[data-frametrail-theme="jungle"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="jungle"] {
@@ -239,12 +249,13 @@ body > .contentViewPreview,
 
 /* ── Carbon: charcoal bg + electric cyan fg (developer tools) ── */
 .frametrail-body[data-frametrail-theme="carbon"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="carbon"] {
@@ -259,12 +270,13 @@ body > .contentViewPreview,
 
 /* ── Aurora: near-black teal bg + warm peach fg (atmospheric) ── */
 .frametrail-body[data-frametrail-theme="aurora"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="aurora"] {
@@ -279,12 +291,13 @@ body > .contentViewPreview,
 
 /* ── Terra: terracotta bg + pale sage fg (earthy complementary) ── */
 .frametrail-body[data-frametrail-theme="terra"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="terra"] {
@@ -299,12 +312,13 @@ body > .contentViewPreview,
 
 /* ── Eclipse: deep purple bg + lime fg (split-complementary, creative) ── */
 .frametrail-body[data-frametrail-theme="eclipse"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="eclipse"] {
@@ -318,12 +332,13 @@ body > .contentViewPreview,
 
 /* ── Parchment: warm ivory bg + deep burgundy fg (editorial publishing) ── */
 .frametrail-body[data-frametrail-theme="parchment"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="parchment"] {
@@ -340,12 +355,13 @@ body > .contentViewPreview,
 
 /* ── Neon: near-black with neon cyan-green, cyberpunk ── */
 .frametrail-body[data-frametrail-theme="neon"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="neon"] {
@@ -362,12 +378,13 @@ body > .contentViewPreview,
 
 /* ── Inspiration 1: deep navy-indigo (German podcast app) ── */
 .frametrail-body[data-frametrail-theme="navy"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="navy"] {
@@ -378,12 +395,13 @@ body > .contentViewPreview,
 }
 
 .frametrail-body[data-frametrail-theme="blue"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="blue"] {
@@ -396,12 +414,13 @@ body > .contentViewPreview,
 }
 
 .frametrail-body[data-frametrail-theme="grey"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="grey"] {
@@ -416,12 +435,13 @@ body > .contentViewPreview,
 
 /* ── Plum: deep purple-wine, luxurious ── */
 .frametrail-body[data-frametrail-theme="plum"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="plum"] {
@@ -433,12 +453,13 @@ body > .contentViewPreview,
 
 /* ── Crimson: deep red, bold and dramatic ── */
 .frametrail-body[data-frametrail-theme="crimson"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="crimson"] {
@@ -450,12 +471,13 @@ body > .contentViewPreview,
 
 /* ── Ocean: deep teal, modern tech ── */
 .frametrail-body[data-frametrail-theme="ocean"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="ocean"] {
@@ -469,12 +491,13 @@ body > .contentViewPreview,
 
 /* ── Forest: deep forest green, earthy ── */
 .frametrail-body[data-frametrail-theme="forest"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="forest"] {
@@ -486,12 +509,13 @@ body > .contentViewPreview,
 
 /* ── Emerald: rich jewel-tone green ── */
 .frametrail-body[data-frametrail-theme="emerald"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="emerald"] {
@@ -503,12 +527,13 @@ body > .contentViewPreview,
 }
 
 .frametrail-body[data-frametrail-theme="green"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="green"] {
@@ -520,12 +545,13 @@ body > .contentViewPreview,
 
 /* ── Coral: vibrant coral-red, lively ── */
 .frametrail-body[data-frametrail-theme="coral"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="coral"] {
@@ -539,12 +565,13 @@ body > .contentViewPreview,
 
 /* ── Inspiration 3: medium purple (Dutch Sonnenborgh poster) ── */
 .frametrail-body[data-frametrail-theme="violet"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="violet"] {
@@ -556,12 +583,13 @@ body > .contentViewPreview,
 
 /* ── Sunset: dark wine-burgundy with warm peach text ── */
 .frametrail-body[data-frametrail-theme="sunset"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="sunset"] {
@@ -576,12 +604,13 @@ body > .contentViewPreview,
 
 /* ── Coffee: warm dark brown, café vibes ── */
 .frametrail-body[data-frametrail-theme="coffee"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="coffee"] {
@@ -593,12 +622,13 @@ body > .contentViewPreview,
 
 /* ── Mocha: warm medium brown, 2025-trend ── */
 .frametrail-body[data-frametrail-theme="mocha"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="mocha"] {
@@ -612,12 +642,13 @@ body > .contentViewPreview,
 
 /* ── Sand: warm terracotta-sand with dark brown text ── */
 .frametrail-body[data-frametrail-theme="sand"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="sand"] {
@@ -636,12 +667,13 @@ body > .contentViewPreview,
 
 /* ── Rose: soft pink with deep rose text ── */
 .frametrail-body[data-frametrail-theme="rose"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="rose"] {
@@ -660,12 +692,13 @@ body > .contentViewPreview,
 
 /* ── Arctic: ice blue, clean minimal ── */
 .frametrail-body[data-frametrail-theme="arctic"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="arctic"] {
@@ -683,12 +716,13 @@ body > .contentViewPreview,
 
 /* ── Sage: muted sage green, organic ── */
 .frametrail-body[data-frametrail-theme="sage"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="sage"] {
@@ -706,12 +740,13 @@ body > .contentViewPreview,
 
 /* ── Mint: white bg with mint green pastel panels ── */
 .frametrail-body[data-frametrail-theme="mint"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="mint"] {
@@ -727,12 +762,13 @@ body > .contentViewPreview,
 
 /* ── Sky: white bg with sky blue pastel panels ── */
 .frametrail-body[data-frametrail-theme="sky"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="sky"] {
@@ -748,12 +784,13 @@ body > .contentViewPreview,
 
 /* ── Steel: white bg with flat Wet Asphalt (#34495E) pastel panels ── */
 .frametrail-body[data-frametrail-theme="steel"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="steel"] {
@@ -769,12 +806,13 @@ body > .contentViewPreview,
 
 /* ── Lavender: white bg with lavender pastel panels ── */
 .frametrail-body[data-frametrail-theme="lavender"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="lavender"] {
@@ -790,12 +828,13 @@ body > .contentViewPreview,
 
 /* ── Peach: white bg with peach pastel panels ── */
 .frametrail-body[data-frametrail-theme="peach"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="peach"] {
@@ -811,12 +850,13 @@ body > .contentViewPreview,
 
 /* ── Blush: white bg with blush pink pastel panels ── */
 .frametrail-body[data-frametrail-theme="blush"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="blush"] {
@@ -832,12 +872,13 @@ body > .contentViewPreview,
 
 /* ── Lemon: white bg with lemon yellow pastel panels ── */
 .frametrail-body[data-frametrail-theme="lemon"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="lemon"] {
@@ -853,12 +894,13 @@ body > .contentViewPreview,
 
 /* ── Turquoise: white bg with flat turquoise (#1ABC9C) pastel panels ── */
 .frametrail-body[data-frametrail-theme="turquoise"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="turquoise"] {
@@ -874,12 +916,13 @@ body > .contentViewPreview,
 
 /* ── Grape: white bg with flat Amethyst (#9B59B6) pastel panels ── */
 .frametrail-body[data-frametrail-theme="grape"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="grape"] {
@@ -895,12 +938,13 @@ body > .contentViewPreview,
 
 /* ── Tangerine: white bg with flat Carrot (#E67E22) pastel panels ── */
 .frametrail-body[data-frametrail-theme="tangerine"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="tangerine"] {
@@ -916,12 +960,13 @@ body > .contentViewPreview,
 
 /* ── Tomato: white bg with flat Alizarin (#E74C3C) pastel panels ── */
 .frametrail-body[data-frametrail-theme="tomato"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="tomato"] {
@@ -936,12 +981,13 @@ body > .contentViewPreview,
 }
 
 .frametrail-body[data-frametrail-theme="orange"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
     .signInWall,
     .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
     .layoutManager
 ),
 .themeItem[data-theme="orange"] {

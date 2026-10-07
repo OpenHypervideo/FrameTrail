@@ -39,6 +39,7 @@
     opacity: .7;
     white-space: nowrap;
     overflow: hidden;
+    border-radius: 0;
 }
 
 .viewmodeControls button.editMode .editModeLabel {

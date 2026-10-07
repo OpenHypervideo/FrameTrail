@@ -78,6 +78,12 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
 
         document.querySelector(FrameTrail.getState('target')).append(mainContainer);
 
+        // Extensions' slots go into the title bar, the sidebar and beside the
+        // main container, so all three have to exist first.
+        if (FrameTrail.module('Extensions')) {
+            FrameTrail.module('Extensions').create();
+        }
+
 
         FrameTrail.module('ViewOverview').create();
 
@@ -321,6 +327,9 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
      */
     function toggleEditMode(editMode, oldEditMode){
 
+        var Extensions = FrameTrail.module('Extensions'),
+            Sidebar    = FrameTrail.module('Sidebar');
+
         if (editMode) {
 
             document.querySelector(FrameTrail.getState('target')).classList.add('editActive');
@@ -335,6 +344,11 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
 
         }
 
+        // The stylesheets name the built-in modes; an extension's mode, whose
+        // name they cannot know, is told apart by class. lockGated covers both.
+        mainContainer.classList.toggle('extensionEditMode', !!(editMode && Extensions && Extensions.hasEditPanel(editMode)));
+        mainContainer.classList.toggle('lockGated', !!(editMode && Sidebar && Sidebar.isLockGatedMode(editMode)));
+
         // Entering a mode while the lock is already held must apply at once,
         // rather than waiting for the next poll to broadcast collabState.
         reflectCollaborationLock();
@@ -347,7 +361,7 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
      * CSS alone can make the regions that write to the shared hypervideo.json
      * inert. Annotations are exempt — they are per-user files and stay
      * concurrently editable — which the stylesheets express via the
-     * data-edit-mode attribute set above.
+     * lockGated class set above.
      *
      * @method reflectCollaborationLock
      */

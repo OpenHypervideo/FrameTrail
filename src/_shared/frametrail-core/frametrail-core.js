@@ -2,8 +2,9 @@
 (function(){
 
 
-    var defs_modules = {},
-        defs_types   = {},
+    var defs_modules    = {},
+        defs_types      = {},
+        defs_extensions = {},
 
         instances    = [];
 
@@ -12,6 +13,7 @@
 
         defineModule:   _defineModule,
         defineType:     _defineType,
+        registerExtension: _registerExtension,
         init:           _init,
         autoInit:       _autoInit,
 
@@ -29,6 +31,34 @@
         }
 
         defs_modules[name] = definition;
+
+    }
+
+    /**
+     * Register an extension: code that is not part of FrameTrail and plugs
+     * into it from outside (see docs/EXTENDING.md, "Writing an Extension").
+     *
+     * Like a module definition, the factory is called once per instance that
+     * loads the extension — an instance loads the ones named in its
+     * `extensions` init option and in config.json → extensions — and receives
+     * that instance. It returns the extension's interface:
+     * { init, onReady, onHypervideoChange, onChange, onUnload, slots }.
+     *
+     * @method registerExtension
+     * @param {String}   name     lowercase letters, digits and hyphens
+     * @param {Function} factory
+     */
+    function _registerExtension(name, factory) {
+
+        if (typeof name !== 'string' || !/^[a-z0-9][a-z0-9-]*$/.test(name)) {
+            throw new Error('Extension name "' + name + '" must consist of lowercase letters, digits and hyphens.');
+        }
+
+        if (typeof factory !== 'function') {
+            throw new Error('Extension definition must be a function object, which returns the extension\'s interface.');
+        }
+
+        defs_extensions[name] = factory;
 
     }
 
@@ -152,6 +182,10 @@
             unloadModule:   _unloadModule,
             modules:        _modules,
             module:         _module,
+            initExtension:  _initExtension,
+            unloadExtension: _unloadExtension,
+            extensions:     _extensions,
+            extension:      _extension,
             getState:       _getState,
             changeState:    _changeState,
             get types()     { return types },
@@ -164,6 +198,7 @@
 
         var state           = {},
             modules         = {},
+            extensions      = {},
             types           = {},
             updateQueue     = [],
             inUpdateThread  = false,
@@ -227,6 +262,7 @@
                 annotations:        options.annotations  || null,
                 dataPath:           options.dataPath     || null,
                 server:             options.server       || null,
+                extensions:         options.extensions   || null,
                 fullPage:           _fullPage,
 
                 loggedIn:           false,
@@ -331,7 +367,11 @@
             destroy: function () {
                 var thisInstanceIndex = instances.indexOf(publicInstanceAPI),
                     thisDOMElement = document.querySelector(state.target);
-                
+
+                if (modules['Extensions']) {
+                    modules['Extensions'].unload();
+                }
+
                 if (thisDOMElement) {
                     thisDOMElement.parentNode.removeChild(thisDOMElement);
                 }
@@ -547,6 +587,77 @@
         }
 
 
+        /**
+         * I create this instance's copy of a registered extension and keep it,
+         * so that its onChange handlers hear state changes from now on.
+         * Without a registered extension of that name I return undefined;
+         * a factory that throws, throws here.
+         *
+         * @method initExtension
+         * @param {String} name
+         * @return {Object|undefined}
+         */
+        function _initExtension(name) {
+
+            if (!defs_extensions[name]) {
+                return undefined;
+            }
+
+            if (extensions[name]) {
+                return extensions[name];
+            }
+
+            var extensionInterface = defs_extensions[name].call(this, FrameTrail);
+
+            if (typeof extensionInterface !== 'object' || extensionInterface === null) {
+                extensionInterface = {};
+            }
+
+            extensions[name] = extensionInterface;
+            return extensionInterface;
+
+        }
+
+
+        /**
+         * I drop an extension from this instance, after its onUnload.
+         *
+         * @method unloadExtension
+         * @param {String} name
+         */
+        function _unloadExtension(name) {
+
+            var extension = extensions[name];
+
+            if (!extension) return;
+
+            delete extensions[name];
+
+            if (typeof extension.onUnload === 'function') {
+                try {
+                    extension.onUnload.call(extension);
+                } catch (e) {
+                    console.error('FrameTrail extension "' + name + '": onUnload failed.', e);
+                }
+            }
+
+        }
+
+
+        function _extension(name) {
+
+            return extensions[name];
+
+        }
+
+
+        function _extensions() {
+
+            return extensions;
+
+        }
+
+
         function _getState(key) {
 
             return key ? state[key] : state;
@@ -594,6 +705,27 @@
 
                                 modules[name].onChange[updateFrame[0]].call(this, updateFrame[1], updateFrame[2]);
 
+                            }
+
+                        }
+
+                    }
+
+                    // Extensions hear a change after every module has, so the
+                    // interface they look at has already caught up with it.
+                    // A failing handler is reported and skipped: it must not
+                    // leave this loop, which would stop all state propagation.
+                    for (var extensionName in extensions) {
+
+                        var extensionOnChange = extensions[extensionName].onChange;
+
+                        if (typeof extensionOnChange === 'object' && extensionOnChange !== null
+                                && typeof extensionOnChange[updateFrame[0]] === 'function') {
+
+                            try {
+                                extensionOnChange[updateFrame[0]].call(this, updateFrame[1], updateFrame[2]);
+                            } catch (e) {
+                                console.error('FrameTrail extension "' + extensionName + '": onChange.' + updateFrame[0] + ' failed.', e);
                             }
 
                         }

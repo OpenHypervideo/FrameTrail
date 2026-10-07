@@ -167,7 +167,7 @@ Instance settings. Missing keys mean the defaults in the schema. On a public ins
 
 Booleans are strict. The server refuses uploads only when `allowUploads` is `false` and treats an instance as private only when `alwaysForceLogin` is `true`; the strings `"false"` and `"true"` do neither. [docs/INTEGRATION.md](INTEGRATION.md#writing-the-settings) lists the settings with what a missing key means and when a change takes effect; [docs/DEPLOYMENT.md](DEPLOYMENT.md#configuration) covers `externalAuth`, `externalSettings` and `userAvatars`.
 
-`extensions` lists extensions the instance loads, each `{ name, script, style, settings }`. `script` and `style` are relative paths on the same origin. `settings` is handed to the extension untouched; FrameTrail neither reads nor validates it, so the schema leaves it open.
+`extensions` lists extensions the instance loads, each `{ name, script, style, settings }` ([docs/EXTENDING.md](EXTENDING.md#writing-an-extension)). `script` and `style` are paths relative to the page, so on its origin; the player refuses anything else. `settings` is handed to the extension's `init()` untouched; FrameTrail neither reads nor validates it, so the schema leaves it open. An extension that cannot be loaded is skipped, so a `_data` directory naming one works on an installation that does not have it.
 
 ### `tagdefinitions.json`
 
@@ -409,7 +409,7 @@ Readers must accept these shapes. Each is in the schemas as a separate alternati
 | Shape | Where | Read as |
 |-------|-------|---------|
 | `created` as `Date.prototype.toString()` text | items | the same instant, without milliseconds |
-| `[]` instead of `{}` | `frametrail:attributes`, `frametrail:events`, `globalEvents`, animation `params`, and the maps in the index files and `tagdefinitions.json` | an empty object — PHP cannot tell the two apart when it re-encodes a file |
+| `[]` instead of `{}` | `frametrail:attributes`, `frametrail:events`, `globalEvents`, animation `params`, an extension's `settings` in `config.json`, and the maps in the index files and `tagdefinitions.json` | an empty object — PHP cannot tell the two apart when it re-encodes a file |
 | body `frametrail:type` `"button"` | overlays | no Resource type exists; FrameTrail does not render the item and keeps it |
 | user entries at the top level of `annotations/_index.json` (`{ name, description, hidden, src }`), next to or instead of `annotationfiles` | local-folder mode | an annotation file of that user; moved under `annotationfiles` when that user next saves |
 | `annotation-increment` | `hypervideo.json`, `annotations/_index.json` | not used |

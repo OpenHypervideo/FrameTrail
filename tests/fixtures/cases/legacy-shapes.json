@@ -624,6 +624,26 @@
                 "resources-increment": 0,
                 "resources": []
             }
+        },
+        {
+            "name": "extension settings as PHP's []",
+            "schema": "config.schema.json",
+            "data": {
+                "defaultTheme": "",
+                "defaultLanguage": "en",
+                "videoFit": "contain",
+                "overviewMode": "grid",
+                "allowUploads": true,
+                "alwaysForceLogin": false,
+                "userNeedsConfirmation": true,
+                "extensions": [
+                    {
+                        "name": "hello",
+                        "script": "extensions/hello/hello.js",
+                        "settings": []
+                    }
+                ]
+            }
         }
     ]
 }

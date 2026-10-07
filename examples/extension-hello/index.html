@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<!--
+  EXAMPLE: An extension, loaded through the init option
+  ──────────────────────────────────────────────────────
+  Requirements: a build in ../../build/ (bash scripts/build.sh). Works opened
+  from the filesystem (file://) or from any static web server.
+
+  Demonstrates:
+  - A minimal extension (hello.js, hello.css in this folder) that adds a side
+    panel, a title bar button and an edit mode
+  - Loading it from the page: the page includes the script, and the extensions
+    init option names it and passes its settings
+  - Two hypervideos, so switching between them (via the overview) shows the
+    panel following along
+
+  On a FrameTrail installation the same extension is switched on by listing it
+  in _data/config.json → extensions instead; see the comment in hello.js.
+-->
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>FrameTrail – Extension Example</title>
+    <link rel="stylesheet" href="../../build/frametrail.min.css">
+    <script src="../../build/frametrail.min.js"></script>
+    <link rel="stylesheet" href="hello.css">
+    <script src="hello.js"></script>
+    <style>
+        body { margin: 0; }
+    </style>
+</head>
+<body>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+
+        function hypervideo(name, src, duration) {
+            return {
+                hypervideo: {
+                    meta: {
+                        name:        name,
+                        description: '',
+                        thumb:       '',
+                        creator:     'Demo',
+                        creatorId:   'demo',
+                        created:     1700000000000,
+                        lastchanged: 1700000000000
+                    },
+                    config: {
+                        layoutArea:  { areaTop: [], areaBottom: [], areaLeft: [], areaRight: [] },
+                        slidingMode: 'overlay'
+                    },
+                    clips: [{ src: src, duration: duration, start: 0, end: duration }],
+                    contents:     [],
+                    subtitles:    [],
+                    globalEvents: {},
+                    customCSS:    ''
+                },
+                annotations: []
+            };
+        }
+
+        window.ftInstance = FrameTrail.init({
+            target:  'body',
+            startID: '0',
+
+            contents: [
+                hypervideo('Big Buck Bunny', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4', 596),
+                hypervideo('Elephants Dream', 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4', 654)
+            ],
+
+            // The extension's script is already on the page, so its name is
+            // enough; settings reach its init() untouched.
+            extensions: [
+                { name: 'hello', settings: { greeting: 'Hello from the page' } }
+            ]
+        }, 'PlayerLauncher');
+
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+/* Hello — the stylesheet of the example extension.
+   FrameTrail's CSS custom properties keep it in step with the themes and with
+   the editor's palette while editing. */
+
+.sidePanelItem[data-extension="hello"] .helloGreeting {
+    margin: 4px 0 16px;
+    font-size: 22px;
+    font-weight: 300;
+}
+
+.sidePanelItem[data-extension="hello"] p {
+    margin: 0 0 8px;
+}

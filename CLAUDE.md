@@ -34,7 +34,7 @@ FrameTrail/
 │   │   ├── styles/                 # Global CSS (variables, generic, webfont)
 │   │   └── fonts/                  # Webfonts (woff2 only)
 │   ├── player/
-│   │   ├── modules/                # 24 player-specific modules
+│   │   ├── modules/                # 26 player-specific modules
 │   │   └── types/                  # Player types (Annotation, Overlay, etc.)
 │   ├── resourcemanager/
 │   │   └── modules/ResourceManagerLauncher/
@@ -64,6 +64,7 @@ Three HTML entry points in `src/`:
 
 **Custom Module System** (`src/_shared/frametrail-core/frametrail-core.js`):
 - `FrameTrail.defineModule()` — registers modules with init() and onChange() lifecycle methods
+- `FrameTrail.registerExtension()` — registers an extension: code outside FrameTrail that plugs in without changing its files (see Client Extensions)
 - `FrameTrail.defineType()` — registers data types (Annotation, Overlay, Resource types, etc.)
 - `FrameTrail.changeState()` / `FrameTrail.getState()` — global state management with change listeners
 - Multiple FrameTrail instances can coexist on one page
@@ -526,6 +527,19 @@ Overlays, annotations and code snippets share one selection model in their edit 
 
 The "Custom Overlay" tab of the overlay editing panel is one flat gallery built from `getCustomOverlayTiles()` in `OverlaysController`: Text, Custom HTML, Quiz, Hotspot (unchanged defaults), then Card, Quote, Notification (pre-styled Text overlays), Arrow, Curved Arrow, Underline, Freeform Hotspot (Hotspot variants that draw themselves in; the freeform one starts in draw mode), Cursor (starts with box motion on), Counter, and Bar / Line / Donut Chart and Progress Ring. A tile is `{ id, type, icon, label, attributes, size, events?, motion?, draw? }`; the drop handler builds the overlay from it. Tiles that pass `events: {}` opt out of the pause-on-start default of hotspots and quizzes. The former "Presets" tab (Pause & Continue, Choice Buttons) has been removed.
 
+## Client Extensions
+
+Extensions are code that is not part of FrameTrail (add-ons, a hosting platform's tools) and must never require changes to `index.html`, `build.sh` or modules. User documentation: [docs/EXTENDING.md](docs/EXTENDING.md#writing-an-extension); the example is `examples/extension-hello/`.
+
+- **Registration** is global (`FrameTrail.registerExtension(name, factory)`, `defs_extensions` in core); the factory runs once per instance via `instance.initExtension(name)` and gets the internal instance. Interface: `{ init(settings), onReady, onHypervideoChange(id), onChange, onUnload, slots }`.
+- **Loading** (`src/player/modules/Extensions/`): entries come from the `extensions` init option (state `extensions`) and `config.json` → `extensions`; same name in both → init entry wins, config fills gaps. `Extensions.load(cb)` runs in `PlayerLauncher` after `Database.loadData` and before `initModule('Interface')`, on both the video and the overview path; with no entries it calls back synchronously (behaviour unchanged). Paths must match `^[^/:?#][^:?#]*$` and resolve to the page's origin. Scripts/stylesheets are added once per page (found again by URL; styles ref-counted, inserted before `custom.css`). Failures (404, 10 s timeout, invalid entry, throwing factory/`init`) warn and skip — never block the player. PHP's `[]` for empty `settings` is handed over as `{}`.
+- **Dispatch:** core `changeState()` calls extensions' `onChange` after all modules, each in `try`/`catch` — an exception must never leave the update loop (that would freeze all state propagation). `onReady` is called by `PlayerLauncher`, `onHypervideoChange` there and in `HypervideoModel.updateHypervideo()`; `instance.destroy()` → `Extensions.unload()`.
+- **Slots** are created in `Interface.create()` via `Extensions.create()`:
+  - `sidePanel`: `.sidePanel` absolutely positioned in the target, right of `.mainContainer`, which gets `.sidePanelOpen` and narrows by `--ft-side-panel-width`; `ViewVideo.adjustHypervideo()` subtracts `Extensions.sidePanelWidth` (0 at ≤ 768 px, where the panel overlays). It lives outside `.viewVideo`, so it survives hypervideo switches. Every theme block in `variables.css` lists `.sidePanel:not(.editActive)`; a new theme must too.
+  - `titlebarAction`: `Titlebar.addActionButton()` (before the admin settings button). `when: 'always' | 'edit' | 'view'` for both of these.
+  - `editPanel`: `Sidebar.addEditModeButton()`; the mode name is the extension's name. `editsHypervideo` (default true) adds it to `LOCK_GATED_EDIT_MODES`, which now drives both the collaboration lock and the owner/admin permission check. `ViewVideo.toggleEditMode` → `enterExtensionMode()` (`initEditMode()`); `Extensions` calls `enter(panel)` in a microtask (built-in modes clear the panel while leaving, in no fixed order) and `leave()` synchronously. `Interface` sets `.extensionEditMode` (CSS that names the built-in panel modes lists it too) and `.lockGated` (drives `.collabBlocker`).
+- `updateHypervideo()` clears every timer on the page — documented for extension authors; don't "fix" an extension bug by relying on timers surviving a switch.
+
 ## Localization
 
 **Language Files:** `src/_shared/modules/Localization/locale/`
@@ -534,5 +548,6 @@ The "Custom Overlay" tab of the overlay editing panel is one flat gallery built 
 - Add new languages by creating `{locale}.js` files
 - **Important:** Locale files are `.js` files (not `.json`)
 - Switch language via `FrameTrail.module('Localization').setLanguage(locale)`
+- A key missing in the current locale falls back to English, per key. `Localization.addLabels({ en: {…}, de: {…} })` merges labels at runtime (extensions use it)
 
 **Configuring the language:** Language is set via `config.defaultLanguage` in the init options — `language` is NOT a direct init option. The `data-frametrail-language` HTML attribute maps to `config.defaultLanguage` internally (handled in `_autoInit`). Example: `FrameTrail.init({ config: { defaultLanguage: 'de' } }, 'PlayerLauncher')`.
