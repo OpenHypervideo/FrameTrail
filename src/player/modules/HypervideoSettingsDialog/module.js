@@ -1184,7 +1184,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 }
                 var _conflictEl = EditHypervideoForm.querySelector('.message.error');
                 _conflictEl.classList.add('active');
-                _conflictEl.innerHTML = labels['ErrorSaveConflictInFolder'];
+                _conflictEl.innerHTML = labels[(FrameTrail.getState('storageMode') === 'file') ? 'ErrorSaveConflictInFile' : 'ErrorSaveConflictInFolder'];
             });
 
             function writeFiles() {
@@ -1287,7 +1287,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             buttons: [
                 { text: labels['GenericSaveChanges'] || labels['GenericApply'] || 'Save',
                     click: function() {
-                        if (FrameTrail.getState('storageMode') === 'local') {
+                        if (FrameTrail.module('StorageManager').isLocal()) {
                             saveHypervideoLocally();
                         } else {
                             EditHypervideoForm.requestSubmit();
@@ -1448,7 +1448,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             buttons: [
                 { text: labels['GenericDeleteHypervideo'],
                     click: function() {
-                        if (FrameTrail.getState('storageMode') === 'local') {
+                        if (FrameTrail.module('StorageManager').isLocal()) {
                             deleteHypervideoLocally(deleteDialogCtrl, thisID);
                         } else {
                             deleteDialog.querySelector('.deleteHypervideoForm').dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));

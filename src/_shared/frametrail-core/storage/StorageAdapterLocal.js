@@ -428,10 +428,7 @@ class StorageAdapterLocal extends StorageAdapter {
      */
     async persistHandle() {
         if (!this._rootHandle) return;
-
-        var db = await this._openHandleDB();
-        var tx = db.transaction('handles', 'readwrite');
-        await tx.objectStore('handles').put(this._rootHandle, 'root');
+        await StorageAdapter.setStored('root', this._rootHandle);
     }
 
     /**
@@ -440,13 +437,7 @@ class StorageAdapterLocal extends StorageAdapter {
      */
     async restoreHandle() {
         try {
-            var db = await this._openHandleDB();
-            var tx = db.transaction('handles', 'readonly');
-            var request = tx.objectStore('handles').get('root');
-            var handle = await new Promise(function(resolve, reject) {
-                request.onsuccess = function() { resolve(request.result); };
-                request.onerror = function() { reject(request.error); };
-            });
+            var handle = await StorageAdapter.getStored('root');
             if (handle) {
                 await this.init(handle);
                 return true;
@@ -455,18 +446,6 @@ class StorageAdapterLocal extends StorageAdapter {
             console.log('Could not restore handle:', e);
         }
         return false;
-    }
-
-    /** @private */
-    _openHandleDB() {
-        return new Promise(function(resolve, reject) {
-            var request = indexedDB.open('frametrail-storage', 1);
-            request.onerror = function() { reject(request.error); };
-            request.onsuccess = function() { resolve(request.result); };
-            request.onupgradeneeded = function(e) {
-                e.target.result.createObjectStore('handles');
-            };
-        });
     }
 
 }

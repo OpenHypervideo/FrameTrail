@@ -900,7 +900,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
             }
 
-            if (FrameTrail.getState('storageMode') === 'local') {
+            if (FrameTrail.module('StorageManager').isLocal()) {
                 FrameTrail.module('StorageManager').getAdapter()
                     .readText('custom.css')
                     .then(apply)

@@ -13,11 +13,11 @@ CI runs the tests on every push and pull request (`.github/workflows/build.yml`)
 | What | Checked |
 |------|---------|
 | `schemas/` | Every schema uses only the [schema subset](../docs/DATA-MODEL.md#schema-subset), every `$ref` resolves, every schema is named after its `$id`. The player's copy (`FrameTrailSchemas.js`, from `node scripts/bundle-schemas.mjs`) is up to date and judges every case alike. |
-| `fixtures/data/` | Every file follows its schema. Hypervideos and annotation files round-trip through `FrameTrailSerializer`. Each folder, read as a project bundle and as one hypervideo bundle per hypervideo, follows the bundle schemas and survives writing and reading again, in the `folder` format and as a page in the [portable HTML format](../docs/HTML-FORMAT.md). |
+| `fixtures/data/` | Every file follows its schema. Hypervideos and annotation files round-trip through `FrameTrailSerializer`. Each folder, read as a project bundle and as one hypervideo bundle per hypervideo, follows the bundle schemas and survives writing and reading again, in the `folder` format and as a page in the [portable HTML format](../docs/HTML-FORMAT.md). As a project page it is edited in place: read as a folder and written back, the page is the same byte for byte, and after a change only its data block differs. |
 | `fixtures/examples/` | Matches the data the pages in `examples/` pass to `FrameTrail.init()`. Each case as below. |
 | `fixtures/cases/` | Each case validates with exactly the expected errors; valid hypervideos, annotation files and content items round-trip. |
 | `fixtures/html/` | Exports from before the HTML format are read into valid hypervideo bundles. |
-| Unit tests | `FrameTrailSchema`, `FrameTrailSerializer`, `FrameTrailHTMLFormat` (escaping of the data block and of an embedded library, attribute variants, newer formats refused), `FrameTrailKeyframes`. |
+| Unit tests | `FrameTrailSchema`, `FrameTrailSerializer`, `FrameTrailHTMLFormat` (escaping of the data block and of an embedded library, attribute variants, newer formats refused; editing a page in place: the page around the block kept, a hypervideo page read as a project with its page settings moved into the data, an index entry without its folder left out, a new page from an empty project), `FrameTrailKeyframes`. |
 
 The tests do not cover the user interface; see [CONTRIBUTING.md](../CONTRIBUTING.md#testing).
 

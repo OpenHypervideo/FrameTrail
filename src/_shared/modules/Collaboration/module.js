@@ -44,11 +44,12 @@
  *                     without any authenticated endpoint.
  *   'full'            Server instance and able to save. Presence, locks and
  *                     staleness.
- *   'localFolder'     A local folder (File System Access API). Nobody else is
- *                     present and nothing is locked, but other programs may
- *                     write the folder while the editor is open: staleness
- *                     only, from the files' modification times, checked when
- *                     the window gets the focus and every 30 s while editing.
+ *   'localFolder'     A local folder or a project file (File System Access
+ *                     API). Nobody else is present and nothing is locked, but
+ *                     other programs (or tabs) may write the folder or file
+ *                     while the editor is open: staleness only, from the
+ *                     files' versions the adapter keeps, checked when the
+ *                     window gets the focus and every 30 s while editing.
  *                     Logged in or not, since there are no accounts.
  *
  * Annotations are deliberately outside the lock: they live in per-user files
@@ -156,7 +157,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
 
     function determineMode() {
 
-        if (FrameTrail.getState('storageMode') === 'local') {
+        if (FrameTrail.getState('storageMode') === 'local' || FrameTrail.getState('storageMode') === 'file') {
             var adapter = FrameTrail.module('StorageManager') ? FrameTrail.module('StorageManager').getAdapter() : null;
             return (adapter && typeof adapter.fileVersion === 'function') ? MODE_LOCAL : MODE_DORMANT;
         }

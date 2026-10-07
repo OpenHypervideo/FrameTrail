@@ -252,6 +252,8 @@
             return;
         }
 
+        applyLocalGlobalCSS();
+
         // Sync login state now that storageMode is known.
         // UserManagement.isLoggedIn() ran at module-init time before storageMode
         // was set, so loggedIn may be stale (false) for local/download modes.
@@ -527,7 +529,7 @@
 
                     // Fail: Init was aborted with:
                     FrameTrail.module('InterfaceModal').showErrorMessage(errorMsg);
-                    if (FrameTrail.getState('storageMode') === 'local') {
+                    if (FrameTrail.module('StorageManager').isLocal()) {
                         showFolderPrompt();
                     }
 
@@ -600,7 +602,7 @@
 
                     // Fail: Init was aborted with:
                     FrameTrail.module('InterfaceModal').showErrorMessage(errorMsg);
-                    if (FrameTrail.getState('storageMode') === 'local') {
+                    if (FrameTrail.module('StorageManager').isLocal()) {
                         showFolderPrompt();
                     }
 
@@ -613,51 +615,59 @@
     }
 
 
+    /**
+     * Ask where the project is: a local folder or a project file (see
+     * StorageManager.openStorageDialog), then load it.
+     *
+     * @method showFolderPrompt
+     * @private
+     */
     function showFolderPrompt() {
         FrameTrail.module('InterfaceModal').hideLoadingScreen();
         FrameTrail.module('InterfaceModal').hideMessage();
 
-        var currentFolder = FrameTrail.module('StorageManager').getFolderName();
-        var folderInfo = currentFolder
-            ? '<p style="margin-top:8px; color:#666;">' + labels['CurrentFolder'] + ': <strong>' + currentFolder + '</strong></p>'
-            : '';
-
-        var _fdWrapper = document.createElement('div');
-        _fdWrapper.innerHTML = '<div class="folderPromptDialog">'
-            + '<p>' + labels['SelectDataFolderDescription'] + '</p>'
-            + folderInfo
-            + '</div>';
-        var folderDialog = _fdWrapper.firstElementChild;
-
-        var folderDialogCtrl = Dialog({
-            title:         labels['SelectDataFolder'],
-            icon:          'icon-folder-open',
-            content:       folderDialog,
-            modal:         true,
-            width:         450,
-            closeOnEscape: false,
-            buttons: [
-                {
-                    text: labels['SelectFolder'],
-                    click: function() {
-                        FrameTrail.module('StorageManager').switchToLocal().then(function() {
-                            folderDialogCtrl.destroy();
-                            // Clear hypervideo hash — old ID likely doesn't exist in new folder
-                            if (window.location.hash) {
-                                window.location.hash = '';
-                                window.location.reload();
-                                return;
-                            }
-                            FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateLoadingData']);
-                            FrameTrail.module('InterfaceModal').showLoadingScreen();
-                            continueLoading();
-                        }).catch(function(err) {
-                            FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorCouldNotAccessFolder'] + ' ' + err.message);
-                        });
-                    }
-                }
-            ]
+        FrameTrail.module('StorageManager').openStorageDialog({ closable: false }).then(function() {
+            // Clear hypervideo hash — old ID likely doesn't exist in new folder
+            if (window.location.hash) {
+                window.location.hash = '';
+                window.location.reload();
+                return;
+            }
+            FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateLoadingData']);
+            FrameTrail.module('InterfaceModal').showLoadingScreen();
+            applyLocalGlobalCSS();
+            continueLoading();
         });
+    }
+
+
+    /**
+     * The global CSS of a local folder or project file (custom.css) goes into
+     * the element the settings dialog edits, instead of the stylesheet the
+     * page links to (index.html's _data/custom.css, which is not the
+     * project's).
+     *
+     * @method applyLocalGlobalCSS
+     * @private
+     */
+    function applyLocalGlobalCSS() {
+
+        if (!FrameTrail.module('StorageManager').isLocal()) return;
+
+        FrameTrail.module('StorageManager').getAdapter().readText('custom.css').catch(function() {
+            return '';
+        }).then(function(css) {
+            var link    = document.head.querySelector('link[href$="custom.css"]'),
+                styleEl = document.head.querySelector('style.FrameTrailGlobalCustomCSS');
+            if (link) { link.remove(); }
+            if (!styleEl) {
+                styleEl = document.createElement('style');
+                styleEl.className = 'FrameTrailGlobalCustomCSS';
+                document.head.appendChild(styleEl);
+            }
+            styleEl.textContent = css;
+        });
+
     }
 
 

@@ -1454,7 +1454,8 @@
 
     /**
      * I show a "Save As" dialog letting the user choose where to save the
-     * open hypervideo (server, local folder), or what to download: the open
+     * open hypervideo (server, local folder) or, without a server, the project
+     * (a project file, see saveToFile), or what to download: the open
      * hypervideo or the whole project as a page in the portable HTML format or
      * as a bundle (JSON), or all data as a zip (see BundleExport).
      *
@@ -1465,6 +1466,8 @@
 
         var canSaveToServer = FrameTrail.module('StorageManager').canSaveToServer();
         var canSaveToLocal  = FrameTrail.module('StorageManager').canSaveToLocal();
+        var canSaveToFile   = FrameTrail.module('StorageManager').canSaveToFile();
+        var hasServer       = FrameTrail.module('RouteNavigation').hasServer();
         var hasHypervideo   = !!FrameTrail.module('Database').hypervideo;
         var startScope      = (!hasHypervideo || (options && options.scope === 'project')) ? 'project' : 'hypervideo';
 
@@ -1477,10 +1480,16 @@
             // Save buttons row
             + '<div class="layoutRow" style="margin-bottom: 4px;">'
             + '<div class="column-4">'
-            + '<button class="saveToServer" style="width: 100%; padding: 10px;"'
-            + (canSaveToServer && hasHypervideo ? '' : ' disabled') + '>'
-            + '<span class="icon-floppy" style="font-size: 18px;"></span> ' + labels['SaveToServer']
-            + '</button>'
+            // Without a server, the project can go into a project file instead.
+            + (hasServer
+                ? '<button class="saveToServer" style="width: 100%; padding: 10px;"'
+                  + (canSaveToServer && hasHypervideo ? '' : ' disabled') + '>'
+                  + '<span class="icon-floppy" style="font-size: 18px;"></span> ' + labels['SaveToServer']
+                  + '</button>'
+                : '<button class="saveToFile" style="width: 100%; padding: 10px;"'
+                  + (canSaveToFile ? '' : ' disabled') + '>'
+                  + '<span class="icon-doc" style="font-size: 18px;"></span> ' + labels['SaveToProjectFile']
+                  + '</button>')
             + '</div>'
             + '<div class="column-4">'
             + '<button class="saveToLocal" style="width: 100%; padding: 10px;"'
@@ -1573,12 +1582,19 @@
 
         var saveAsDialogCtrl;
 
-        saveAsDialog.querySelector('.saveToServer').addEventListener('click', function() {
-            FrameTrail.module('StorageManager').switchToServer().then(function() {
-                saveAsDialogCtrl.close();
-                save();
+        if (hasServer) {
+            saveAsDialog.querySelector('.saveToServer').addEventListener('click', function() {
+                FrameTrail.module('StorageManager').switchToServer().then(function() {
+                    saveAsDialogCtrl.close();
+                    save();
+                });
             });
-        });
+        } else {
+            saveAsDialog.querySelector('.saveToFile').addEventListener('click', function() {
+                saveAsDialogCtrl.close();
+                saveToFile();
+            });
+        }
 
         saveAsDialog.querySelector('.saveToLocal').addEventListener('click', function() {
             FrameTrail.module('StorageManager').switchToLocal().then(function() {
@@ -1620,6 +1636,27 @@
             close: function() {
                 saveAsDialogCtrl.destroy();
             }
+        });
+
+    }
+
+
+    /**
+     * I save the project into a project file and go on editing it there (see
+     * StorageManager.saveToFile): "Save to this file" on a page opened from
+     * disk, "Save to Project File" in Save As.
+     *
+     * @method saveToFile
+     * @return {Promise}
+     */
+    function saveToFile() {
+
+        return FrameTrail.module('StorageManager').saveToFile().then(function() {
+            // Everything is in the file already; this clears the unsaved state.
+            save();
+        }).catch(function(error) {
+            if (error && error.name === 'AbortError') { return; }   // a picker or question cancelled
+            FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] + ' (' + ((error && error.message) || error) + ')');
         });
 
     }
@@ -1764,8 +1801,10 @@
     function showSaveConflictDialog(conflict) {
 
         var by = (conflict && conflict.creator) ? conflict.creator : '',
-            // In a local folder it was another program, and there is no server.
-            text = (FrameTrail.getState('storageMode') === 'local') ? labels['ErrorSaveConflictInFolder'] : labels['ErrorSaveConflict'];
+            // In a local folder or project file it was another program (or tab), and there is no server.
+            text = (FrameTrail.getState('storageMode') === 'local') ? labels['ErrorSaveConflictInFolder']
+                 : (FrameTrail.getState('storageMode') === 'file') ? labels['ErrorSaveConflictInFile']
+                 : labels['ErrorSaveConflict'];
 
         var _wrapper = document.createElement('div');
         _wrapper.innerHTML = '<div class="saveConflict">'
@@ -2234,6 +2273,7 @@
 
         save:                   save,
         saveAs:                 saveAs,
+        saveToFile:             saveToFile,
         leaveEditMode:          leaveEditMode,
         updateHypervideo:       updateHypervideo,
         refreshFromServer:      refreshFromServer

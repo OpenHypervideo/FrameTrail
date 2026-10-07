@@ -96,6 +96,9 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
             if ((evt.metaKey || evt.ctrlKey) && evt.keyCode == 83) {
                 if (FrameTrail.module('StorageManager').canSave()) {
                     FrameTrail.module('HypervideoModel').save();
+                } else if (FrameTrail.module('StorageManager').canSaveToPageFile() && FrameTrail.getState('editMode')) {
+                    // A page opened from disk: into its own file, as the Save button does.
+                    FrameTrail.module('HypervideoModel').saveToFile();
                 } else {
                     FrameTrail.module('HypervideoModel').saveAs();
                 }

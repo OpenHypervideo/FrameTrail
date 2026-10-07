@@ -39,7 +39,7 @@ That's it. Edit any file in `src/`, reload the browser, and your changes are liv
 If you don't have Apache+PHP, you can develop using local folder mode:
 
 1. Open `src/index.html` directly in Chrome or Edge
-2. Select a `_data` folder when prompted (create one if needed)
+2. Select a `_data` folder when prompted (create one if needed), or open or create a project file (one HTML page holding the whole project)
 3. Editing works via the File System Access API — no server required
 
 Note: Some features (file uploads, user management) require the PHP backend.

@@ -91,7 +91,36 @@ Other programs (scripts, a text editor, a second browser tab) may change the fol
 - No media transcoding (no server-side processing)
 - Browser must support File System Access API (Chrome/Edge only)
 
-### Option 3: In-Memory Mode (All Browsers)
+### Option 3: Project File (One HTML File)
+
+A whole project in one HTML file, edited and saved in place. The file is a page in the [portable HTML format](HTML-FORMAT.md): it plays wherever it is opened (also from the disk, in any browser), and in Chrome or Edge FrameTrail saves every change back into it.
+
+**Requirements:**
+- Chrome or Edge for saving in place (File System Access API). Other browsers play the file and edit it in memory; Save As downloads it again in the same format.
+
+**Steps:**
+
+1. Open `index.html` of a FrameTrail without a server, as for a local folder
+2. In the dialog, choose **New Project File** (it asks whether the page loads FrameTrail from the web or carries it inside, then where to save the file) or **Open Project File** (a page Save As wrote, or one made here)
+3. Editing is available — every save writes the file
+
+A page in this format opened directly from the disk works too: it plays in memory, and in edit mode its Save button reads **Save to this file**. The first time it asks for the file (choose the same file), then remembers it: the next time the page is opened, it edits its own file. Without a server, Save As offers **Save to Project File** in every mode, which saves the project into a file and goes on editing there.
+
+**How it works:**
+
+`StorageAdapterHTMLFile` reads the page's data block as a `_data` folder held in memory, so everything that works with a local folder works here, and writes the project back into the data block on every save: atomically (the browser writes a copy and swaps it in), and only the data block — the rest of the page, its title, the library and anything added by hand stay as they are. A failed write leaves the file as it was and the changes unsaved. The browser remembers the file as it remembers a folder; when it has to ask for permission again, the dialog offers **Reopen**. The title bar shows the file's name (in edit mode); clicking it opens the dialog to choose another folder or file.
+
+Another tab or program may write the file meanwhile. FrameTrail notices it as in a local folder (when the window gets the focus, and every 30 seconds while editing), offers Refresh, and does not save a hypervideo over a change made to it; changes to other parts of the file are kept.
+
+**Media files:** a project file holds no media files, and FrameTrail cannot write any next to it (the browser grants access to the file alone). Resources are URLs, or paths relative to the file: put media files into a folder `resources` next to the project file and add them by name in the "Paste URL" tab (`intro.mp4`, `media/photo.jpg`). The upload tab is not offered; to upload files, use a local folder. Relative paths show when the project file itself is the page that is open; opened through "Open Project File" from another page, the browser does not tell where the file is, so only URLs play there.
+
+**Limitations:**
+- Identity is name-only, as in a local folder
+- No uploads; media by URL or by a path relative to the file
+- Saving in place needs Chrome or Edge
+- Only the playback settings travel with the project (theme, language, video fit, overview); settings that belong to an installation (uploads, sign-in, user traces) are not stored
+
+### Option 4: In-Memory Mode (All Browsers)
 
 No server, no file system access required. FrameTrail automatically falls back to this mode when running in Firefox, Safari, or any browser without the File System Access API and no PHP backend.
 
@@ -110,13 +139,13 @@ The `StorageAdapterDownload` holds all data in memory. Hypervideo data is passed
 
 The Save As dialog (sidebar, in edit mode; in the overview too) offers, in every storage mode:
 
-- **Save to Server** / **Save to Local Folder** — save the open hypervideo there;
+- **Save to Server** / **Save to Local Folder** — save the open hypervideo there; without a server, **Save to Project File** instead of the first: the whole project into a [project file](#option-3-project-file-one-html-file), where editing goes on;
 - **Download as Files**, for one of three scopes:
   - **Current Hypervideo** or **Whole Project**, as
     - **HTML** — one page in the [portable HTML format](HTML-FORMAT.md) that plays anywhere, also opened from the disk, and can be imported again. FrameTrail is either **loaded from the web** (jsDelivr, pinned to the release that wrote the file; small, needs a network connection) or **inside the file** (about 3 MB, works offline; taken from the installation's own `frametrail.min.js`, else from jsDelivr);
     - **JSON** — the same data as a bundle (`schemas/hypervideo-bundle.schema.json`, `schemas/project-bundle.schema.json`).
 
-    The hypervideo comes with all users' annotations, its subtitles and the resource entries it uses; a project with the overview map, the resource library, the tag definitions, the playback settings and the global CSS. Media files are not included: uploaded files are linked to this instance's `_data/` (from a local folder: to a `_data/` folder next to the file), so they play while the instance is reachable — on a private instance only for a signed-in browser.
+    The hypervideo comes with all users' annotations, its subtitles and the resource entries it uses; a project with the overview map, the resource library, the tag definitions, the playback settings and the global CSS. Media files are not included: uploaded files are linked to this instance's `_data/` (from a local folder: to a `_data/` folder next to the file; from a project file: where its own media paths point), so they play while the instance is reachable — on a private instance only for a signed-in browser.
   - **All Data** — a zip of the `_data` folder: hypervideos with their annotations and subtitles, the resources index, tag definitions, `config.json` and `custom.css` (never `users.json`). **Include media files** (server mode, signed in) asks the server for the zip instead (`dataExport`), with every uploaded file and without the dot-folders.
 
 Scripts get the same through the player instance:
@@ -134,7 +163,7 @@ Until a FrameTrail release that reads the portable HTML format is published on n
 
 ### Import
 
-The **Import** button next to "Create Hypervideo" (sidebar, edit mode; in server and local-folder mode — in memory there is nothing to import into) reads:
+The **Import** button next to "Create Hypervideo" (sidebar, edit mode; in server, local-folder and project-file mode — in memory there is nothing to import into) reads:
 
 - a page in the portable HTML format, or an HTML export of an earlier FrameTrail (its data is read, never run);
 - a bundle (`.json`), or a `hypervideo.json` that Save As JSON wrote earlier;
@@ -143,7 +172,7 @@ The **Import** button next to "Create Hypervideo" (sidebar, edit mode; in server
 The dialog lists the hypervideos, their annotations, subtitles and code, and imports them:
 
 - every hypervideo gets a **new id** and **belongs to you**; jumps between hypervideos of the same file are pointed at the new ids;
-- **resources** this instance already has (the same URL or file) are reused, the others are added. Media files a zip carries are copied (uploaded on a server, which needs uploads to be allowed); all other relative media paths point at the folder the file came from, and files that cannot be found anywhere are listed;
+- **resources** this instance already has (the same URL or file) are reused, the others are added. Media files a zip carries are copied (uploaded on a server, which needs uploads to be allowed; not into a project file, which holds none); all other relative media paths point at the folder the file came from, and files that cannot be found anywhere are listed;
 - **annotations** of all users go into your own annotations of each hypervideo, each keeping its author, so you can edit them from then on (a switch, on by default);
 - **code** — global events, code snippets, the hypervideo's custom CSS and the global CSS — is imported only when "Import code" is switched on, and on a server only by an administrator;
 - of a **project**, the overview map (it replaces this instance's), the playback settings (theme, language, overview) and the global CSS (added to this instance's) are switches of their own: on when this instance has no hypervideos yet, administrators only on a server, and the settings and CSS not at all when a platform manages them (`externalSettings`). Tag definitions this instance lacks are added (by an administrator on a server).
@@ -268,7 +297,7 @@ FrameTrail.init({
 
 ### Inline on a Page (full data, no server)
 
-Pass all hypervideo and resource data directly via init options, bypassing the `_data/` directory entirely. This works in all three storage modes and is the primary approach for in-memory mode (Option 3).
+Pass all hypervideo and resource data directly via init options, bypassing the `_data/` directory entirely. This works in every storage mode and is the primary approach for in-memory mode (Option 4).
 
 ```javascript
 FrameTrail.init({

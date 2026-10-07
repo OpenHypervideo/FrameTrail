@@ -655,7 +655,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             buttons: [
                 { text: labels['HypervideoNew'],
                     click: function() {
-                        if (FrameTrail.getState('storageMode') === 'local') {
+                        if (FrameTrail.module('StorageManager').isLocal()) {
                             addHypervideoLocally(newDialogCtrl, validateHypervideoForm, getDurationFromInputs);
                         } else {
                             newDialog.querySelector('.newHypervideoForm').dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
@@ -674,12 +674,52 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
     }); });
 
     SaveButton.addEventListener('click', function(){
-        if (FrameTrail.module('StorageManager').canSave()) {
+        var StorageManager = FrameTrail.module('StorageManager');
+        if (StorageManager.canSave()) {
             FrameTrail.module('HypervideoModel').save();
+        } else if (StorageManager.canSaveToPageFile()) {
+            FrameTrail.module('HypervideoModel').saveToFile();
         } else {
             FrameTrail.module('HypervideoModel').saveAs();
         }
     });
+
+
+    /**
+     * I set the save button: Save, or "Save to this file" on a page opened
+     * from disk that runs in memory and can be saved into its own file.
+     *
+     * @method updateSaveButton
+     * @param {Boolean} blocked  someone else holds the collaboration lock
+     * @private
+     */
+    function updateSaveButton(blocked) {
+        var StorageManager = FrameTrail.module('StorageManager'),
+            canSave        = StorageManager.canSave(),
+            toPageFile     = !canSave && StorageManager.canSaveToPageFile();
+        SaveButton.disabled = !(canSave || toPageFile) || !!blocked;
+        SaveButton.setAttribute('data-tooltip-bottom-left', labels[toPageFile ? 'SaveToThisFile' : 'GenericSaveChanges']);
+    }
+
+
+    /**
+     * The storage changed while editing (a project saved into a project file
+     * goes on there): saving and importing may have become possible.
+     *
+     * @method changeStorageMode
+     * @private
+     */
+    function changeStorageMode() {
+        if (!FrameTrail.getState('editMode')) return;
+        var Collaboration = FrameTrail.module('Collaboration'),
+            canSave       = FrameTrail.module('StorageManager').canSave(),
+            isGuest       = FrameTrail.module('UserManagement').isGuestMode(),
+            canImport     = canSave && ['server', 'local', 'file'].indexOf(FrameTrail.getState('storageMode')) !== -1;
+        updateSaveButton(Collaboration && Collaboration.isLockedByOther());
+        NewHypervideoButton.forEach(function(btn) { btn.disabled = isGuest && !canSave; });
+        ForkButton.disabled = isGuest && !canSave;
+        ImportButton.forEach(function(btn) { btn.disabled = !canImport; });
+    }
 
     SaveAsButton.addEventListener('click', function(){
         FrameTrail.module('HypervideoModel').saveAs();
@@ -786,7 +826,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             buttons: [
                 { text: labels['GenericForkHypervideo'],
                     click: function() {
-                        if (FrameTrail.getState('storageMode') === 'local') {
+                        if (FrameTrail.module('StorageManager').isLocal()) {
                             forkHypervideoLocally(forkDialogCtrl, thisID);
                         } else {
                             forkDialog.querySelector('.forkHypervideoForm').dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
@@ -1124,6 +1164,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             staleBy:  'MessageCollabChangesBy',
             stale:    'MessageCollabChangesAvailable',
             staleLocal: 'MessageCollabChangedInFolder',
+            staleFile:  'MessageCollabChangedInFile',
             lockedBy: 'MessageCollabLockedBy',
             takeover: true,
             refresh:  refreshHypervideoFromServer,
@@ -1152,6 +1193,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             staleBy:  'MessageCollabLibraryChangesBy',
             stale:    'MessageCollabLibraryChanged',
             staleLocal: 'MessageCollabLibraryChangedInFolder',
+            staleFile:  'MessageCollabLibraryChangedInFile',
             lockedBy: 'MessageCollabOverviewLockedBy',
             takeover: true,
             refresh:  refreshLibrary,
@@ -1254,10 +1296,11 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
             // Name whoever actually wrote, not whoever holds the lock — after a
             // takeover those differ, and the lock holder may well be us. In a
-            // local folder it was another program, and there is no server.
+            // local folder or project file it was another program (or tab),
+            // and there is no server.
             var writer = Collaboration.lastWriter(row.scope, row.scopeId),
                 staleText = (Collaboration.mode() === 'localFolder')
-                          ? labels[row.staleLocal]
+                          ? labels[(FrameTrail.getState('storageMode') === 'file') ? row.staleFile : row.staleLocal]
                           : (writer && writer.name)
                           ? labels[row.staleBy].replace('%s', writer.name)
                           : labels[row.stale];
@@ -1387,7 +1430,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         });
 
         if (SaveButton && FrameTrail.getState('editMode')) {
-            SaveButton.disabled = !FrameTrail.module('StorageManager').canSave() || blocked;
+            updateSaveButton(blocked);
         }
 
         // The map's lock is a different one, and its controls have to follow it
@@ -1446,10 +1489,10 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 var _isGuest = FrameTrail.module('UserManagement').isGuestMode();
                 NewHypervideoButton.forEach(function(btn) { btn.style.display = ''; btn.disabled = _isGuest && !_canSave; });
                 // Importing writes into the instance: only where saving goes somewhere.
-                var _canImport = _canSave && ['server', 'local'].indexOf(FrameTrail.getState('storageMode')) !== -1;
+                var _canImport = _canSave && ['server', 'local', 'file'].indexOf(FrameTrail.getState('storageMode')) !== -1;
                 ImportButton.forEach(function(btn) { btn.style.display = ''; btn.disabled = !_canImport; });
                 ForkButton.style.display = ''; ForkButton.disabled = _isGuest && !_canSave;
-                SaveButton.style.display = ''; SaveButton.disabled = !_canSave;
+                SaveButton.style.display = ''; updateSaveButton(false);
                 SaveAsButton.style.display = '';
                 ProjectSaveAsButton.style.display = '';
                 UndoButton.style.display = '';
@@ -1550,7 +1593,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             editMode:       toggleEditMode,
             loggedIn:       changeUserLogin,
             collabState:    renderCollaborationInfo,
-            editBusy:       renderCollaborationInfo
+            editBusy:       renderCollaborationInfo,
+            storageMode:    changeStorageMode
         },
 
         newUnsavedChange: newUnsavedChange,

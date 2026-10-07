@@ -1179,21 +1179,26 @@
         if (hypervideo === undefined) { throw new Error('Missing ' + dir + 'hypervideo.json'); }
 
         var bundle = { "bundle": "hypervideo", "formatVersion": 1, "id": String(id), "hypervideo": hypervideo },
-            annotationsDir = dir + 'annotations/';
+            annotationsDir = dir + 'annotations/',
+            annotationIndex, annotationFiles;
 
         Object.keys(files).forEach(function(path) {
             var name = (path.indexOf(annotationsDir) === 0) ? path.slice(annotationsDir.length) : null;
             if (!name || !/^[^\/]+\.json$/.test(name)) { return; }
-            bundle.annotations = bundle.annotations || {};
             if (name === '_index.json') {
-                bundle.annotations.index = folderFile(files, path);
+                annotationIndex = folderFile(files, path);
             } else {
-                bundle.annotations.files = bundle.annotations.files || {};
-                bundle.annotations.files[name.replace(/\.json$/, '')] = folderFile(files, path);
+                annotationFiles = annotationFiles || {};
+                annotationFiles[name.replace(/\.json$/, '')] = folderFile(files, path);
             }
         });
 
-        if (bundle.annotations && !bundle.annotations.files) { bundle.annotations.files = {}; }
+        // Index first, whatever the order of the paths, so the same folder is always the same JSON.
+        if (annotationIndex !== undefined || annotationFiles) {
+            bundle.annotations = {};
+            if (annotationIndex !== undefined) { bundle.annotations.index = annotationIndex; }
+            bundle.annotations.files = annotationFiles || {};
+        }
 
         if (withResources) {
             var index = folderFile(files, 'resources/_index.json'),

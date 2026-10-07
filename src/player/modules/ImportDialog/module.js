@@ -14,15 +14,16 @@
  *
  * Every hypervideo gets a new id and belongs to the importing user. Resource
  * ids are remapped (resources already here are reused), media files a zip
- * carries are copied, all other relative media paths point at the folder the
- * file came from. Other users' annotations go into the importing user's own
+ * carries are copied (not into a project file, which holds no media files),
+ * all other relative media paths point at the folder the file came from. Other users' annotations go into the importing user's own
  * annotation file, each keeping its creator. Code (global events, code
  * snippets, custom CSS) is only imported when the user asks for it, and in
  * server mode only by an administrator; so are the project-level parts of a
  * project (overview map, playback settings, global CSS).
  *
  * I write through the active storage: the server's actions, or the local
- * folder. In memory (download and static mode) there is nowhere to import to.
+ * folder or project file. In memory (download and static mode) there is
+ * nowhere to import to.
  *
  * @class ImportDialog
  * @static
@@ -60,8 +61,13 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
         return FrameTrail.getState('storageMode');
     }
 
+    // A local folder or a project file, written through the adapter.
+    function isLocal() {
+        return FrameTrail.module('StorageManager').isLocal();
+    }
+
     function isAdmin() {
-        return storageMode() === 'local' || FrameTrail.module('UserManagement').userRole === 'admin';
+        return isLocal() || FrameTrail.module('UserManagement').userRole === 'admin';
     }
 
     function serverPost(params) {
@@ -390,7 +396,7 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
             return true;
         }
 
-        if (storageMode() === 'local') {
+        if (isLocal()) {
 
             var adapter = FrameTrail.module('StorageManager').getAdapter(),
                 user    = FrameTrail.module('UserManagement');
@@ -474,7 +480,7 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
 
         var user = FrameTrail.module('UserManagement');
 
-        if (storageMode() === 'local') {
+        if (isLocal()) {
 
             var adapter = FrameTrail.module('StorageManager').getAdapter(),
                 time    = Math.floor(Date.now() / 1000);
@@ -562,7 +568,7 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
                 var id = ctx.ids[item.sourceID];
                 if (!id || !item.annotations.length) { return; }
 
-                if (storageMode() === 'local') {
+                if (isLocal()) {
                     var adapter = FrameTrail.module('StorageManager').getAdapter(),
                         dir     = 'hypervideos/' + id + '/annotations/',
                         now     = Math.floor(Date.now() / 1000);
@@ -604,7 +610,7 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
             return Promise.resolve();
         }
 
-        if (storageMode() === 'local') {
+        if (isLocal()) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             return adapter.readJSON('tagdefinitions.json').catch(function() { return {}; }).then(function(data) {
                 missing.forEach(function(tag) { data[tag] = clone(tagdefinitions[tag]); });
@@ -642,7 +648,7 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
                 map.markers = markers;
                 if (typeof map.background === 'string') { map.background = mapPath(ctx, map.background); }
                 map.lastchanged = Date.now();
-                if (storageMode() === 'local') {
+                if (isLocal()) {
                     var adapter = FrameTrail.module('StorageManager').getAdapter();
                     return adapter.readJSON('hypervideos/_index.json').then(function(index) {
                         index.overviewMap = map;
@@ -728,7 +734,7 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
         var bundle = source.bundle,
             ctx = {
                 datapath:    source.datapath ? new URL(source.datapath, window.location.href).href : null,
-                media:       source.media || {},
+                media:       (storageMode() === 'file') ? {} : (source.media || {}),
                 annotations: !!options.annotations,
                 code:        !!options.code,
                 parts:       options.parts || {},
@@ -739,6 +745,8 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
                 report:      { hypervideos: [], resourcesCreated: 0, resourcesReused: 0, annotations: 0, unresolved: [], problems: [] }
             };
 
+        // A project file cannot hold media files: its relative paths stay
+        // relative to it, or point at the source's datapath.
         var copy = (storageMode() === 'local' && Object.keys(ctx.media).length) ? copyMediaLocally(ctx) : Promise.resolve();
 
         return copy.then(function() {
@@ -833,7 +841,7 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
      */
     function open() {
 
-        if (['server', 'local'].indexOf(storageMode()) < 0 || !FrameTrail.module('StorageManager').canSave()) { return; }
+        if (['server', 'local', 'file'].indexOf(storageMode()) < 0 || !FrameTrail.module('StorageManager').canSave()) { return; }
 
         var wrapper = document.createElement('div');
         wrapper.innerHTML = '<div class="importDialog">'

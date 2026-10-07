@@ -434,29 +434,40 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
      */
     function renderTitle(aString) {
 
+        lastTitle = aString;
+
         var titleText = aString;
         var editButton = TitlebarTitle.querySelector('.hypervideoEditButton');
         var deleteButton = TitlebarTitle.querySelector('.hypervideoDeleteButton');
         TitlebarTitle.innerHTML = '';
 
-        // Show folder name before title when in local storage mode
-        if (FrameTrail.getState('storageMode') === 'local') {
-            var adapter = FrameTrail.module('StorageManager').getAdapter();
-            if (adapter && adapter.folderName) {
+        // Show the folder's or project file's name before the title in local
+        // and file mode; it opens the dialog for choosing another one.
+        if (FrameTrail.module('StorageManager').isLocal()) {
+            var adapter = FrameTrail.module('StorageManager').getAdapter(),
+                isFile  = FrameTrail.getState('storageMode') === 'file',
+                where   = adapter && (isFile ? adapter.fileName : adapter.folderName);
+            if (where) {
                 var folderIndicator = document.createElement('span');
                 folderIndicator.className = 'localFolderIndicator';
-                folderIndicator.title = 'Click to change folder';
-                folderIndicator.textContent = '\ud83d\udcc2 ' + adapter.folderName;
+                folderIndicator.textContent = (isFile ? '\ud83d\udcc4 ' : '\ud83d\udcc2 ') + where;
+                TitlebarTitle.append(folderIndicator);
+            }
+            // A page that is its own project file shows another one by being
+            // that page: there is nothing to reload into.
+            if (where && !FrameTrail.module('StorageManager').isPageFile()) {
+                folderIndicator.title = labels['StorageChange'];
                 folderIndicator.addEventListener('click', function() {
-                    FrameTrail.module('StorageManager').switchToLocal().then(function() {
+                    FrameTrail.module('StorageManager').openStorageDialog({ closable: true }).then(function() {
                         // Clear hash so we reload to overview, not a hypervideo ID from the old folder
                         window.location.hash = '';
                         window.location.reload();
                     }).catch(function() {
-                        // User cancelled the folder picker
+                        // Closed without choosing
                     });
                 });
-                TitlebarTitle.append(folderIndicator);
+            } else if (where) {
+                folderIndicator.style.cursor = 'default';
             }
         }
 
@@ -479,6 +490,15 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             document.title = titleText;
         }
 
+    }
+
+
+    // The title as last rendered, so a change of storage (a project saved
+    // into a file and edited there from now on) can show the file's name.
+    var lastTitle = '';
+
+    function rerenderTitle() {
+        if (TitlebarTitle.childNodes.length) { renderTitle(lastTitle); }
     }
 
 
@@ -825,7 +845,8 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             // renaming the overview, takes effect without the page reload that a
             // grid/map switch needs.
             config:              applyConfigChange,
-            overviewSearchQuery: syncSearchInput
+            overviewSearchQuery: syncSearchInput,
+            storageMode:         rerenderTitle
         },
 
         /**

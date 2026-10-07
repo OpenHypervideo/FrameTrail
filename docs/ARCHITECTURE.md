@@ -195,9 +195,9 @@ While an async transaction is open the state `editBusy` is `{ description }`: `E
 
 ### Export and Import
 
-`BundleExport` (`src/player/modules/BundleExport/`) makes bundles from a folder map — the `_data` layout as paths → contents, the serializer's `folder` format — that it fills from what is stored, read through the storage adapter (in memory: from the bundle or contents the page was started with), and from what is open: the open hypervideo as `Database.convertToDatabaseFormat()` makes it now, the current user's annotations as `Database.ownAnnotationFile()` would save them, the subtitles as loaded. Then `FrameTrailSerializer.readBundle(folder, 'folder', …)`, and `FrameTrailHTMLFormat.write()` for a page. Exports keep Transcript views, since the subtitles travel along. `instance.export()` and the Save As dialog call `BundleExport.exportData(options)`.
+`BundleExport` (`src/player/modules/BundleExport/`) makes bundles from a folder map — the `_data` layout as paths → contents, the serializer's `folder` format — that it fills from what is stored, read through the storage adapter (in memory: from the bundle or contents the page was started with), and from what is open: the open hypervideo as `Database.convertToDatabaseFormat()` makes it now, the current user's annotations as `Database.ownAnnotationFile()` would save them, the subtitles as loaded. Then `FrameTrailSerializer.readBundle(folder, 'folder', …)`, and `FrameTrailHTMLFormat.write()` for a page. Exports keep Transcript views, since the subtitles travel along. `instance.export()` and the Save As dialog call `BundleExport.exportData(options)`. "Save to Project File" (`StorageManager.saveToFile()`) puts the same folder map into a project file and continues there in `'file'` mode.
 
-`ImportDialog` (`src/player/modules/ImportDialog/`) reads a file (`FrameTrailHTMLFormat.parse`/`parseLegacy`, a bundle, or a zip through `fflate` and the `folder` format), validates the bundle with `FrameTrailSchema`, and writes through the active storage: in server mode the actions `fileUpload`, `hypervideoAdd` (with the subtitle files), `hypervideoChange`, `annotationfileSave`, `tagSet`, `overviewMapChange` and `Database.saveConfig()` / `saveGlobalCSS()`; in local-folder mode the adapter. Every source id is remapped or dropped (resources, hypervideo ids of jumps and map markers), relative media paths become URLs under the file's `data-frametrail-datapath` unless the zip carries the file, and code is left out unless the user asks for it.
+`ImportDialog` (`src/player/modules/ImportDialog/`) reads a file (`FrameTrailHTMLFormat.parse`/`parseLegacy`, a bundle, or a zip through `fflate` and the `folder` format), validates the bundle with `FrameTrailSchema`, and writes through the active storage: in server mode the actions `fileUpload`, `hypervideoAdd` (with the subtitle files), `hypervideoChange`, `annotationfileSave`, `tagSet`, `overviewMapChange` and `Database.saveConfig()` / `saveGlobalCSS()`; in local-folder and project-file mode the adapter (a project file gets no media files from a zip). Every source id is remapped or dropped (resources, hypervideo ids of jumps and map markers), relative media paths become URLs under the file's `data-frametrail-datapath` unless the zip carries the file, and code is left out unless the user asks for it.
 
 ## Type System
 
@@ -293,7 +293,7 @@ FrameTrail.changeState('editMode', true);
 | `target` | String/Element | CSS selector or DOM element for mount point |
 | `editMode` | Boolean/String | `false`, `'overlays'`, `'annotations'`, etc. |
 | `viewMode` | String | `'video'`, `'overview'`, `'resources'` |
-| `storageMode` | String | `'server'`, `'local'`, `'needsFolder'`, `'download'`, `'static'` |
+| `storageMode` | String | `'server'`, `'local'`, `'file'`, `'needsFolder'`, `'download'`, `'static'` |
 | `loggedIn` | Boolean | User authentication status |
 | `username` | String | Current user's name |
 | `fullscreen` | Boolean | Fullscreen state |
@@ -337,6 +337,7 @@ FrameTrail uses a strategy pattern for data persistence. The `StorageManager` mo
 |---------|-------|-----------|
 | Server | `StorageAdapterServer` | HTTP/HTTPS with PHP backend responding at `_server/ajaxServer.php` |
 | Local | `StorageAdapterLocal` | File System Access API available (Chrome/Edge) and folder selected |
+| Project file | `StorageAdapterHTMLFile` | File System Access API available and a project file opened: a page in the portable HTML format, read as a `_data` folder held in memory (`FrameTrailHTMLFormat.readProject`) and written back into its data block on every write (`writeProject`). Same interface as `StorageAdapterLocal`, except media files. |
 | Download | `StorageAdapterDownload` | No server and no File System Access API (Firefox/Safari, or `file://`), or data passed inline (`contents`, a `bundle`). Stores data in memory; `canSave` is `false`; work leaves through Save As (`BundleExport`). |
 | Static | `StorageAdapterStatic` | Explicit `dataPath` init option with no `server` option. Reads JSON from the CDN; inherits in-memory writes and Save As export from `StorageAdapterDownload`. |
 
@@ -346,23 +347,25 @@ All adapters implement the same interface, so the rest of the application doesn'
 
 `StorageManager.init()` determines the storage mode at startup:
 
-1. **Shorthand API or inline contents** (`videoElement` / `videoSource` present, or `contents` is not null) → `'download'` immediately (no server needed)
+1. **Shorthand API or inline contents** (`videoElement` / `videoSource` present, or `contents` is not null) → `'download'` (no server needed). Exception: a page in the portable HTML format opened from disk (`file://`, a `bundle`) whose own file was remembered by "Save to this file" (IndexedDB key `page:<path>`) → `'file'`, when the file may be written without asking and its data block is the one the page was loaded with
 2. **Explicit `server` option** → probe that URL; if PHP responds → `'server'`; if unreachable → fall through to local detection
 3. **Explicit `dataPath` + no `server`** → `'static'` (reads JSON from `dataPath`, in-memory writes, Save As export)
 4. **Auto-detect on HTTP/HTTPS** (neither option set) → probe `_server/ajaxServer.php`
    - PHP responds → set `server` + `dataPath` state to defaults, use `'server'`
    - PHP unreachable → fall through to local detection
 5. **Local detection** (no server found, or `file://` protocol):
-   - File System Access API supported (Chrome/Edge) → try to restore a previously saved folder handle
-     - Handle restored → `'local'`
-     - No handle → `'needsFolder'` (folder picker shown)
+   - File System Access API supported (Chrome/Edge) → restore the folder or project file used last (IndexedDB `frametrail-storage` / `handles`: `root`, `file`, and `mode` naming which)
+     - Restored → `'local'` or `'file'`
+     - Nothing remembered, or permission must be asked (that needs a click) → `'needsFolder'`: the storage dialog (`StorageManager.openStorageDialog()`) offers Reopen, Select Folder, Open Project File and New Project File
    - File System Access API not supported (Firefox/Safari) → `'download'`
 
-In `'download'` and `'static'` modes data is stored in memory and users can export their work via Save As. Once a folder is selected in `'needsFolder'` mode, the state transitions to `'local'`.
+In `'download'` and `'static'` modes data is stored in memory and users can export their work via Save As (without a server, Save As also offers "Save to Project File", which continues in `'file'` mode). Once a folder or project file is chosen in `'needsFolder'` mode, the state transitions to `'local'` or `'file'`. `StorageManager.isLocal()` is true for both: the data is read and written through the adapter. Code that needs real files beside the data (uploads, blob URLs of media) checks for `'local'`.
 
 ### Changes Made Outside the Editor
 
 In `'server'` mode the `Collaboration` module learns of changes through `collabSync` (or, for a guest, from the `Last-Modified` header of `hypervideo.json` and `hypervideos/_index.json`), and saves are compare-and-swap writes (code 7 on a conflict). In `'local'` mode other programs may write the folder while the editor is open, so `Collaboration` runs in its `localFolder` mode: it compares the version of `hypervideo.json` and `hypervideos/_index.json` (modification time and size, `StorageAdapterLocal.fileVersion()`) with the version the data on screen was read from, when the window gets the focus, when edit mode is entered and every 30 s while editing, and shows the sidebar's "changed" notice with Refresh. `StorageAdapterLocal` remembers the version of every file it reads and writes, so its own writes (from any module) are never reported. `Database.saveHypervideo()` and the hypervideo settings dialog refuse to write a `hypervideo.json` that changed since it was read (`StorageAdapterLocal.isUnchanged()`), with the same code 7 as the server: a manual save shows the conflict dialog, an automatic one the notice.
+
+`'file'` mode works the same way. `StorageAdapterHTMLFile` looks at the file's version before every read and write, takes a changed file in (writes it has not written yet stay on top), and keeps a version per path that changes only with that path's contents — so a tab that saved the other hypervideo, or the annotations, does not make this one stale. A write of the file that fails puts the folder back to what the file holds and rejects, so the editor stays dirty.
 
 ## Data Model
 

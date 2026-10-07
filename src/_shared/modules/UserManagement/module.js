@@ -785,10 +785,10 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             return;
         }
 
-        // In local/download/static mode without guest mode active, user is not yet identified.
+        // In local/file/download/static mode without guest mode active, user is not yet identified.
         // Also applies when storageMode is not yet set but shorthand API options
         // indicate that the Download adapter will be used (videoElement / videoSource).
-        if (storageMode === 'local' || storageMode === 'download' || storageMode === 'static' ||
+        if (storageMode === 'local' || storageMode === 'file' || storageMode === 'download' || storageMode === 'static' ||
             FrameTrail.getState('videoElement') || FrameTrail.getState('videoSource')) {
             window.setTimeout(function() {
                 callback.call(window, false);

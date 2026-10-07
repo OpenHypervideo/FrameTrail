@@ -92,15 +92,23 @@ Open `http://localhost:8080` and follow the setup wizard. The image builds the m
 3. When prompted, select or create a `_data` folder on your computer
 4. Full editing — all changes saved directly to your local files
 
+### Option 3: Project File
+
+1. Open `index.html` in Chrome or Edge, as above
+2. When prompted, choose **New Project File** or **Open Project File**
+3. The whole project is one HTML file: every save writes it, and the file plays wherever it is opened (media by URL, or in a `resources` folder next to it)
+
+A project page opened from the disk can also be saved into itself (**Save to this file**). See [Deployment](docs/DEPLOYMENT.md#option-3-project-file-one-html-file).
+
 ---
 
 ## Getting Started
 
-1. **Enter edit mode** — Click the Edit button (top right). In server mode, log in with your account or continue as a guest (name only). In local folder and in-memory modes, only the guest option is shown.
+1. **Enter edit mode** — Click the Edit button (top right). In server mode, log in with your account or continue as a guest (name only). In local folder, project file and in-memory modes, only the guest option is shown.
 2. **Create a hypervideo** — In the sidebar, click "New Hypervideo" and choose a video source
 3. **Add resources** — Click "Manage Resources" to upload or link media
 4. **Edit** — Drag resources onto the video timeline as overlays or annotations
-5. **Save** — In server/local mode, Ctrl+S saves directly. As a guest, use Save As to download your work as an HTML file (or as JSON), which any FrameTrail installation can import.
+5. **Save** — In server, local folder and project file mode, Ctrl+S saves directly. As a guest, use Save As to download your work as an HTML file (or as JSON), which any FrameTrail installation can import.
 6. **Share** — Copy the URL or export and share your hypervideo
 
 (see also the [FrameTrail-Examples](https://github.com/OpenHypervideo/FrameTrail-Examples) repository) 

@@ -44,7 +44,8 @@
 
     function updateTagModel (success, fail) {
 
-        var tagInitOptions = FrameTrail.getState('tagdefinitions');
+        // A project file is the only source of its tags (see Database.loadConfigData).
+        var tagInitOptions = (FrameTrail.getState('storageMode') === 'file') ? null : FrameTrail.getState('tagdefinitions');
 
         if (typeof tagInitOptions === 'object' && tagInitOptions !== null) {
 
@@ -54,7 +55,7 @@
 
         }
 
-        if (['local', 'download', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1) {
+        if (['local', 'file', 'download', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             adapter.readJSON('tagdefinitions.json').then(function(data) {
                 tags = data;
@@ -136,7 +137,7 @@
 
     function setTag (tagname, language, label, description, success, fail) {
 
-        if (['local', 'download', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1) {
+        if (['local', 'file', 'download', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             adapter.readJSON('tagdefinitions.json').catch(function() { return {}; }).then(function(data) {
                 if (!data[tagname]) { data[tagname] = {}; }
@@ -156,7 +157,7 @@
 
     function deleteLang (tagname, language, success, fail) {
 
-        if (['local', 'download', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1) {
+        if (['local', 'file', 'download', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             adapter.readJSON('tagdefinitions.json').catch(function() { return {}; }).then(function(data) {
                 if (data[tagname]) {
@@ -178,7 +179,7 @@
 
     function deleteTag (tagname, success, fail) {
 
-        if (['local', 'download', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1) {
+        if (['local', 'file', 'download', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             adapter.readJSON('tagdefinitions.json').catch(function() { return {}; }).then(function(data) {
                 delete data[tagname];

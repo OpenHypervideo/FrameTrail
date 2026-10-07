@@ -83,7 +83,13 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
                       : ((given && given.annotations) ? null : ((Database.contentsEntry(hypervideoID) || {}).annotations || []));
             if (!list) { return Promise.resolve(clone(given.annotations)); }
             var grouped = (HTMLFormat.hypervideoBundle({}, list).annotations) || { files: {} };
-            if (given && given.annotations && given.annotations.index) { grouped.index = clone(given.annotations.index); }
+            if (given && given.annotations && given.annotations.index) {
+                // Every file the index names is there (grouping by creator leaves empty files out), or the folder would not load.
+                grouped.index = clone(given.annotations.index);
+                Object.keys(Serializer.parseAnnotationIndex(grouped.index).annotationfiles).forEach(function(fileID) {
+                    if (!grouped.files[fileID]) { grouped.files[fileID] = []; }
+                });
+            }
             return Promise.resolve(grouped);
         }
 
@@ -298,9 +304,11 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
     }
 
     // What relative media paths of the data resolve against, for a page: the
-    // _data folder when it is on the web. A local folder's files are not.
+    // _data folder when it is on the web. A local folder's files are not; a
+    // project file's are where its own datapath says.
     function pageDatapath() {
         if (storageMode() === 'local') { return null; }
+        if (storageMode() === 'file') { return FrameTrail.module('StorageManager').getAdapter().datapath || null; }
         var url = FrameTrail.module('RouteNavigation').resolveDataURL('');
         return /^https?:/.test(url) ? url : null;
     }

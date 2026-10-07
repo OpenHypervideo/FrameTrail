@@ -69,4 +69,49 @@ class StorageAdapter {
      */
     async init() { throw new Error('Not implemented'); }
 
+    /**
+     * Read a value remembered across sessions: a handle of the File System
+     * Access API (a folder or a project file) or a short string, in the
+     * IndexedDB store 'frametrail-storage' / 'handles'.
+     * @param {String} key
+     * @return {Promise<*>} undefined when there is none
+     */
+    static async getStored(key) {
+        var db = await StorageAdapter._handleDB();
+        return new Promise(function(resolve, reject) {
+            var request = db.transaction('handles', 'readonly').objectStore('handles').get(key);
+            request.onsuccess = function() { resolve(request.result); };
+            request.onerror = function() { reject(request.error); };
+        });
+    }
+
+    /**
+     * Remember a value across sessions (see getStored); undefined forgets it.
+     * @param {String} key
+     * @param {*} value
+     * @return {Promise<void>}
+     */
+    static async setStored(key, value) {
+        var db = await StorageAdapter._handleDB();
+        return new Promise(function(resolve, reject) {
+            var tx    = db.transaction('handles', 'readwrite'),
+                store = tx.objectStore('handles');
+            if (value === undefined) { store.delete(key); } else { store.put(value, key); }
+            tx.oncomplete = function() { resolve(); };
+            tx.onerror = function() { reject(tx.error); };
+        });
+    }
+
+    /** @private */
+    static _handleDB() {
+        return new Promise(function(resolve, reject) {
+            var request = indexedDB.open('frametrail-storage', 1);
+            request.onerror = function() { reject(request.error); };
+            request.onsuccess = function() { resolve(request.result); };
+            request.onupgradeneeded = function(e) {
+                e.target.result.createObjectStore('handles');
+            };
+        });
+    }
+
 }

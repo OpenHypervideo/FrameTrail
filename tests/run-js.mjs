@@ -308,6 +308,23 @@ function checkDataFolder(label, dir) {
             }
         });
 
+        test('as a project page, they are edited in place: only the data block changes', (t) => {
+            if (invalid.length) { t.skip('the folder has invalid files'); return; }
+            const page    = Serializer.writeBundle(Serializer.readBundle(files, 'folder'), 'html', { library: { css: '/* css */', js: '/* js */' }, datapath: './' }),
+                  project = HTMLFormat.readProject(page);
+            assert.equal(HTMLFormat.writeProject(project.files, page), page);
+            project.files['tagdefinitions.json'] = Object.assign({}, project.files['tagdefinitions.json'], { added: { en: { label: 'Added', description: '' } } });
+            const edited = HTMLFormat.writeProject(project.files, page),
+                  start  = page.indexOf('<script type="application/ld+json"'),
+                  end    = page.indexOf('</script>', start);
+            assert.equal(edited.slice(0, start), page.slice(0, start));
+            assert.equal(edited.slice(edited.indexOf('</script>', start)), page.slice(end));
+            const bundle = HTMLFormat.parse(edited)[0].bundle,
+                  errors = validator.validate('project-bundle.schema.json', bundle);
+            assert.ok(!errors.length, formatErrors(errors));
+            assert.equal(bundle.tagdefinitions.added.en.label, 'Added');
+        });
+
     });
 
 }
@@ -832,6 +849,80 @@ describe('FrameTrailHTMLFormat', () => {
         const hypervideo = readJSON(path.join(FIXTURES, 'html', 'legacy-hypervideo.json')),
               errors     = validator.validate('hypervideo-bundle.schema.json', HTMLFormat.hypervideoBundle(hypervideo));
         assert.ok(!errors.length, formatErrors(errors));
+    });
+
+    test('editing a page in place keeps everything around its first data block', () => {
+        const project = Serializer.readBundle(readDataFolder(path.join(FIXTURES, 'data', 'zoom-in-on-dna')), 'folder'),
+              block   = HTMLFormat.write(project).match(/<script type="application\/ld\+json"[^>]*>[\s\S]*?<\/script>/)[0],
+              page    = '<!doctype html>\n<!-- my page --><html><head><title>Mine</title><script src="frametrail.min.js"></script></head>\n<body><h1>Hello</h1>\n'
+                      + block.replace('<script ', '<script id="data" ') + '\n'
+                      + '<script type="application/ld+json" data-frametrail="hypervideo">{"second":"block"}</script>\n<script>FrameTrail.autoInit();</script></body></html>\n',
+              files   = HTMLFormat.readProject(page).files;
+        files['config.json'] = { defaultTheme: 'dark' };
+        const edited = HTMLFormat.writeProject(files, page),
+              start  = page.indexOf('<script id="data"'),
+              blocks = HTMLFormat.parse(edited);
+        assert.equal(edited.slice(0, start), page.slice(0, start));
+        assert.equal(edited.slice(edited.indexOf('</script>', start)), page.slice(page.indexOf('</script>', start)));
+        assert.match(edited, /<script id="data" type="application\/ld\+json" data-frametrail="project" data-frametrail-format="1">/);
+        assert.equal(blocks.length, 2);
+        assert.deepStrictEqual(blocks[0].bundle.config, { defaultTheme: 'dark' });
+        assert.deepStrictEqual(blocks[1].bundle, { second: 'block' });
+        assert.equal(HTMLFormat.firstBlockText(edited), '\n' + HTMLFormat.blockJSON(blocks[0].bundle) + '\n');
+    });
+
+    test('a hypervideo page is read as a project with that hypervideo; its page settings move into the data', () => {
+        const bundle = allTypes(),
+              page   = HTMLFormat.write(bundle, { datapath: 'https://example.org/_data/', config: { defaultTheme: 'dark', videoFit: 'cover' } })
+                           .replace('data-frametrail-format="1"', 'data-frametrail-format="1" data-frametrail-language="fr"'),
+              read   = HTMLFormat.readProject(page);
+        assert.equal(read.kind, 'hypervideo');
+        assert.equal(read.datapath, 'https://example.org/_data/');
+        assert.deepStrictEqual(read.files['hypervideos/_index.json'], { 'hypervideo-increment': 1, 'hypervideos': { '1': './1' } });
+        assert.deepStrictEqual(read.files['config.json'], { defaultTheme: 'dark', videoFit: 'cover', defaultLanguage: 'fr' });
+        const written = HTMLFormat.parse(HTMLFormat.writeProject(read.files, page)),
+              errors  = validator.validate('project-bundle.schema.json', written[0].bundle);
+        assert.ok(!errors.length, formatErrors(errors));
+        assert.deepStrictEqual([written[0].kind, written[0].config, written[0].datapath], ['project', null, 'https://example.org/_data/']);
+        assert.deepStrictEqual(written[0].bundle.config, { defaultTheme: 'dark', defaultLanguage: 'fr', videoFit: 'cover' });
+        assert.deepStrictEqual(written[0].bundle.hypervideos['1'].hypervideo, bundle.hypervideo);
+        assert.deepStrictEqual(written[0].bundle.hypervideos['1'].annotations, bundle.annotations);
+        assert.deepStrictEqual(written[0].bundle.resources.resources, bundle.resources);
+    });
+
+    test('a hypervideo listed before its folder is written is left out', () => {
+        const files = HTMLFormat.emptyProject();
+        files['hypervideos/_index.json'] = { 'hypervideo-increment': 2, 'hypervideos': { '1': './1', '2': './2' } };
+        files['hypervideos/1/hypervideo.json'] = allTypes().hypervideo;
+        const bundle = HTMLFormat.projectBundle(files);
+        assert.deepStrictEqual(Object.keys(bundle.hypervideos), ['1']);
+        assert.deepStrictEqual(bundle.hypervideosIndex, { 'hypervideo-increment': 2, 'hypervideos': { '1': './1' } });
+    });
+
+    test('a new page from an empty project; pages without data are refused', () => {
+        const page = HTMLFormat.writeProject(HTMLFormat.emptyProject(), null, { library: { css: '/* css */', js: '/* js */' }, datapath: './', title: 'My project' }),
+              read = HTMLFormat.parse(page)[0],
+              errors = validator.validate('project-bundle.schema.json', read.bundle);
+        assert.ok(!errors.length, formatErrors(errors));
+        assert.deepStrictEqual([read.kind, read.datapath], ['project', './']);
+        assert.match(page, /<title>My project<\/title>/);
+        assert.equal(HTMLFormat.readProject(' \n').empty, true);
+        assert.throws(() => HTMLFormat.readProject('<html><body>Hello</body></html>'), /No FrameTrail data block/);
+        assert.throws(() => HTMLFormat.readProject('<script type="application/ld+json" data-frametrail>{"other":"data"}</script>'), /no bundle/);
+        assert.equal(HTMLFormat.firstBlockText('<p>none</p>'), null);
+    });
+
+    test('content written back into a page cannot end the block either', () => {
+        const page   = HTMLFormat.write(allTypes()),
+              read   = HTMLFormat.readProject(page),
+              file   = 'hypervideos/1/hypervideo.json',
+              text   = read.files[file].contents.find((item) => item.body && item.body['frametrail:type'] === 'text');
+        text.body['frametrail:attributes'].text = '</script><script>alert(1)</script><!-- </style>';
+        const edited = HTMLFormat.writeProject(read.files, page),
+              block  = HTMLFormat.firstBlockText(edited);
+        assert.ok(block.indexOf('<') < 0, 'a "<" inside the data block');
+        assert.equal((edited.match(/<\/script/gi) || []).length, (page.match(/<\/script/gi) || []).length);
+        assert.equal(HTMLFormat.readProject(edited).files[file].contents.find((item) => item.body && item.body['frametrail:type'] === 'text').body['frametrail:attributes'].text, text.body['frametrail:attributes'].text);
     });
 
 });

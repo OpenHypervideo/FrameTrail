@@ -357,7 +357,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
             queueItem.status = 'uploading';
             updateQueueUI();
 
-            var isLocal = (['local', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1);
+            var isLocal = (['local', 'file', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1);
             var uploadFn = isLocal ? uploadSingleFileLocally : uploadSingleFile;
 
             uploadFn(queueItem.file, queueItem.type, queueItem.thumb, function(success, error) {
@@ -510,7 +510,10 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
     function uploadResource(successCallback, onlyVideo) {
         FrameTrail.module('UserManagement').ensureAuthenticated(function(){
 
-            var isLocalMode = (['local', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1);
+            var isLocalMode   = (['local', 'file', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1),
+                // A project file holds no media files: nothing is uploaded, files in
+                // the resources folder beside it are added by name (see checkResourceInput).
+                isProjectFile = FrameTrail.getState('storageMode') === 'file';
 
             function showUploadDialog() {
 
@@ -535,7 +538,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                         + (onlyVideo ? '' :
                                               '        <div id="resourceInputTabURL">'
                                             + '            <div class="resourceInputMessage message active">'+ labels['MessagePasteAnyURL'] +'</div>'
-                                            + '            <input type="text" name="url" placeholder="URL" class="resourceInput">'
+                                            + '            <input type="text" name="url" placeholder="'+ (isProjectFile ? labels['ResourceURLOrFileName'] : 'URL') +'" class="resourceInput">'
                                             + '            <input type="hidden" name="thumbnail" class="resourceInput">'
                                             + '            <input type="hidden" name="embed" class="resourceInput">'
                                             + '            <div class="corsWarning message error">'+ labels['MessageEmbedNotAllowed'] +'</div>'
@@ -543,7 +546,8 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                             + '        </div>'
                                         )
                                         + '        <div id="resourceInputTabFile">'
-                                        + '            <div class="dropZone">'
+                                        + (isProjectFile ? '            <div class="message active">'+ labels['MessageProjectFileNoUpload'] +'</div>' : '')
+                                        + '            <div class="dropZone"'+ (isProjectFile ? ' style="display: none;"' : '') +'>'
                                         + '                <div class="dropZoneContent">'
                                         + '                    <p><span class="icon-upload"></span>'+ labels['MessageDropFilesHere'] +'</p>'
                                         + '                    <button type="button" class="chooseFilesBtn">'+ labels['MessageChooseFiles'] +'</button>'
@@ -1208,8 +1212,15 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
 
         if ( uriValue.length > 3 ) {
 
+            // In a project file a file in the resources folder beside it is
+            // added by its path (a name, or a path whose first part names no host).
+            var projectFilePath = FrameTrail.getState('storageMode') === 'file'
+                && /\.(gif|jpe?g|png|mp4|m3u8|mp3|pdf)$/i.test(uriValue)
+                && !/^[a-zA-Z][a-zA-Z0-9+\-.]*:|^[\/\\]/.test(uriValue)
+                && (uriValue.indexOf('/') < 0 || uriValue.split('/')[0].indexOf('.') < 0);
+
             // Auto-prepend https:// if no protocol is present
-            if (!/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(uriValue)) {
+            if (!projectFilePath && !/^[a-zA-Z][a-zA-Z0-9+\-.]*:\/\//.test(uriValue)) {
                 uriValue = 'https://' + uriValue;
                 // Also update the input field so the user sees the normalised value
                 if (currentUploadDialog) { currentUploadDialog.querySelector('#resourceInputTabURL input[name="url"]').value = uriValue; }
@@ -1792,8 +1803,10 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
      */
     function deleteResource(resourceID, successCallback, cancelCallback) {
 
-        if (FrameTrail.getState('storageMode') === 'local') {
-            var adapter = FrameTrail.module('StorageManager').getAdapter();
+        if (FrameTrail.module('StorageManager').isLocal()) {
+            var adapter = FrameTrail.module('StorageManager').getAdapter(),
+                // A project file's media files are not its own to delete.
+                ownsFiles = FrameTrail.getState('storageMode') === 'local';
             adapter.readJSON('resources/_index.json').then(function(indexData) {
                 if (!indexData.resources[resourceID]) {
                     cancelCallback({ code: 3, string: 'Resource not found' });
@@ -1803,11 +1816,11 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                 var deleteTasks = [];
 
                 // Delete the source file if it's a local file (not an external URL)
-                if (res.src && !/^(https?:|\/\/|file:|blob:)/.test(res.src)) {
+                if (ownsFiles && res.src && !/^(https?:|\/\/|file:|blob:)/.test(res.src)) {
                     deleteTasks.push(adapter.deleteFile('resources/' + res.src).catch(function() {}));
                 }
                 // Delete the thumbnail file if it's a local file
-                if (res.thumb && !/^(https?:|\/\/|file:|blob:)/.test(res.thumb)) {
+                if (ownsFiles && res.thumb && !/^(https?:|\/\/|file:|blob:)/.test(res.thumb)) {
                     deleteTasks.push(adapter.deleteFile('resources/' + res.thumb).catch(function() {}));
                 }
 
@@ -2007,7 +2020,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
     function getFilteredList(targetElement, key, condition, values) {
 
         var storageMode = FrameTrail.getState('storageMode');
-        if (storageMode === 'local' || storageMode === 'download') {
+        if (storageMode === 'local' || storageMode === 'file' || storageMode === 'download') {
             // Client-side filtering using the already-loaded Database resources
             var allResources = FrameTrail.module('Database').resources;
             var result = {};
@@ -2187,7 +2200,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
      */
     function updateResource(resourceID, updateData, successCallback, cancelCallback) {
 
-        if (FrameTrail.getState('storageMode') === 'local') {
+        if (FrameTrail.module('StorageManager').isLocal()) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             adapter.readJSON('resources/_index.json').then(function(indexData) {
                 if (!indexData.resources[resourceID]) {

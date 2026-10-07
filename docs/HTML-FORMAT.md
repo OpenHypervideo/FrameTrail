@@ -82,7 +82,19 @@ FrameTrail.init({
 }, 'PlayerLauncher');
 ```
 
-A hypervideo bundle starts in its hypervideo, under its own id. A project bundle starts in the overview (in map mode with its overview map) unless a `startID` or the page's hash names a hypervideo. Annotations, subtitles (also in Transcript views), tag definitions and the global CSS come from the bundle; nothing is fetched. The player runs in memory (`storageMode: 'download'`): it can be edited and exported again with Save As, and nothing is saved.
+A hypervideo bundle starts in its hypervideo, under its own id. A project bundle starts in the overview (in map mode with its overview map) unless a `startID` or the page's hash names a hypervideo. Annotations, subtitles (also in Transcript views), tag definitions and the global CSS come from the bundle; nothing is fetched. The player runs in memory (`storageMode: 'download'`): it can be edited and exported again with Save As, and nothing is saved — except in a browser with the File System Access API (Chrome, Edge), where a page opened from the disk can be saved into its own file (see [Editing a Page in Place](#editing-a-page-in-place)).
+
+## Editing a Page in Place
+
+A page in this format can be a project file: FrameTrail opens it, edits it and saves it in place (`storageMode: 'file'`, see [DEPLOYMENT.md](DEPLOYMENT.md#option-3-project-file-one-html-file)). Saving changes the page as little as possible:
+
+- **Only the first data block is replaced.** Everything around it — the doctype, the title, the library, other scripts, other data blocks, anything added by hand — stays byte for byte. In the block's start tag, `data-frametrail` and `data-frametrail-format` are set, other attributes are kept.
+- **The block always holds a project bundle.** A page with a hypervideo bundle becomes a project with that one hypervideo under its own id (it still opens in that hypervideo, the only one).
+- **The page's playback settings move into the data.** `data-frametrail-config` and `data-frametrail-language` are read into the project's `config` and removed from the block on the first save, so the settings dialog decides from then on. Only the playback settings travel (the project bundle's `config`).
+- **A new page** (an empty file, or a project saved into a file that is no page in this format) is written like an export, with `data-frametrail-datapath="./"`: media paths relative to the page point into a `resources/` folder beside it.
+- **Media files are never embedded.** A page refers to them by URL or by a path relative to its datapath.
+
+`FrameTrailHTMLFormat` does the reading and writing: `readProject(html)` → `{ files, kind, datapath, target, empty }` (the `_data` folder of the project, the serializer's `folder` format), `writeProject(files, page, options)` (the folder back into the page's data block, or a new page), and `replaceBlock(page, bundle, options)` underneath.
 
 ## Reading Without Running
 

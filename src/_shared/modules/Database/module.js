@@ -417,7 +417,9 @@
             configSource = FrameTrail.getState('config');
         }
 
-        var configInitOptions = configSource;
+        // A project file is the only source of its config: what the page it
+        // may have been opened from was started with does not apply.
+        var configInitOptions = (FrameTrail.getState('storageMode') === 'file') ? null : configSource;
 
         if (typeof configInitOptions === 'object' && configInitOptions !== null) {
 
@@ -467,7 +469,7 @@
             success.call(this);
         }
 
-        if (FrameTrail.getState('storageMode') === 'local') {
+        if (FrameTrail.module('StorageManager').isLocal()) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             adapter.readJSON('config.json')
                 .then(applyConfig)
@@ -501,13 +503,14 @@
         //clear previous resources to allow deletion as we use object assign
         resources = {};
 
-        if (FrameTrail.getState('storageMode') === 'local') {
+        if (FrameTrail.module('StorageManager').isLocal()) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             adapter.readJSON('resources/_index.json')
                 .then(function(data) {
                     resources = data.resources || {};
                     // Pre-load blob URLs for local resource files so getResourceURL() works synchronously
-                    return adapter.preloadResourceURLs(resources);
+                    // (a project file has no files beside it it could read)
+                    return adapter.preloadResourceURLs ? adapter.preloadResourceURLs(resources) : null;
                 })
                 .then(function() {
                     success.call(this);
@@ -626,7 +629,7 @@
             users = FrameTrail.getState('users');
             success.call(this);
 
-        } else if (FrameTrail.getState('storageMode') === 'local') {
+        } else if (FrameTrail.module('StorageManager').isLocal()) {
 
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             adapter.readJSON('users.json')
@@ -741,7 +744,7 @@
      */
     function loadHypervideoData(success, fail) {
 
-        if (FrameTrail.getState('storageMode') === 'local') {
+        if (FrameTrail.module('StorageManager').isLocal()) {
             loadHypervideoData_LocalAdapter(success, fail);
             return;
         }
@@ -1045,7 +1048,7 @@
      */
     function loadAnnotationData(success, fail) {
 
-        if (FrameTrail.getState('storageMode') === 'local') {
+        if (FrameTrail.module('StorageManager').isLocal()) {
             loadAnnotationData_LocalAdapter(success, fail);
             return;
         }
@@ -1293,7 +1296,7 @@
             }
 
             // A bundle carries the subtitle texts (WebVTT keyed by srclang).
-            var inlineTexts = (FrameTrail.getState('storageMode') !== 'local' && contentsEntry(hypervideoID) || {}).subtitles;
+            var inlineTexts = (!FrameTrail.module('StorageManager').isLocal() && contentsEntry(hypervideoID) || {}).subtitles;
 
             if (inlineTexts && typeof inlineTexts === 'object') {
                 hypervideo.subtitles.forEach(function(currentSubtitles) {
@@ -1308,7 +1311,7 @@
                 return;
             }
 
-            if (FrameTrail.getState('storageMode') === 'local') {
+            if (FrameTrail.module('StorageManager').isLocal()) {
                 var adapter = FrameTrail.module('StorageManager').getAdapter();
                 for (var j = 0; j < hypervideo.subtitles.length; j++) {
                     (function(j) {

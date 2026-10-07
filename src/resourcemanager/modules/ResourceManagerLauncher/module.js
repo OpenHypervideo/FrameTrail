@@ -50,30 +50,9 @@
         var storageMode = FrameTrail.getState('storageMode');
 
         if (storageMode === 'needsFolder') {
-            var _fdw = document.createElement('div');
-            _fdw.innerHTML = '<div class="folderPromptDialog"><p>' + labels['SelectDataFolderDescription'] + '</p></div>';
-            var folderDialog = _fdw.firstElementChild;
-
-            var folderDialogCtrl = Dialog({
-                title:         labels['SelectDataFolder'],
-                icon:          'icon-folder-open',
-                content:       folderDialog,
-                modal:         true,
-                width:         450,
-                closeOnEscape: false,
-                buttons: [
-                    {
-                        text: labels['SelectFolder'],
-                        click: function() {
-                            FrameTrail.module('StorageManager').switchToLocal().then(function() {
-                                folderDialogCtrl.destroy();
-                                continueLoadingRM();
-                            }).catch(function(err) {
-                                alert(labels['ErrorCouldNotAccessFolder'] + ' ' + err.message);
-                            });
-                        }
-                    }
-                ]
+            // A local folder or a project file (a new project file is made in the player).
+            FrameTrail.module('StorageManager').openStorageDialog({ closable: false, allowNew: false }).then(function() {
+                continueLoadingRM();
             });
             return;
         }

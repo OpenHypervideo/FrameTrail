@@ -20,7 +20,11 @@
  * I register the format "html" with FrameTrailSerializer (readBundle /
  * writeBundle), and I read the files FrameTrail exported before this format,
  * whose data is the JSON argument of FrameTrail.init(…), without evaluating
- * them. I touch neither the DOM nor any FrameTrail instance, so I run in the
+ * them. For editing a page in place I read it as the _data folder of a
+ * project and write the folder back into its data block, leaving the rest of
+ * the page alone (readProject / writeProject).
+ *
+ * I touch neither the DOM nor any FrameTrail instance, so I run in the
  * browser as a plain script (window.FrameTrailHTMLFormat) and in Node under
  * require().
  *
@@ -126,8 +130,9 @@
         return attributes;
     }
 
-    // Every <script> element: its attributes and its text. A start tag ends at
-    // the first ">" outside quotes; the text ends at the first "</script".
+    // Every <script> element: its attributes, its text, and where its start tag
+    // begins (start) and its text ends (textEnd). A start tag ends at the
+    // first ">" outside quotes; the text ends at the first "</script".
     function scriptElements(html) {
 
         var elements = [],
@@ -156,7 +161,10 @@
 
             elements.push({
                 attributes: parseAttributes(html.slice(start + 7, i)),
-                text:       html.slice(i + 1, end)
+                text:       html.slice(i + 1, end),
+                start:      start,
+                startTag:   html.slice(start, i + 1),
+                textEnd:    end
             });
 
             from = end + 8;
@@ -165,6 +173,14 @@
 
         return elements;
 
+    }
+
+    // The data blocks among them, in document order.
+    function dataBlocks(html) {
+        return scriptElements(String(html)).filter(function(element) {
+            var type = (element.attributes.type || '').trim().toLowerCase();
+            return type === 'application/ld+json' && Object.prototype.hasOwnProperty.call(element.attributes, 'data-frametrail');
+        });
     }
 
     /**
@@ -182,10 +198,7 @@
      */
     function parse(html) {
 
-        return scriptElements(String(html)).filter(function(element) {
-            var type = (element.attributes.type || '').trim().toLowerCase();
-            return type === 'application/ld+json' && Object.prototype.hasOwnProperty.call(element.attributes, 'data-frametrail');
-        }).map(function(element, index) {
+        return dataBlocks(html).map(function(element, index) {
 
             var attributes = element.attributes,
                 format     = attributes['data-frametrail-format'] ? parseInt(attributes['data-frametrail-format'], 10) : FORMAT_VERSION,
@@ -315,6 +328,232 @@
              + '<script>FrameTrail.autoInit();</script>\n'
              + '</body>\n'
              + '</html>\n';
+
+    }
+
+
+    /* ------------------------------------------------------------------ */
+    /*  Project files                                                     */
+    /* ------------------------------------------------------------------ */
+
+    /*
+     * A page in this format can be edited in place: it is read as a _data
+     * folder (the serializer's "folder" format, paths → contents), and saving
+     * writes the folder back as a project bundle into the page's data block.
+     * Nothing else of the page changes, so its library, title and anything
+     * added to it by hand are kept.
+     */
+
+    // Settings of the page that are playback settings of the data: moved into
+    // the bundle's config when a page is read as a project, and dropped from
+    // the block when it is written back, so the data alone decides.
+    var PAGE_SETTINGS = ['data-frametrail-config', 'data-frametrail-language'];
+
+    /**
+     * The text of the first data block, exactly as it is in the page, or
+     * null when there is none.
+     *
+     * @method firstBlockText
+     * @param {String} html
+     * @return {String|null}
+     */
+    function firstBlockText(html) {
+        var block = dataBlocks(html)[0];
+        return block ? block.text : null;
+    }
+
+    /**
+     * I replace the bundle in the first data block of a page and leave
+     * everything else as it is.
+     *
+     * options:
+     *
+     * * dropSettings: remove data-frametrail-config and
+     *   data-frametrail-language from the block;
+     * * datapath: set data-frametrail-datapath (null removes it; undefined
+     *   keeps it).
+     *
+     * @method replaceBlock
+     * @param {String} html
+     * @param {Object} bundle
+     * @param {Object} [options]
+     * @return {String}
+     */
+    function replaceBlock(html, bundle, options) {
+
+        options = options || {};
+        html    = String(html);
+
+        if (!isObject(bundle) || (bundle.bundle !== 'hypervideo' && bundle.bundle !== 'project')) {
+            throw new Error('Not a bundle');
+        }
+
+        var block = dataBlocks(html)[0];
+        if (!block) { throw new Error('No FrameTrail data block found'); }
+
+        var attributes = {}, changed = false;
+        Object.keys(block.attributes).forEach(function(name) {
+            if (options.dropSettings && PAGE_SETTINGS.indexOf(name) >= 0) { changed = true; return; }
+            attributes[name] = block.attributes[name];
+        });
+
+        function set(name, value) {
+            if (value === null) {
+                if (Object.prototype.hasOwnProperty.call(attributes, name)) { delete attributes[name]; changed = true; }
+            } else if (attributes[name] !== value) {
+                attributes[name] = value;
+                changed = true;
+            }
+        }
+
+        set('data-frametrail', bundle.bundle);
+        set('data-frametrail-format', String(FORMAT_VERSION));
+        if (options.datapath !== undefined) { set('data-frametrail-datapath', options.datapath || null); }
+
+        var startTag = changed
+                     ? '<script' + Object.keys(attributes).map(function(name) {
+                           return ' ' + name + '="' + escapeAttribute(attributes[name]) + '"';
+                       }).join('') + '>'
+                     : block.startTag;
+
+        return html.slice(0, block.start) + startTag + '\n' + blockJSON(bundle) + '\n' + html.slice(block.textEnd);
+
+    }
+
+    /**
+     * The folder of a project without hypervideos.
+     *
+     * @method emptyProject
+     * @return {Object} folder map
+     */
+    function emptyProject() {
+        return {
+            'config.json':             {},
+            'hypervideos/_index.json': { 'hypervideo-increment': 0, 'hypervideos': {} },
+            'resources/_index.json':   { 'resources-increment': 0, 'resources': {} },
+            'tagdefinitions.json':     {}
+        };
+    }
+
+    /**
+     * I read a page in this format as the _data folder of a project:
+     *
+     *     { files, kind, datapath, target, empty }
+     *
+     * files is the folder map. The first data block is the project; a page
+     * with a hypervideo bundle becomes a project with that one hypervideo
+     * (under its own id), and the page's playback settings
+     * (data-frametrail-config, -language) become part of config.json. An empty
+     * text is an empty project (empty: true). A page without a data block, or
+     * whose block is no bundle, throws.
+     *
+     * @method readProject
+     * @param {String} html
+     * @return {Object}
+     */
+    function readProject(html) {
+
+        html = String(html);
+
+        if (!html.trim()) {
+            return { files: emptyProject(), kind: null, datapath: null, target: null, empty: true };
+        }
+
+        var element = dataBlocks(html)[0];
+        if (!element) { throw new Error('No FrameTrail data block found'); }
+
+        var block  = parse(html)[0],
+            bundle = block.bundle,
+            files;
+
+        if (isObject(bundle) && bundle.bundle === 'project') {
+
+            files = Serializer.writeBundle(bundle, 'folder');
+
+        } else if (isObject(bundle) && bundle.bundle === 'hypervideo') {
+
+            var id = (bundle.id != null && bundle.id !== '') ? String(bundle.id) : '0';
+            files = Serializer.writeBundle(bundle, 'folder', { id: id });
+            files['hypervideos/_index.json'] = { 'hypervideo-increment': parseInt(id, 10) || 0, 'hypervideos': {} };
+            files['hypervideos/_index.json'].hypervideos[id] = './' + id;
+
+        } else {
+            throw new Error('The data block holds no bundle');
+        }
+
+        var config   = Object.assign({}, isObject(files['config.json']) ? files['config.json'] : {}, block.config || {}),
+            language = element.attributes['data-frametrail-language'];
+        if (language) { config.defaultLanguage = language; }
+        files['config.json'] = config;
+
+        return { files: files, kind: block.kind, datapath: block.datapath, target: block.target, empty: false };
+
+    }
+
+    // The folder's path of a hypervideo index entry, or null when the entry
+    // is no folder inside the tree.
+    function hypervideoPath(rel) {
+        var dir = String(rel).replace(/^\.\//, '').replace(/\/+$/, '');
+        if (!dir || dir.charAt(0) === '/' || dir.split('/').indexOf('..') >= 0) { return null; }
+        return 'hypervideos/' + dir + '/hypervideo.json';
+    }
+
+    /**
+     * I make the project bundle of a folder. A hypervideo listed in the index
+     * whose hypervideo.json is not (yet) there is left out, so the bundle of
+     * a folder in the middle of adding one is the folder before it.
+     *
+     * @method projectBundle
+     * @param {Object} files  folder map
+     * @return {Object} bundle
+     */
+    function projectBundle(files) {
+
+        var index   = files['hypervideos/_index.json'];
+        if (typeof index === 'string') { index = JSON.parse(index); }
+        if (!isObject(index)) { index = { 'hypervideo-increment': 0, 'hypervideos': {} }; }
+
+        var entries = isObject(index.hypervideos) ? index.hypervideos : {},
+            kept    = {};
+
+        Object.keys(entries).forEach(function(id) {
+            var file = hypervideoPath(entries[id]);
+            if (file && Object.prototype.hasOwnProperty.call(files, file)) { kept[id] = entries[id]; }
+        });
+
+        var folder = Object.assign({}, files);
+        folder['hypervideos/_index.json'] = Object.assign({}, index, { 'hypervideos': kept });
+
+        return Serializer.readBundle(folder, 'folder', { bundle: 'project' });
+
+    }
+
+    /**
+     * I write the folder of a project as a page: into the data block of
+     * template (a page in this format: the rest of it stays as it is, the
+     * page's playback settings are dropped from the block, see readProject),
+     * or as a new page when there is no template.
+     *
+     * options: library and title for a new page (see write); datapath for the
+     * block (undefined keeps the template's).
+     *
+     * @method writeProject
+     * @param {Object} files  folder map
+     * @param {String} [template]
+     * @param {Object} [options]
+     * @return {String}
+     */
+    function writeProject(files, template, options) {
+
+        options = options || {};
+
+        var bundle = projectBundle(files);
+
+        if (template && dataBlocks(template).length) {
+            return replaceBlock(template, bundle, { dropSettings: true, datapath: options.datapath });
+        }
+
+        return write(bundle, { library: options.library, datapath: options.datapath || null, title: options.title });
 
     }
 
@@ -453,7 +692,14 @@
         parseLegacy:      parseLegacy,
         hypervideoBundle: hypervideoBundle,
         cdnLibrary:       cdnLibrary,
-        blockJSON:        blockJSON
+        blockJSON:        blockJSON,
+
+        firstBlockText:   firstBlockText,
+        replaceBlock:     replaceBlock,
+        emptyProject:     emptyProject,
+        readProject:      readProject,
+        projectBundle:    projectBundle,
+        writeProject:     writeProject
 
     };
 
