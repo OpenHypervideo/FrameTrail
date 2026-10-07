@@ -166,56 +166,70 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
     }
 
     /**
-     * Get items that would be out of range if duration is changed
-     * @method getOutOfRangeItems
-     * @param {Number} newDuration - new duration in seconds
-     * @return {Object} { overlays: [], codeSnippets: [], annotations: [], hasAffectedItems: Boolean }
+     * I tell whether a hypervideo is the one loaded in the editor. This
+     * dialog is also opened from the overview, for any hypervideo.
+     *
+     * @method isLoadedHypervideo
+     * @param {String} hypervideoID
+     * @return {Boolean}
      */
-    function getOutOfRangeItems(newDuration) {
-        var HypervideoModel = FrameTrail.module('HypervideoModel');
-        var outOfRange = { 
-            overlays: [], 
-            codeSnippets: [], 
-            annotations: [],
-            hasAffectedItems: false
-        };
-        
-        // Check overlays (start >= newDuration OR end > newDuration)
-        if (HypervideoModel.overlays) {
-            HypervideoModel.overlays.forEach(function(overlay) {
-                if (overlay.data.start >= newDuration) {
-                    outOfRange.overlays.push({ item: overlay, action: 'delete' });
-                    outOfRange.hasAffectedItems = true;
-                } else if (overlay.data.end > newDuration) {
-                    outOfRange.overlays.push({ item: overlay, action: 'truncate', newEnd: newDuration });
-                    outOfRange.hasAffectedItems = true;
-                }
-            });
+    function isLoadedHypervideo(hypervideoID) {
+        return !!FrameTrail.module('HypervideoModel')
+            && String(hypervideoID) === String(FrameTrail.module('RouteNavigation').hypervideoID);
+    }
+
+    /**
+     * I list what a shorter duration cuts off a hypervideo: overlays and code
+     * snippets that start at or after the new end are deleted, overlays that
+     * run past it are truncated.
+     *
+     * It is about the hypervideo being edited, which need not be the one
+     * loaded in the editor. For the loaded one I look at the live data (what
+     * the editor shows and saves), for any other at what is stored. Items are
+     * identified by created, as everywhere.
+     *
+     * Annotations are left alone: they belong to their authors, and one that
+     * starts after the end is simply never reached.
+     *
+     * @method getOutOfRangeItems
+     * @param {String} hypervideoID
+     * @param {Number} newDuration - new duration in seconds
+     * @return {Object} { overlays: [{ created, action, newEnd }], codeSnippets: [{ created, action }], hasAffectedItems: Boolean }
+     */
+    function getOutOfRangeItems(hypervideoID, newDuration) {
+        var database   = FrameTrail.module('Database'),
+            outOfRange = {
+                overlays:         [],
+                codeSnippets:     [],
+                hasAffectedItems: false
+            },
+            overlays, codeSnippets;
+
+        if (isLoadedHypervideo(hypervideoID)) {
+            overlays     = database.overlays;
+            codeSnippets = database.codeSnippets.timebasedEvents || [];
+        } else {
+            var stored = window.FrameTrailSerializer.parseHypervideo(database.hypervideos[hypervideoID].hypervideoData);
+            overlays     = stored.overlays;
+            codeSnippets = stored.codeSnippets;
         }
-        
-        // Check code snippets (only have start time)
-        if (HypervideoModel.codeSnippets) {
-            HypervideoModel.codeSnippets.forEach(function(snippet) {
-                if (snippet.data.start >= newDuration) {
-                    outOfRange.codeSnippets.push({ item: snippet, action: 'delete' });
-                    outOfRange.hasAffectedItems = true;
-                }
-            });
-        }
-        
-        // Check annotations (all user annotations)
-        if (HypervideoModel.annotations) {
-            HypervideoModel.annotations.forEach(function(anno) {
-                if (anno.data.start >= newDuration) {
-                    outOfRange.annotations.push({ item: anno, action: 'delete' });
-                    outOfRange.hasAffectedItems = true;
-                } else if (anno.data.end > newDuration) {
-                    outOfRange.annotations.push({ item: anno, action: 'truncate', newEnd: newDuration });
-                    outOfRange.hasAffectedItems = true;
-                }
-            });
-        }
-        
+
+        overlays.forEach(function(overlay) {
+            if (overlay.start >= newDuration) {
+                outOfRange.overlays.push({ created: overlay.created, action: 'delete' });
+            } else if (overlay.end > newDuration) {
+                outOfRange.overlays.push({ created: overlay.created, action: 'truncate', newEnd: newDuration });
+            }
+        });
+
+        codeSnippets.forEach(function(snippet) {
+            if (snippet.start >= newDuration) {
+                outOfRange.codeSnippets.push({ created: snippet.created, action: 'delete' });
+            }
+        });
+
+        outOfRange.hasAffectedItems = outOfRange.overlays.length > 0 || outOfRange.codeSnippets.length > 0;
+
         return outOfRange;
     }
 
@@ -234,57 +248,120 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
     }
 
     /**
-     * Apply duration change - delete or truncate out-of-range items
+     * I apply a shorter duration to a hypervideo: its clip gets the new
+     * duration, and the items getOutOfRangeItems listed are deleted or
+     * truncated.
+     *
+     * For the hypervideo loaded in the editor that happens to the live items,
+     * which the dialog's save then writes — like the name and settings it
+     * changes, so nothing is marked unsaved (a duration change ends with the
+     * hypervideo reloaded from what was written). Any other hypervideo has no
+     * live items and must not touch the loaded one's: I return the cuts, and
+     * the dialog applies them to the hypervideo.json it writes (cutContents).
+     *
      * @method applyDurationChange
+     * @param {String} hypervideoID
      * @param {Number} newDuration
      * @param {Object} outOfRangeItems
      * @param {Object} DatabaseEntry
+     * @return {Object|null} the cuts still to apply to the written file
      */
-    function applyDurationChange(newDuration, outOfRangeItems, DatabaseEntry) {
-        var HypervideoModel = FrameTrail.module('HypervideoModel');
-        
-        // Delete fully out-of-range overlays
-        outOfRangeItems.overlays.filter(function(i) { return i.action === 'delete'; }).forEach(function(item) {
-            var index = HypervideoModel.overlays.indexOf(item.item);
-            if (index > -1) {
-                HypervideoModel.overlays.splice(index, 1);
-            }
-        });
-        
-        // Truncate partially out-of-range overlays
-        outOfRangeItems.overlays.filter(function(i) { return i.action === 'truncate'; }).forEach(function(item) {
-            item.item.data.end = item.newEnd;
-        });
-        
-        // Delete out-of-range code snippets
-        outOfRangeItems.codeSnippets.filter(function(i) { return i.action === 'delete'; }).forEach(function(item) {
-            var index = HypervideoModel.codeSnippets.indexOf(item.item);
-            if (index > -1) {
-                HypervideoModel.codeSnippets.splice(index, 1);
-            }
-        });
-        
-        // Delete fully out-of-range annotations
-        outOfRangeItems.annotations.filter(function(i) { return i.action === 'delete'; }).forEach(function(item) {
-            var index = HypervideoModel.annotations.indexOf(item.item);
-            if (index > -1) {
-                HypervideoModel.annotations.splice(index, 1);
-            }
-        });
-        
-        // Truncate partially out-of-range annotations
-        outOfRangeItems.annotations.filter(function(i) { return i.action === 'truncate'; }).forEach(function(item) {
-            item.item.data.end = item.newEnd;
-        });
-        
-        // Update duration in database entry
+    function applyDurationChange(hypervideoID, newDuration, outOfRangeItems, DatabaseEntry) {
+
         if (DatabaseEntry.clips && DatabaseEntry.clips[0]) {
             DatabaseEntry.clips[0].duration = newDuration;
         }
-        
-        // Update HypervideoModel duration
+
+        if (!isLoadedHypervideo(hypervideoID)) {
+            return outOfRangeItems;
+        }
+
+        var HypervideoModel = FrameTrail.module('HypervideoModel'),
+            database        = FrameTrail.module('Database');
+
+        function liveItem(list, created) {
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].data.created === created) { return list[i]; }
+            }
+            return null;
+        }
+
+        function dataIndex(list, created) {
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].created === created) { return i; }
+            }
+            return -1;
+        }
+
+        if (outOfRangeItems.overlays.length) {
+            FrameTrail.module('OverlaysController').overlayInFocus = null;
+        }
+        if (outOfRangeItems.codeSnippets.length) {
+            FrameTrail.module('CodeSnippetsController').codeSnippetInFocus = null;
+        }
+
+        outOfRangeItems.overlays.forEach(function(cut) {
+            var index = dataIndex(database.overlays, cut.created);
+            if (index < 0) { return; }
+            if (cut.action === 'truncate') {
+                database.overlays[index].end = cut.newEnd;
+                return;
+            }
+            // Overlays of a type that no longer exists are kept in the data
+            // but not rendered, so they have no live object.
+            var overlay = liveItem(HypervideoModel.overlays, cut.created);
+            if (overlay) {
+                overlay.removeFromDOM();
+                HypervideoModel.overlays.splice(HypervideoModel.overlays.indexOf(overlay), 1);
+            }
+            database.overlays.splice(index, 1);
+        });
+
+        outOfRangeItems.codeSnippets.forEach(function(cut) {
+            var snippets = database.codeSnippets.timebasedEvents,
+                index    = dataIndex(snippets, cut.created),
+                snippet  = liveItem(HypervideoModel.codeSnippets, cut.created);
+            if (snippet) {
+                snippet.removeFromDOM();
+                HypervideoModel.codeSnippets.splice(HypervideoModel.codeSnippets.indexOf(snippet), 1);
+            }
+            if (index > -1) { snippets.splice(index, 1); }
+        });
+
         HypervideoModel.durationFull = newDuration;
         HypervideoModel.duration = newDuration - HypervideoModel.offsetIn;
+
+        return null;
+    }
+
+    /**
+     * I apply the cuts applyDurationChange returned for a hypervideo that is
+     * not loaded in the editor to the hypervideo.json this dialog writes.
+     *
+     * @method cutContents
+     * @param {Object} hypervideoJSON
+     * @param {Object} cuts
+     * @return {Object} the new hypervideo.json
+     */
+    function cutContents(hypervideoJSON, cuts) {
+
+        var Serializer = window.FrameTrailSerializer,
+            model      = Serializer.parseHypervideo(hypervideoJSON);
+
+        function apply(items, list) {
+            return items.filter(function(item) {
+                var cut = list.filter(function(c) { return c.created === item.created; })[0];
+                if (!cut) { return true; }
+                if (cut.action === 'delete') { return false; }
+                item.end = cut.newEnd;
+                return true;
+            });
+        }
+
+        model.overlays     = apply(model.overlays, cuts.overlays);
+        model.codeSnippets = apply(model.codeSnippets, cuts.codeSnippets);
+
+        return Serializer.serializeHypervideo(model);
     }
 
     /**
@@ -302,8 +379,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         var overlaysToDelete = outOfRangeItems.overlays.filter(function(i) { return i.action === 'delete'; }).length;
         var overlaysToTruncate = outOfRangeItems.overlays.filter(function(i) { return i.action === 'truncate'; }).length;
         var snippetsToDelete = outOfRangeItems.codeSnippets.filter(function(i) { return i.action === 'delete'; }).length;
-        var annotationsToDelete = outOfRangeItems.annotations.filter(function(i) { return i.action === 'delete'; }).length;
-        var annotationsToTruncate = outOfRangeItems.annotations.filter(function(i) { return i.action === 'truncate'; }).length;
         
         if (overlaysToDelete > 0) {
             messageLines.push('• ' + overlaysToDelete + ' ' + labels['DurationChangeOverlaysDeleted']);
@@ -313,12 +388,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         }
         if (snippetsToDelete > 0) {
             messageLines.push('• ' + snippetsToDelete + ' ' + labels['DurationChangeCodeSnippetsDeleted']);
-        }
-        if (annotationsToDelete > 0) {
-            messageLines.push('• ' + annotationsToDelete + ' ' + labels['DurationChangeAnnotationsDeleted']);
-        }
-        if (annotationsToTruncate > 0) {
-            messageLines.push('• ' + annotationsToTruncate + ' ' + labels['DurationChangeAnnotationsTruncated'] + ' ' + formattedTime);
         }
         
         var _cdw = document.createElement('div');
@@ -593,9 +662,21 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             }
         }
 
+        // Cuts of a shorter duration still to apply to the hypervideo.json
+        // written below (only for a hypervideo not loaded in the editor).
+        var pendingContentCuts = null;
+
+        // The hypervideo.json this dialog writes.
+        function hypervideoJSON() {
+            var json = FrameTrail.module('Database').convertToDatabaseFormat(thisID);
+            return pendingContentCuts ? cutContents(json, pendingContentCuts) : json;
+        }
+
         function updateDatabaseFromForm() {
             // Only called when saving - apply changes to database
             var DatabaseEntry = FrameTrail.module('Database').hypervideos[thisID];
+
+            pendingContentCuts = null;
 
             DatabaseEntry.name = EditHypervideoForm.querySelector('input[name="name"]').value;
 
@@ -634,7 +715,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             if (pendingSourceChange) {
                 // Apply out-of-range item changes
                 if (pendingSourceChange.outOfRangeItems && pendingSourceChange.outOfRangeItems.hasAffectedItems) {
-                    applyDurationChange(pendingSourceChange.duration, pendingSourceChange.outOfRangeItems, DatabaseEntry);
+                    pendingContentCuts = applyDurationChange(thisID, pendingSourceChange.duration, pendingSourceChange.outOfRangeItems, DatabaseEntry);
                 }
                 
                 // Update source in clips
@@ -658,7 +739,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             }
             // Handle duration change for canvas videos (when not changing source)
             else if (isCanvasVideo && pendingDurationChange) {
-                applyDurationChange(pendingDurationChange.newDuration, pendingDurationChange.outOfRangeItems, DatabaseEntry);
+                pendingContentCuts = applyDurationChange(thisID, pendingDurationChange.newDuration, pendingDurationChange.outOfRangeItems, DatabaseEntry);
                 pendingDurationChange = null;
             } else if (isCanvasVideo) {
                 // No affected items, just update duration directly
@@ -791,12 +872,9 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                     return;
                 }
 
-                // Get current duration for comparison
-                var currentDuration = isCanvasVideo ? originalDuration : (FrameTrail.module('HypervideoModel').durationFull || 0);
-
-                // Check if new duration is shorter and would affect items
-                if (newSourceInfo.duration > 0 && newSourceInfo.duration < currentDuration) {
-                    var outOfRangeItems = getOutOfRangeItems(newSourceInfo.duration);
+                // Check whether the new duration cuts off any of this hypervideo's items
+                if (newSourceInfo.duration > 0) {
+                    var outOfRangeItems = getOutOfRangeItems(thisID, newSourceInfo.duration);
 
                     if (outOfRangeItems.hasAffectedItems) {
                         showDurationChangeConfirmation(newSourceInfo.duration, outOfRangeItems, function() {
@@ -847,7 +925,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 }
 
                 if (newDuration < originalDuration) {
-                    var outOfRangeItems = getOutOfRangeItems(newDuration);
+                    var outOfRangeItems = getOutOfRangeItems(thisID, newDuration);
 
                     if (outOfRangeItems.hasAffectedItems && !pendingDurationChange) {
                         showDurationChangeConfirmation(newDuration, outOfRangeItems, function() {
@@ -895,7 +973,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             var formData = new FormData(form);
             formData.set('a', 'hypervideoChange');
             formData.set('hypervideoID', thisID);
-            formData.set('src', JSON.stringify(FrameTrail.module("Database").convertToDatabaseFormat(thisID), null, 4));
+            formData.set('src', JSON.stringify(hypervideoJSON(), null, 4));
 
             // Compare-and-swap token. This dialog posts the ENTIRE hypervideo.json
             // — every overlay and code snippet included — so without it a settings
@@ -955,10 +1033,8 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                     return;
                 }
 
-                var currentDuration = isCanvasVideo ? originalDuration : (FrameTrail.module('HypervideoModel').durationFull || 0);
-
-                if (newSourceInfo.duration > 0 && newSourceInfo.duration < currentDuration) {
-                    var outOfRangeItems = getOutOfRangeItems(newSourceInfo.duration);
+                if (newSourceInfo.duration > 0) {
+                    var outOfRangeItems = getOutOfRangeItems(thisID, newSourceInfo.duration);
                     if (outOfRangeItems.hasAffectedItems) {
                         showDurationChangeConfirmation(newSourceInfo.duration, outOfRangeItems, function() {
                             pendingSourceChange = {
@@ -1005,7 +1081,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                     return;
                 }
                 if (newDuration < originalDuration) {
-                    var outOfRangeItems = getOutOfRangeItems(newDuration);
+                    var outOfRangeItems = getOutOfRangeItems(thisID, newDuration);
                     if (outOfRangeItems.hasAffectedItems && !pendingDurationChange) {
                         showDurationChangeConfirmation(newDuration, outOfRangeItems, function() {
                             pendingDurationChange = { newDuration: newDuration, outOfRangeItems: outOfRangeItems };
@@ -1049,7 +1125,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
             // Update the database entry from form
             updateDatabaseFromForm();
-            var hypervideoData = FrameTrail.module('Database').convertToDatabaseFormat(thisID);
+            var hypervideoData = hypervideoJSON();
 
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             var basePath = 'hypervideos/' + thisID;

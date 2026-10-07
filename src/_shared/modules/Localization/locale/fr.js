@@ -93,8 +93,6 @@ window.FrameTrail_L10n['fr'] = {
     "DownloadFormat": "Format",
     "DownloadIncludeMediaFiles": "Inclure les fichiers médias",
     "DownloadResourceBaseUrl": "URL de base des ressources (optionnel)",
-    "DurationChangeAnnotationsDeleted": "annotation(s) sera/seront supprimée(s) (début après la nouvelle durée)",
-    "DurationChangeAnnotationsTruncated": "annotation(s) sera/seront tronquée(s) pour se terminer à",
     "DurationChangeCodeSnippetsDeleted": "extrait(s) de code sera/seront supprimé(s) (début après la nouvelle durée)",
     "DurationChangeOverlaysDeleted": "overlay(s) sera/seront supprimé(s) (début après la nouvelle durée)",
     "DurationChangeOverlaysTruncated": "overlay(s) sera/seront tronqué(s) pour se terminer à",

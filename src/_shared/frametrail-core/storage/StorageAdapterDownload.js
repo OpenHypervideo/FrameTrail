@@ -70,7 +70,7 @@ class StorageAdapterDownload extends StorageAdapter {
      */
     _generateStandaloneHTML(hypervideoID, dataPath) {
         var Database = this._frameTrailInstance.module('Database');
-        var hvData   = Database.convertToDatabaseFormat(hypervideoID);
+        var hvData   = Database.convertToDatabaseFormat(hypervideoID, 'export');
         var fullConfig = Database.config || {};
         var hvName   = (Database.hypervideos[hypervideoID] && Database.hypervideos[hypervideoID].name) || 'hypervideo';
         var filename = hvName.replace(/[^a-z0-9]/gi, '_').substring(0, 50) + '.html';
@@ -103,7 +103,9 @@ class StorageAdapterDownload extends StorageAdapter {
             }
         }
 
-        var annotations = Database.getAnnotationsW3C();
+        // Only the open hypervideo's annotations are loaded.
+        var isOpen      = String(hypervideoID) === String(this._frameTrailInstance.module('RouteNavigation').hypervideoID);
+        var annotations = isOpen ? Database.getAnnotationsW3C() : [];
         var contentItem = { hypervideo: hvData };
         if (annotations.length > 0) {
             contentItem.annotations = annotations;
@@ -150,7 +152,7 @@ class StorageAdapterDownload extends StorageAdapter {
      */
     _performDownload(hypervideoID, dataPath) {
         var Database = this._frameTrailInstance.module('Database');
-        var hvData   = Database.convertToDatabaseFormat(hypervideoID);
+        var hvData   = Database.convertToDatabaseFormat(hypervideoID, 'export');
         if (dataPath) {
             hvData.dataPath = dataPath;
         }

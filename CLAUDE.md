@@ -24,6 +24,7 @@ FrameTrail/
 │   ├── _shared/
 │   │   ├── frametrail-core/
 │   │   │   ├── frametrail-core.js  # Core: defineModule, defineType, init, state
+│   │   │   ├── serialization/      # FrameTrailSerializer (stored JSON ⇄ model), FrameTrailKeyframes
 │   │   │   ├── storage/            # StorageAdapter + Server/Local/Download adapters
 │   │   │   ├── _templateModule.js  # Module boilerplate template
 │   │   │   └── _templateType.js    # Type boilerplate template
@@ -71,6 +72,7 @@ Three HTML entry points in `src/`:
 **Frontend:**
 - `src/_shared/frametrail-core/` — Core framework and module loader
 - `src/_shared/frametrail-core/storage/` — Storage adapters (Server, Local, Download)
+- `src/_shared/frametrail-core/serialization/` — Pure serializer and keyframe math (plain globals, also `require()`-able in Node)
 - `src/_shared/modules/` — Shared modules (Database, UserManagement, ResourceManager, RouteNavigation, StorageManager, Localization, etc.)
 - `src/_shared/types/` — Resource type definitions (26 types, all inherit from base Resource)
 - `src/player/modules/` — Player modules (HypervideoModel, HypervideoController, AnnotationsController, OverlaysController, Interface, Titlebar, Sidebar, etc.)
@@ -158,12 +160,13 @@ _data/
 4. **File-Based Persistence**: All data stored as JSON files (no database)
 5. **Event-Driven**: Timeline events, user actions broadcast to listeners
 6. **W3C Web Annotations**: Uses standardized annotation format with FrameTrail extensions
-7. **Guest Mode is orthogonal to storage mode**: `UserManagement.isGuestMode()` is an identity-layer flag — it means "editing without a server account", not "in download mode". A user can be in guest mode in any storage mode (local, download, or server). `StorageManager.canSave()` is the authoritative gate for save UI: it returns `false` for server mode when in guest mode, and delegates to `adapter.canSave` otherwise (`StorageAdapterDownload.canSave` is always `false`; `StorageAdapterLocal.canSave` is `true`). Always use `canSave()` rather than checking `isGuestMode()` or `storageMode` directly in save-related UI.
+7. **Guest Mode is orthogonal to storage mode**: `UserManagement.isGuestMode()` is an identity-layer flag — it means "editing without a server account", not "in download mode". A user can be in guest mode in any storage mode (local, download, or server). `StorageManager.canSave()` is the authoritative gate for save UI: it returns `false` for server mode when in guest mode, and delegates to `adapter.canSave` otherwise (`StorageAdapterDownload.canSave` is always `false`; `StorageAdapterLocal.canSave` is `true`). Always use `canSave()` rather than checking `isGuestMode()` or `storageMode` directly in save-related UI. A guest's `userID` is derived from the entered name (`guestUserID()`: `guest_<slug>-<FNV-1a hash>`, case- and whitespace-insensitive), so the same name is the same user across sessions; in local mode it names the guest's annotation file and decides which annotations are editable.
 
 **Important: FrameTrail instance vs global:**
 - The global `FrameTrail` object is the factory/registry. `FrameTrail.module()`, `FrameTrail.changeState()`, etc. are only available on **initialized instances** (the `FrameTrail` parameter passed into `defineModule` callbacks).
 - Modules defined via `FrameTrail.defineModule()` receive the instance as their closure argument — they can freely call `FrameTrail.module('X')`.
 - Plain classes (e.g. `StorageAdapter` subclasses in `src/_shared/frametrail-core/storage/`) are **not** FrameTrail modules and do **not** have access to any instance. If they need to call module APIs, the caller must pass the FrameTrail instance explicitly.
+- `window.FrameTrailSerializer` and `window.FrameTrailKeyframes` (`src/_shared/frametrail-core/serialization/`) are pure globals: no instance, no DOM. Their wrapper also exports them under `require()` in Node; keep it that way (tests and tools load them there).
 - Every module must be initialized with `FrameTrail.initModule('ModuleName')` before it can be accessed via `FrameTrail.module('ModuleName')`. Calling `module()` on an uninitialized module returns undefined.
 
 ### Data Flow
@@ -325,6 +328,10 @@ The stored format is documented in [docs/DATA-MODEL.md](docs/DATA-MODEL.md) and 
 - **Schema subset:** only the keywords listed in DATA-MODEL.md ("Schema Subset"); patterns in syntax common to ECMA-262 and PCRE. Discriminated `oneOf` by a `const` property where possible.
 - **Legacy shapes stay valid:** older forms (toString `created`, PHP's `[]` for `{}`, local-mode annotation index entries, …) are separate `oneOf` alternatives or descriptions starting "Legacy.". Never drop one without checking that no stored data uses it.
 - **Unknown properties are allowed** almost everywhere; writers keep them.
+- **Serializer:** all reading and writing of `hypervideo.json`, content items and annotation files goes through `FrameTrailSerializer` (`parseHypervideo` / `serializeHypervideo`, `parseAnnotationFile` / `serializeAnnotationFile`, …); `Database` delegates to it. Every parsed object keeps the stored object it came from in `_stored`, and writing is a three-way merge (stored, what the writer makes of stored unchanged, what it makes of the model now): unchanged parts are written byte-for-byte as stored, unknown properties survive, and only `@context` and ISO `created` are always rewritten. Never build stored JSON by hand next to it, and add new stored fields to both the `parse*` and the `write*` side.
+- **Item identity on load:** `parseContents` / `parseAnnotationFile` de-duplicate `created` per collection (annotations per creator) by moving the later item on by 1 ms (`dedupeCreated`).
+- **Cross-hypervideo rule:** `HypervideoSettingsDialog` is also opened from the overview for any hypervideo. Anything it does to items must act on the edited one (`isLoadedHypervideo()` decides live data vs stored data), never on the loaded one. Shortening a duration deletes/truncates that hypervideo's overlays and code snippets — live for the loaded one, otherwise via `cutContents()` on the JSON the dialog writes — and never touches annotations (they belong to their authors).
+- **`convertToDatabaseFormat(id, purpose)`** builds the model from `hypervideos[id]` (meta, config, clips, chapters, subtitles — where the settings dialog edits them) and its `hypervideoData`; only when `id` is the open hypervideo does it take live overlays, code snippets, global events, custom CSS and the `ViewLayout` content views. `purpose: 'export'` turns Transcript views into CustomHTML (Save As HTML/JSON); saves and the "All Data" zip keep them.
 - **Namespace:** `http://frametrail.org/ns/` stays HTTP (it is an identifier). The JSON-LD context document is `https://frametrail.org/ns/context.jsonld`, maintained in the FrameTrail-Website repository (`ns/`) together with the namespace page.
 
 ## Server Configuration
@@ -446,7 +453,7 @@ Overlay animations are seekable: what an overlay shows is a function of the vide
 - **Engine (`src/player/modules/OverlayAnimator/`).** Builds one inline `animation` list per overlay (origin = start − lead-in), collects the resulting `CSSAnimation`s (only names starting with `ft`, so e.g. the hotspot pulse keeps its own clock) and syncs them like synced media: on play/pause/seek/rate change it sets every animation's time from the video (`startTime` while playing — never `play()`, which auto-rewinds finished animations), and the 25 ms tick corrects drift (`checkSync`). It reads `HypervideoController.preciseTime` and respects `isStalled` / `isBuffering`. An `ftClock` animation per overlay is the reference for drift checks and for per-frame JS hooks. `invalidate(overlay)` rebuilds after any change; `Overlay.contentChanged()` (debounced) and `Overlay.rerenderContent()` call it.
 - **Type hooks (optional, on Resource types):** `getTextRevealRoot(detail)` (Text), `getStrokeTargets(detail)` (Hotspot, for the Draw preset), `animateContent(detail, ctx)` → `{ update(localMs), destroy() }` (Counter, Chart, Cursor). `ctx` carries `leadInMs`, `spanMs`, `entry()` (builds a CSS `animation` entry), `easeCss`, `easeFn`, `reducedMotion`, `editMode`. Content animations put their delays at `ctx.leadInMs + …` so everything shares one origin.
 - **Data:** `attributes.animation = { in, emphasis, out, text }`, each `{ preset, duration (ms), ease, params? }` (emphasis also `iterations`, 0 = fill the span; text also `mode` word/letter and `stagger`). It round-trips through `frametrail:attributes`. The legacy fields `animationIn` / `animationOut` / `animationDuration` are read forever (`AnimationLibrary.normalizeAnimation()`) and replaced by `animation` on the first edit in the Animation tab.
-- **Registries (`src/_shared/modules/AnimationLibrary/`):** eases (CSS bezier / `linear()`-sampled spring and wiggle, with a JS evaluator each), presets per phase (`appliesTo` limits e.g. Draw to hotspots), window math, keyframe math and text splitting. Pure, shared, also initialised in the resource manager (the Database uses its keyframe helpers).
+- **Registries (`src/_shared/modules/AnimationLibrary/`):** eases (CSS bezier / `linear()`-sampled spring and wiggle, with a JS evaluator each), presets per phase (`appliesTo` limits e.g. Draw to hotspots), window math and text splitting. The ease definitions and evaluators and the keyframe math (`normalizeKeyframes`, `sampleKeyframes`, `sampleRotation`, `unionBox`) live in `FrameTrailKeyframes` (`frametrail-core/serialization/`), which the serializer uses; `AnimationLibrary` re-exports them and adds the CSS side. Also initialised in the resource manager.
 - **Editing:** the overlay properties panel has the tabs Options | Animation (`src/player/modules/OverlayAnimationEditor/`). Changes go through `OverlaysController.registerStateUndo()` with `Overlay.snapshotState()` / `applyState()`. Timeline bars show the lead-in / trail-out as faded tails while editing.
 - **Reduced motion:** with `prefers-reduced-motion: reduce`, transitions become ≤ 250 ms fades, emphasis and text reveals are dropped and content animations show their end state; box motion is kept.
 

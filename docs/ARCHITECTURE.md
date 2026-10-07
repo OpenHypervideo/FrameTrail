@@ -44,6 +44,7 @@ The global `FrameTrail` object is the factory/registry. Instance methods like `m
 
 - Modules defined via `FrameTrail.defineModule()` receive the instance as their closure argument and can freely call `FrameTrail.module('X')`.
 - Plain classes (e.g. `StorageAdapter` subclasses in `src/_shared/frametrail-core/storage/`) are **not** FrameTrail modules and do not have access to any instance. If they need to call module APIs, the caller must pass the FrameTrail instance explicitly.
+- The scripts in `src/_shared/frametrail-core/serialization/` (`FrameTrailSerializer`, `FrameTrailKeyframes`) are plain globals as well, and pure: they need neither an instance nor the DOM, and also load in Node.
 - Every module must be initialized with `FrameTrail.initModule('ModuleName')` before it can be accessed via `FrameTrail.module('ModuleName')`.
 
 ## Module System
@@ -97,7 +98,7 @@ FrameTrail.defineModule('ModuleName', function(FrameTrail) {
 
 | Module | Purpose |
 |--------|---------|
-| `Database` | Loads/saves all JSON data via the active storage adapter |
+| `Database` | Loads/saves all JSON data via the active storage adapter; reading and writing the JSON itself is `FrameTrailSerializer`'s job |
 | `StorageManager` | Selects and initializes the appropriate storage adapter; exposes `canSave()` / `canSaveToServer()` |
 | `RouteNavigation` | URL parsing, hash parameters, environment detection |
 | `UserManagement` | Login, registration, user settings, and guest editing (name-only, no account required) |
@@ -109,7 +110,7 @@ FrameTrail.defineModule('ModuleName', function(FrameTrail) {
 | `HypervideoFormBuilder` | Hypervideo creation/edit forms |
 | `UserTraces` | User activity tracking |
 | `UndoManager` | Undo/redo for editing operations |
-| `AnimationLibrary` | Overlay animation data and math: ease and preset registries, timing windows, box-motion keyframe math, text splitting |
+| `AnimationLibrary` | Overlay animation data and math: ease and preset registries, timing windows, text splitting; re-exports the box-motion keyframe math of `FrameTrailKeyframes` |
 
 #### Player Modules (`src/player/modules/`)
 
@@ -348,6 +349,8 @@ _data/
 Overlays, code snippets and annotations are W3C Web Annotations with `frametrail:` extension terms for type, position, box motion and type-specific attributes. Items made from a resource keep their own copy of its data.
 
 The files, their shapes and the legacy forms readers must accept are documented in [docs/DATA-MODEL.md](DATA-MODEL.md); the JSON Schemas in [`schemas/`](../schemas/) describe every file except `users.json` and `custom.css`.
+
+`Database` loads the files through the storage adapter and hands their contents to `FrameTrailSerializer` (`src/_shared/frametrail-core/serialization/`), which turns them into the working model the editor uses and back. Each hypervideo is written from its own data; only the open one has live editor state (overlays, code snippets, global events, custom CSS, content views). Writing keeps whatever the model does not cover, so properties written by other tools survive a save.
 
 ## Event System
 

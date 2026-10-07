@@ -116,6 +116,34 @@ A **project bundle** holds a library:
 
 A hypervideo's `globalEvents`, `customCSS` and code snippets are JavaScript and CSS that run in the viewer's browser. An importer should show them and ask before taking them.
 
+## Reading and Writing in Code
+
+FrameTrail reads and writes these files through one implementation, `FrameTrailSerializer` ([`src/_shared/frametrail-core/serialization/`](../src/_shared/frametrail-core/serialization/)). It touches neither the DOM nor a FrameTrail instance, so it works in the browser — `window.FrameTrailSerializer`, loaded by FrameTrail itself — and in Node:
+
+```javascript
+const fs = require('fs');
+const Serializer = require('./src/_shared/frametrail-core/serialization/FrameTrailSerializer.js');
+
+const model = Serializer.parseHypervideo(JSON.parse(fs.readFileSync('_data/hypervideos/9/hypervideo.json', 'utf8')));
+model.overlays[0].start = 4;                          // the working model: start, end, position, attributes, …
+const json = Serializer.serializeHypervideo(model, { now: Date.now() });
+```
+
+| Function | Does |
+|----------|------|
+| `parseHypervideo(json)` → model | `hypervideo.json` → `{ meta, config, layout, clips, overlays, codeSnippets, otherContents, chapters, subtitles, globalEvents, customCSS }` (`layout` is `config.layoutArea`) |
+| `serializeHypervideo(model, context)` | model → `hypervideo.json`. `context`: `sourcePath` (the video every item targets; omitted: items keep theirs), `now` (written as `meta.lastchanged`), `purpose` (`'save'` or `'export'`, which turns Transcript views into CustomHTML), `subtitles` (parsed cues for that) |
+| `parseAnnotationFile(json, source)`, `serializeAnnotationFile(annotations, context)` | an annotation file ⇄ annotations |
+| `parseOverlay`, `serializeOverlay`, `parseCodeSnippet`, `serializeCodeSnippet`, `parseAnnotation`, `serializeAnnotation` | single items |
+| `parseAnnotationIndex(json)`, `setAnnotationIndexEntry(json, fileId, fields)` | `annotations/_index.json`, including its legacy shape |
+| `readBundle(source, format, options)`, `writeBundle(bundle, format, options)` | bundles in a registered format (`registerBundleFormat`) |
+
+Writing keeps what the model does not cover. Every parsed object remembers what it was read from, and writing merges the model's changes into that: what did not change is written exactly as it was stored, legacy representations included; what changed is written in the current form; properties FrameTrail does not know are kept. Two things are always written in the current form: an item's `@context` and its `created` (ISO 8601 with milliseconds), so older files are upgraded by their next save.
+
+The **folder** format maps a bundle to the `_data` layout: a map of paths relative to `_data/` to contents (parsed JSON for `.json` files, text for `.vtt` and `.css`). A project bundle is the whole tree; a hypervideo bundle is its folder under `hypervideos/` plus a `resources/_index.json` with the resources it carries. Reading takes `{ bundle: 'project' }`, or `{ bundle: 'hypervideo', id }` for one hypervideo.
+
+The box-motion math — normalising, sampling and bounding keyframes, and the ease functions — is in `FrameTrailKeyframes`, next to the serializer and loaded the same way.
+
 ## The Files
 
 ### `config.json`
@@ -197,7 +225,7 @@ Each user's annotations of a hypervideo are in their own file, named by user id,
 }
 ```
 
-`created` and `lastchanged` here are in seconds. User ids are strings, except `ownerId`, which the server writes as a number. An annotation file is a JSON array of annotations (below).
+`created` and `lastchanged` here are in seconds. User ids are strings, except `ownerId`, which the server writes as a number. In local-folder mode there are no accounts: a user id is derived from the name the user enters, as `guest_<name>-<hash>` (e.g. `guest_anna-b-919e0619`), so the same name finds its annotation file again. An annotation file is a JSON array of annotations (below).
 
 ## Items: Overlays, Code Snippets and Annotations
 
@@ -325,7 +353,7 @@ Overlays can animate in, loop and animate out (`attributes.animation`, see [`com
 
 Items have no id property. Within its collection (a hypervideo's overlays, its code snippets, one user's annotations) an item is identified by its **`created`** timestamp; an annotation across files by its creator's id and `created`. A chapter is identified by its `start`. A tool that adds items must therefore keep `created` unique within the collection, and chapter starts unique within the hypervideo.
 
-Write `created` as an ISO 8601 date-time in UTC with milliseconds — `"2026-10-06T09:36:45.127Z"` — which is the `xsd:dateTime` the W3C model requires. Older files carry the output of JavaScript's `Date.prototype.toString()` (`"Mon Jul 06 2026 09:36:45 GMT+0200 (Central European Summer Time)"`), which has no milliseconds: two items created within the same second share a value. Readers must accept both forms and keep such items apart.
+Write `created` as an ISO 8601 date-time in UTC with milliseconds — `"2026-10-06T09:36:45.127Z"` — which is the `xsd:dateTime` the W3C model requires. Older files carry the output of JavaScript's `Date.prototype.toString()` (`"Mon Jul 06 2026 09:36:45 GMT+0200 (Central European Summer Time)"`), which has no milliseconds: two items created within the same second share a value. Readers must accept both forms and keep such items apart. FrameTrail does so as it reads a file: of two items in a collection with the same `created` (or none), the later one in the array moves on by 1 ms, which its next save writes.
 
 Timestamps are not all in the same unit:
 
@@ -341,7 +369,9 @@ Timestamps are not all in the same unit:
 
 The schemas allow unknown properties almost everywhere, and **a writer must keep what it does not know**: read the object, change what you own, write it back with everything else in place. That is what lets another tool's data survive a save, and an older reader survive newer data.
 
-The W3C `generator` property — the software that created or last changed an item, as an IRI or an object such as `{ "type": "Software", "name": "…" }` — is explicitly allowed on items. FrameTrail does not write it.
+FrameTrail's own writer does this for every item, for `meta` and `config` of a hypervideo, and for content items of a kind it does not know, which it keeps untouched (see [Reading and writing in code](#reading-and-writing-in-code)).
+
+The W3C `generator` property — the software that created or last changed an item, as an IRI or an object such as `{ "type": "Software", "name": "…" }` — is explicitly allowed on items. FrameTrail does not write it, and keeps it.
 
 ## Namespace and JSON-LD Context
 
@@ -366,7 +396,7 @@ Readers must accept these shapes. Each is in the schemas as a separate alternati
 | `created` as `Date.prototype.toString()` text | items | the same instant, without milliseconds |
 | `[]` instead of `{}` | `frametrail:attributes`, `frametrail:events`, `globalEvents`, animation `params`, and the maps in the index files and `tagdefinitions.json` | an empty object — PHP cannot tell the two apart when it re-encodes a file |
 | body `frametrail:type` `"button"` | overlays | no Resource type exists; FrameTrail does not render the item and keeps it |
-| user entries at the top level of `annotations/_index.json` (`{ name, description, hidden, src }`), next to or instead of `annotationfiles` | local-folder mode | an annotation file of that user |
+| user entries at the top level of `annotations/_index.json` (`{ name, description, hidden, src }`), next to or instead of `annotationfiles` | local-folder mode | an annotation file of that user; moved under `annotationfiles` when that user next saves |
 | `annotation-increment` | `hypervideo.json`, `annotations/_index.json` | not used |
 | `frametrail:attributes` at the item level instead of the body | very old overlays | the body's attributes, when the body has none |
 | `frametrail:lat`, `frametrail:long`, `frametrail:boundingBox` on the body | location annotations | `attributes.lat`, `.lon`, `.boundingBox` |

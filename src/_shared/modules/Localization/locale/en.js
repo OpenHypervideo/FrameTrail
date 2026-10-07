@@ -93,8 +93,6 @@ window.FrameTrail_L10n['en'] = {
     "DownloadFormat": "Format",
     "DownloadIncludeMediaFiles": "Include media files",
     "DownloadResourceBaseUrl": "Resource base URL (optional)",
-    "DurationChangeAnnotationsDeleted": "annotation(s) will be deleted (start after new duration)",
-    "DurationChangeAnnotationsTruncated": "annotation(s) will be truncated to end at",
     "DurationChangeCodeSnippetsDeleted": "code snippet(s) will be deleted (start after new duration)",
     "DurationChangeOverlaysDeleted": "overlay(s) will be deleted (start after new duration)",
     "DurationChangeOverlaysTruncated": "overlay(s) will be truncated to end at",

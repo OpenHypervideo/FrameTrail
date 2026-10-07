@@ -14,7 +14,7 @@ The following FrameTrail files contain code ported or adapted from HyperFrames. 
 
 | FrameTrail file | Ported / adapted from (HyperFrames) |
 |---|---|
-| `src/_shared/modules/AnimationLibrary/module.js` | Spring and wiggle easing math (`packages/core/src/parsers/springEase.ts`, `packages/core/src/runtime/wiggleEase.ts`) |
+| `src/_shared/frametrail-core/serialization/FrameTrailKeyframes.js` | Spring and wiggle easing math (`packages/core/src/parsers/springEase.ts`, `packages/core/src/runtime/wiggleEase.ts`) |
 | `src/_shared/types/ResourceHotspot/type.js` (`renderSvgStroke`, `svgShapePath`) | Arrow stroke geometry after the `hw-arrow` and `svg-stroke-trace` registry components |
 | `src/_shared/types/ResourceCounter/type.js` | `count-up` and `number-wheel` registry components |
 | `src/_shared/types/ResourceChart/type.js` | `chart-story` and `conic-progress-ring` registry components |

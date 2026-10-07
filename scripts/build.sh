@@ -125,6 +125,10 @@ JS_FILES=(
     # FrameTrail Core (must come before any defineModule/defineType calls)
     "_shared/frametrail-core/frametrail-core.js"
 
+    # Serialization (pure, no FrameTrail instance; before AnimationLibrary and Database)
+    "_shared/frametrail-core/serialization/FrameTrailKeyframes.js"
+    "_shared/frametrail-core/serialization/FrameTrailSerializer.js"
+
     # Localization (bundled into JS — must come before modules that use labels)
     "_shared/modules/Localization/locale/en.js"
     "_shared/modules/Localization/locale/de.js"

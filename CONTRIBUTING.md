@@ -67,6 +67,7 @@ FrameTrail/
 │   ├── _shared/
 │   │   ├── frametrail-core/       # Core framework (module system, state, types)
 │   │   │   ├── frametrail-core.js # defineModule, defineType, init, changeState
+│   │   │   ├── serialization/     # FrameTrailSerializer (stored JSON ⇄ model), FrameTrailKeyframes
 │   │   │   └── storage/           # StorageAdapter, StorageAdapterServer/Local/Download
 │   │   ├── modules/               # Shared modules
 │   │   │   ├── Database/          # Data loading and persistence

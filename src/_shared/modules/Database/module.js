@@ -19,6 +19,10 @@
 
     var labels = FrameTrail.module('Localization').labels;
 
+    // Reading and writing the stored JSON is the serializer's job; I keep
+    // what it reads and hand it back for writing.
+    var Serializer = window.FrameTrailSerializer;
+
     var hypervideoID = '',
         hypervideos  = {},
         hypervideo   = {},
@@ -26,6 +30,10 @@
 
         overlays     = [],
         codeSnippets = {},
+
+        // Content items of a kind this version does not know. Nobody edits
+        // them; they are only kept, so a save does not drop them.
+        otherContents = [],
         resources    = {},
         config       = {},
 
@@ -299,148 +307,70 @@
 
 
     /**
-     * Parse the start time from a W3C media fragment selector value (e.g. "t=1.5,3.2").
+     * I build the entry of a hypervideo in my hypervideos index from its
+     * hypervideo.json and its annotations/_index.json.
+     *
+     * The entry is what the rest of the app reads and edits (the settings
+     * dialog changes name, config, clips and subtitles here). hypervideoData
+     * keeps the file as it was read: writing merges the entry and, for the
+     * open hypervideo, the live editor state back into it.
+     *
+     * @method indexEntry
+     * @param {Object} hypervideoData
+     * @param {Object} [annotationsIndex] omitted where there is none (init options)
+     * @return {Object}
      * @private
      */
-    function _parseTimeStart(selectorValue) {
-        var m = /t=([\d.]+)/.exec(selectorValue);
-        return m ? parseFloat(m[1]) : 0;
-    }
+    function indexEntry(hypervideoData, annotationsIndex) {
 
-    /**
-     * Parse the end time from a W3C media fragment selector value (e.g. "t=1.5,3.2").
-     * @private
-     */
-    function _parseTimeEnd(selectorValue) {
-        var m = /t=[\d.]+,([\d.]+)/.exec(selectorValue);
-        return m ? parseFloat(m[1]) : 0;
-    }
+        var annotationIndex = annotationsIndex ? Serializer.parseAnnotationIndex(annotationsIndex) : null;
 
-    /**
-     * Parse xywh=percent spatial selector into {left, top, width, height}.
-     * Returns {} on failure.
-     * @private
-     */
-    function _parseSpatialSelector(selectorValue) {
-        try {
-            var n = '(-?[\\d.]+(?:[eE][-+]?\\d+)?)',
-                m = new RegExp('xywh=percent:' + n + ',' + n + ',' + n + ',' + n).exec(selectorValue);
-            return { left: parseFloat(m[1]), top: parseFloat(m[2]), width: parseFloat(m[3]), height: parseFloat(m[4]) };
-        } catch (_) { return {}; }
-    }
-
-    /**
-     * Parse the box-motion keyframes of an overlay (the frametrail:keyframes
-     * extension on its FragmentSelector). Returns undefined when there are none.
-     * @private
-     */
-    function _parseKeyframes(rawKeyframes) {
-        var AnimationLibrary = FrameTrail.module('AnimationLibrary');
-        if (!rawKeyframes || !AnimationLibrary) { return undefined; }
-        return AnimationLibrary.normalizeKeyframes(rawKeyframes);
-    }
-
-    /**
-     * Parse the static rotation of an overlay (the frametrail:rotation
-     * extension on its FragmentSelector). Returns undefined for none.
-     * @private
-     */
-    function _parseRotation(rawRotation) {
-        var rotation = parseFloat(rawRotation);
-        return (isFinite(rotation) && rotation !== 0) ? rotation : undefined;
-    }
-
-    /**
-     * Build the target selector of an overlay. A moving overlay keeps a plain
-     * Media Fragments box (the union of its track within its span) for every
-     * consumer, and adds its keyframes as the frametrail:keyframes extension.
-     * A rotated overlay keeps its unrotated box and adds frametrail:rotation
-     * (degrees; with keyframes the rotation lives in each keyframe's r).
-     * @private
-     */
-    function _overlayTargetSelector(overlay) {
-        var position = overlay.position,
-            AnimationLibrary = FrameTrail.module('AnimationLibrary'),
-            keyframes = (overlay.keyframes && overlay.keyframes.length && AnimationLibrary)
-                ? AnimationLibrary.normalizeKeyframes(overlay.keyframes)
-                : undefined;
-        if (keyframes) {
-            position = AnimationLibrary.unionBox(keyframes, overlay.start, overlay.end);
-        }
-        var selector = {
-            "conformsTo": "http://www.w3.org/TR/media-frags/",
-            "type": "FragmentSelector",
-            "value":
-                "t=" + overlay.start + "," + overlay.end
-                + "&xywh=percent:"
-                + position.left + ","
-                + position.top + ","
-                + position.width + ","
-                + position.height
-        };
-        if (keyframes) {
-            selector["frametrail:keyframes"] = keyframes;
-        } else if (_parseRotation(overlay.rotation) !== undefined) {
-            selector["frametrail:rotation"] = _parseRotation(overlay.rotation);
-        }
-        return selector;
-    }
-
-    /**
-     * Normalise a single W3C annotation object into the internal FrameTrail format.
-     * @param  {Object} item    Raw W3C annotation object
-     * @param  {Object} source  Source descriptor { frametrail, url }
-     * @return {Object}         Internal annotation object
-     * @private
-     */
-    function _normalizeAnnotation(item, source) {
-        var annotation = {
-            "name":       item.body['frametrail:name'],
-            "creator":    item.creator.nickname,
-            "creatorId":  item.creator.id,
-            "created":    (new Date(item.created)).getTime(),
-            "type":       item.body['frametrail:type'],
-            "uri": (function () {
-                        if (item["frametrail:uri"]) { return item["frametrail:uri"]; }
-                        else if (item.body["frametrail:type"] == 'entity') { return item.body.source; }
-                        else { return null; }
-                    })(),
-            "src": (function () {
-                        if (item.body["frametrail:type"] === 'location') { return null; }
-                        if (item.body["frametrail:type"] === 'urlpreview') { return item.body.source || item.body.value; }
-                        return (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia'].indexOf(item.body["frametrail:type"]) >= 0)
-                                ? item.body.value
-                                : item.body.source;
-                    })(),
-            "thumb":                item.body['frametrail:thumb'],
-            "licenseType":          item.body['frametrail:licenseType'] || null,
-            "licenseAttribution":   item.body['frametrail:licenseAttribution'] || null,
-            "start":                _parseTimeStart(item.target.selector.value),
-            "end":                  _parseTimeEnd(item.target.selector.value),
-            "resourceId":           item.body["frametrail:resourceId"],
-            "attributes":           item.body['frametrail:attributes'] || {},
-            "tags":       item['frametrail:tags'],
-            "source":     source,
-            "graphData":  item['frametrail:graphdata']     || null,
-            "graphDataType": item['frametrail:graphdatatype'] || null
+        return {
+            "name":            hypervideoData.meta.name,
+            "description":     hypervideoData.meta.description,
+            "thumb":           hypervideoData.meta.thumb,
+            "posterFrame":     hypervideoData.meta.posterFrame || null,
+            "creator":         hypervideoData.meta.creator,
+            "creatorId":       hypervideoData.meta.creatorId,
+            "created":         hypervideoData.meta.created,
+            "lastchanged":     hypervideoData.meta.lastchanged,
+            "config":          hypervideoData.config,
+            "mainAnnotation":  annotationIndex ? annotationIndex.mainAnnotation : null,
+            "annotationfiles": annotationIndex ? annotationIndex.annotationfiles : null,
+            "subtitles":       hypervideoData.subtitles,
+            "chapters":        hypervideoData.chapters || [],
+            "clips":           hypervideoData.clips,
+            "hypervideoData":  hypervideoData
         };
 
-        if (annotation.type === 'location') {
-            var locAttrs = item.body['frametrail:attributes'] || {};
-            annotation.attributes.lat         = parseFloat(locAttrs.lat         !== undefined ? locAttrs.lat         : item.body['frametrail:lat']);
-            annotation.attributes.lon         = parseFloat(locAttrs.lon         !== undefined ? locAttrs.lon         : item.body['frametrail:long']);
-            annotation.attributes.boundingBox = locAttrs.boundingBox !== undefined ? locAttrs.boundingBox : (item.body['frametrail:boundingBox'] || '');
-        }
-
-        if (annotation.type === 'video') {
-            annotation.startOffset = (item.body.selector && item.body.selector.value)
-                                     ? _parseTimeStart(item.body.selector.value) : 0;
-            annotation.endOffset   = (item.body.selector && item.body.selector.value)
-                                     ? _parseTimeEnd(item.body.selector.value)   : 0;
-        }
-
-        return annotation;
     }
+
+
+    /**
+     * I return the video of a hypervideo, which every item names as its
+     * target source. Same rule as HypervideoModel: the clip's src, else the
+     * src of its resource; a hypervideo without a video has none.
+     *
+     * @method sourcePathOf
+     * @param {String} thisHypervideoID
+     * @return {String|undefined} undefined when it cannot be told (items then keep theirs)
+     * @private
+     */
+    function sourcePathOf(thisHypervideoID) {
+
+        var entry = hypervideos[thisHypervideoID],
+            clip  = (entry && entry.clips && entry.clips[0]) || {};
+
+        if (clip.src && clip.src.length > 3) {
+            return clip.src;
+        }
+        if (!clip.resourceId) {
+            return '';
+        }
+        return resources[clip.resourceId] ? resources[clip.resourceId].src : undefined;
+
+    }
+
 
     /**
      * I replace the config's contents without replacing the object itself.
@@ -803,25 +733,7 @@
                         // hypervideos[i] = ...
 
                     } else {
-                        // hypervideos[i] = initOptionsHypervideoData[i].hypervideo;
-                        var hypervideoData = initOptionsHypervideoData[i].hypervideo;
-                        hypervideos[i] = {
-                            "name": hypervideoData.meta.name,
-                            "description": hypervideoData.meta.description,
-                            "thumb": hypervideoData.meta.thumb,
-                "posterFrame": hypervideoData.meta.posterFrame || null,
-                            "creator": hypervideoData.meta.creator,
-                            "creatorId": hypervideoData.meta.creatorId,
-                            "created": hypervideoData.meta.created,
-                            "lastchanged": hypervideoData.meta.lastchanged,
-                            "config": hypervideoData.config,
-                            "mainAnnotation": null,
-                            "annotationfiles": null,
-                            "subtitles": hypervideoData.subtitles,
-                "chapters": hypervideoData.chapters || [],
-                            "clips": hypervideoData.clips,
-                            "hypervideoData": hypervideoData
-                        };
+                        hypervideos[i] = indexEntry(initOptionsHypervideoData[i].hypervideo);
 
                         ready();
                     }
@@ -887,23 +799,7 @@
                             dataType: 'json'
                         }, function (annotationsIndex) {
 
-                            bufferedData[hypervideoID] = {
-                                "name": hypervideoData.meta.name,
-                                "description": hypervideoData.meta.description,
-                                "thumb": hypervideoData.meta.thumb,
-                "posterFrame": hypervideoData.meta.posterFrame || null,
-                                "creator": hypervideoData.meta.creator,
-                                "creatorId": hypervideoData.meta.creatorId,
-                                "created": hypervideoData.meta.created,
-                                "lastchanged": hypervideoData.meta.lastchanged,
-                                "config": hypervideoData.config,
-                                "mainAnnotation": annotationsIndex.mainAnnotation,
-                                "annotationfiles": annotationsIndex.annotationfiles,
-                                "subtitles": hypervideoData.subtitles,
-                "chapters": hypervideoData.chapters || [],
-                                "clips": hypervideoData.clips,
-                                "hypervideoData": hypervideoData
-                            };
+                            bufferedData[hypervideoID] = indexEntry(hypervideoData, annotationsIndex);
 
                             if (!--countdown) {
                                 next();
@@ -954,23 +850,7 @@
             dataType: 'json'
         }, function (hypervideoData) {
 
-            hypervideos[id] = {
-                "name": hypervideoData.meta.name,
-                "description": hypervideoData.meta.description,
-                "thumb": hypervideoData.meta.thumb,
-                "posterFrame": hypervideoData.meta.posterFrame || null,
-                "creator": hypervideoData.meta.creator,
-                "creatorId": hypervideoData.meta.creatorId,
-                "created": hypervideoData.meta.created,
-                "lastchanged": hypervideoData.meta.lastchanged,
-                "config": hypervideoData.config,
-                "mainAnnotation": null,
-                "annotationfiles": null,
-                "subtitles": hypervideoData.subtitles,
-                "chapters": hypervideoData.chapters || [],
-                "clips": hypervideoData.clips,
-                "hypervideoData": hypervideoData
-            };
+            hypervideos[id] = indexEntry(hypervideoData);
 
             success();
 
@@ -1014,26 +894,10 @@
                 adapter.readJSON(hvDir + '/hypervideo.json').then(function(hypervideoData) {
 
                     return adapter.readJSON(hvDir + '/annotations/_index.json')
-                        .catch(function() { return { mainAnnotation: null, annotationfiles: null }; })
+                        .catch(function() { return {}; })
                         .then(function(annotationsIndex) {
 
-                            bufferedData[hvID] = {
-                                "name": hypervideoData.meta.name,
-                                "description": hypervideoData.meta.description,
-                                "thumb": hypervideoData.meta.thumb,
-                "posterFrame": hypervideoData.meta.posterFrame || null,
-                                "creator": hypervideoData.meta.creator,
-                                "creatorId": hypervideoData.meta.creatorId,
-                                "created": hypervideoData.meta.created,
-                                "lastchanged": hypervideoData.meta.lastchanged,
-                                "config": hypervideoData.config,
-                                "mainAnnotation": annotationsIndex.mainAnnotation || null,
-                                "annotationfiles": annotationsIndex.annotationfiles || null,
-                                "subtitles": hypervideoData.subtitles,
-                "chapters": hypervideoData.chapters || [],
-                                "clips": hypervideoData.clips,
-                                "hypervideoData": hypervideoData
-                            };
+                            bufferedData[hvID] = indexEntry(hypervideoData, annotationsIndex);
 
                             if (!--countdown) {
                                 hypervideos = bufferedData;
@@ -1090,77 +954,36 @@
 
         try {
 
-            overlays = [];
-            codeSnippets.timebasedEvents = [];
+            var model = Serializer.parseHypervideo(hypervideos[hypervideoID].hypervideoData);
 
-            for (var key in hypervideos[hypervideoID].hypervideoData.contents) {
+            overlays      = model.overlays;
+            otherContents = model.otherContents;
 
-                var contentItem = hypervideos[hypervideoID].hypervideoData.contents[key];
-                //console.log('contentItem', contentItem);
-                switch (contentItem['frametrail:type']) {
-                    case 'Overlay':
-                        overlays.push({
-                            "name": contentItem.body['frametrail:name'],
-                            "creator": contentItem.creator.nickname,
-                            "creatorId": contentItem.creator.id,
-                            "created": (new Date(contentItem.created)).getTime(),
-                            "type": contentItem.body['frametrail:type'],
-                            "src":    contentItem.body.source
-                                   || contentItem.body.value,
-                            "thumb": contentItem.body['frametrail:thumb'] || null,
-                            "start": _parseTimeStart(contentItem.target.selector.value),
-                            "end": _parseTimeEnd(contentItem.target.selector.value),
-                            "startOffset": (contentItem.body.selector && contentItem.body.selector.value)
-                                            ? _parseTimeStart(contentItem.body.selector.value)
-                                            : 0,
-                            "endOffset": (contentItem.body.selector && contentItem.body.selector.value)
-                                            ? _parseTimeEnd(contentItem.body.selector.value)
-                                            : 0,
-                            "attributes": (contentItem.body["frametrail:attributes"]) ? contentItem.body["frametrail:attributes"] : contentItem["frametrail:attributes"],
-                            "licenseType":          contentItem.body['frametrail:licenseType'] || null,
-                            "licenseAttribution":   contentItem.body['frametrail:licenseAttribution'] || null,
-                            "position": _parseSpatialSelector(contentItem.target.selector.value),
-                            "keyframes": _parseKeyframes(contentItem.target.selector['frametrail:keyframes']),
-                            "rotation": _parseRotation(contentItem.target.selector['frametrail:rotation']),
-                            "events": contentItem["frametrail:events"],
-                            "tags": contentItem["frametrail:tags"]
-                        });
-                        if (overlays[overlays.length-1].type === 'location') {
-                            var locationAttributes = overlays[overlays.length-1].attributes;
-                            locationAttributes.lat = parseFloat(contentItem.body['frametrail:attributes'].lat);
-                            locationAttributes.lon = parseFloat(contentItem.body['frametrail:attributes'].lon);
-                            locationAttributes.boundingBox = contentItem.body['frametrail:attributes'].boundingBox;
-                        }
-                        break;
-                    case 'CodeSnippet':
-                        codeSnippets.timebasedEvents.push({
-                            "name": contentItem.body['frametrail:name'],
-                            "creator": contentItem.creator.nickname,
-                            "creatorId": contentItem.creator.id,
-                            "created": (new Date(contentItem.created)).getTime(),
-                            "snippet": contentItem.body.value,
-                            "start": _parseTimeStart(contentItem.target.selector.value),
-                            "attributes": (contentItem.body['frametrail:attributes']) ? contentItem.body['frametrail:attributes'] : contentItem['frametrail:attributes'],
-                            "tags": contentItem['frametrail:tags']
-                        });
-                        break;
-                }
-
-            }
-
-            codeSnippets.globalEvents = hypervideos[hypervideoID].hypervideoData.globalEvents;
-            codeSnippets.customCSS = hypervideos[hypervideoID].hypervideoData.customCSS;
+            codeSnippets.timebasedEvents = model.codeSnippets;
+            codeSnippets.globalEvents    = model.globalEvents;
+            codeSnippets.customCSS       = model.customCSS;
 
         } catch (e) {
             console.log(e);
             return fail(labels['ErrorCouldNotLoadContentData']);
         }
-        //console.log('overlays', overlays);
-        //console.log('codeSnippets', codeSnippets);
         success();
 
     };
 
+
+
+    /**
+     * I make created unique per creator across all loaded annotation files.
+     * Each file is already de-duplicated on parsing; this catches one user's
+     * annotations that ended up in another user's file.
+     *
+     * @method dedupeAnnotations
+     * @private
+     */
+    function dedupeAnnotations() {
+        Serializer.dedupeCreated(annotations, function(annotation) { return annotation.creatorId; });
+    }
 
 
     /**
@@ -1217,13 +1040,17 @@
     function loadAnnotationData_FrametrailServer(url, success, fail) {
 
 
-        var annotationsCount = Object.keys(hypervideo.annotationfiles).length;
+        var annotationfiles  = hypervideo.annotationfiles || {},
+            annotationsCount = Object.keys(annotationfiles).length;
 
         // clear previous data
         annotations  = [];
 
+        if (annotationsCount === 0) {
+            return success.call(this);
+        }
 
-        for (var id in hypervideo.annotationfiles) {
+        for (var id in annotationfiles) {
 
             (function(id){
 
@@ -1232,15 +1059,13 @@
                     dataType: 'json'
                 }, function (data) {
 
-                    for (var i in data) {
-                        annotations.push(_normalizeAnnotation(data[i], { frametrail: true, url: url }));
-                    }
-
+                    Array.prototype.push.apply(annotations, Serializer.parseAnnotationFile(data, { frametrail: true, url: url }));
 
                     annotationsCount--;
                     if(annotationsCount === 0){
 
                         // all annotation data loaded from server
+                        dedupeAnnotations();
                         success.call(this);
 
                     }
@@ -1282,7 +1107,10 @@
 
         var countdown = initAnnotations.length;
         function ready() {
-            if (!--countdown) success();
+            if (!--countdown) {
+                dedupeAnnotations();
+                success();
+            }
         }
 
         for (var i = 0, l = initAnnotations.length; i < l; i++) {
@@ -1294,9 +1122,7 @@
                     dataType: 'json'
                 }, function (data) {
 
-                    for (var i in data) {
-                        annotations.push(_normalizeAnnotation(data[i], { frametrail: false, url: initAnnotations[i] }));
-                    }
+                    Array.prototype.push.apply(annotations, Serializer.parseAnnotationFile(data, { frametrail: false, url: initAnnotations[i] }));
 
                     ready();
 
@@ -1314,17 +1140,7 @@
 
                 for (var i in initAnnotations) {
 
-                    var originalAnnoObject = initAnnotations[i];
-
-                    //console.log('ORIGINAL 1: ', originalAnnoObject.body);
-
-                    if (Array.isArray(initAnnotations[i].body)) {
-                        initAnnotations[i].body = initAnnotations[i].body[0];
-                    }
-
-                    //console.log('ORIGINAL 2: ', originalAnnoObject.body);
-
-                    annotations.push(_normalizeAnnotation(initAnnotations[i], { frametrail: false, url: originalAnnoObject }));
+                    annotations.push(Serializer.parseAnnotation(initAnnotations[i], { frametrail: false, url: initAnnotations[i] }));
 
                     ready();
 
@@ -1367,12 +1183,11 @@
         ids.forEach(function(id) {
             adapter.readJSON('hypervideos/' + hypervideoID + '/annotations/' + id + '.json')
                 .then(function(data) {
-                    for (var i in data) {
-                        annotations.push(_normalizeAnnotation(data[i], { frametrail: true, url: 'local' }));
-                    }
+                    Array.prototype.push.apply(annotations, Serializer.parseAnnotationFile(data, { frametrail: true, url: 'local' }));
 
                     annotationsCount--;
                     if (annotationsCount === 0) {
+                        dedupeAnnotations();
                         success.call(this);
                     }
                 })
@@ -1506,11 +1321,12 @@
 
             //FrameTrail.module('InterfaceModal').showStatusMessage('No Hypervideo is selected.');
 
-            hypervideo   = null;
-            sequence     = {};
-            annotations  = [];
-            overlays     = [];
-            codeSnippets = {};
+            hypervideo    = null;
+            sequence      = {};
+            annotations   = [];
+            overlays      = [];
+            codeSnippets  = {};
+            otherContents = [];
 
             return  loadConfigData(function(){
 
@@ -1629,261 +1445,76 @@
 
 
     /**
-     * I generate the JSON for hypervideo.json
+     * I generate the JSON for hypervideo.json.
+     *
+     * Every hypervideo is written from its own data: meta, config, clips,
+     * chapters and subtitles from its entry in my hypervideos index (where
+     * the settings dialog edits them), everything else from the file it was
+     * loaded from. Only the open hypervideo has live editor state — its
+     * overlays, code snippets, global events, custom CSS and content views —
+     * and only it gets them. The serializer keeps whatever none of these
+     * cover.
+     *
+     * A save keeps Transcript views. An export has to stand alone, so there
+     * they become CustomHTML built from the loaded subtitles (which exist
+     * only for the open hypervideo).
      *
      * @method convertToDatabaseFormat
+     * @param {String} [thisHypervideoID] default: the open hypervideo
+     * @param {String} [purpose] 'save' (default) or 'export'
      * @return {Object}
      */
-    function convertToDatabaseFormat (thisHypervideoID) {
+    function convertToDatabaseFormat (thisHypervideoID, purpose) {
 
         thisHypervideoID = thisHypervideoID || hypervideoID;
 
-        return ({
-            "meta": {
-                "name": hypervideos[thisHypervideoID].name,
-                "description": hypervideos[thisHypervideoID].description,
-                "thumb": hypervideos[thisHypervideoID].thumb,
-                "posterFrame": hypervideos[thisHypervideoID].posterFrame || null,
-                "creator": hypervideos[thisHypervideoID].creator,
-                "creatorId": hypervideos[thisHypervideoID].creatorId,
-                "created": hypervideos[thisHypervideoID].created,
-                "lastchanged": Date.now()
-            },
-            "config": {
-                "slidingMode": hypervideos[thisHypervideoID].config.slidingMode,
-                "slidingTrigger": hypervideos[thisHypervideoID].config.slidingTrigger,
-                "autohideControls": hypervideos[thisHypervideoID].config.autohideControls,
-                "captionsVisible": hypervideos[thisHypervideoID].config.captionsVisible,
-                "clipTimeVisible": hypervideos[thisHypervideoID].config.clipTimeVisible,
-                "theme": hypervideos[thisHypervideoID].config.theme || "",
-                "layoutArea": (function () {
-                    var layoutArea = (FrameTrail.module('ViewLayout') && FrameTrail.module('ViewLayout').getLayoutAreaData)
-                        ? FrameTrail.module('ViewLayout').getLayoutAreaData()
-                        : hypervideos[thisHypervideoID].config.layoutArea;
+        var entry = hypervideos[thisHypervideoID];
 
-                    // Convert Transcript contentViews to CustomHTML so exports are self-contained
-                    var areas = ['areaTop', 'areaBottom', 'areaLeft', 'areaRight'];
-                    for (var a = 0; a < areas.length; a++) {
-                        var areaKey = areas[a];
-                        if (!layoutArea[areaKey]) continue;
-                        for (var cv = 0; cv < layoutArea[areaKey].length; cv++) {
-                            var cvData = layoutArea[areaKey][cv];
-                            if (cvData.type === 'Transcript' && cvData.transcriptSource) {
-                                var subs = subtitles[cvData.transcriptSource];
-                                if (subs && subs.cues) {
-                                    var html = '';
-                                    for (var c = 0; c < subs.cues.length; c++) {
-                                        var cue = subs.cues[c];
-                                        html += '<span class="timebased" data-start="' + cue.startTime + '" data-end="' + cue.endTime + '">'
-                                            + cue.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                                            + ' </span>';
-                                    }
-                                    layoutArea[areaKey][cv] = {
-                                        type: 'CustomHTML',
-                                        name: cvData.name,
-                                        icon: cvData.icon,
-                                        cssClass: cvData.cssClass,
-                                        html: html,
-                                        collectionFilter: cvData.collectionFilter,
-                                        contentSize: cvData.contentSize,
-                                        onClickContentItem: cvData.onClickContentItem,
-                                        initClosed: cvData.initClosed,
-                                        filterAspect: cvData.filterAspect,
-                                        zoomControls: cvData.zoomControls
-                                    };
-                                }
-                            }
-                        }
-                    }
+        if (!entry) {
+            throw new Error('Unknown hypervideo: ' + thisHypervideoID);
+        }
 
-                    return layoutArea;
-                })()
-            },
-            "clips": hypervideos[thisHypervideoID].clips,
-            "globalEvents": (codeSnippets.globalEvents) ? codeSnippets.globalEvents : {},
-            "customCSS": (codeSnippets.customCSS) ? codeSnippets.customCSS : "",
-            "contents": (function () {
-                var contents = [];
-                for (var i in overlays) {
-                    contents.push({
-                        "@context": [
-                            "http://www.w3.org/ns/anno.jsonld",
-                            {
-                                "frametrail": "http://frametrail.org/ns/"
-                            }
-                        ],
-                        "creator": {
-                            "nickname": overlays[i].creator,
-                            "type": "Person",
-                            "id": overlays[i].creatorId
-                        },
-                        "created": (new Date(overlays[i].created)).toString(),
-                        "type": "Annotation",
-                        "frametrail:type": "Overlay",
-                        "frametrail:tags": overlays[i].tags || [],
-                        "target": {
-                            "type": "Video",
-                            "source": FrameTrail.module('HypervideoModel').sourcePath,
-                            "selector": _overlayTargetSelector(overlays[i])
-                        },
-                        "body": {
-                            "type": ({
-                                        'image':     'Image',
-                                        'video':     'Video',
-                                        'location':  'Dataset',
-                                        'wikipedia': 'Text',
-                                        'text':      'TextualBody',
-                                        'entity':    'Text',
-                                        'quiz':      'TextualBody',
-                                        'hotspot':   'TextualBody',
-                                        'vimeo':     'Video',
-                                        'webpage':   'Text',
-                                        'youtube':   'Video',
+        var isOpen = !!hypervideoID && String(thisHypervideoID) === String(hypervideoID),
+            model  = Serializer.parseHypervideo(entry.hypervideoData),
+            config = Object.assign({}, entry.config);
 
-                                        'wistia':    'Video',
-                                        'soundcloud': 'Sound',
-                                        'twitch':    'Video',
-                                        'bluesky':   'Text',
-                                        'codepen':   'Text',
-                                        'figma':     'Image',
-                                        'loom':      'Video',
-                                        'urlpreview': 'Text',
-                                        'xtwitter':  'Text',
-                                        'tiktok':    'Video',
-                                        'mastodon':  'Text',
-                                        'spotify':   'Sound',
-                                        'slideshare': 'Text',
-                                        'reddit':    'Text',
-                                        'flickr':    'Image',
-                                        'cursor':    'Dataset',
-                                        'counter':   'Dataset',
-                                        'chart':     'Dataset'
-                                    })[overlays[i].type],
-                            "frametrail:type": overlays[i].type,
-                            "format": ({
-                                'image': 'image/' + (function () {
-                                    try {
-                                        return (overlays[i].src ? (/\.(\w{3,4})$/g.exec(overlays[i].src)[1]) : '*');
-                                    } catch (_) {
-                                        return '*';
-                                    }
-                                })(),
-                                'video': 'video/mp4',
-                                'location': 'application/x-frametrail-location',
-                                'wikipedia': 'text/html',
-                                'text': 'text/html',
-                                'entity': 'text/html',
-                                'quiz': 'text/html',
-                                'hotspot': 'text/html',
-                                'vimeo': 'text/html',
-                                'webpage': 'text/html',
-                                'youtube': 'text/html',
+        delete config.layoutArea;
 
-                                'wistia': 'text/html',
-                                'soundcloud': 'text/html',
-                                'twitch': 'text/html',
-                                'bluesky': 'text/html',
-                                'codepen': 'text/html',
-                                'figma': 'text/html',
-                                'loom': 'text/html',
-                                'urlpreview': 'text/html',
-                                'xtwitter': 'text/html',
-                                'tiktok': 'text/html',
-                                'mastodon': 'text/html',
-                                'spotify': 'text/html',
-                                'slideshare': 'text/html',
-                                'reddit': 'text/html',
-                                'flickr': 'text/html',
-                                'cursor': 'application/x-frametrail-cursor',
-                                'counter': 'application/x-frametrail-counter',
-                                'chart': 'application/x-frametrail-chart'
-                            })[overlays[i].type],
-                            "source": (function () {
-                                if (['codesnippet', 'text', 'quiz', 'hotspot', 'entity', 'webpage', 'wikipedia', 'cursor', 'counter', 'chart'].indexOf( overlays[i].type ) < 0) {
-                                    return overlays[i].src
-                                }
-                                return undefined;
-                            })(),
-                            "value": (function () {
-                                if (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia',].indexOf( overlays[i].type ) >= 0) {
-                                    return overlays[i].src
-                                }
-                                return undefined;
-                            })(),
-                            "frametrail:name": overlays[i].name,
-                            "frametrail:thumb": overlays[i].thumb,
-                            "frametrail:licenseType": overlays[i].licenseType,
-                            "frametrail:licenseAttribution": overlays[i].licenseAttribution,
-                            "selector": (function () {
-                                if (   ['video', 'vimeo', 'youtube'].indexOf(overlays[i].type) >= 0
-                                    && overlays[i].startOffset
-                                    && overlays[i].endOffset
-                                ) {
-                                    return {
-                                        "type": "FragmentSelector",
-                                        "conformsTo": "http://www.w3.org/TR/media-frags/",
-                                        "value": "t=" + overlays[i].startOffset + "," + overlays[i].endOffset
-                                    }
-                                } else {
-                                    return undefined;
-                                }
-                            })(),
-                            "frametrail:resourceId": overlays[i].resourceId,
-                            "frametrail:attributes": overlays[i].attributes
-                        },
-                        "frametrail:events": overlays[i].events
-                    });
-                    //console.log(contents);
-                    if (contents[contents.length-1].body['frametrail:type'] === 'location') {
-                        var contentItem = contents[contents.length-1];
-                        contentItem.body['frametrail:attributes'].lat = parseFloat(overlays[i].attributes.lat);
-                        contentItem.body['frametrail:attributes'].lon = parseFloat(overlays[i].attributes.lon);
-                        contentItem.body['frametrail:attributes'].boundingBox = (overlays[i].attributes.boundingBox) ?  overlays[i].attributes.boundingBox : [];
-                    }
-                }
-                for (var i in codeSnippets.timebasedEvents) {
-                    var codeSnippetItem = codeSnippets.timebasedEvents[i];
-                    contents.push({
-                        "@context": [
-                              "http://www.w3.org/ns/anno.jsonld",
-                              {
-                                  "frametrail": "http://frametrail.org/ns/"
-                              }
-                        ],
-                        "creator": {
-                            "nickname": codeSnippetItem.creator,
-                            "type": "Person",
-                            "id": codeSnippetItem.creatorId
-                         },
-                        "created": (new Date(codeSnippetItem.created)).toString(),
-                        "type": "Annotation",
-                        "frametrail:type": "CodeSnippet",
-                        "frametrail:tags": codeSnippetItem.tags,
-                        "target": {
-                            "type": "Video",
-                            "source": FrameTrail.module('HypervideoModel').sourcePath,
-                            "selector": {
-                                "conformsTo": "http://www.w3.org/TR/media-frags/",
-                                "type": "FragmentSelector",
-                                "value": "t=" + codeSnippetItem.start
-                            }
-                          },
-                        "body": {
-                            "type": "TextualBody",
-                            "frametrail:type": "codesnippet",
-                            "format" : "text/javascript",
-                            "value" : codeSnippetItem.snippet,
-                            "frametrail:name": codeSnippetItem.name,
-                            "frametrail:thumb": null,
-                            "frametrail:resourceId": null,
-                            "frametrail:attributes": codeSnippetItem.attributes
-                        }
-                    });
-                }
-                return contents;
-            })(),
-            "chapters": hypervideos[thisHypervideoID].chapters || [],
-            "subtitles": hypervideos[thisHypervideoID].subtitles
+        Object.assign(model.meta, {
+            "name":        entry.name,
+            "description": entry.description,
+            "thumb":       entry.thumb,
+            "posterFrame": entry.posterFrame || null,
+            "creator":     entry.creator,
+            "creatorId":   entry.creatorId,
+            "created":     entry.created,
+            "lastchanged": entry.lastchanged
+        });
+
+        model.config    = config;
+        model.layout    = (entry.config || {}).layoutArea;
+        model.clips     = entry.clips;
+        model.chapters  = entry.chapters || [];
+        model.subtitles = entry.subtitles;
+
+        if (isOpen) {
+            model.overlays      = overlays;
+            model.codeSnippets  = codeSnippets.timebasedEvents || [];
+            model.otherContents = otherContents;
+            model.globalEvents  = codeSnippets.globalEvents;
+            model.customCSS     = codeSnippets.customCSS;
+
+            var ViewLayout = FrameTrail.module('ViewLayout');
+            if (ViewLayout && ViewLayout.getLayoutAreaData) {
+                model.layout = ViewLayout.getLayoutAreaData();
+            }
+        }
+
+        return Serializer.serializeHypervideo(model, {
+            sourcePath: sourcePathOf(thisHypervideoID),
+            now:        Date.now(),
+            purpose:    purpose || 'save',
+            subtitles:  isOpen ? subtitles : null
         });
 
     }
@@ -2250,83 +1881,7 @@
      * @private
      */
     function _annotationToW3C(annotationItem) {
-        return {
-            "@context": [
-                "http://www.w3.org/ns/anno.jsonld",
-                { "frametrail": "http://frametrail.org/ns/" }
-            ],
-            "creator": {
-                "nickname": annotationItem.creator,
-                "type": "Person",
-                "id": annotationItem.creatorId
-            },
-            "created": (new Date(annotationItem.created)).toString(),
-            "type": "Annotation",
-            "frametrail:type": "Annotation",
-            "frametrail:tags": annotationItem.tags || [],
-            "frametrail:uri": annotationItem.uri || null,
-            "target": {
-                "type": "Video",
-                "source": FrameTrail.module('HypervideoModel').sourcePath,
-                "selector": {
-                    "conformsTo": "http://www.w3.org/TR/media-frags/",
-                    "type": "FragmentSelector",
-                    "value": "t=" + annotationItem.start + "," + annotationItem.end
-                }
-            },
-            "body": {
-                "type": ({
-                    'image': 'Image',
-                    'video': 'Video',
-                    'location': 'Dataset',
-                    'wikipedia': 'Text',
-                    'text': 'TextualBody',
-                    'entity': 'Text',
-                    'quiz': 'TextualBody',
-                    'vimeo': 'Video',
-                    'webpage': 'Text',
-                    'youtube': 'Video'
-                })[annotationItem.type],
-                "frametrail:type": annotationItem.type,
-                "format": ({
-                    'image': 'image/' + (function () {
-                        try {
-                            return (annotationItem.src ? (/\.(\w{3,4})$/g.exec(annotationItem.src)[1]) : '*')
-                        } catch (_) {
-                            return '*';
-                        }
-                    })(),
-                    'video': 'video/mp4',
-                    'location': 'application/x-frametrail-location',
-                    'wikipedia': 'text/html',
-                    'text': 'text/html',
-                    'entity': 'text/html',
-                    'quiz': 'text/html',
-                    'vimeo': 'text/html',
-                    'webpage': 'text/html',
-                    'youtube': 'text/html'
-                })[annotationItem.type],
-                "source": (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia'].indexOf(annotationItem.type) < 0)
-                    ? annotationItem.src : undefined,
-                "value": (['codesnippet', 'text', 'quiz', 'entity', 'webpage', 'wikipedia'].indexOf(annotationItem.type) >= 0)
-                    ? annotationItem.src : undefined,
-                "frametrail:name": annotationItem.name,
-                "frametrail:thumb": annotationItem.thumb,
-                "frametrail:licenseType": annotationItem.licenseType,
-                "frametrail:licenseAttribution": annotationItem.licenseAttribution,
-                "selector": (
-                    ['video', 'vimeo', 'youtube'].indexOf(annotationItem.type) >= 0
-                    && annotationItem.startOffset
-                    && annotationItem.endOffset
-                ) ? {
-                    "type": "FragmentSelector",
-                    "conformsTo": "http://www.w3.org/TR/media-frags/",
-                    "value": "t=" + annotationItem.startOffset + "," + annotationItem.endOffset
-                } : undefined,
-                "frametrail:resourceId": annotationItem.resourceId,
-                "frametrail:attributes": annotationItem.attributes
-            }
-        };
+        return Serializer.serializeAnnotation(annotationItem, { sourcePath: sourcePathOf(hypervideoID) });
     }
 
     /**
@@ -2342,14 +1897,10 @@
     function saveAnnotations(callback) {
 
         var userID              = FrameTrail.module('UserManagement').userID,
-            action              = 'save'; //= annotations.hasOwnProperty(userID)
-                                //    ? 'save'
-                                //    : 'saveAs',
-
+            action              = 'save',
             name                = FrameTrail.getState('username'),
             description         = FrameTrail.getState('username') + '\'s annotations',
-            hidden              = false;
-
+            hidden              = false,
             annotationsToSave   = [];
 
 
@@ -2360,9 +1911,11 @@
                 continue;
             }
 
-            annotationsToSave.push(_annotationToW3C(annotationItem));
+            annotationsToSave.push(annotationItem);
 
         }
+
+        annotationsToSave = Serializer.serializeAnnotationFile(annotationsToSave, { sourcePath: sourcePathOf(hypervideoID) });
 
         //console.log(annotationsToSave);
 
@@ -2382,13 +1935,19 @@
                     return adapter.readJSON(indexPath).catch(function() { return {}; });
                 })
                 .then(function(index) {
-                    index[userID] = {
-                        name: name,
+                    // Under annotationfiles, where the loaders look — the
+                    // top-level entry this used to write was never read back.
+                    var now      = Math.floor(Date.now() / 1000),
+                        existing = Serializer.parseAnnotationIndex(index).annotationfiles[userID] || {};
+                    return adapter.writeJSON(indexPath, Serializer.setAnnotationIndexEntry(index, userID, {
+                        name:        name,
                         description: description,
-                        hidden: hidden,
-                        src: userID + '.json'
-                    };
-                    return adapter.writeJSON(indexPath, index);
+                        created:     (existing.created != null) ? existing.created : now,
+                        lastchanged: now,
+                        hidden:      hidden,
+                        owner:       name,
+                        ownerId:     String(userID)
+                    }));
                 })
                 .then(function() {
                     callback.call(window, { success: true });
