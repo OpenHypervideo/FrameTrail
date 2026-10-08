@@ -8,6 +8,8 @@
  *
  * I speak the stored format: overlays, code snippets and annotations as the W3C items of docs/DATA-MODEL.md, chapters, content views and the hypervideo's config as they are written to hypervideo.json. What I return is what a save writes. What I am given is validated against the schemas in schemas/ (with FrameTrailSchema) before anything changes, and refused with `{ path, message }` errors.
  *
+ * I also tell what a script needs to know around that data: the open hypervideo's id, video and time (getInfo), who changes are made as (getUser), whether a change is allowed now (permission), and the installation's hypervideos (listHypervideos).
+ *
  * Writes go through the same model and controller functions as edits made in the editor, so the video, the timelines and the content views follow, the changes are saved by the normal save (and autosave), and each write is an undo step. A transaction makes several writes one undo step, and takes them all back when it fails. While an async transaction is open, the editor is busy (state editBusy): editing by hand and undo wait, other writes are refused, and the user can stop it.
  *
  * The permissions are the editor's: writes only in edit mode; overlays, code snippets, chapters, content views, subtitles and settings only for an admin or the hypervideo's creator, and not while someone else holds the hypervideo's collaboration lock; annotations only in the user's own collection.
@@ -229,11 +231,51 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     /*  Checks                                                            */
     /* ------------------------------------------------------------------ */
 
+    // The error of there being no open hypervideo, or null.
+    function noHypervideo() {
+        return (!FrameTrail.module('RouteNavigation').hypervideoID || !FrameTrail.module('Database').hypervideo)
+            ? editError('notFound', 'No hypervideo is open')
+            : null;
+    }
+
     function requireHypervideo() {
 
-        if (!FrameTrail.module('RouteNavigation').hypervideoID || !FrameTrail.module('Database').hypervideo) {
-            throw editError('notFound', 'No hypervideo is open');
+        var missing = noHypervideo();
+
+        if (missing) { throw missing; }
+
+    }
+
+    /**
+     * I tell why the user may not change this kind of thing now, as the editor would not let them: the error a write would throw, or null when it may. I change nothing.
+     */
+    function refusalOf(kind) {
+
+        var missing = noHypervideo();
+
+        if (missing) { return missing; }
+
+        if (!FrameTrail.getState('editMode')) {
+            return editError('notAllowed', 'Changes can only be made in edit mode');
         }
+
+        if (!KINDS[kind].hypervideo) { return null; }
+
+        var UserManagement = FrameTrail.module('UserManagement'),
+            creatorId      = FrameTrail.module('HypervideoModel').creatorId;
+
+        if (UserManagement.userRole !== 'admin' && String(creatorId) !== currentUserID()) {
+            return editError('notAllowed', 'Only an admin or the creator of this hypervideo can change its ' + kind);
+        }
+
+        var Collaboration = FrameTrail.module('Collaboration');
+
+        if (Collaboration && Collaboration.isLockedByOther()) {
+            var holder = Collaboration.lockHolder();
+            return editError('notAllowed', 'This hypervideo is being edited by ' + ((holder && holder.name) ? holder.name : 'someone else'));
+        }
+
+        return null;
 
     }
 
@@ -242,27 +284,13 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
      */
     function requireEditing(kind) {
 
-        requireHypervideo();
+        var refusal = refusalOf(kind);
 
-        if (!FrameTrail.getState('editMode')) {
-            throw editError('notAllowed', 'Changes can only be made in edit mode');
-        }
+        if (refusal) { throw refusal; }
 
         if (!KINDS[kind].hypervideo) { return; }
 
-        var UserManagement = FrameTrail.module('UserManagement'),
-            creatorId      = FrameTrail.module('HypervideoModel').creatorId;
-
-        if (UserManagement.userRole !== 'admin' && String(creatorId) !== currentUserID()) {
-            throw editError('notAllowed', 'Only an admin or the creator of this hypervideo can change its ' + kind);
-        }
-
         var Collaboration = FrameTrail.module('Collaboration');
-
-        if (Collaboration && Collaboration.isLockedByOther()) {
-            var holder = Collaboration.lockHolder();
-            throw editError('notAllowed', 'This hypervideo is being edited by ' + ((holder && holder.name) ? holder.name : 'someone else'));
-        }
 
         if (Collaboration && Collaboration.isActive() && !Collaboration.hasLock()) {
             Collaboration.claim(function() {});
@@ -560,6 +588,124 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
         }
 
         throw editError('invalid', 'Unknown kind "' + kind + '"');
+
+    }
+
+
+    // A video as items name it: the hypervideo's own, or null for an empty timeline.
+    function videoOf(hypervideoID) {
+        var path = FrameTrail.module('Database').sourcePathOf(hypervideoID);
+        return (typeof path === 'string' && path !== '') ? path : null;
+    }
+
+    /**
+     * I describe the open hypervideo beyond its hypervideo.json: its id, its video (what items target, null for an empty timeline), and where its time runs: item times are seconds of the video, from start (the clip's in point) to end (start + duration). The duration is null while the video has not told it yet.
+     *
+     * @method getInfo
+     * @return {Object} { id, video, start, end, duration }
+     */
+    function getInfo() {
+
+        requireHypervideo();
+
+        var model    = FrameTrail.module('HypervideoModel'),
+            id       = String(FrameTrail.module('RouteNavigation').hypervideoID),
+            start    = (typeof model.offsetIn === 'number') ? model.offsetIn : 0,
+            duration = (typeof model.duration === 'number' && model.duration > 0) ? model.duration : null;
+
+        return {
+            id:       id,
+            video:    videoOf(id),
+            start:    start,
+            end:      (duration !== null) ? start + duration : null,
+            duration: duration
+        };
+
+    }
+
+    /**
+     * I return who changes are made as — the creator of what add() makes — or null when nobody is signed in: { id, name, role ('admin' or 'user'), guest (editing without an account) }.
+     *
+     * @method getUser
+     * @return {Object|null}
+     */
+    function getUser() {
+
+        var UserManagement = FrameTrail.module('UserManagement'),
+            id             = currentUserID();
+
+        if (id === '') { return null; }
+
+        return {
+            id:    id,
+            name:  String(FrameTrail.getState('username') || ''),
+            role:  (UserManagement.userRole === 'admin') ? 'admin' : 'user',
+            guest: !!UserManagement.isGuestMode()
+        };
+
+    }
+
+    /**
+     * I tell whether the user may change a kind of thing now ('overlays', 'codeSnippets', 'annotations', 'chapters', 'contentViews', 'subtitles', 'config'), so a script can offer only what it may do: { allowed: true }, or { allowed: false, code, message } with what a write would throw. Asking claims nothing; a write claims the collaboration lock.
+     *
+     * @method permission
+     * @param {String} kind
+     * @return {Object}
+     */
+    function permission(kind) {
+
+        if (!KINDS[kind]) {
+            throw editError('invalid', 'Unknown kind "' + kind + '"; one of ' + Object.keys(KINDS).join(', '));
+        }
+
+        var refusal = refusalOf(kind);
+
+        return refusal
+            ? { allowed: false, code: refusal.code, message: refusal.message }
+            : { allowed: true };
+
+    }
+
+    /**
+     * I list the hypervideos of the installation, as their hypervideo.json describes them — { id, meta, clips, subtitles } — and which one is open. Their contents are not loaded; open one to read and change it.
+     *
+     * @method listHypervideos
+     * @return {Array}
+     */
+    function listHypervideos() {
+
+        var Database    = FrameTrail.module('Database'),
+            hypervideos = Database.hypervideos || {},
+            openID      = String(FrameTrail.module('RouteNavigation').hypervideoID || ''),
+            loaded      = Database.hypervideo ? openID : '';
+
+        return Object.keys(hypervideos).map(function(id) {
+
+            var entry  = hypervideos[id] || {},
+                stored = isObject(entry.hypervideoData) ? entry.hypervideoData : {},
+                json   = (String(id) === loaded) ? getHypervideo() : null,
+                meta   = json ? json.meta : Object.assign({}, clone(stored.meta), {
+                    name:        entry.name,
+                    description: entry.description,
+                    thumb:       entry.thumb,
+                    posterFrame: entry.posterFrame,
+                    creator:     entry.creator,
+                    creatorId:   entry.creatorId,
+                    created:     entry.created,
+                    lastchanged: entry.lastchanged
+                });
+
+            Object.keys(meta).forEach(function(key) { if (meta[key] === undefined) { delete meta[key]; } });
+
+            return {
+                id:        String(id),
+                open:      String(id) === loaded,
+                meta:      clone(meta),
+                clips:     clone(json ? json.clips : (entry.clips || stored.clips || [])),
+                subtitles: clone(json ? (json.subtitles || []) : (entry.subtitles || stored.subtitles || []))
+            };
+
+        });
 
     }
 
@@ -1293,16 +1439,20 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     function api(tx) {
 
         var edit = {
-            getHypervideo:  getHypervideo,
-            list:           list,
-            get:            get,
-            add:            writer(tx, add),
-            update:         writer(tx, update),
-            remove:         writer(tx, remove),
-            setLayout:      writer(tx, setLayout),
-            setSubtitles:   writer(tx, setSubtitles),
-            setConfig:      writer(tx, setConfig),
-            transaction:    writer(tx, transaction)
+            getHypervideo:   getHypervideo,
+            getInfo:         getInfo,
+            getUser:         getUser,
+            permission:      permission,
+            listHypervideos: listHypervideos,
+            list:            list,
+            get:             get,
+            add:             writer(tx, add),
+            update:          writer(tx, update),
+            remove:          writer(tx, remove),
+            setLayout:       writer(tx, setLayout),
+            setSubtitles:    writer(tx, setSubtitles),
+            setConfig:       writer(tx, setConfig),
+            transaction:     writer(tx, transaction)
         };
 
         if (tx) {

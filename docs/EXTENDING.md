@@ -504,8 +504,12 @@ A `created` is the ISO 8601 text an item carries (`"2026-10-07T09:36:45.127Z"`).
 | `getHypervideo()` | the hypervideo as its `hypervideo.json` would be saved now (annotations live in their own files) |
 | `list(kind, filter)` | all things of a kind. `filter` is a function, or an object: `{ from, to }` (things whose time overlaps the span), `{ type }` (the body's `frametrail:type`), `{ creator }` (the creator's id), `{ area: 'top' }` (content views of one layout area) |
 | `get(kind, ref)` | one thing, or `null` |
+| `getInfo()` | `{ id, video, start, end, duration }`: the open hypervideo's id, its video (what items target; `null` for an empty timeline) and where its time runs. Item times are seconds of the video, from `start` (the clip's in point) to `end`; `duration` and `end` are `null` until the video has told its length |
+| `getUser()` | who changes are made as, the creator of what `add` makes: `{ id, name, role, guest }` (`role` is `'admin'` or `'user'`, `guest` means editing without an account), or `null` when nobody is signed in |
+| `permission(kind)` | whether the user may change a kind of thing now: `{ allowed: true }`, or `{ allowed: false, code, message }` with the error a write would throw (see below). Asking claims nothing |
+| `listHypervideos()` | the installation's hypervideos as their `hypervideo.json` describes them, `{ id, open, meta, clips, subtitles }`; their contents are read once one is open |
 
-Reading works whenever a hypervideo is open.
+Reading works whenever a hypervideo is open; `getUser()`, `permission()` and `listHypervideos()` work at any time.
 
 ### Writing
 
@@ -533,7 +537,7 @@ try {
 
 `e.code` is `'invalid'` (with `e.errors`), `'notFound'` (no such thing, or no hypervideo open) or `'notAllowed'` (see below); an async transaction that is stopped rejects with `'stopped'` (see [Undo and Transactions](#undo-and-transactions)).
 
-Writes need the permissions the editor needs: edit mode; for overlays, code snippets, chapters, content views, subtitles and settings an admin or the hypervideo's creator, and no collaboration lock held by someone else (writing claims the lock, as the editors that write the hypervideo do); annotations only in the user's own collection. An item of a type the player cannot show (such as the legacy `button`) is listed and kept, but not changed.
+Writes need the permissions the editor needs: edit mode; for overlays, code snippets, chapters, content views, subtitles and settings an admin or the hypervideo's creator, and no collaboration lock held by someone else (writing claims the lock, as the editors that write the hypervideo do); annotations only in the user's own collection. `permission(kind)` tells beforehand, for instance to offer only what the user may do. An item of a type the player cannot show (such as the legacy `button`) is listed and kept, but not changed.
 
 ### Undo and Transactions
 

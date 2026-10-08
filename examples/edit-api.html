@@ -7,6 +7,7 @@
   Demonstrates edit (docs/EXTENDING.md, "Editing the Hypervideo"), used by an extension the page registers itself:
   - list, get, add, update and remove of overlays, code snippets, annotations and chapters
   - setLayout, setSubtitles, setConfig and getHypervideo
+  - getInfo, getUser, permission and listHypervideos
   - a transaction: several changes as one undo step
   - invalid data refused with { path, message } errors, changing nothing
 
@@ -150,6 +151,20 @@
         } catch (e) {
             log(false, e.code === 'notAllowed' ? 'Click "Edit" first (any name will do).' : e.message);
             return;
+        }
+
+        try {
+            var info        = edit.getInfo(),
+                user        = edit.getUser(),
+                hypervideos = edit.listHypervideos(),
+                unknownKind = false;
+            try { edit.permission('everything'); } catch (e) { unknownKind = (e.code === 'invalid'); }
+            log(info.id === '0' && info.video === null && info.start === 0 && info.duration === 60 && info.end === 60, 'getInfo: id, video, time');
+            log(user !== null && user.guest === true && user.role === 'admin' && user.name !== '' && user.id.indexOf('guest_') === 0, 'getUser: the guest');
+            log(edit.permission('overlays').allowed === true && edit.permission('annotations').allowed === true && unknownKind, 'permission');
+            log(hypervideos.length === 1 && hypervideos[0].id === '0' && hypervideos[0].open === true && hypervideos[0].meta.name === 'Edit API' && hypervideos[0].clips[0].duration === 60, 'listHypervideos');
+        } catch (e) {
+            log(false, e.message);
         }
 
         var text = { 'frametrail:type': 'text', 'frametrail:name': 'From the script', 'frametrail:attributes': { 'text': '&lt;p&gt;Added by a script&lt;/p&gt;' } };
