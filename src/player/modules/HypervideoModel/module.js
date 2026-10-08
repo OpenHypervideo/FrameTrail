@@ -201,6 +201,9 @@
         pendingSaves = [];
         if (FrameTrail.module('Collaboration')) {
             FrameTrail.module('Collaboration').start('hypervideo', FrameTrail.module('RouteNavigation').hypervideoID);
+            // The user's own annotation file of it: written elsewhere (another
+            // tab, a script), the editor says so and does not save over it.
+            FrameTrail.module('Collaboration').start('annotations', FrameTrail.module('RouteNavigation').hypervideoID, { observe: true });
         }
 
 
@@ -1295,11 +1298,16 @@
 
         var saveRequests     = [],
             callbackReturns  = [],
-            databaseCallback = function(result) {
-                callbackReturns.push(result);
-                if(callbackReturns.length === saveRequests.length){
-                    saveFinished();
-                }
+            // Each result says which part it is: 'hypervideo' (hypervideo.json
+            // with its subtitles) or 'annotations' (the user's annotation file).
+            databaseCallback = function(part) {
+                return function(result) {
+                    result.part = part;
+                    callbackReturns.push(result);
+                    if(callbackReturns.length === saveRequests.length){
+                        saveFinished();
+                    }
+                };
             };
 
 
@@ -1331,14 +1339,14 @@
                                 // Not written: keep them for the next save, under anything set since.
                                 pendingSubtitles = Object.assign(subtitleWrites, pendingSubtitles);
                             }
-                            databaseCallback(result);
+                            databaseCallback('hypervideo')(result);
                         }, null, { subtitles: subtitleWrites });
                     });
                 }
 
                 if (unsavedAnnotations) {
                     saveRequests.push(function(){
-                        FrameTrail.module('Database').saveAnnotations(databaseCallback);
+                        FrameTrail.module('Database').saveAnnotations(databaseCallback('annotations'));
                     });
                 }
 
@@ -1368,35 +1376,76 @@
 
         function saveFinished() {
 
-            for (var i=0; i < callbackReturns.length; i++) {
+            var Collaboration = FrameTrail.module('Collaboration'),
+                hypervideoID  = FrameTrail.module('RouteNavigation').hypervideoID;
 
-                var result = callbackReturns[i];
+            // A part that was written is clean, whatever happened to the other
+            // one: otherwise the next save writes it again (and a hypervideo
+            // saved next to refused annotations would look unsaved).
+            callbackReturns.forEach(function(result) {
+                if (result.failed) return;
+                if (result.part === 'hypervideo') {
+                    unsavedOverlays     = false;
+                    unsavedCodeSnippets = false;
+                    unsavedEvents       = false;
+                    unsavedCustomCSS    = false;
+                    unsavedChapters     = false;
+                    unsavedLayout       = false;
+                    unsavedSubtitles    = false;
+                    unsavedConfig       = false;
+                    // The post-write version, not the one last polled — or we
+                    // look stale against our own save and notify ourselves.
+                    // Clean again: a waiting collaborator may take over.
+                    if (Collaboration) {
+                        Collaboration.acknowledgeVersion(result.version || null);
+                        Collaboration.setUnsaved(false);
+                    }
+                } else if (result.part === 'annotations') {
+                    unsavedAnnotations = false;
+                    if (Collaboration) { Collaboration.acknowledgeVersion(result.version || null, 'annotations', String(hypervideoID)); }
+                }
+            });
 
-                // Compare-and-swap rejected the write: someone else saved
-                // between our load and this save. Writing anyway would erase
-                // their work, so offer a reload instead of a bare error.
-                if (result.failed && result.code === 7) {
+            var failures = callbackReturns.filter(function(result) { return result.failed; });
+
+            if (failures.length) {
+
+                FrameTrail.changeState('unsavedChanges', true);
+
+                // Compare-and-swap rejected the write: someone (or something)
+                // else saved between our load and this save. Writing anyway
+                // would erase their work, so offer a reload instead of a bare error.
+                var conflicts = failures.filter(function(result) { return result.code === 7; });
+
+                if (conflicts.length) {
                     FrameTrail.module('InterfaceModal').hideMessage();
                     if (silent) {
                         // An automatic save must not interrupt with a modal.
                         // Feed the ordinary "changes available" affordance and
                         // let the user deal with it when they choose to.
-                        var Collab = FrameTrail.module('Collaboration');
-                        if (Collab) { Collab.markStale(); }
+                        if (Collaboration) {
+                            conflicts.forEach(function(result) {
+                                if (result.part === 'annotations') {
+                                    Collaboration.markStale('annotations', String(hypervideoID));
+                                } else {
+                                    Collaboration.markStale();
+                                }
+                            });
+                        }
                     } else {
-                        showSaveConflictDialog(result.conflict);
+                        // The hypervideo's conflict, if there is one, says what reloading means.
+                        var shown = conflicts.filter(function(result) { return result.part === 'hypervideo'; })[0] || conflicts[0];
+                        showSaveConflictDialog(shown.conflict, shown.part);
                     }
                     releaseSave(false);
                     return;
                 }
 
-                if (result.failed) {
-                    if (!silent) {
-                        FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] +' ('+ result.error +': '+ result.code +')');
-                    }
-                    releaseSave(false);
-                    return;
+                if (!silent) {
+                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] +' ('+ failures[0].error +': '+ failures[0].code +')');
                 }
+                releaseSave(false);
+                return;
 
             }
 
@@ -1416,18 +1465,9 @@
             unsavedConfig       = false;
             FrameTrail.changeState('unsavedChanges', false);
 
-            var Collaboration = FrameTrail.module('Collaboration');
             if (Collaboration) {
                 // Clean again — a waiting collaborator may now take over.
                 Collaboration.setUnsaved(false);
-                // Adopt the version the server reported *after* writing, not the
-                // one we last polled — otherwise we immediately look stale
-                // against our own save and notify ourselves about it.
-                var writtenVersion = null;
-                for (var v = 0; v < callbackReturns.length; v++) {
-                    if (callbackReturns[v].version) { writtenVersion = callbackReturns[v].version; }
-                }
-                Collaboration.acknowledgeVersion(writtenVersion);
             }
 
             FrameTrail.triggerEvent('userAction', {
@@ -1797,12 +1837,15 @@
      *
      * @method showSaveConflictDialog
      * @param {Object} conflict server-reported state of the file on disk
+     * @param {String} [part] 'annotations' when it is the user's annotation file
      */
-    function showSaveConflictDialog(conflict) {
+    function showSaveConflictDialog(conflict, part) {
 
         var by = (conflict && conflict.creator) ? conflict.creator : '',
             // In a local folder or project file it was another program (or tab), and there is no server.
-            text = (FrameTrail.getState('storageMode') === 'local') ? labels['ErrorSaveConflictInFolder']
+            // The user's annotation file has one writer, the user: elsewhere, in any mode.
+            text = (part === 'annotations') ? labels['ErrorSaveConflictAnnotations']
+                 : (FrameTrail.getState('storageMode') === 'local') ? labels['ErrorSaveConflictInFolder']
                  : (FrameTrail.getState('storageMode') === 'file') ? labels['ErrorSaveConflictInFile']
                  : labels['ErrorSaveConflict'];
 
@@ -1869,6 +1912,7 @@
         if (Collaboration) {
             Collaboration.setUnsaved(false);
             Collaboration.acknowledgeVersion();
+            Collaboration.acknowledgeVersion(null, 'annotations', String(currentID));
         }
 
         updateHypervideo(currentID, wasEditing, true);

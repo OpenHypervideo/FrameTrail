@@ -2115,7 +2115,23 @@
             name                = FrameTrail.getState('username'),
             description         = FrameTrail.getState('username') + '\'s annotations',
             hidden              = false,
-            annotationsToSave   = ownAnnotationFile();
+            annotationsToSave   = ownAnnotationFile(),
+            savedHypervideoID   = hypervideoID,
+            // The entry of the user's file as loaded with the hypervideo: its
+            // lastchanged is the compare-and-swap token of the save.
+            loadedEntry         = ((hypervideos[savedHypervideoID] || {}).annotationfiles || {})[userID] || null;
+
+        // After a write: the entry as it is now, so the next save compares with it.
+        function noteWritten(fields) {
+            var entry = hypervideos[savedHypervideoID];
+            if (!entry) return;
+            entry.annotationfiles = entry.annotationfiles || {};
+            entry.annotationfiles[userID] = Object.assign({}, entry.annotationfiles[userID], fields);
+        }
+
+        function conflict(response) {
+            callback.call(window, { failed: 'annotations', error: 'Conflict', code: 7, conflict: response || null });
+        }
 
         //console.log(annotationsToSave);
 
@@ -2124,33 +2140,53 @@
         if (storageMode !== 'server') {
             // Local / download adapter — write annotation file + update index
             var adapter = FrameTrail.module('StorageManager').getAdapter();
-            var annPath = 'hypervideos/' + hypervideoID + '/annotations/' + userID + '.json';
-            var indexPath = 'hypervideos/' + hypervideoID + '/annotations/_index.json';
+            var annPath = 'hypervideos/' + savedHypervideoID + '/annotations/' + userID + '.json';
+            var indexPath = 'hypervideos/' + savedHypervideoID + '/annotations/_index.json';
+            var isLocal = FrameTrail.module('StorageManager').isLocal();
 
-            adapter.createDirectory('hypervideos/' + hypervideoID + '/annotations')
-                .then(function() {
-                    return adapter.writeJSON(annPath, annotationsToSave);
+            // In a local folder or project file another program (or tab) may
+            // have written the file since it was read, or made it since the
+            // hypervideo was loaded without one: refuse, as the server does.
+            (adapter.isUnchanged ? adapter.isUnchanged(annPath) : Promise.resolve(true))
+                .then(function(unchanged) {
+                    if (!unchanged) return false;
+                    if (!isLocal || loadedEntry) return true;
+                    return adapter.exists(annPath).then(function(exists) { return !exists; });
                 })
-                .then(function() {
-                    return adapter.readJSON(indexPath).catch(function() { return {}; });
-                })
-                .then(function(index) {
-                    // Under annotationfiles, where the loaders look — the
-                    // top-level entry this used to write was never read back.
-                    var now      = Math.floor(Date.now() / 1000),
-                        existing = Serializer.parseAnnotationIndex(index).annotationfiles[userID] || {};
-                    return adapter.writeJSON(indexPath, Serializer.setAnnotationIndexEntry(index, userID, {
-                        name:        name,
-                        description: description,
-                        created:     (existing.created != null) ? existing.created : now,
-                        lastchanged: now,
-                        hidden:      hidden,
-                        owner:       name,
-                        ownerId:     String(userID)
-                    }));
-                })
-                .then(function() {
-                    callback.call(window, { success: true });
+                .then(function(free) {
+                    if (!free) {
+                        conflict(null);
+                        return;
+                    }
+                    return adapter.createDirectory('hypervideos/' + savedHypervideoID + '/annotations')
+                        .then(function() {
+                            return adapter.writeJSON(annPath, annotationsToSave);
+                        })
+                        .then(function() {
+                            return adapter.readJSON(indexPath).catch(function() { return {}; });
+                        })
+                        .then(function(index) {
+                            // Under annotationfiles, where the loaders look — the
+                            // top-level entry this used to write was never read back.
+                            var now      = Math.floor(Date.now() / 1000),
+                                existing = Serializer.parseAnnotationIndex(index).annotationfiles[userID] || {},
+                                fields   = {
+                                    name:        name,
+                                    description: description,
+                                    created:     (existing.created != null) ? existing.created : now,
+                                    // Milliseconds, moving on, like the server's token.
+                                    lastchanged: Math.max(Date.now(), (parseInt(existing.lastchanged, 10) || 0) + 1),
+                                    hidden:      hidden,
+                                    owner:       name,
+                                    ownerId:     String(userID)
+                                };
+                            return adapter.writeJSON(indexPath, Serializer.setAnnotationIndexEntry(index, userID, fields)).then(function() {
+                                noteWritten(fields);
+                            });
+                        })
+                        .then(function() {
+                            callback.call(window, { success: true });
+                        });
                 })
                 .catch(function(error) {
                     callback.call(window, { failed: 'annotations', error: error.message });
@@ -2164,19 +2200,31 @@
             dataType: 'json',
             data: {
                 a:                'annotationfileSave',
-                hypervideoID:     hypervideoID,
+                hypervideoID:     savedHypervideoID,
                 action:           action,
                 annotationfileID: userID,
                 name:             name,
                 description:      description,
                 hidden:           hidden,
-                src:              JSON.stringify(annotationsToSave, null, 4)
+                src:              JSON.stringify(annotationsToSave, null, 4),
+                // 0: the user had no file when the hypervideo was loaded.
+                baseVersion:      (loadedEntry && loadedEntry.lastchanged != null) ? loadedEntry.lastchanged : 0
             }
         }, function (data) {
 
             if (data.code === 0) {
 
-                callback.call(window, { success: true });
+                var written = data.response || {};
+                if (written.lastchanged != null) {
+                    noteWritten({ name: name, description: description, lastchanged: written.lastchanged, owner: name, ownerId: userID });
+                }
+                // The post-write version token of the user's annotation file,
+                // for the Collaboration module (scope 'annotations').
+                callback.call(window, { success: true, version: (written.version != null) ? written.version : null });
+
+            } else if (data.code === 7) {
+
+                conflict(data.response);
 
             } else {
 

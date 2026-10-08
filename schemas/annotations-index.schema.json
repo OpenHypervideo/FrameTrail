@@ -31,7 +31,7 @@
                                 "type": ["integer", "null"]
                             },
                             "lastchanged": {
-                                "description": "When the file was last saved, in seconds since 1970.",
+                                "description": "When the file was last saved, in milliseconds since 1970 (seconds in files written before annotation files had a compare-and-swap token). The compare-and-swap token of annotationfileSave: a save that carries the value it loaded (baseVersion) is refused when the file has been saved since, so a tool that writes the file must change it.",
                                 "type": "integer"
                             },
                             "hidden": {

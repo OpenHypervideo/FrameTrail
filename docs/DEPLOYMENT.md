@@ -84,7 +84,7 @@ Single-user editing without a server. Uses the [File System Access API](https://
 
 The `StorageAdapterLocal` class uses the File System Access API (`showDirectoryPicker`, `FileSystemDirectoryHandle`, etc.) to read and write JSON files and uploaded media. The browser asks for permission the first time you access a folder, then remembers it for the session.
 
-Other programs (scripts, a text editor, a second browser tab) may change the folder while FrameTrail has it open. FrameTrail notices a changed `hypervideo.json` or `hypervideos/_index.json` when its window gets the focus, and every 30 seconds while editing, and offers to reload it (Refresh in the editor's sidebar). It does not save over such a change: saving shows a conflict dialog instead, and the changes made in the editor are kept until you reload.
+Other programs (scripts, a text editor, a second browser tab) may change the folder while FrameTrail has it open. FrameTrail notices a changed `hypervideo.json`, `hypervideos/_index.json` or annotation file of your own when its window gets the focus, and every 30 seconds while editing, and offers to reload it (Refresh in the editor's sidebar). It does not save over such a change: saving shows a conflict dialog instead, and the changes made in the editor are kept until you reload.
 
 **Limitations:**
 - Identity is name-only (a login dialog prompts for a display name before entering edit mode; no account or password required)
@@ -588,6 +588,7 @@ Tokens are off by default; most instances never need them. With `"apiTokens": tr
 - **A token is not a way into the account:** login, logout, registration, changing or deleting an account and managing tokens are refused with code `403` when a request comes with a token.
 - **Failed attempts are limited:** after 10 failed token requests from one address within 10 minutes, token requests from it answer `429` until the 10 minutes are over. The counts live in `_data/.auth/bearer/`.
 - An `Authorization` header that does not hold a FrameTrail token (`Bearer ft_…`) is ignored, so a proxy that sends its own keeps working.
+- **A script that writes the user's annotations** (`annotationfileSave`) is noticed by the user's open editor, which shows that the annotations changed and does not save over them. The script can guard its own write the same way: send the `lastchanged` of the user's entry in `annotations/_index.json` it read as `baseVersion` (`0` when the user has no file yet), and the server answers code 7 instead of writing when the file was saved in the meantime.
 - **Apache with PHP behind FastCGI or CGI** (PHP-FPM) drops the `Authorization` header unless told otherwise. The shipped `.htaccess` passes it on for `_server/` with a rewrite rule; with `AllowOverride` that excludes `FileInfo`, set `CGIPassAuth On` instead (Apache 2.4.13+). nginx passes it to PHP-FPM as `HTTP_AUTHORIZATION` by default. On a private instance `_data/` is read through `serve.php`, behind a rewrite of its own that this rule does not reach: reading `_data/` there with a token needs `CGIPassAuth On`.
 
 ### File Permissions

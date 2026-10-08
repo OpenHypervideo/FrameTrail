@@ -367,6 +367,8 @@ In `'server'` mode the `Collaboration` module learns of changes through `collabS
 
 `'file'` mode works the same way. `StorageAdapterHTMLFile` looks at the file's version before every read and write, takes a changed file in (writes it has not written yet stay on top), and keeps a version per path that changes only with that path's contents — so a tab that saved the other hypervideo, or the annotations, does not make this one stale. A write of the file that fails puts the folder back to what the file holds and rejects, so the editor stays dirty.
 
+**The user's own annotation file** has one writer, the user — but that user may also write it from another tab, or a script may with the user's API token. In every mode the `Collaboration` scope `annotations` / `<hypervideoId>` watches it (observed only, no lock): on a server its token is `"<lastchanged>:<mtime>:<size>"` of the signed-in user's entry and file (`_collabAnnotationVersion()`, user from the session), compared on the client with the version it knows (there is no other writer to tell apart, so no own-writer suppression: its own saves acknowledge the version `annotationfileSave` returns); in a local folder or project file it is the file's version, as above. `Database.saveAnnotations()` sends the `lastchanged` it loaded as `baseVersion` (`0` without a file) and the server refuses a changed file with code 7; in a local folder or project file it refuses when the adapter says the file changed (or one appeared that was not there at load). A manual save shows the conflict dialog (worded for the annotations), an autosave marks the scope stale. `HypervideoModel.save()` marks a part that was written clean even when the other one was refused, and acknowledges each scope with its own version.
+
 ## Data Model
 
 All data is stored as JSON files in `_data/`, one folder per instance, with no database:
@@ -519,7 +521,7 @@ All AJAX requests go through `src/_server/ajaxServer.php`:
 | `configChange` | Update config (admin; refused with code 8 under `externalSettings`) |
 | `configVersions` | Read the compare-and-swap tokens for `config.json` and `custom.css` |
 | `globalCSSChange` | Update `custom.css` (admin; refused with code 8 under `externalSettings`) |
-| `annotationfileSave` | Save user annotations (the hypervideo id is looked up in the index, never used as a path) |
+| `annotationfileSave` | Save the signed-in user's annotations (the hypervideo id is looked up in the index, never used as a path); `baseVersion` = the `lastchanged` the client loaded, refused with code 7 when the file was saved since |
 
 An action the switch does not know goes to the server extensions switched on in `config.json` → `extensions` (`src/_server/extensionloader.php`), so FrameTrail's own actions always win. Their routes, which answer with their own HTTP semantics, go through `src/_server/extension.php?e=<name>&r=<route>`. See [EXTENDING.md](EXTENDING.md#server-extensions).
 

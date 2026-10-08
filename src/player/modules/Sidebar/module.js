@@ -1198,6 +1198,21 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             takeover: true,
             refresh:  refreshLibrary,
             visible:  function() { return true; }
+        },
+
+        // The user's own annotation file of the open hypervideo, written
+        // elsewhere (another tab, a script, another program): never locked, and
+        // the writer is the user, so one notice for every mode and no name.
+        {   scope: 'annotations', scopeId: function() { return String(FrameTrail.module('RouteNavigation').hypervideoID); },
+            viewModes: ['video'],
+            staleBy:  'MessageCollabAnnotationsChanged',
+            stale:    'MessageCollabAnnotationsChanged',
+            staleLocal: 'MessageCollabAnnotationsChanged',
+            staleFile:  'MessageCollabAnnotationsChanged',
+            lockedBy: null,
+            takeover: false,
+            refresh:  refreshHypervideoFromServer,
+            visible:  function() { return true; }
         }
 
     ];
@@ -1400,7 +1415,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             COLLAB_SCOPE_ROWS.forEach(function(row) {
                 if (row.viewModes.indexOf(viewMode) === -1) return;
                 if (!row.visible()) return;
-                renderCollabRow(container, row);
+                // A row whose scope follows the open hypervideo names it now.
+                renderCollabRow(container, (typeof row.scopeId === 'function') ? Object.assign({}, row, { scopeId: row.scopeId() }) : row);
             });
         }
 

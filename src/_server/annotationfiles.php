@@ -44,6 +44,31 @@ function ftAnnotationHypervideoDir($hypervideoID) {
 }
 
 /**
+ * The entry of a user's annotation file in an annotations index, or null: under
+ * "annotationfiles", else at the top level of the file, where local-folder mode
+ * used to write it (FrameTrailSerializer.parseAnnotationIndex reads it alike).
+ *
+ * @param array  $index
+ * @param string $fileID
+ * @return array|null
+ */
+function ftAnnotationIndexEntry($index, $fileID) {
+
+    $fileID = (string)$fileID;
+
+    if (isset($index["annotationfiles"][$fileID]) && is_array($index["annotationfiles"][$fileID])) {
+        return $index["annotationfiles"][$fileID];
+    }
+    if (!in_array($fileID, array("mainAnnotation", "annotation-increment", "annotationfiles"), true)
+        && isset($index[$fileID]) && is_array($index[$fileID])) {
+        return $index[$fileID];
+    }
+
+    return null;
+
+}
+
+/**
  * @param $hypervideoID
  * @param $annotationfileID
  * @param $action
@@ -51,18 +76,26 @@ function ftAnnotationHypervideoDir($hypervideoID) {
  * @param $description
  * @param $hidden
  * @param $src
+ * @param $baseVersion  the lastchanged of the user's entry in annotations/_index.json the client loaded (0: it had none)
  * @return mixed
  *
+ * The file is always the signed-in user's own (annotations/<userId>.json).
+ *
+ * Compare-and-swap: a save that carries a baseVersion is refused when the
+ * user's file has been saved since (another tab, a script with an API token):
+ * writing $src would erase that change. Without a baseVersion the file is
+ * written as before. lastchanged is written in milliseconds and always moves
+ * on, so two saves never share a token.
+ *
  * Returning Code:
- * 0       =   Success. File has been written.
+ * 0       =   Success. File has been written. response: { lastchanged, version }
  * 1       =   failed. Not logged in or user not active.
  * 4       =   failed. action not correct — expected "save" or "saveAs"
  * 5       =   failed. Name (min 3 chars) or description have not been submitted.
- * 6       =   failed. On save only — annotation with $id has not been found (in DB or as file).
- * 7       =   Permission denied. On save only — you are not the annotation's owner and not an administrator.
+ * 7       =   failed. The file was saved by someone else since baseVersion. response: { lastchanged, version }
  * 8       =   failed. hypervideoID is not a hypervideo of this instance.
  */
-function annotationfileSave($hypervideoID, $annotationfileID, $action, $name, $description, $hidden, $src) {
+function annotationfileSave($hypervideoID, $annotationfileID, $action, $name, $description, $hidden, $src, $baseVersion = null) {
     global $conf;
 
     if ($err = requireLogin()) return $err;
@@ -102,26 +135,34 @@ function annotationfileSave($hypervideoID, $annotationfileID, $action, $name, $d
         file_put_contents($hypervideoDir."/annotations/_index.json", json_encode($tmp,$conf["settings"]["json_flags"]));
     }
 
+    include_once("collaboration.php");
+
+    // Held until the index is written: the check, the annotation file and the
+    // index change as one.
     $file = new sharedFile($hypervideoDir."/annotations/_index.json");
     $json = $file->read();
     $an = json_decode($json,true);
+    if (!is_array($an)) {
+        $an = array();
+    }
 
-    // if (($action == "save") && ((!is_array($an["annotationfiles"][$annotationfileID])) || (!file_exists($hypervideoDir."/annotations/".$annotationfileID.".json")))) {
-    //  $return["status"] = "fail";
-    //  $return["code"] = 6;
-    //  $return["string"] = "Annotation with id=".$annotationfileID." has not been found.";
-    //  $file->close();
-    //  return $return;
-    // }
+    $anID    = (string)$annotationfileID;
+    $entry   = ftAnnotationIndexEntry($an, $anID);
+    $current = ($entry !== null && isset($entry["lastchanged"])) ? $entry["lastchanged"] : 0;
 
-    // if (($action == "save") && (($_SESSION["ohv"]["user"]["id"] != $an["annotationfiles"][$annotationfileID]["ownerId"]) && ($_SESSION["ohv"]["user"]["role"] != "admin"))) {
-    //  $return["status"] = "fail";
-    //  $return["code"] = 7;
-    //  $return["string"] = "Permission denied. You are not the annotations owner and no administrator!";
-    //  $file->close();
-    //  return $return;
-    // }
-    $time = time();
+    if ($baseVersion !== null && $baseVersion !== "" && $current != $baseVersion) {
+        $file->close();
+        $return["status"]   = "fail";
+        $return["code"]     = 7;
+        $return["string"]   = "The annotations were saved elsewhere in the meantime.";
+        $return["response"] = array(
+            "lastchanged" => $current,
+            "version"     => _collabAnnotationVersion($hypervideoID, $anID)
+        );
+        return $return;
+    }
+
+    $time = max((int)round(microtime(true) * 1000), (int)$current + 1);
 
     if ($hidden === "false") {
         $hidden = false;
@@ -129,40 +170,47 @@ function annotationfileSave($hypervideoID, $annotationfileID, $action, $name, $d
         $hidden = true;
     }
 
-    if ($action == "save") {
-        $anID = $annotationfileID;
-        $created = $an["annotationfiles"][$anID]["created"];
+    if ($action == "save" && $entry !== null && isset($entry["created"])) {
+        $created = $entry["created"];
     } else {
-        // $an["annotation-increment"]++;
-        // $anID = $an["annotation-increment"];
-        $anID = $annotationfileID;
-        $created = $time;
+        $created = time();
     }
 
-    $an["annotationfiles"][$anID]["name"] = ($name) ? $name : $an["annotationfiles"][$anID]["name"];
-    $an["annotationfiles"][$anID]["description"] = ($description) ? $description : $an["annotationfiles"][$anID]["description"];
+    if (!isset($an["annotationfiles"]) || !is_array($an["annotationfiles"])) {
+        $an["annotationfiles"] = array();
+    }
+    $previous = isset($an["annotationfiles"][$anID]) ? $an["annotationfiles"][$anID] : (($entry !== null) ? $entry : array());
+
+    $an["annotationfiles"][$anID] = $previous;
+    $an["annotationfiles"][$anID]["name"] = ($name) ? $name : (isset($previous["name"]) ? $previous["name"] : "");
+    $an["annotationfiles"][$anID]["description"] = ($description) ? $description : (isset($previous["description"]) ? $previous["description"] : "");
     $an["annotationfiles"][$anID]["created"] = $created;
     $an["annotationfiles"][$anID]["lastchanged"] = $time;
     $an["annotationfiles"][$anID]["owner"] = $_SESSION["ohv"]["user"]["name"];
     $an["annotationfiles"][$anID]["ownerId"] = $_SESSION["ohv"]["user"]["id"];
     $an["annotationfiles"][$anID]["hidden"] = $hidden;
 
+    // The entry says it once: a legacy top-level copy goes.
+    if (!in_array($anID, array("mainAnnotation", "annotation-increment", "annotationfiles"), true) && isset($an[$anID]) && is_array($an[$anID])) {
+        unset($an[$anID]);
+    }
+
+    // The annotation file first, then the index: whoever sees the new
+    // lastchanged finds the file it belongs to.
+    $fileStr = $hypervideoDir."/annotations/".$anID.".json";
+    $annotationFile = new sharedFile($fileStr);
+    $annotationFile->writeClose($src);
+
     $file->writeClose(json_encode($an, $conf["settings"]["json_flags"]));
 
-    $fileStr = $hypervideoDir."/annotations/".$anID.".json";
-    if (($action == "saveAs") && (!file_exists($fileStr))) {
-        file_put_contents($fileStr, "");
-    }
-    $file = new sharedFile($fileStr);
-    /*$src = json_decode($src,true);
-    $src = json_encode($src, $conf["settings"]["json_flags"]);
-    */
-    $file->writeClose($src);
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "File has been written";
     $return["annotationID"] = $anID;
-    $file->close();
+    $return["response"] = array(
+        "lastchanged" => $time,
+        "version"     => _collabAnnotationVersion($hypervideoID, $anID)
+    );
     return $return;
 }
 

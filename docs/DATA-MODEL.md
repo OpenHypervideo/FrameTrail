@@ -240,12 +240,12 @@ Each user's annotations of a hypervideo are in their own file, named by user id,
     "mainAnnotation": "1",
     "annotationfiles": {
         "1": { "name": "demo", "description": "demo's annotations", "created": 1773150038,
-               "lastchanged": 1788952662, "hidden": false, "owner": "demo", "ownerId": 1 }
+               "lastchanged": 1791417588906, "hidden": false, "owner": "demo", "ownerId": 1 }
     }
 }
 ```
 
-`created` and `lastchanged` here are in seconds. User ids are strings, except `ownerId`, which the server writes as a number. In local-folder mode there are no accounts: a user id is derived from the name the user enters, as `guest_<name>-<hash>` (e.g. `guest_anna-b-919e0619`), so the same name finds its annotation file again. An annotation file is a JSON array of annotations (below).
+`created` is in seconds, `lastchanged` in milliseconds (seconds in older files). `lastchanged` is the compare-and-swap token of the user's file: the editor's save carries the value it loaded (`annotationfileSave` → `baseVersion`; `0` for a user who had no file), and the server refuses it with code 7 when the file has been saved since — from another tab, or by a script with the user's API token — so the editor shows that the annotations changed instead of overwriting them. A tool that writes an annotation file must therefore change its entry's `lastchanged` (`annotationfileSave` does; it may also send `baseVersion` itself). In a local folder or project file the token is the file's version (modification time and size), so there any write is noticed. User ids are strings, except `ownerId`, which the server writes as a number. In local-folder mode there are no accounts: a user id is derived from the name the user enters, as `guest_<name>-<hash>` (e.g. `guest_anna-b-919e0619`), so the same name finds its annotation file again. An annotation file is a JSON array of annotations (below).
 
 ## Items: Overlays, Code Snippets and Annotations
 
@@ -383,7 +383,8 @@ Timestamps are not all in the same unit:
 | `hypervideo.json` → `meta.created`, `meta.lastchanged` | milliseconds since 1970 |
 | `config.json` → `lastchanged`, `overviewMap.lastchanged` | milliseconds since 1970 |
 | `resources/_index.json` → `created` | seconds since 1970 |
-| `annotations/_index.json` → `created`, `lastchanged` | seconds since 1970 |
+| `annotations/_index.json` → `created` | seconds since 1970 |
+| `annotations/_index.json` → `lastchanged` | milliseconds since 1970 (seconds in older files) |
 
 ## Unknown Properties
 

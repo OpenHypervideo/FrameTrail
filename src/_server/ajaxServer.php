@@ -219,7 +219,7 @@ switch($_REQUEST["a"]) {
      #########################################*/
     case "annotationfileSave":
         include_once("annotationfiles.php");
-        $return = annotationfileSave($_REQUEST["hypervideoID"],$_REQUEST["annotationfileID"],$_REQUEST["action"],$_REQUEST["name"],$_REQUEST["description"],$_REQUEST["hidden"],$_REQUEST["src"]);
+        $return = annotationfileSave($_REQUEST["hypervideoID"],$_REQUEST["annotationfileID"],$_REQUEST["action"],$_REQUEST["name"],$_REQUEST["description"],$_REQUEST["hidden"],$_REQUEST["src"], isset($_REQUEST["baseVersion"]) ? $_REQUEST["baseVersion"] : null);
         break;
 
     case "updateAnnotationSources":

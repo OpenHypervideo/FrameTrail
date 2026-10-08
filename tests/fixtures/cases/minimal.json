@@ -234,6 +234,33 @@
             "data": {}
         },
         {
+            "name": "annotations index with lastchanged in milliseconds (the compare-and-swap token) next to an older entry in seconds",
+            "schema": "annotations-index.schema.json",
+            "data": {
+                "mainAnnotation": "1",
+                "annotationfiles": {
+                    "1": {
+                        "name": "demo",
+                        "description": "demo's annotations",
+                        "created": 1773150038,
+                        "lastchanged": 1791449271503,
+                        "hidden": false,
+                        "owner": "demo",
+                        "ownerId": 1
+                    },
+                    "2": {
+                        "name": "anna",
+                        "description": "anna's annotations",
+                        "created": 1773150100,
+                        "lastchanged": 1788952662,
+                        "hidden": false,
+                        "owner": "anna",
+                        "ownerId": 2
+                    }
+                }
+            }
+        },
+        {
             "name": "empty tag definitions",
             "schema": "tagdefinitions.schema.json",
             "data": {}

@@ -20,6 +20,7 @@
  *   'users'      / 'global'   guards users.json
  *   'tags'       / 'global'   guards tagdefinitions.json
  *   'library'    / 'global'   guards hypervideos/_index.json and every hypervideo.json
+ *   'annotations' / <id>      the signed-in user's own annotation file of a hypervideo
  *
  * The hypervideo scope is the "primary" one, and every accessor defaults to it
  * so callers that only care about the hypervideo need not pass a scope.
@@ -53,7 +54,9 @@
  *                     Logged in or not, since there are no accounts.
  *
  * Annotations are deliberately outside the lock: they live in per-user files
- * (annotations/<userId>.json) and are safe to edit concurrently.
+ * (annotations/<userId>.json) that two users never share. The 'annotations'
+ * scope is observed only, and tells the user that their own file was written
+ * elsewhere — another tab, a script with an API token, another program.
  *
  * @class Collaboration
  * @static
@@ -308,8 +311,10 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
      * interrupting anyone for.
      */
     var STALENESS_PATHS = {
-        hypervideo: function(scopeId) { return 'hypervideos/' + scopeId + '/hypervideo.json'; },
-        library:    function()        { return 'hypervideos/_index.json'; }
+        hypervideo:  function(scopeId) { return 'hypervideos/' + scopeId + '/hypervideo.json'; },
+        library:     function()        { return 'hypervideos/_index.json'; },
+        // None until somebody is signed in (a guest's name in a local folder).
+        annotations: function(scopeId) { var user = ownUserID(); return user ? 'hypervideos/' + scopeId + '/annotations/' + user + '.json' : null; }
     };
 
 
@@ -326,7 +331,8 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             var session = sessions[key],
                 resolve = STALENESS_PATHS[session.scope];
 
-            if (!resolve) return Promise.resolve();
+            // A guest on a server has no annotation file there.
+            if (!resolve || session.scope === 'annotations') return Promise.resolve();
 
             return fetch(adapter.dataPathAbsolute + resolve(session.scopeId), {
                 method: 'HEAD',
@@ -381,6 +387,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             if (!resolve) return Promise.resolve();
 
             var path = resolve(session.scopeId);
+            if (!path) return Promise.resolve();
 
             return adapter.fileVersion(path).then(function(version) {
 
@@ -444,6 +451,12 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             // First sync of the session: adopt whatever is on disk as our baseline.
             session.knownVersion = response.version;
             session.stale = false;
+        } else if (session.scope === 'annotations') {
+            // The user's own file: whoever wrote it elsewhere is the same user,
+            // so there is no writer to tell apart. Compared here rather than on
+            // the server, against what we know now: a poll sent before our own
+            // save must not report that save to us.
+            session.stale = String(response.version) !== String(session.knownVersion);
         } else if (session.lastWriter && String(session.lastWriter.id) === ownUserID()) {
             // We wrote it. Never tell someone about their own change — and adopt
             // the version so a save whose response we missed cannot leave us
@@ -520,7 +533,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
      * which every accessor defaults to.
      *
      * @method start
-     * @param {String} scope   'hypervideo', 'settings', 'users', 'tags' or 'library'
+     * @param {String} scope   'hypervideo', 'settings', 'users', 'tags', 'library' or 'annotations'
      * @param {String} scopeId hypervideo ID, or 'global'
      * @param {Object} [options] { observe: true } to watch without joining,
      *                           { editing: true } to heartbeat as an editor
@@ -539,6 +552,13 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         if (scope === 'hypervideo' && primaryKey && primaryKey !== key) {
             // Switched to a different hypervideo — the old one is no longer ours.
             stop('hypervideo', sessions[primaryKey].scopeId);
+        }
+
+        if (scope === 'annotations') {
+            // The same for the user's annotations of the previous hypervideo.
+            Object.keys(sessions).forEach(function(other) {
+                if (other !== key && sessions[other].scope === 'annotations') stop('annotations', sessions[other].scopeId);
+            });
         }
 
         if (sessions[key]) {

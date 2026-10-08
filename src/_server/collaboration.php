@@ -14,10 +14,12 @@ require_once("./user.php");
  * a shared file (or set of files) that two people can be looking at, and only
  * one of them can win a write to.
  *
- * Annotations are deliberately NOT covered: they live in per-user files
- * (annotations/<userId>.json) and are safe to edit concurrently. Neither are
- * uploaded resources — the resource manager re-reads its index after every
- * operation of its own, so a version token would only add noise.
+ * Annotations take no lock: they live in per-user files
+ * (annotations/<userId>.json) that two users never share. The "annotations"
+ * scope only tells a user that their *own* file changed elsewhere — another
+ * tab, a script with an API token. Uploaded resources are not covered — the
+ * resource manager re-reads its index after every operation of its own, so a
+ * version token would only add noise.
  *
  * Returning Code:
  * 0       =   Success.
@@ -41,7 +43,9 @@ define("COLLAB_LEASE", 45);
  *
  * "files" is a callable so a scope whose file set depends on its id — or on a
  * directory listing — can say so without a second lookup table. "global" marks
- * a singleton scope, whose only valid scopeId is "global".
+ * a singleton scope, whose only valid scopeId is "global". A scope that needs
+ * a finer token than a modification time in seconds declares "version", a
+ * callable returning it, which _collabVersion() uses instead.
  */
 function _collabScopes() {
 
@@ -89,6 +93,21 @@ function _collabScopes() {
                 $files = array($data."/hypervideos/_index.json");
                 $found = glob($data."/hypervideos/*/hypervideo.json");
                 return ($found === false) ? $files : array_merge($files, $found);
+            }
+        ),
+
+        // The signed-in user's own annotation file of a hypervideo: the user id
+        // comes from the session, never from the request. Two saves within a
+        // second must differ, so the token is the entry's lastchanged (ms)
+        // with the file's mtime and size, which a direct write changes too.
+        "annotations" => array(
+            "global"  => false,
+            "files"   => function($scopeId) {
+                return array();
+            },
+            "version" => function($scopeId) {
+                $userId = isset($_SESSION["ohv"]["user"]["id"]) ? (string)$_SESSION["ohv"]["user"]["id"] : "";
+                return _collabAnnotationVersion($scopeId, $userId);
             }
         ),
 
@@ -189,6 +208,10 @@ function _collabVersion($scope, $scopeId) {
         return 0;
     }
 
+    if (isset($scopes[$scope]["version"])) {
+        return call_user_func($scopes[$scope]["version"], $scopeId);
+    }
+
     $newest = 0;
 
     foreach (call_user_func($scopes[$scope]["files"], $scopeId) as $path) {
@@ -199,6 +222,48 @@ function _collabVersion($scope, $scopeId) {
     }
 
     return $newest;
+
+}
+
+
+/**
+ * The version token of a user's annotation file of a hypervideo:
+ * "<lastchanged>:<mtime>:<size>" — the entry's lastchanged in
+ * annotations/_index.json (the compare-and-swap token of annotationfileSave,
+ * in milliseconds) and the file's modification time and size, so a write
+ * through FrameTrail and one past it both change it. "0" when the user has no
+ * file.
+ *
+ * @param string $hypervideoID
+ * @param string $userId
+ * @return string
+ */
+function _collabAnnotationVersion($hypervideoID, $userId) {
+
+    $dir = _collabHypervideoDir($hypervideoID);
+    if ($dir === false || $userId === "" || !preg_match('/^[A-Za-z0-9_.@-]+$/', $userId) || strpos($userId, "..") !== false) {
+        return "0";
+    }
+
+    $path = $dir."/annotations/".$userId.".json";
+    clearstatcache(true, $path);
+    if (!file_exists($path)) {
+        return "0";
+    }
+
+    $index = json_decode((string)@file_get_contents($dir."/annotations/_index.json"), true);
+    $entry = null;
+    if (is_array($index)) {
+        if (isset($index["annotationfiles"][$userId]) && is_array($index["annotationfiles"][$userId])) {
+            $entry = $index["annotationfiles"][$userId];
+        } else if (!in_array($userId, array("mainAnnotation", "annotation-increment", "annotationfiles"), true)
+                   && isset($index[$userId]) && is_array($index[$userId])) {
+            $entry = $index[$userId];
+        }
+    }
+    $lastchanged = ($entry !== null && isset($entry["lastchanged"])) ? $entry["lastchanged"] : 0;
+
+    return $lastchanged.":".filemtime($path).":".filesize($path);
 
 }
 
