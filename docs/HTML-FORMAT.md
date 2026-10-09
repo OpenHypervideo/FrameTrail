@@ -56,7 +56,7 @@ The bundle is the text of a `<script type="application/ld+json">` element with a
 | `data-frametrail-target` | where to mount the player, a CSS selector. Default: the `<body>`. Only the first block for each target is played |
 | `data-frametrail-fullpage` | `true` or `false`: may the player name the browser tab (as for `<video data-frametrail>`) |
 
-**Escaping.** Every `<` in the JSON is written as `<`. JSON reads it back as `<`, and no text in the content (`</script>`, `<!--`) can end the block or change how the browser parses it.
+**Escaping.** Every `<` in the JSON is written as `\u003c`. JSON reads it back as `<`, and no text in the content (`</script>`, `<!--`) can end the block or change how the browser parses it.
 
 **Media** is never embedded. Media paths are URLs, or paths in `_data/resources/` that resolve against `data-frametrail-datapath`. Save As in server and static mode writes the instance's own `_data/` URL there. The file then plays its uploaded media from that instance, as long as it is reachable; a private instance serves it only to a signed-in browser. An export from a local folder writes none, so its relative media are looked for in a `_data/` folder next to the file. YouTube and other embeds are URLs and need no base; some of them refuse to play in a page opened from the disk.
 
