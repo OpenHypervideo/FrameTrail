@@ -186,6 +186,7 @@ A runner applies a lint case's patch to its data set, reads the hypervideo from 
 `FrameTrailLint.checkFolder(files)` takes a folder in the serializer's `folder` format (JSON parsed or as text) and reports `{ path, message }`, sorted by path:
 
 - a `.json` file given as text that is not JSON (`Is not valid JSON: …`; it takes part in no other check);
+- a `.vtt` file given as text that the player cannot read as meant, one problem per line (`Line <n>: …`), as `FrameTrailLint.checkVTT(text)` finds them: a first line other than `WEBVTT` (after a byte order mark; a space or tab and more text may follow); a line with `-->` that is not two time stamps (`(<hours>:)<mm>:<ss>.<ttt>`, minutes and seconds 00–59, a dot, exactly three digits) and optional settings; a cue whose end is not after its start. Stricter than reading cues for the lint rules, which also takes a comma and fewer digits;
 - `hypervideos/_index.json`: an entry that is no folder inside `hypervideos/`, and an entry whose `hypervideo.json` is missing (both at the index's path); a `hypervideos/<dir>/hypervideo.json` no entry names (at its path);
 - for each `hypervideos/<dir>/hypervideo.json`: a missing `annotations/_index.json`; an annotation file without an entry in that index (read with `parseAnnotationIndex`, so legacy top-level entries count), at the file's path; an entry without its file, at the index's path; a `subtitles` entry whose file (`subtitles/<src>`, else `subtitles/<srclang>.vtt`) is missing, at `hypervideo.json`; a `.vtt` file in `subtitles/` no entry names, at its path.
 

@@ -1134,6 +1134,25 @@ describe('FrameTrailLint', () => {
         assert.deepStrictEqual(Lint.clipSpan([{ in: 10, out: 0, duration: 0 }], 70), { start: 10, duration: 60 });
     });
 
+    test('checkVTT: the header, cue timings as the player reads them, cues that end before they start', () => {
+        assert.deepStrictEqual(Lint.checkVTT('WEBVTT\n\n1\n00:01.000 --> 00:02.500\nHello\n\n1:00:01.000 --> 1:00:02.000 align:start\nLater'), []);
+        assert.deepStrictEqual(Lint.checkVTT(String.fromCharCode(0xFEFF) + 'WEBVTT - a title\r\n\r\nNOTE a --> in a note line\r\n\r\n00:01.000 --> 00:02.000\r\nHi')
+            .map((problem) => problem.line), [3], 'a "-->" outside a timing line counts as one');
+        assert.deepStrictEqual(Lint.checkVTT('00:01.000 --> 00:02.000\nHi'), [{ line: 1, message: 'Does not start with the line "WEBVTT"; the player reads no subtitles from it.' }]);
+        const problems = Lint.checkVTT('WEBVTT\n\n00:01,000 --> 00:02.000\nA\n\n00:01.00 --> 00:02.000\nB\n\n75:00.000 --> 76:00.000\nC\n\n00:03.000 --> 00:02.000\nD');
+        assert.deepStrictEqual(problems.map((problem) => problem.line), [3, 6, 9, 12]);
+        assert.equal(problems[0].message, 'The cue timing "00:01,000 --> 00:02.000" is not mm:ss.ttt --> mm:ss.ttt or hh:mm:ss.ttt --> hh:mm:ss.ttt (a dot before exactly three digits); the player skips such a cue or shows it at another time.');
+        assert.equal(problems[3].message, 'The cue ends at or before its start (00:03.000 --> 00:02.000); it is never shown.');
+    });
+
+    test('messages give seconds to the millisecond; the all-types fixture has no lint errors', () => {
+        const result = Lint.run({ hypervideo: {}, info: { start: 0, end: 10.000000000000002 }, chapters: [{ start: 10.999999999999998, title: 'Late' }] });
+        assert.equal(result.findings[0].message, 'Is at 11 s, outside the video (0 s to 10 s); the player never reaches it.');
+        assert.equal(result.findings[0].ref, 10.999999999999998, 'the ref stays as stored');
+        const bundle = Serializer.readBundle(allTypesFolder(), 'folder');
+        assert.deepStrictEqual(Lint.run(Lint.partsOf(bundle, { hypervideoId: '1' })).findings.filter((finding) => finding.severity === 'error'), []);
+    });
+
     test('checkFolder: nothing in a consistent folder', () => {
         assert.deepStrictEqual(Lint.checkFolder(allTypesFolder()), []);
     });
@@ -1151,6 +1170,7 @@ describe('FrameTrailLint', () => {
         files[hv + 'annotations/_index.json'].local = { name: 'legacy entry', src: 'local.json' };
         files[hv + 'annotations/local.json'] = [];
         files[hv + 'subtitles/de.vtt'] = 'WEBVTT\n';
+        files[hv + 'subtitles/en.vtt'] = files[hv + 'subtitles/en.vtt'].replace('00:00:00.500 --> 00:00:04.000', '00:00:00,500 --> 00:00:04.000');
         files[hv + 'hypervideo.json'].subtitles.push({ src: 'fr.vtt', srclang: 'fr' });
         const problems = Lint.checkFolder(files);
         assert.match(problems.find((problem) => problem.path === 'tagdefinitions.json').message, /^Is not valid JSON: /);
@@ -1159,6 +1179,7 @@ describe('FrameTrailLint', () => {
             { path: hv + 'annotations/_index.json', message: 'Lists the annotation file "8", but hypervideos/1/annotations/8.json is missing; FrameTrail cannot load the hypervideo.' },
             { path: hv + 'hypervideo.json', message: 'Lists subtitles "fr", but hypervideos/1/subtitles/fr.vtt is missing.' },
             { path: hv + 'subtitles/de.vtt', message: 'Is not listed in the subtitles of hypervideos/1/hypervideo.json; FrameTrail does not show it.' },
+            { path: hv + 'subtitles/en.vtt', message: 'Line 4: The cue timing "00:00:00,500 --> 00:00:04.000" is not mm:ss.ttt --> mm:ss.ttt or hh:mm:ss.ttt --> hh:mm:ss.ttt (a dot before exactly three digits); the player skips such a cue or shows it at another time.' },
             { path: 'hypervideos/5/annotations/_index.json', message: 'Is missing; on a server FrameTrail then loads no hypervideo at all.' },
             { path: 'hypervideos/5/hypervideo.json', message: 'Is not listed in hypervideos/_index.json; FrameTrail does not show this hypervideo.' },
             { path: 'hypervideos/_index.json', message: 'Lists hypervideo "6" in "./6", but hypervideos/6/hypervideo.json is missing; FrameTrail cannot load it.' },

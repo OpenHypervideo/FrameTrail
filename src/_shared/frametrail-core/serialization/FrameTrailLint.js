@@ -23,7 +23,9 @@
  * checkFolder(files) looks at a whole _data folder (the serializer's folder
  * format): files that do not agree with each other, such as an annotation
  * file without its entry in the annotations index or a subtitle file no
- * hypervideo lists.
+ * hypervideo lists, and the files no schema describes: JSON given as text,
+ * and subtitles the player cannot read (checkVTT(text) checks one WebVTT
+ * text).
  *
  * The rules and their messages are specified by the fixtures in
  * tests/fixtures/lint/ and the rules in tests/README.md. Every finding is
@@ -327,6 +329,53 @@
 
     }
 
+    // A time stamp as the player's WebVTT parser reads it, in seconds, or null:
+    // (hours:)minutes:seconds.milliseconds, minutes and seconds 00–59, a dot
+    // and exactly three digits.
+    function strictVttSeconds(stamp) {
+        var m = /^(?:([0-9]+):)?([0-5][0-9]):([0-5][0-9])\.([0-9]{3})$/.exec(stamp);
+        return m ? (parseInt(m[1] || '0', 10) * 3600 + parseInt(m[2], 10) * 60 + parseInt(m[3], 10) + parseInt(m[4], 10) / 1000) : null;
+    }
+
+    /**
+     * I check a WebVTT text as the player reads it, which is stricter than
+     * cues(): the first line is "WEBVTT" (after a byte order mark, and
+     * optionally followed by a space or tab and more text); every line with
+     * "-->" is a cue timing of two time stamps (strictVttSeconds) and
+     * optional settings; a cue ends after it starts. [{ line, message }],
+     * line counted from 1.
+     *
+     * @method checkVTT
+     * @param {String} vtt
+     * @return {Array}
+     */
+    function checkVTT(vtt) {
+
+        var lines    = String(vtt).replace(/\r\n?/g, '\n').split('\n'),
+            problems = [];
+
+        if (lines[0].charCodeAt(0) === 0xFEFF) { lines[0] = lines[0].slice(1); }
+
+        if (!/^WEBVTT(?:[ \t].*)?$/.test(lines[0])) {
+            problems.push({ line: 1, message: 'Does not start with the line "WEBVTT"; the player reads no subtitles from it.' });
+        }
+
+        lines.forEach(function(line, i) {
+            if (line.indexOf('-->') < 0) { return; }
+            var m     = /^\s*(\S+)[ \t]+-->[ \t]+(\S+)(?:[ \t].*)?$/.exec(line),
+                start = m ? strictVttSeconds(m[1]) : null,
+                end   = m ? strictVttSeconds(m[2]) : null;
+            if (start === null || end === null) {
+                problems.push({ line: i + 1, message: 'The cue timing "' + line.trim() + '" is not mm:ss.ttt --> mm:ss.ttt or hh:mm:ss.ttt --> hh:mm:ss.ttt (a dot before exactly three digits); the player skips such a cue or shows it at another time.' });
+            } else if (end <= start) {
+                problems.push({ line: i + 1, message: 'The cue ends at or before its start (' + m[1] + ' --> ' + m[2] + '); it is never shown.' });
+            }
+        });
+
+        return problems;
+
+    }
+
 
     /* ------------------------------------------------------------------ */
     /*  Items                                                             */
@@ -350,8 +399,9 @@
     }
 
     // A number as messages show it: seconds as stored.
+    // A number of seconds in a message: to the millisecond, as FrameTrail writes times.
     function n(value) {
-        return String(value);
+        return String(seconds(value));
     }
 
     // Where the video's time lies, as messages show it.
@@ -761,6 +811,8 @@
      * text for .vtt files). I report, sorted by path:
      *
      * * a .json file given as text that is not JSON;
+     * * a .vtt file the player cannot read as it is meant (checkVTT), once
+     *   per problem, its message starting "Line <n>: ";
      * * hypervideos/_index.json: an entry whose hypervideo.json is missing,
      *   and a hypervideo.json no entry lists;
      * * a hypervideo without annotations/_index.json;
@@ -799,6 +851,13 @@
             } catch (e) {
                 report(path, 'Is not valid JSON: ' + e.message);
             }
+        });
+
+        Object.keys(files).forEach(function(path) {
+            if (!/\.vtt$/.test(path) || typeof files[path] !== 'string') { return; }
+            checkVTT(files[path]).forEach(function(problem) {
+                report(path, 'Line ' + problem.line + ': ' + problem.message);
+            });
         });
 
         var index   = json['hypervideos/_index.json'],
@@ -895,6 +954,7 @@
         run:           run,
         partsOf:       partsOf,
         checkFolder:   checkFolder,
+        checkVTT:      checkVTT,
 
         timeSpan:      timeSpan,
         box:           box,
