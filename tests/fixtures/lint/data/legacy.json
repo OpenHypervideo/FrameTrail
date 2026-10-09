@@ -1,0 +1,142 @@
+{
+    "bundle": "hypervideo",
+    "formatVersion": 1,
+    "id": "9",
+    "hypervideo": {
+        "meta": {
+            "name": "An older hypervideo",
+            "description": "",
+            "thumb": null,
+            "creator": "Ada",
+            "creatorId": 1,
+            "created": 1700000000000,
+            "lastchanged": 1700000100000,
+            "extraMeta": "a key FrameTrail does not know"
+        },
+        "config": {
+            "slidingMode": "adjust",
+            "slidingTrigger": "key",
+            "autohideControls": false,
+            "captionsVisible": false,
+            "clipTimeVisible": false,
+            "theme": "",
+            "unknownConfig": 1
+        },
+        "clips": [
+            { "resourceId": "3", "src": "", "duration": 30 }
+        ],
+        "globalEvents": [],
+        "customCSS": "",
+        "contents": [
+            {
+                "@context": ["http://www.w3.org/ns/anno.jsonld", { "frametrail": "http://frametrail.org/ns/" }],
+                "creator": { "nickname": "Ada", "type": "Person", "id": 1 },
+                "created": "Thu Oct 01 2026 12:00:00 GMT+0200 (Central European Summer Time)",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "x-note": "a key FrameTrail does not know",
+                "target": {
+                    "type": "Video",
+                    "source": "an-older-name.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=1,5&xywh=percent:5,5,30,10"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "First",
+                    "frametrail:thumb": null,
+                    "frametrail:attributes": []
+                },
+                "frametrail:events": []
+            },
+            {
+                "@context": ["http://www.w3.org/ns/anno.jsonld", { "frametrail": "http://frametrail.org/ns/" }],
+                "creator": { "nickname": "Ada", "type": "Person", "id": 1 },
+                "created": "Thu Oct 01 2026 12:00:00 GMT+0200 (Central European Summer Time)",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "an-older-name.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=6,10&xywh=percent:5,50,30,10"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Second",
+                    "frametrail:thumb": null,
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Made in the same second as the first&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": []
+            }
+        ]
+    },
+    "annotations": {
+        "index": {
+            "1": {
+                "name": "Ada",
+                "description": "Ada's annotations",
+                "created": 1700000000,
+                "lastchanged": 1700000200,
+                "hidden": false,
+                "owner": "Ada",
+                "ownerId": "1"
+            }
+        },
+        "files": {
+            "1": [
+                {
+                    "@context": ["http://www.w3.org/ns/anno.jsonld", { "frametrail": "http://frametrail.org/ns/" }],
+                    "creator": { "nickname": "Ada", "type": "Person", "id": 1 },
+                    "created": "Thu Oct 01 2026 12:30:00 GMT+0200 (Central European Summer Time)",
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "frametrail:tags": [],
+                    "target": {
+                        "type": "Video",
+                        "source": "an-older-name.mp4",
+                        "selector": {
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "type": "FragmentSelector",
+                            "value": "t=2,12"
+                        }
+                    },
+                    "body": {
+                        "type": "TextualBody",
+                        "frametrail:type": "text",
+                        "format": "text/html",
+                        "value": "",
+                        "frametrail:name": "Old note",
+                        "frametrail:attributes": {
+                            "text": "An annotation from an older version"
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "resources": {
+        "3": {
+            "name": "Older video",
+            "type": "video",
+            "src": "9_1700000000_older-video.mp4",
+            "attributes": []
+        }
+    }
+}

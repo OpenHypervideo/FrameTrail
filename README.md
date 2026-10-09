@@ -153,7 +153,8 @@ Checks the JSON Schemas, the data fixtures and the serializer; Node 20 or later,
 
 - [CONTRIBUTING.md](CONTRIBUTING.md) — Development setup, code style, branching, CI/CD
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) — Module system, state management, storage modes
-- [docs/DATA-MODEL.md](docs/DATA-MODEL.md) — The files in `_data/`, with JSON Schemas in [`schemas/`](schemas/) for tools that read or write them
+- [docs/DATA-MODEL.md](docs/DATA-MODEL.md) — The files in `_data/`, with JSON Schemas in [`schemas/`](schemas/) for tools that read or write them, and the checks beyond the schemas
+- [docs/TYPES.md](docs/TYPES.md) — Every type of overlay, annotation and resource: what it is for and the attributes it takes
 - [docs/HTML-FORMAT.md](docs/HTML-FORMAT.md) — The portable HTML format: a hypervideo or a whole project as one file that plays anywhere and can be imported again
 - [docs/EXTENDING.md](docs/EXTENDING.md) — Extensions that plug in without changing FrameTrail, in the browser and on the server; editing hypervideos from scripts (`instance.edit`); adding resource types, modules, localization
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Server deployment, local usage, building, releasing

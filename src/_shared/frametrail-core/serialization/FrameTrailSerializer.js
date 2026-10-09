@@ -834,6 +834,41 @@
 
     }
 
+    /**
+     * I return the user id of a guest: someone editing without an account
+     * (in a local folder or a project file), known only by the name they
+     * entered. The same name gives the same id in every session, so a guest
+     * finds their annotation file (annotations/<id>.json) again. Case and
+     * runs of white space do not matter.
+     *
+     * The id ends up in file names, so it is a readable [a-z0-9-] form of the
+     * name plus a hash of the whole name, which keeps names apart that read
+     * alike once reduced (or reduce to nothing, e.g. non-Latin scripts):
+     * "Anna B" → "guest_anna-b-919e0619".
+     *
+     * @method guestUserID
+     * @param {String} name
+     * @return {String}
+     */
+    function guestUserID(name) {
+
+        var normalized = String(name).trim().replace(/\s+/g, ' ').toLowerCase(),
+            readable   = normalized.normalize('NFKD').replace(/[̀-ͯ]/g, '')
+                                   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 40),
+            hash       = 0x811c9dc5;
+
+        // FNV-1a over the UTF-16 code units
+        for (var i = 0; i < normalized.length; i++) {
+            hash ^= normalized.charCodeAt(i);
+            hash = Math.imul(hash, 0x01000193) >>> 0;
+        }
+
+        hash = ('0000000' + hash.toString(16)).slice(-8);
+
+        return 'guest_' + (readable ? readable + '-' : '') + hash;
+
+    }
+
 
     /* ------------------------------------------------------------------ */
     /*  Hypervideos                                                       */
@@ -1130,6 +1165,32 @@
 
     }
 
+    /**
+     * I tell which schema in schemas/ a file of a _data folder follows, by
+     * its path relative to the folder ("hypervideos/1/hypervideo.json" →
+     * "hypervideo.schema.json"), or null for a file that has none: users.json,
+     * custom.css, subtitles, media files, anything else.
+     *
+     * @method schemaOfFile
+     * @param {String} path
+     * @return {String|null}
+     */
+    function schemaOfFile(path) {
+
+        var rel = String(path).replace(/\\/g, '/').replace(/^\.\//, '');
+
+        if (rel === 'config.json') { return 'config.schema.json'; }
+        if (rel === 'tagdefinitions.json') { return 'tagdefinitions.schema.json'; }
+        if (rel === 'resources/_index.json') { return 'resources-index.schema.json'; }
+        if (rel === 'hypervideos/_index.json') { return 'hypervideos-index.schema.json'; }
+        if (/^hypervideos\/[^\/]+\/hypervideo\.json$/.test(rel)) { return 'hypervideo.schema.json'; }
+        if (/^hypervideos\/[^\/]+\/annotations\/_index\.json$/.test(rel)) { return 'annotations-index.schema.json'; }
+        if (/^hypervideos\/[^\/]+\/annotations\/[^\/]+\.json$/.test(rel)) { return 'annotation-file.schema.json'; }
+
+        return null;
+
+    }
+
     /*
      * The folder format: the _data layout as a map of paths (relative to
      * _data/) to contents — parsed JSON for .json files, text for .vtt and
@@ -1361,10 +1422,12 @@
         serializeAnnotationFile: serializeAnnotationFile,
         parseAnnotationIndex:    parseAnnotationIndex,
         setAnnotationIndexEntry: setAnnotationIndexEntry,
+        guestUserID:             guestUserID,
 
         dedupeCreated:           dedupeCreated,
         mergeStored:             mergeStored,
 
+        schemaOfFile:            schemaOfFile,
         registerBundleFormat:    registerBundleFormat,
         readBundle:              readBundle,
         writeBundle:             writeBundle

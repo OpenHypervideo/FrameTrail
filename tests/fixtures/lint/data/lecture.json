@@ -1,0 +1,349 @@
+{
+    "bundle": "hypervideo",
+    "formatVersion": 1,
+    "id": "1",
+    "hypervideo": {
+        "meta": {
+            "name": "Cell Biology, Lecture 3",
+            "description": "How substances cross the cell membrane.",
+            "thumb": null,
+            "posterFrame": null,
+            "creator": "Ada",
+            "creatorId": "1",
+            "created": 1790000000000,
+            "lastchanged": 1791000000000
+        },
+        "config": {
+            "slidingMode": "adjust",
+            "slidingTrigger": "key",
+            "autohideControls": false,
+            "captionsVisible": false,
+            "clipTimeVisible": false,
+            "theme": "",
+            "layoutArea": {
+                "areaTop": [],
+                "areaBottom": [
+                    {
+                        "type": "TimedContent",
+                        "name": "Notes",
+                        "contentSize": "medium",
+                        "collectionFilter": { "tags": [], "types": [], "users": [], "text": "" }
+                    }
+                ],
+                "areaLeft": [],
+                "areaRight": [
+                    {
+                        "type": "Transcript",
+                        "name": "Transcript",
+                        "transcriptSource": "en",
+                        "showTranscriptSearch": true
+                    }
+                ]
+            }
+        },
+        "clips": [
+            { "resourceId": "1", "src": "1_1790000000_lecture-3.mp4", "duration": 0, "start": 0, "end": 0, "in": 0, "out": 0 }
+        ],
+        "globalEvents": {},
+        "customCSS": "",
+        "contents": [
+            {
+                "@context": ["http://www.w3.org/ns/anno.jsonld", "https://frametrail.org/ns/context.jsonld"],
+                "creator": { "nickname": "Ada", "type": "Person", "id": "1" },
+                "created": "2026-10-01T10:00:00.000Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": ["intro"],
+                "target": {
+                    "type": "Video",
+                    "source": "1_1790000000_lecture-3.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=0,8&xywh=percent:10,10,50,20"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Title card",
+                    "frametrail:attributes": {
+                        "title": "Membranes",
+                        "text": "&lt;p&gt;How substances cross the cell membrane&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            {
+                "@context": ["http://www.w3.org/ns/anno.jsonld", "https://frametrail.org/ns/context.jsonld"],
+                "creator": { "nickname": "Ada", "type": "Person", "id": "1" },
+                "created": "2026-10-01T10:00:01.000Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "1_1790000000_lecture-3.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=95,110&xywh=percent:70,70,20,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "hotspot",
+                    "format": "text/html",
+                    "frametrail:name": "Jump to transport",
+                    "frametrail:attributes": {
+                        "shape": "rounded",
+                        "text": "Transport",
+                        "action": "jumpToTime",
+                        "actionTarget": 300
+                    }
+                },
+                "frametrail:events": {
+                    "onStart": "FrameTrail.module('HypervideoController').pause();"
+                }
+            },
+            {
+                "@context": ["http://www.w3.org/ns/anno.jsonld", "https://frametrail.org/ns/context.jsonld"],
+                "creator": { "nickname": "Ada", "type": "Person", "id": "1" },
+                "created": "2026-10-01T10:00:02.000Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "generator": "https://example.org/another-tool",
+                "target": {
+                    "type": "Video",
+                    "source": "1_1790000000_lecture-3.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=130,180&xywh=percent:55,10,40,50",
+                        "frametrail:rotation": 5
+                    }
+                },
+                "body": {
+                    "type": "Image",
+                    "frametrail:type": "image",
+                    "format": "image/png",
+                    "source": "1_1790000100_membrane.png",
+                    "frametrail:name": "Membrane diagram",
+                    "frametrail:thumb": "1_1790000100_thumb_membrane.png",
+                    "frametrail:licenseType": "CC-BY-SA",
+                    "frametrail:licenseAttribution": "Example Author",
+                    "frametrail:resourceId": "2",
+                    "frametrail:attributes": {}
+                },
+                "frametrail:events": {}
+            },
+            {
+                "@context": ["http://www.w3.org/ns/anno.jsonld", "https://frametrail.org/ns/context.jsonld"],
+                "creator": { "nickname": "Ada", "type": "Person", "id": "1" },
+                "created": "2026-10-01T10:00:03.000Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "1_1790000000_lecture-3.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=200,230&xywh=percent:10,10,60,40",
+                        "frametrail:keyframes": [
+                            { "t": 200, "xywh": [10, 10, 10, 10] },
+                            { "t": 230, "xywh": [60, 40, 10, 10], "ease": "easeInOut" }
+                        ]
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "hotspot",
+                    "format": "text/html",
+                    "frametrail:name": "Moving pointer",
+                    "frametrail:attributes": {
+                        "shape": "circle",
+                        "text": "Protein"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            {
+                "@context": ["http://www.w3.org/ns/anno.jsonld", "https://frametrail.org/ns/context.jsonld"],
+                "creator": { "nickname": "Ada", "type": "Person", "id": "1" },
+                "created": "2026-10-01T10:00:04.000Z",
+                "type": "Annotation",
+                "frametrail:type": "CodeSnippet",
+                "target": {
+                    "type": "Video",
+                    "source": "1_1790000000_lecture-3.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=60"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "codesnippet",
+                    "format": "text/javascript",
+                    "value": "FrameTrail.module('HypervideoController').pause();",
+                    "frametrail:name": "Pause for a question",
+                    "frametrail:thumb": null,
+                    "frametrail:resourceId": null,
+                    "frametrail:attributes": {}
+                }
+            }
+        ],
+        "chapters": [
+            { "start": 0, "title": "Introduction" },
+            { "start": 120, "title": "Membranes" },
+            { "start": 300, "title": "Transport" }
+        ],
+        "subtitles": [
+            { "src": "en.vtt", "srclang": "en" }
+        ]
+    },
+    "annotations": {
+        "index": {
+            "mainAnnotation": "1",
+            "annotationfiles": {
+                "1": {
+                    "name": "Ada",
+                    "description": "Ada's annotations",
+                    "created": 1790000000,
+                    "lastchanged": 1791000000500,
+                    "hidden": false,
+                    "owner": "Ada",
+                    "ownerId": "1"
+                },
+                "2": {
+                    "name": "Grace",
+                    "description": "Grace's annotations",
+                    "created": 1790000100,
+                    "lastchanged": 1791000000900,
+                    "hidden": false,
+                    "owner": "Grace",
+                    "ownerId": "2"
+                }
+            }
+        },
+        "files": {
+            "1": [
+                {
+                    "@context": ["http://www.w3.org/ns/anno.jsonld", "https://frametrail.org/ns/context.jsonld"],
+                    "creator": { "nickname": "Ada", "type": "Person", "id": "1" },
+                    "created": "2026-10-02T09:00:00.000Z",
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "frametrail:tags": [],
+                    "frametrail:uri": null,
+                    "target": {
+                        "type": "Video",
+                        "source": "1_1790000000_lecture-3.mp4",
+                        "selector": {
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "type": "FragmentSelector",
+                            "value": "t=10,40"
+                        }
+                    },
+                    "body": {
+                        "type": "TextualBody",
+                        "frametrail:type": "text",
+                        "format": "text/html",
+                        "value": "",
+                        "frametrail:name": "Key term",
+                        "frametrail:attributes": {
+                            "text": "&lt;p&gt;A &lt;b&gt;membrane&lt;/b&gt; separates the cell from its surroundings.&lt;/p&gt;"
+                        }
+                    }
+                },
+                {
+                    "@context": ["http://www.w3.org/ns/anno.jsonld", "https://frametrail.org/ns/context.jsonld"],
+                    "creator": { "nickname": "Ada", "type": "Person", "id": "1" },
+                    "created": "2026-10-02T09:00:01.000Z",
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "frametrail:tags": ["reading"],
+                    "frametrail:uri": null,
+                    "target": {
+                        "type": "Video",
+                        "source": "1_1790000000_lecture-3.mp4",
+                        "selector": {
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "type": "FragmentSelector",
+                            "value": "t=130,170"
+                        }
+                    },
+                    "body": {
+                        "type": "Text",
+                        "frametrail:type": "wikipedia",
+                        "format": "text/html",
+                        "value": "https://en.wikipedia.org/wiki/Cell_membrane",
+                        "frametrail:name": "Cell membrane",
+                        "frametrail:attributes": {}
+                    }
+                }
+            ],
+            "2": [
+                {
+                    "@context": ["http://www.w3.org/ns/anno.jsonld", "https://frametrail.org/ns/context.jsonld"],
+                    "creator": { "nickname": "Grace", "type": "Person", "id": "2" },
+                    "created": "2026-10-02T09:00:00.000Z",
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "frametrail:tags": [],
+                    "frametrail:uri": null,
+                    "target": {
+                        "type": "Video",
+                        "source": "1_1790000000_lecture-3.mp4",
+                        "selector": {
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "type": "FragmentSelector",
+                            "value": "t=250,280"
+                        }
+                    },
+                    "body": {
+                        "type": "TextualBody",
+                        "frametrail:type": "text",
+                        "format": "text/html",
+                        "value": "",
+                        "frametrail:name": "Question",
+                        "frametrail:attributes": {
+                            "text": "&lt;p&gt;Does osmosis need energy?&lt;/p&gt;"
+                        }
+                    }
+                }
+            ]
+        }
+    },
+    "resources": {
+        "1": {
+            "name": "Lecture 3",
+            "type": "video",
+            "src": "1_1790000000_lecture-3.mp4",
+            "thumb": "1_1790000000_thumb_lecture-3.png",
+            "creator": "Ada",
+            "creatorId": "1",
+            "created": 1790000000
+        },
+        "2": {
+            "name": "Membrane diagram",
+            "type": "image",
+            "src": "1_1790000100_membrane.png",
+            "thumb": "1_1790000100_thumb_membrane.png",
+            "licenseType": "CC-BY-SA",
+            "licenseAttribution": "Example Author",
+            "creator": "Ada",
+            "creatorId": "1",
+            "created": 1790000100
+        }
+    },
+    "subtitles": {
+        "en": "WEBVTT\n\nNOTE Lecture 3, transcribed by hand\n\n1\n00:00:01.000 --> 00:00:06.000\nWelcome to the third lecture on cell biology.\n\n2\n00:00:06.000 --> 00:00:12.500\nToday we look at membranes &amp; transport.\n\n3\n00:02:00.000 --> 00:02:07.000\n<v Ada>Every cell is enclosed by a membrane.</v>\n\n4\n00:02:07.000 --> 00:02:15.000\nThe membrane is a double layer\nof lipids.\n\n5\n00:03:10.000 --> 00:03:18.000\nSmall molecules pass the membrane by diffusion.\n\n6\n00:04:00.000 --> 00:04:08.000\nWater moves by Osmosis, towards the higher concentration of solutes.\n\n7\n00:05:00.000 --> 00:05:06.000\nLarger molecules need transport proteins.\n\n8\n00:05:06.000 --> 00:05:14.000\nActive transport uses energy to move molecules against the gradient.\n\n9\n00:08:30.000 --> 00:08:40.000\nTo sum up: diffusion, osmosis and active transport.\n"
+    }
+}

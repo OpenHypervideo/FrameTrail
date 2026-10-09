@@ -60,7 +60,7 @@ validator.validate('hypervideo.schema.json', JSON.parse(fs.readFileSync('_data/h
 // [{ path: '/contents/3/body/frametrail:attributes/shape', message: 'must be one of "circle", "rectangle", …' }]
 ```
 
-A name is resolved against `https://frametrail.org/schemas/1/`; a fragment selects a definition (`common.schema.json#/$defs/keyframe`). The player carries a copy of the schemas without titles and descriptions (`FrameTrailSchemas.js` in the same folder, written by `node scripts/bundle-schemas.mjs`) and validates what scripts and extensions give it to store. The tests in [`tests/`](../tests/README.md) hold valid and invalid documents, with the errors expected for each, and the exact rules for messages, so that validators in other languages can be checked against the same fixtures.
+A name is resolved against `https://frametrail.org/schemas/1/`; a fragment selects a definition (`common.schema.json#/$defs/keyframe`). The player carries a copy of the schemas without titles and descriptions (`FrameTrailSchemas.js` in the same folder, written by `node scripts/bundle-schemas.mjs`) and validates what scripts and extensions give it to store. The same script writes [TYPES.md](TYPES.md), the reference of the item types: what each is for and the attributes it takes, from the descriptions in `schemas/attributes/`. The tests in [`tests/`](../tests/README.md) hold valid and invalid documents, with the errors expected for each, and the exact rules for messages, so that validators in other languages can be checked against the same fixtures.
 
 ## File Layout
 
@@ -152,6 +152,8 @@ const json = Serializer.serializeHypervideo(model, { now: Date.now() });
 | `parseAnnotationFile(json, source)`, `serializeAnnotationFile(annotations, context)` | an annotation file ⇄ annotations |
 | `parseOverlay`, `serializeOverlay`, `parseCodeSnippet`, `serializeCodeSnippet`, `parseAnnotation`, `serializeAnnotation` | single items |
 | `parseAnnotationIndex(json)`, `setAnnotationIndexEntry(json, fileId, fields)` | `annotations/_index.json`, including its legacy shape |
+| `guestUserID(name)` | the user id of a guest, who edits without an account (see [annotations](#annotations_indexjson-and-annotationsuseridjson)) |
+| `schemaOfFile(path)` | the schema a file of a `_data` folder follows, by its path relative to the folder (`hypervideos/9/hypervideo.json` → `hypervideo.schema.json`); `null` for files without one |
 | `readBundle(source, format, options)`, `writeBundle(bundle, format, options)` | bundles in a registered format (`registerBundleFormat`) |
 
 Writing keeps what the model does not cover. Every parsed object remembers what it was read from, and writing merges the model's changes into that: what did not change is written exactly as it was stored, legacy representations included; what changed is written in the current form; properties FrameTrail does not know are kept. Two things are always written in the current form: an item's `@context` and its `created` (ISO 8601 with milliseconds), so older files are upgraded by their next save.
@@ -160,9 +162,41 @@ The **folder** format maps a bundle to the `_data` layout: a map of paths relati
 
 The **html** format is the [portable HTML format](HTML-FORMAT.md): a page with the bundle in a JSON data block, which plays anywhere and is read back without running it. `FrameTrailHTMLFormat`, next to the serializer and loaded the same way, registers it (`readBundle(html, 'html')`, `writeBundle(bundle, 'html', { datapath, config, library })`) and also reads FrameTrail's HTML exports from before this format (`parseLegacy`). A page can also be a project file, edited in place: `readProject` reads it as the `_data` folder of a project, `writeProject` writes the folder back into its data block (see [Editing a Page in Place](HTML-FORMAT.md#editing-a-page-in-place)).
 
-The box-motion math — normalising, sampling and bounding keyframes, and the ease functions — is in `FrameTrailKeyframes`, next to the serializer and loaded the same way.
+The box-motion math — normalising, sampling and bounding keyframes, and the ease functions — is in `FrameTrailKeyframes`, next to the serializer and loaded the same way. So are the checks beyond the schemas, `FrameTrailLint` ([below](#checks-beyond-the-schemas)).
 
 Inside the player, scripts and extensions read and change the open hypervideo in this format through `instance.edit`, which validates against the schemas and keeps what it does not know ([EXTENDING.md](EXTENDING.md#editing-the-hypervideo)).
+
+## Checks Beyond the Schemas
+
+A schema judges one file at a time. Data can be valid file by file and still not do what was meant: an overlay that starts after the end of the video, an annotation file the index does not list. `FrameTrailLint` (`src/_shared/frametrail-core/serialization/`, next to the serializer and loaded the same way: `window.FrameTrailLint` in the browser, `require()` in Node) finds these.
+
+```javascript
+const Lint = require('./src/_shared/frametrail-core/serialization/FrameTrailLint.js');
+
+const parts  = Lint.partsOf(bundle, { hypervideoId: '9', duration: 600 });   // a hypervideo bundle or a project bundle
+const result = Lint.run(parts);                                              // or Lint.run(parts, { rules: ['chapter-order'] })
+// { errors: 1, warnings: 0, findings: [{ rule: 'item-outside-video', severity: 'error', kind: 'overlays',
+//   ref: '2026-10-01T10:00:00.000Z', message: 'Runs from 605 s to 620 s, outside the video (0 s to 600 s); the player never shows it.' }] }
+
+Lint.checkFolder(files);   // a _data folder in the folder format → [{ path, message }]
+```
+
+`run()` checks one hypervideo against the rules below. `partsOf()` reads it from a bundle the way the editor does (through the serializer, so an item's `created` is in its ISO form). `duration` is the length of the video as the media file tells it, for a clip that does not say (`duration` 0, no `out`); without it the end of such a video is unknown, and the rules that need it check only the start. A finding names what it is about by `kind` and `ref` — an item's `created`, a chapter's `start`, the language of subtitles — and an annotation also by its `creator`. `Lint.RESULT_SCHEMA` describes the result, in the schema subset.
+
+| Rule | Severity | Finds |
+|------|----------|-------|
+| `item-outside-video` | error | an item or chapter the player never reaches: at or after the end of the video, or before its start (the clip's `in`) |
+| `item-partly-outside` | warning | an overlay or annotation that runs past the end of the video or begins before its start |
+| `overlay-overlap` | warning | two overlays covering the same area at the same time; hotspots and cursors are meant to lie over others and are left out |
+| `unknown-resource` | warning | the clip or an item naming a resource that is not in the library |
+| `empty-required` | error | an item lacking what its type needs: a source, text, HTML, a question and answers, a position, chart data, the target of a hotspot's action, code |
+| `missing-license` | warning | an overlay made from a library resource, or showing a media file, without a licence type |
+| `chapter-order` | warning | chapters not stored in order of their start, or two with the same start |
+| `cue-outside-video` | warning | subtitle cues that start at or after the end of the video, so probably belong to another one |
+
+`checkFolder()` looks at a whole folder for files that do not agree with each other: a `.json` file that is not JSON; a hypervideo `hypervideos/_index.json` lists without its `hypervideo.json`, or one it does not list; a hypervideo without `annotations/_index.json`; an annotation file without its entry in that index, or an entry without its file; a `subtitles` entry without its `.vtt` file, or a `.vtt` file no entry names. A project file is checked through its folder, `FrameTrailHTMLFormat.readProject(html).files`.
+
+The fixtures in [`tests/fixtures/lint/`](../tests/fixtures/lint/) and the [rules in tests/README.md](../tests/README.md#lint-rules) specify both exactly. `node tests/run-js.mjs --data=path/to/_data` runs them on a folder of your own and lists the findings.
 
 ## The Files
 
@@ -245,7 +279,7 @@ Each user's annotations of a hypervideo are in their own file, named by user id,
 }
 ```
 
-`created` is in seconds, `lastchanged` in milliseconds (seconds in older files). `lastchanged` is the compare-and-swap token of the user's file: the editor's save carries the value it loaded (`annotationfileSave` → `baseVersion`; `0` for a user who had no file), and the server refuses it with code 7 when the file has been saved since — from another tab, or by a script with the user's API token — so the editor shows that the annotations changed instead of overwriting them. A tool that writes an annotation file must therefore change its entry's `lastchanged` (`annotationfileSave` does; it may also send `baseVersion` itself). In a local folder or project file the token is the file's version (modification time and size), so there any write is noticed. User ids are strings, except `ownerId`, which the server writes as a number. In local-folder mode there are no accounts: a user id is derived from the name the user enters, as `guest_<name>-<hash>` (e.g. `guest_anna-b-919e0619`), so the same name finds its annotation file again. An annotation file is a JSON array of annotations (below).
+`created` is in seconds, `lastchanged` in milliseconds (seconds in older files). `lastchanged` is the compare-and-swap token of the user's file: the editor's save carries the value it loaded (`annotationfileSave` → `baseVersion`; `0` for a user who had no file), and the server refuses it with code 7 when the file has been saved since — from another tab, or by a script with the user's API token — so the editor shows that the annotations changed instead of overwriting them. A tool that writes an annotation file must therefore change its entry's `lastchanged` (`annotationfileSave` does; it may also send `baseVersion` itself). In a local folder or project file the token is the file's version (modification time and size), so there any write is noticed. User ids are strings, except `ownerId`, which the server writes as a number. In local-folder mode there are no accounts: a user id is derived from the name the user enters, as `guest_<name>-<hash>` (the name "Anna B" gives `guest_anna-b-919e0619`; `FrameTrailSerializer.guestUserID(name)` computes it), so the same name finds its annotation file again. An annotation file is a JSON array of annotations (below).
 
 ## Items: Overlays, Code Snippets and Annotations
 
@@ -307,7 +341,7 @@ The body's `frametrail:type` is the resource type. It decides how the item is re
 | `youtube`, `vimeo`, `wistia`, `loom`, `twitch` | ✓ | ✓ | ✓ | Video | text/html | `source` |
 | `soundcloud`, `spotify` | ✓ | ✓ | ✓ | Sound | text/html | `source` |
 | `webpage`, `wikipedia`, `entity` | ✓ | ✓ | ✓ | Text | text/html | `value` |
-| `location` | ✓ | ✓ | ✓ | Dataset | application/x-frametrail-location | — |
+| `location` | ✓ | ✓ | ✓ | Dataset | application/x-frametrail-location | `source` |
 | `mastodon`, `codepen`, `urlpreview` | ✓ | ✓ | ✓ | Text | text/html | `source` |
 | `figma` | ✓ | ✓ | ✓ | Image | text/html | `source` |
 
@@ -315,7 +349,7 @@ The body's `frametrail:type` is the resource type. It decides how the item is re
 
 The text of `text` and `html` items (`attributes.text`) is stored HTML-escaped (`&lt;p&gt;…`) and unescaped before rendering.
 
-Every overlay type also takes `opacity`, `hoverStyle`, `zIndex` and `animation` in its attributes; hotspots take an action (`action`, `actionTarget`, `actionTargetTime`). They are listed in each attribute schema.
+Every overlay type also takes `opacity`, `hoverStyle`, `zIndex` and `animation` in its attributes; hotspots take an action (`action`, `actionTarget`, `actionTargetTime`). They are listed in each attribute schema. [TYPES.md](TYPES.md) has every type's attributes with their values and defaults, and what each type is for.
 
 ## Time and Space
 

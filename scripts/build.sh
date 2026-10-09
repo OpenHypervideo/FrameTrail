@@ -130,6 +130,7 @@ JS_FILES=(
     "_shared/frametrail-core/serialization/FrameTrailKeyframes.js"
     "_shared/frametrail-core/serialization/FrameTrailSerializer.js"
     "_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js"
+    "_shared/frametrail-core/serialization/FrameTrailLint.js"
 
     # Validation against schemas/ (pure; the schemas are bundled by scripts/bundle-schemas.mjs)
     "_shared/frametrail-core/schema/FrameTrailSchema.js"

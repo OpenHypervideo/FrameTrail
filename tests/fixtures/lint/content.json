@@ -1,0 +1,365 @@
+{
+    "description": "What items hold: what their type needs, the license of what they show, the resources they name.",
+    "data": "lecture",
+    "duration": 600,
+    "cases": [
+        {
+            "name": "a text overlay without text or title",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/0/body/frametrail:attributes",
+                    "value": { "text": "&lt;p&gt; &lt;/p&gt;" }
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:00.000Z",
+                    "message": "Is incomplete: no text."
+                }
+            ]
+        },
+        {
+            "name": "a text overlay with a title only is complete",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/0/body/frametrail:attributes",
+                    "value": { "title": "Membranes" }
+                }
+            ],
+            "findings": []
+        },
+        {
+            "name": "an image without a source",
+            "rules": ["empty-required"],
+            "patch": [{ "op": "remove", "path": "/hypervideo/contents/2/body/source" }],
+            "findings": [
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:02.000Z",
+                    "message": "Is incomplete: no source."
+                }
+            ]
+        },
+        {
+            "name": "quizzes: no question and no answers, an answer without text; a free-text quiz needs no answers",
+            "patch": [
+                {
+                    "op": "add",
+                    "path": "/hypervideo/contents/-",
+                    "value": {
+                        "@context": ["http://www.w3.org/ns/anno.jsonld", "https://frametrail.org/ns/context.jsonld"],
+                        "creator": { "nickname": "Ada", "type": "Person", "id": "1" },
+                        "created": "2026-10-01T10:00:05.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "1_1790000000_lecture-3.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=400,420&xywh=percent:5,60,40,30"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "quiz",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:attributes": { "question": "", "answers": [] }
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/hypervideo/contents/-",
+                    "value": {
+                        "@context": ["http://www.w3.org/ns/anno.jsonld", "https://frametrail.org/ns/context.jsonld"],
+                        "creator": { "nickname": "Ada", "type": "Person", "id": "1" },
+                        "created": "2026-10-01T10:00:06.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "1_1790000000_lecture-3.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=430,450&xywh=percent:5,60,40,30"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "quiz",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:attributes": {
+                                "questionType": "multiSelect",
+                                "question": "Which need energy?",
+                                "answers": [{ "text": "Active transport", "correct": true }, { "text": "  " }]
+                            }
+                        }
+                    }
+                },
+                {
+                    "op": "add",
+                    "path": "/hypervideo/contents/-",
+                    "value": {
+                        "@context": ["http://www.w3.org/ns/anno.jsonld", "https://frametrail.org/ns/context.jsonld"],
+                        "creator": { "nickname": "Ada", "type": "Person", "id": "1" },
+                        "created": "2026-10-01T10:00:07.000Z",
+                        "type": "Annotation",
+                        "frametrail:type": "Overlay",
+                        "frametrail:tags": [],
+                        "target": {
+                            "type": "Video",
+                            "source": "1_1790000000_lecture-3.mp4",
+                            "selector": {
+                                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                                "type": "FragmentSelector",
+                                "value": "t=460,480&xywh=percent:5,60,40,30"
+                            }
+                        },
+                        "body": {
+                            "type": "TextualBody",
+                            "frametrail:type": "quiz",
+                            "format": "text/html",
+                            "value": "",
+                            "frametrail:attributes": { "questionType": "freeText", "question": "What surprised you?" }
+                        }
+                    }
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:05.000Z",
+                    "message": "Is incomplete: no question, no answers."
+                },
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:06.000Z",
+                    "message": "Is incomplete: an answer without text."
+                }
+            ]
+        },
+        {
+            "name": "a hotspot that opens no URL; one that jumps to 0 is complete",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/1/body/frametrail:attributes",
+                    "value": { "shape": "rounded", "text": "More", "action": "openUrl", "actionTarget": "" }
+                },
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/3/body/frametrail:attributes",
+                    "value": { "shape": "circle", "action": "jumpToTime", "actionTarget": 0 }
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:01.000Z",
+                    "message": "Is incomplete: no target for its action openUrl."
+                }
+            ]
+        },
+        {
+            "name": "an empty code snippet",
+            "patch": [{ "op": "replace", "path": "/hypervideo/contents/4/body/value", "value": " \n " }],
+            "findings": [
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "codeSnippets",
+                    "ref": "2026-10-01T10:00:04.000Z",
+                    "message": "Is incomplete: no code."
+                }
+            ]
+        },
+        {
+            "name": "an annotation without its source names its creator",
+            "patch": [{ "op": "replace", "path": "/annotations/files/1/1/body/value", "value": "" }],
+            "findings": [
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "annotations",
+                    "ref": "2026-10-02T09:00:01.000Z",
+                    "creator": "1",
+                    "message": "Is incomplete: no source."
+                }
+            ]
+        },
+        {
+            "name": "a chart without data, a location without a position, empty HTML",
+            "rules": ["empty-required"],
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/0/body",
+                    "value": {
+                        "type": "Dataset",
+                        "frametrail:type": "chart",
+                        "format": "application/x-frametrail-chart",
+                        "frametrail:attributes": { "chartType": "bars", "data": "" }
+                    }
+                },
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/2/body",
+                    "value": {
+                        "type": "Dataset",
+                        "frametrail:type": "location",
+                        "format": "application/x-frametrail-location",
+                        "frametrail:attributes": { "lat": "", "lon": 13.4 }
+                    }
+                },
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/3/body",
+                    "value": { "frametrail:type": "html", "frametrail:attributes": { "text": "" } }
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:00.000Z",
+                    "message": "Is incomplete: no data."
+                },
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:02.000Z",
+                    "message": "Is incomplete: no position (lat, lon)."
+                },
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:03.000Z",
+                    "message": "Is incomplete: no HTML."
+                }
+            ]
+        },
+        {
+            "name": "an image made from a resource, without a license",
+            "patch": [{ "op": "remove", "path": "/hypervideo/contents/2/body/frametrail:licenseType" }],
+            "findings": [
+                {
+                    "rule": "missing-license",
+                    "severity": "warning",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:02.000Z",
+                    "message": "Has no license type (body frametrail:licenseType) for the resource it is made from."
+                }
+            ]
+        },
+        {
+            "name": "an image file of no resource, without a license",
+            "patch": [
+                { "op": "remove", "path": "/hypervideo/contents/2/body/frametrail:licenseType" },
+                { "op": "remove", "path": "/hypervideo/contents/2/body/frametrail:resourceId" }
+            ],
+            "findings": [
+                {
+                    "rule": "missing-license",
+                    "severity": "warning",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:02.000Z",
+                    "message": "Has no license type (body frametrail:licenseType) for the media it shows."
+                }
+            ]
+        },
+        {
+            "name": "an embedded video of no resource needs no license",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/2/body",
+                    "value": {
+                        "type": "Video",
+                        "frametrail:type": "youtube",
+                        "format": "text/html",
+                        "source": "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+                        "frametrail:attributes": {}
+                    }
+                }
+            ],
+            "findings": []
+        },
+        {
+            "name": "an overlay made from a resource that is not there",
+            "patch": [{ "op": "replace", "path": "/hypervideo/contents/2/body/frametrail:resourceId", "value": "99" }],
+            "findings": [
+                {
+                    "rule": "unknown-resource",
+                    "severity": "warning",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:02.000Z",
+                    "message": "Made from resource \"99\", which is not in the resources index."
+                }
+            ]
+        },
+        {
+            "name": "a clip whose resource is not there, with a src of its own",
+            "patch": [{ "op": "replace", "path": "/hypervideo/clips/0/resourceId", "value": "42" }],
+            "findings": [
+                {
+                    "rule": "unknown-resource",
+                    "severity": "warning",
+                    "kind": "hypervideo",
+                    "message": "Its video is resource \"42\", which is not in the resources index."
+                }
+            ]
+        },
+        {
+            "name": "a clip whose resource is not there, without a src",
+            "rules": ["unknown-resource"],
+            "patch": [
+                { "op": "replace", "path": "/hypervideo/clips/0/resourceId", "value": "42" },
+                { "op": "replace", "path": "/hypervideo/clips/0/src", "value": null }
+            ],
+            "findings": [
+                {
+                    "rule": "unknown-resource",
+                    "severity": "warning",
+                    "kind": "hypervideo",
+                    "message": "Its video is resource \"42\", which is not in the resources index; without a src of its own the clip has no video."
+                }
+            ]
+        },
+        {
+            "name": "a resource id as a number",
+            "patch": [{ "op": "replace", "path": "/hypervideo/contents/2/body/frametrail:resourceId", "value": 2 }],
+            "findings": []
+        },
+        {
+            "name": "without the resources nothing can be said about them",
+            "patch": [
+                { "op": "remove", "path": "/resources" },
+                { "op": "replace", "path": "/hypervideo/contents/2/body/frametrail:resourceId", "value": "99" }
+            ],
+            "findings": []
+        }
+    ]
+}

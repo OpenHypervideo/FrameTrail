@@ -948,45 +948,6 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 
     /**
-     * I derive a guest's user id from the name they give, so the same name is
-     * the same user in every session, browser and machine.
-     *
-     * In local-folder mode the id names the guest's annotation file and
-     * decides which annotations are theirs to edit; an id per session left a
-     * guest's earlier annotations read-only. Local mode has no authentication
-     * anyway: whoever types a name is that guest. Case and runs of whitespace
-     * do not matter.
-     *
-     * The id ends up in file names, so it is a readable [a-z0-9-] form of the
-     * name plus a hash of the whole name, which keeps names apart that read
-     * alike once reduced (or reduce to nothing, e.g. non-Latin scripts).
-     *
-     * @method guestUserID
-     * @param {String} name
-     * @return {String}
-     * @private
-     */
-    function guestUserID(name) {
-
-        var normalized = String(name).trim().replace(/\s+/g, ' ').toLowerCase(),
-            readable   = normalized.normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
-                                   .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').substring(0, 40),
-            hash       = 0x811c9dc5;
-
-        // FNV-1a over the UTF-16 code units
-        for (var i = 0; i < normalized.length; i++) {
-            hash ^= normalized.charCodeAt(i);
-            hash = Math.imul(hash, 0x01000193) >>> 0;
-        }
-
-        hash = ('0000000' + hash.toString(16)).slice(-8);
-
-        return 'guest_' + (readable ? readable + '-' : '') + hash;
-
-    }
-
-
-    /**
      * I log in as a guest (name only, no server session).
      * Sets isGuestMode and stores the name in localStorage for pre-fill convenience.
      *
@@ -1002,8 +963,12 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             return;
         }
 
+        // The same name is the same user in every session, browser and machine:
+        // in local-folder mode the id names the guest's annotation file and
+        // decides which annotations are theirs to edit. Local mode has no
+        // authentication anyway: whoever types a name is that guest.
         isGuestMode = true;
-        userID   = guestUserID(name);
+        userID   = window.FrameTrailSerializer.guestUserID(name);
         userRole = 'admin';
         userMail = '';
         userRegistrationDate = '';

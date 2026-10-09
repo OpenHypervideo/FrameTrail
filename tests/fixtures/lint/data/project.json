@@ -1,0 +1,104 @@
+{
+    "bundle": "project",
+    "formatVersion": 1,
+    "hypervideosIndex": {
+        "hypervideo-increment": 7,
+        "hypervideos": {
+            "4": "./4",
+            "7": "./7"
+        }
+    },
+    "hypervideos": {
+        "4": {
+            "bundle": "hypervideo",
+            "formatVersion": 1,
+            "id": "4",
+            "hypervideo": {
+                "meta": {
+                    "name": "Interview with a biologist",
+                    "description": "",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "Grace",
+                    "creatorId": "2",
+                    "created": 1790000200000,
+                    "lastchanged": 1790000300000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": ""
+                },
+                "clips": [
+                    { "resourceId": null, "src": null, "duration": 90 }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [],
+                "chapters": [],
+                "subtitles": []
+            },
+            "annotations": {
+                "index": { "mainAnnotation": null, "annotationfiles": {} },
+                "files": {}
+            },
+            "subtitles": {}
+        },
+        "7": {
+            "bundle": "hypervideo",
+            "formatVersion": 1,
+            "id": "7",
+            "hypervideo": {
+                "meta": {
+                    "name": "Field trip",
+                    "description": "A walk along the river, cut from a longer recording.",
+                    "thumb": null,
+                    "posterFrame": null,
+                    "creator": "Ada",
+                    "creatorId": "1",
+                    "created": 1790000400000,
+                    "lastchanged": 1790000500000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": true,
+                    "clipTimeVisible": false,
+                    "theme": "",
+                    "hidden": true
+                },
+                "clips": [
+                    { "resourceId": null, "src": "https://example.org/media/field-trip.mp4", "duration": 0, "in": 12, "out": 132 }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [],
+                "chapters": [
+                    { "start": 12, "title": "At the river" }
+                ],
+                "subtitles": [
+                    { "src": "de.vtt", "srclang": "de" }
+                ]
+            },
+            "annotations": {
+                "index": { "mainAnnotation": null, "annotationfiles": {} },
+                "files": {}
+            },
+            "subtitles": {
+                "de": "WEBVTT\n\n00:00:12.000 --> 00:00:20.000\nWir stehen am Ufer des Flusses.\n\n00:01:00.000 --> 00:01:09.000\nHier wachsen Weiden und Erlen.\n"
+            }
+        }
+    },
+    "resources": {
+        "resources-increment": 0,
+        "resources": {}
+    },
+    "tagdefinitions": {},
+    "config": {
+        "defaultLanguage": "en"
+    }
+}

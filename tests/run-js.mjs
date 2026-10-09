@@ -1,12 +1,12 @@
 /*
  * FrameTrail's tests: the fixtures in tests/fixtures/ against the JSON Schemas
- * in schemas/ (with FrameTrailSchema) and through FrameTrailSerializer, plus
- * unit tests of FrameTrailSchema, FrameTrailSerializer, FrameTrailHTMLFormat
- * and FrameTrailKeyframes.
+ * in schemas/ (with FrameTrailSchema), through FrameTrailSerializer and
+ * FrameTrailLint, plus unit tests of FrameTrailSchema, FrameTrailSerializer,
+ * FrameTrailHTMLFormat, FrameTrailLint and FrameTrailKeyframes.
  * No dependencies, Node 20 or later:
  *
  *     node tests/run-js.mjs
- *     node tests/run-js.mjs --data=path/to/_data   # also check a _data folder of your own
+ *     node tests/run-js.mjs --data=path/to/_data   # also check a _data folder of your own (lint findings are listed, not failed)
  *
  * tests/README.md describes the fixtures and the rules a runner in another
  * language applies to them.
@@ -19,7 +19,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { extractExamples, serialize, FIXTURES_DIR as EXAMPLE_FIXTURES } from './extract-examples.mjs';
-import { bundleSchemas, OUTPUT as SCHEMA_BUNDLE } from '../scripts/bundle-schemas.mjs';
+import { bundleSchemas, typesDoc, OUTPUT as SCHEMA_BUNDLE, TYPES_OUTPUT } from '../scripts/bundle-schemas.mjs';
 
 const require  = createRequire(import.meta.url);
 const ROOT     = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -29,6 +29,7 @@ const Schema     = require('../src/_shared/frametrail-core/schema/FrameTrailSche
 const Serializer = require('../src/_shared/frametrail-core/serialization/FrameTrailSerializer.js');
 const Keyframes  = require('../src/_shared/frametrail-core/serialization/FrameTrailKeyframes.js');
 const HTMLFormat = require('../src/_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js');
+const Lint       = require('../src/_shared/frametrail-core/serialization/FrameTrailLint.js');
 
 const NOW = 1999999999999;
 
@@ -54,23 +55,20 @@ const SCHEMA_FILES = schemaFiles();
 // Throws when a schema uses a keyword outside the subset or a $ref that resolves to nothing.
 const validator = Schema.create(SCHEMA_FILES.map((file) => readJSON(path.join(ROOT, 'schemas', file))));
 
-// The schema of a file in a _data folder, by its path relative to the folder.
-function schemaOfDataFile(rel) {
-    if (rel === 'config.json') { return 'config.schema.json'; }
-    if (rel === 'tagdefinitions.json') { return 'tagdefinitions.schema.json'; }
-    if (rel === 'resources/_index.json') { return 'resources-index.schema.json'; }
-    if (rel === 'hypervideos/_index.json') { return 'hypervideos-index.schema.json'; }
-    if (/^hypervideos\/[^/]+\/hypervideo\.json$/.test(rel)) { return 'hypervideo.schema.json'; }
-    if (/^hypervideos\/[^/]+\/annotations\/_index\.json$/.test(rel)) { return 'annotations-index.schema.json'; }
-    if (/^hypervideos\/[^/]+\/annotations\/[^/]+\.json$/.test(rel)) { return 'annotation-file.schema.json'; }
-    return null;
-}
-
 function formatErrors(errors, indent = '    ') {
     return errors.map((e) => indent + (e.path || '(document)') + ': ' + e.message).join('\n');
 }
 
 const byPathAndMessage = (a, b) => (a.path + '\u0000' + a.message).localeCompare(b.path + '\u0000' + b.message);
+
+const lintValidator = Schema.create([Lint.RESULT_SCHEMA]);
+
+// A lint result follows FrameTrailLint.RESULT_SCHEMA, and errors and warnings count its findings.
+function checkLintResult(result) {
+    assert.deepStrictEqual(lintValidator.validate('lint-result.schema.json', result), [], 'the result follows FrameTrailLint.RESULT_SCHEMA');
+    assert.equal(result.errors, result.findings.filter((finding) => finding.severity === 'error').length, 'errors counts the errors');
+    assert.equal(result.warnings, result.findings.filter((finding) => finding.severity === 'warning').length, 'warnings counts the warnings');
+}
 
 
 /* ---------------------------------------------------------------------- */
@@ -260,7 +258,8 @@ function readDataFolder(dir) {
 
 }
 
-function checkDataFolder(label, dir) {
+// A folder's checks. listFindings: list each hypervideo's lint findings as diagnostics (they never fail).
+function checkDataFolder(label, dir, listFindings) {
 
     describe(label, () => {
 
@@ -270,7 +269,7 @@ function checkDataFolder(label, dir) {
         // Problems per JSON file: no schema, or the schema's errors.
         const problems = {};
         for (const file of names.filter((name) => name.endsWith('.json'))) {
-            const schema = schemaOfDataFile(file),
+            const schema = Serializer.schemaOfFile(file),
                   errors = schema ? validator.validate(schema, files[file]) : [];
             if (!schema) { problems[file] = file + ': no schema for this file'; }
             else if (errors.length) { problems[file] = file + ' (' + schema + ')\n' + formatErrors(errors); }
@@ -282,10 +281,30 @@ function checkDataFolder(label, dir) {
             if (invalid.length) { assert.fail(invalid.length + ' file(s) do not follow their schema:\n' + Object.values(problems).join('\n')); }
         });
 
+        test('the files agree with each other (FrameTrailLint.checkFolder)', () => {
+            const problems = Lint.checkFolder(files);
+            if (problems.length) { assert.fail(problems.length + ' problem(s):\n' + formatErrors(problems)); }
+        });
+
+        test('each hypervideo lints, with a result that follows its schema', (t) => {
+            if (invalid.length) { t.skip('the folder has invalid files'); return; }
+            const project = Serializer.readBundle(files, 'folder');
+            for (const id of Object.keys(project.hypervideos)) {
+                const result = Lint.run(Lint.partsOf(project, { hypervideoId: id }));
+                checkLintResult(result);
+                if (listFindings) {
+                    for (const finding of result.findings) {
+                        t.diagnostic('hypervideo ' + id + ': ' + finding.severity + ' ' + finding.rule + ', ' + finding.kind
+                            + (finding.ref !== undefined ? ' ' + finding.ref : '') + (finding.creator !== undefined ? ' of ' + finding.creator : '') + ': ' + finding.message);
+                    }
+                }
+            }
+        });
+
         test('hypervideos and annotation files round-trip through the serializer', () => {
             const failures = [];
             for (const file of names) {
-                const schema = schemaOfDataFile(file);
+                const schema = Serializer.schemaOfFile(file);
                 if (invalid.indexOf(file) >= 0 || (schema !== 'hypervideo.schema.json' && schema !== 'annotation-file.schema.json')) { continue; }
                 ROUND_TRIPS[schema](files[file]).forEach((problem) => failures.push(file + ': ' + problem));
             }
@@ -338,7 +357,7 @@ describe('fixtures/data', () => {
 const extraData = process.argv.filter((arg) => arg.startsWith('--data=')).map((arg) => path.resolve(arg.slice('--data='.length)));
 if (extraData.length) {
     describe('--data', () => {
-        extraData.forEach((dir) => checkDataFolder(path.relative(process.cwd(), dir) || dir, dir));
+        extraData.forEach((dir) => checkDataFolder(path.relative(process.cwd(), dir) || dir, dir, true));
     });
 }
 
@@ -397,6 +416,87 @@ describe('fixtures/cases', () => {
 
 
 /* ---------------------------------------------------------------------- */
+/*  Lint: fixtures/lint/                                                  */
+/* ---------------------------------------------------------------------- */
+
+const LINT_FIXTURES = path.join(FIXTURES, 'lint');
+
+// Applies a JSON Patch (RFC 6902) with add, remove and replace to a document, in place.
+function applyPatch(document, patch) {
+
+    for (const operation of patch) {
+
+        const tokens = operation.path.split('/').slice(1).map((token) => token.replace(/~1/g, '/').replace(/~0/g, '~')),
+              last   = tokens.pop(),
+              where  = operation.op + ' ' + operation.path;
+        let node = document;
+
+        for (const token of tokens) {
+            assert.ok(node !== null && typeof node === 'object' && Object.prototype.hasOwnProperty.call(node, token), 'patch: no ' + where);
+            node = node[token];
+        }
+        assert.ok(node !== null && typeof node === 'object', 'patch: no ' + where);
+        assert.ok(['add', 'remove', 'replace'].includes(operation.op), 'patch: ' + operation.op + ' is not add, remove or replace');
+
+        if (Array.isArray(node)) {
+            const index = (last === '-') ? node.length : Number(last);
+            assert.ok(Number.isInteger(index) && index >= 0 && index <= node.length - (operation.op === 'add' ? 0 : 1), 'patch: no ' + where);
+            if (operation.op === 'add')         { node.splice(index, 0, clone(operation.value)); }
+            else if (operation.op === 'remove') { node.splice(index, 1); }
+            else                                { node[index] = clone(operation.value); }
+        } else {
+            assert.ok(operation.op === 'add' || Object.prototype.hasOwnProperty.call(node, last), 'patch: no ' + where);
+            if (operation.op === 'remove') { delete node[last]; }
+            else                           { node[last] = clone(operation.value); }
+        }
+
+    }
+
+    return document;
+
+}
+
+describe('fixtures/lint', () => {
+
+    const found = new Set(),
+          files = fs.readdirSync(LINT_FIXTURES).filter((name) => name.endsWith('.json')).sort(),
+          data  = (name) => readJSON(path.join(LINT_FIXTURES, 'data', name + '.json'));
+
+    test('every data set is a valid bundle', () => {
+        for (const name of fs.readdirSync(path.join(LINT_FIXTURES, 'data')).filter((name) => name.endsWith('.json'))) {
+            const bundle = readJSON(path.join(LINT_FIXTURES, 'data', name)),
+                  errors = validator.validate(bundle.bundle === 'project' ? 'project-bundle.schema.json' : 'hypervideo-bundle.schema.json', bundle);
+            assert.ok(!errors.length, name + ':\n' + formatErrors(errors));
+        }
+    });
+
+    for (const file of files) {
+
+        const fixture = readJSON(path.join(LINT_FIXTURES, file));
+
+        describe(file, () => {
+            for (const c of fixture.cases) {
+                test(c.name, () => {
+                    const given   = (key) => (c[key] !== undefined) ? c[key] : fixture[key],
+                          bundle  = applyPatch(data(given('data')), c.patch || []),
+                          result  = Lint.run(Lint.partsOf(bundle, { hypervideoId: given('hypervideoId'), duration: given('duration') }), c.rules ? { rules: c.rules } : undefined);
+                    checkLintResult(result);
+                    assert.deepStrictEqual(result.findings, c.findings);
+                    result.findings.forEach((finding) => found.add(finding.rule));
+                });
+            }
+        });
+
+    }
+
+    test('every rule is found by some case', () => {
+        assert.deepStrictEqual(Lint.RULES.map((rule) => rule.id).filter((id) => !found.has(id)), []);
+    });
+
+});
+
+
+/* ---------------------------------------------------------------------- */
 /*  FrameTrailSchema                                                      */
 /* ---------------------------------------------------------------------- */
 
@@ -411,6 +511,11 @@ describe('FrameTrailSchema', () => {
         for (const file of SCHEMA_FILES) {
             assert.equal(readJSON(path.join(ROOT, 'schemas', file)).$id, Schema.BASE + file);
         }
+    });
+
+    test('docs/TYPES.md is up to date', () => {
+        assert.ok(fs.readFileSync(TYPES_OUTPUT, 'utf8') === typesDoc(),
+            path.relative(ROOT, TYPES_OUTPUT) + ' is out of date: run node scripts/bundle-schemas.mjs');
     });
 
     test('the copy the player loads is up to date and judges the cases alike', () => {
@@ -760,6 +865,52 @@ describe('FrameTrailSerializer', () => {
         assert.deepStrictEqual(Serializer.parseAnnotationIndex({ annotationfiles: [] }).annotationfiles, {});
     });
 
+    test('schemaOfFile: the schema of a file in a _data folder, by its path', () => {
+        assert.equal(Serializer.schemaOfFile('config.json'), 'config.schema.json');
+        assert.equal(Serializer.schemaOfFile('resources/_index.json'), 'resources-index.schema.json');
+        assert.equal(Serializer.schemaOfFile('hypervideos/_index.json'), 'hypervideos-index.schema.json');
+        assert.equal(Serializer.schemaOfFile('hypervideos/12/hypervideo.json'), 'hypervideo.schema.json');
+        assert.equal(Serializer.schemaOfFile('hypervideos/12/annotations/_index.json'), 'annotations-index.schema.json');
+        assert.equal(Serializer.schemaOfFile('hypervideos/12/annotations/guest_anna-b-919e0619.json'), 'annotation-file.schema.json');
+        assert.equal(Serializer.schemaOfFile('hypervideos\\12\\hypervideo.json'), 'hypervideo.schema.json', 'Windows separators');
+        assert.equal(Serializer.schemaOfFile('./tagdefinitions.json'), 'tagdefinitions.schema.json');
+        for (const none of ['users.json', 'custom.css', 'hypervideos/12/subtitles/en.vtt', 'resources/1_1790000000_a.png', 'hypervideos/12/x/hypervideo.json', 'other.json']) {
+            assert.equal(Serializer.schemaOfFile(none), null, none);
+        }
+    });
+
+    test("guestUserID: the same name is the same id; DATA-MODEL.md's example holds", () => {
+        const example = /the name "([^"]+)" gives `(guest_[a-z0-9-]+)`/.exec(fs.readFileSync(path.join(ROOT, 'docs', 'DATA-MODEL.md'), 'utf8'));
+        assert.ok(example, 'DATA-MODEL.md gives an example of a guest id');
+        assert.equal(Serializer.guestUserID(example[1]), example[2]);
+        assert.equal(Serializer.guestUserID('  anna \t B '), example[2], 'case and runs of white space do not matter');
+        assert.equal(Serializer.guestUserID('Zoë'), Serializer.guestUserID('ZOË'));
+        assert.notEqual(Serializer.guestUserID('Zoë'), Serializer.guestUserID('Zoe'), 'names that read alike once reduced stay apart');
+        assert.match(Serializer.guestUserID('李明'), /^guest_[0-9a-f]{8}$/);
+    });
+
+    test("DATA-MODEL.md's table of resource types matches the serializer and the schemas", () => {
+        const text    = fs.readFileSync(path.join(ROOT, 'docs', 'DATA-MODEL.md'), 'utf8'),
+              table   = text.slice(text.indexOf('| `frametrail:type` | Overlay |'), text.indexOf('\n\n', text.indexOf('| `frametrail:type` | Overlay |'))),
+              typesIn = (file) => [...new Set([...fs.readFileSync(path.join(ROOT, 'schemas', file), 'utf8').matchAll(/"\$ref": "attributes\/([a-z]+)\.schema\.json"/g)].map((m) => m[1]))],
+              places  = { overlay: typesIn('content-item.schema.json'), annotation: typesIn('annotation-file.schema.json'), resource: typesIn('resources-index.schema.json') },
+              listed  = [];
+        for (const row of table.split('\n').slice(2)) {
+            const cells = row.split('|').slice(1, -1).map((cell) => cell.trim());
+            for (const type of [...cells[0].matchAll(/`([a-z]+)`/g)].map((m) => m[1])) {
+                const info = Serializer.RESOURCE_TYPES[type],
+                      src  = (info.src === null) ? '—' : '`' + (info.src || 'source') + '`';
+                listed.push(type);
+                assert.deepStrictEqual([cells[1] === '✓', cells[2] === '✓', cells[3] === '✓'],
+                    [places.overlay.includes(type), places.annotation.includes(type), places.resource.includes(type)], type + ': overlay, annotation, resource');
+                assert.equal(cells[4], info.type || '', type + ': body.type');
+                assert.equal(cells[5], (type === 'image') ? 'image/`<extension>`' : (info.format || ''), type + ': body.format');
+                assert.equal(cells[6], src, type + ': src in');
+            }
+        }
+        assert.deepStrictEqual(listed.sort(), Object.keys(Serializer.RESOURCE_TYPES).filter((type) => type !== 'codesnippet').sort(), 'every type, once');
+    });
+
     test('folder bundles refuse paths that leave the tree, and unknown formats', () => {
         assert.throws(() => Serializer.writeBundle({ bundle: 'project', formatVersion: 1, hypervideosIndex: { hypervideos: { 1: '../../x' } }, hypervideos: { 1: { hypervideo: {} } } }, 'folder'));
         assert.throws(() => Serializer.writeBundle({ bundle: 'hypervideo', formatVersion: 1, id: '1', hypervideo: {}, annotations: { files: { '../evil': [] } } }, 'folder'));
@@ -923,6 +1074,104 @@ describe('FrameTrailHTMLFormat', () => {
         assert.ok(block.indexOf('<') < 0, 'a "<" inside the data block');
         assert.equal((edited.match(/<\/script/gi) || []).length, (page.match(/<\/script/gi) || []).length);
         assert.equal(HTMLFormat.readProject(edited).files[file].contents.find((item) => item.body && item.body['frametrail:type'] === 'text').body['frametrail:attributes'].text, text.body['frametrail:attributes'].text);
+    });
+
+});
+
+describe('FrameTrailLint', () => {
+
+    const allTypesFolder = () => readDataFolder(path.join(FIXTURES, 'data', 'all-types'));
+    const lecture = () => readJSON(path.join(FIXTURES, 'lint', 'data', 'lecture.json'));
+
+    test('the rules have ids, severities and descriptions; the result schema is in the subset', () => {
+        const ids = Lint.RULES.map((rule) => rule.id);
+        assert.equal(new Set(ids).size, ids.length);
+        for (const rule of Lint.RULES) {
+            assert.match(rule.id, /^[a-z]+(-[a-z]+)*$/, rule.id);
+            assert.ok(['error', 'warning'].includes(rule.severity), rule.id);
+            assert.ok(typeof rule.description === 'string' && rule.description !== '', rule.id);
+        }
+        assert.deepStrictEqual(lintValidator.validate('lint-result.schema.json', { errors: 0, warnings: 0, findings: [] }), []);
+        assert.notDeepStrictEqual(lintValidator.validate('lint-result.schema.json', { findings: [{ rule: 'x' }] }), []);
+    });
+
+    test('DATA-MODEL.md lists every rule with its severity', () => {
+        const text = fs.readFileSync(path.join(ROOT, 'docs', 'DATA-MODEL.md'), 'utf8'),
+              rows = [...text.matchAll(/^\| `([a-z-]+)` \| (error|warning) \|/gm)].map((m) => ({ id: m[1], severity: m[2] }));
+        assert.deepStrictEqual(rows, Lint.RULES.map((rule) => ({ id: rule.id, severity: rule.severity })));
+    });
+
+    test('run: nothing to find in nothing; an unknown rule is refused', () => {
+        assert.deepStrictEqual(Lint.run({}), { errors: 0, warnings: 0, findings: [] });
+        assert.throws(() => Lint.run({}, { rules: ['no-such-rule'] }), /Unknown lint rule: no-such-rule/);
+    });
+
+    test('partsOf: the items as the serializer writes them, the time from the clip or the media', () => {
+        const parts = Lint.partsOf(lecture(), { duration: 600 });
+        assert.deepStrictEqual(parts.info, { start: 0, end: 600 });
+        assert.deepStrictEqual([parts.overlays.length, parts.codeSnippets.length, parts.annotations.length, parts.chapters.length], [4, 1, 3, 3]);
+        assert.deepStrictEqual(parts.subtitles.map((entry) => entry.lang), ['en']);
+        assert.deepStrictEqual(Object.keys(parts.resources), ['1', '2']);
+        assert.equal(Lint.partsOf(lecture()).info.end, null, 'a clip of duration 0 without the media\'s');
+        const project = readJSON(path.join(FIXTURES, 'lint', 'data', 'project.json'));
+        assert.deepStrictEqual(Lint.partsOf(project).info, { start: 0, end: 90 }, 'the first hypervideo');
+        assert.deepStrictEqual(Lint.partsOf(project, { hypervideoId: 7 }).info, { start: 12, end: 132 }, 'in and out points');
+        assert.deepStrictEqual(Lint.partsOf(project).resources, {});
+        assert.throws(() => Lint.partsOf(project, { hypervideoId: '99' }), /No hypervideo "99"/);
+        const legacy = Lint.partsOf(readJSON(path.join(FIXTURES, 'lint', 'data', 'legacy.json')));
+        assert.deepStrictEqual(legacy.overlays.map((item) => item.created), ['2026-10-01T10:00:00.000Z', '2026-10-01T10:00:00.001Z'], 'created in ISO form, unique');
+    });
+
+    test('plainText and cues follow the rules in tests/README.md', () => {
+        assert.equal(Lint.plainText('&lt;p&gt;A &lt;b&gt;bold&lt;/b&gt; &amp;amp; B&lt;/p&gt;'), 'A bold & B');
+        assert.equal(Lint.plainText('a < b <!-- note --> &NBSP;c&#x41;&#66;&copy;'), 'a < b cAB&copy;');
+        assert.equal(Lint.plainText(null), '');
+        const vtt = '\uFEFFWEBVTT\r\n\r\nNOTE a note\r\n\r\n1\r\n00:01.5 --> 00:02.000\r\nno hours, one decimal\r\n\r\n00:03.000 -> 00:04.000\r\nnot a cue\r\n\r\n'
+                  + 'intro\r\n01:02:03,250 --> 01:02:04.000 align:start\r\n<v Ada>Hello</v>\r\nworld\r\n\r\n00:00:05.000 --> 00:00:06.000\r\n\r\n';
+        assert.deepStrictEqual(Lint.cues(vtt), [{ start: 1.5, end: 2, text: 'no hours, one decimal' }, { start: 3723.25, end: 3724, text: 'Hello world' }]);
+        assert.deepStrictEqual(Lint.timeSpan('t=1.5e1&xywh=percent:1,2,3,4'), { start: 15, end: 15 });
+        assert.deepStrictEqual(Lint.box('t=1,2&xywh=percent:-5,2.5,1e1,40'), { left: -5, top: 2.5, width: 10, height: 40 });
+        assert.deepStrictEqual(Lint.clipSpan([{ in: 10, out: 0, duration: 0 }], 70), { start: 10, duration: 60 });
+    });
+
+    test('checkFolder: nothing in a consistent folder', () => {
+        assert.deepStrictEqual(Lint.checkFolder(allTypesFolder()), []);
+    });
+
+    test('checkFolder: files that do not agree with each other', () => {
+        const files = allTypesFolder(),
+              hv    = 'hypervideos/1/';
+        files['tagdefinitions.json'] = '{ "a": ';
+        files['hypervideos/_index.json'].hypervideos['6'] = './6';
+        files['hypervideos/_index.json'].hypervideos['7'] = '../outside';
+        files['hypervideos/5/hypervideo.json'] = clone(files[hv + 'hypervideo.json']);
+        files['hypervideos/5/hypervideo.json'].subtitles = [];
+        files[hv + 'annotations/9.json'] = [];
+        files[hv + 'annotations/_index.json'].annotationfiles['8'] = { name: 'gone' };
+        files[hv + 'annotations/_index.json'].local = { name: 'legacy entry', src: 'local.json' };
+        files[hv + 'annotations/local.json'] = [];
+        files[hv + 'subtitles/de.vtt'] = 'WEBVTT\n';
+        files[hv + 'hypervideo.json'].subtitles.push({ src: 'fr.vtt', srclang: 'fr' });
+        const problems = Lint.checkFolder(files);
+        assert.match(problems.find((problem) => problem.path === 'tagdefinitions.json').message, /^Is not valid JSON: /);
+        assert.deepStrictEqual(problems.filter((problem) => problem.path !== 'tagdefinitions.json'), [
+            { path: hv + 'annotations/9.json', message: 'Has no entry in annotations/_index.json; FrameTrail does not load these annotations.' },
+            { path: hv + 'annotations/_index.json', message: 'Lists the annotation file "8", but hypervideos/1/annotations/8.json is missing; FrameTrail cannot load the hypervideo.' },
+            { path: hv + 'hypervideo.json', message: 'Lists subtitles "fr", but hypervideos/1/subtitles/fr.vtt is missing.' },
+            { path: hv + 'subtitles/de.vtt', message: 'Is not listed in the subtitles of hypervideos/1/hypervideo.json; FrameTrail does not show it.' },
+            { path: 'hypervideos/5/annotations/_index.json', message: 'Is missing; on a server FrameTrail then loads no hypervideo at all.' },
+            { path: 'hypervideos/5/hypervideo.json', message: 'Is not listed in hypervideos/_index.json; FrameTrail does not show this hypervideo.' },
+            { path: 'hypervideos/_index.json', message: 'Lists hypervideo "6" in "./6", but hypervideos/6/hypervideo.json is missing; FrameTrail cannot load it.' },
+            { path: 'hypervideos/_index.json', message: 'Lists hypervideo "7" in "../outside", which is no folder inside hypervideos/.' }
+        ]);
+    });
+
+    test('checkFolder: a project file\'s folder, JSON given as text', () => {
+        const page  = HTMLFormat.write(Serializer.readBundle(allTypesFolder(), 'folder')),
+              files = HTMLFormat.readProject(page).files;
+        assert.deepStrictEqual(Lint.checkFolder(files), []);
+        const text = Object.fromEntries(Object.entries(files).map(([file, content]) => [file, file.endsWith('.json') ? JSON.stringify(content) : content]));
+        assert.deepStrictEqual(Lint.checkFolder(text), []);
     });
 
 });

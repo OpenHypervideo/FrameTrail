@@ -1,0 +1,241 @@
+{
+    "description": "Where things lie in time: items outside the video or partly outside it, subtitle cues after its end. The lecture's video is 600 s long by the media (its clip does not say).",
+    "data": "lecture",
+    "duration": 600,
+    "cases": [
+        { "name": "the lecture as it is: nothing to find", "findings": [] },
+        {
+            "name": "an overlay after the end",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/0/target/selector/value",
+                    "value": "t=605,620&xywh=percent:10,10,50,20"
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "item-outside-video",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:00.000Z",
+                    "message": "Runs from 605 s to 620 s, outside the video (0 s to 600 s); the player never shows it."
+                }
+            ]
+        },
+        {
+            "name": "an overlay starting at the end is outside, one ending there is not",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/0/target/selector/value",
+                    "value": "t=600,610&xywh=percent:10,10,50,20"
+                },
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/2/target/selector/value",
+                    "value": "t=590,600&xywh=percent:55,10,40,50"
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "item-outside-video",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:00.000Z",
+                    "message": "Runs from 600 s to 610 s, outside the video (0 s to 600 s); the player never shows it."
+                }
+            ]
+        },
+        {
+            "name": "someone else's annotation after the end names its creator",
+            "patch": [{ "op": "replace", "path": "/annotations/files/2/0/target/selector/value", "value": "t=650,660" }],
+            "findings": [
+                {
+                    "rule": "item-outside-video",
+                    "severity": "error",
+                    "kind": "annotations",
+                    "ref": "2026-10-02T09:00:00.000Z",
+                    "creator": "2",
+                    "message": "Runs from 650 s to 660 s, outside the video (0 s to 600 s); the player never shows it."
+                }
+            ]
+        },
+        {
+            "name": "a code snippet and a chapter at or after the end",
+            "patch": [
+                { "op": "replace", "path": "/hypervideo/contents/4/target/selector/value", "value": "t=600" },
+                { "op": "add", "path": "/hypervideo/chapters/-", "value": { "start": 615, "title": "Credits" } }
+            ],
+            "findings": [
+                {
+                    "rule": "item-outside-video",
+                    "severity": "error",
+                    "kind": "codeSnippets",
+                    "ref": "2026-10-01T10:00:04.000Z",
+                    "message": "Is at 600 s, outside the video (0 s to 600 s); the player never reaches it."
+                },
+                {
+                    "rule": "item-outside-video",
+                    "severity": "error",
+                    "kind": "chapters",
+                    "ref": 615,
+                    "message": "Is at 615 s, outside the video (0 s to 600 s); the player never reaches it."
+                }
+            ]
+        },
+        {
+            "name": "without the video's end only its start counts",
+            "duration": null,
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/0/target/selector/value",
+                    "value": "t=605,620&xywh=percent:10,10,50,20"
+                },
+                { "op": "add", "path": "/hypervideo/chapters/-", "value": { "start": 615, "title": "Credits" } }
+            ],
+            "findings": []
+        },
+        {
+            "name": "a clip with an in point: what lies before it",
+            "patch": [{ "op": "replace", "path": "/hypervideo/clips/0/in", "value": 12 }],
+            "findings": [
+                {
+                    "rule": "item-outside-video",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:00.000Z",
+                    "message": "Runs from 0 s to 8 s, outside the video (12 s to 600 s); the player never shows it."
+                },
+                {
+                    "rule": "item-outside-video",
+                    "severity": "error",
+                    "kind": "chapters",
+                    "ref": 0,
+                    "message": "Is at 0 s, outside the video (12 s to 600 s); the player never reaches it."
+                },
+                {
+                    "rule": "item-partly-outside",
+                    "severity": "warning",
+                    "kind": "annotations",
+                    "ref": "2026-10-02T09:00:00.000Z",
+                    "creator": "1",
+                    "message": "Runs from 10 s to 40 s, partly outside the video (12 s to 600 s); that part is never shown."
+                }
+            ]
+        },
+        {
+            "name": "partly outside: past the end",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/0/target/selector/value",
+                    "value": "t=590,620&xywh=percent:10,10,50,20"
+                },
+                { "op": "replace", "path": "/annotations/files/1/0/target/selector/value", "value": "t=595,605.5" }
+            ],
+            "findings": [
+                {
+                    "rule": "item-partly-outside",
+                    "severity": "warning",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:00.000Z",
+                    "message": "Runs from 590 s to 620 s, partly outside the video (0 s to 600 s); that part is never shown."
+                },
+                {
+                    "rule": "item-partly-outside",
+                    "severity": "warning",
+                    "kind": "annotations",
+                    "ref": "2026-10-02T09:00:00.000Z",
+                    "creator": "1",
+                    "message": "Runs from 595 s to 605.5 s, partly outside the video (0 s to 600 s); that part is never shown."
+                }
+            ]
+        },
+        {
+            "name": "an item of no length at the start is not outside",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/0/target/selector/value",
+                    "value": "t=0,0&xywh=percent:10,10,50,20"
+                }
+            ],
+            "findings": []
+        },
+        {
+            "name": "subtitle cues at and after the end, not one that begins before it",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/subtitles/en",
+                    "value": "WEBVTT\n\n00:09:58.000 --> 00:10:03.000\nGoodbye.\n\n00:10:00.000 --> 00:10:05.000\nThe end.\n\n00:10:10.000 --> 00:10:15.000\nCredits.\n"
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "cue-outside-video",
+                    "severity": "warning",
+                    "kind": "subtitles",
+                    "ref": "en",
+                    "message": "2 cues start at or after the end of the video (600 s), the first at 600 s."
+                }
+            ]
+        },
+        {
+            "name": "one cue after the end",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/subtitles/en",
+                    "value": "WEBVTT\n\n00:10:01.250 --> 00:10:03.000\nThe end.\n"
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "cue-outside-video",
+                    "severity": "warning",
+                    "kind": "subtitles",
+                    "ref": "en",
+                    "message": "1 cue starts at or after the end of the video (600 s), the first at 601.25 s."
+                }
+            ]
+        },
+        {
+            "name": "a trimmed clip's subtitles go on after its out point",
+            "rules": ["cue-outside-video"],
+            "patch": [
+                { "op": "replace", "path": "/hypervideo/clips/0/out", "value": 300 },
+                {
+                    "op": "replace",
+                    "path": "/subtitles/en",
+                    "value": "WEBVTT\n\n00:06:00.000 --> 00:06:05.000\nLater.\n"
+                }
+            ],
+            "findings": []
+        },
+        {
+            "name": "a trimmed video in a project: a chapter before its in point",
+            "data": "project",
+            "hypervideoId": "7",
+            "duration": null,
+            "patch": [
+                {
+                    "op": "add",
+                    "path": "/hypervideos/7/hypervideo/chapters/0",
+                    "value": { "start": 5, "title": "Before" }
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "item-outside-video",
+                    "severity": "error",
+                    "kind": "chapters",
+                    "ref": 5,
+                    "message": "Is at 5 s, outside the video (12 s to 132 s); the player never reaches it."
+                }
+            ]
+        }
+    ]
+}

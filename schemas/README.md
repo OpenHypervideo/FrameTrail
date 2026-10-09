@@ -21,4 +21,4 @@ The schemas reference each other by relative URI against their `$id` (`https://f
 
 FrameTrail's own validator for them is `FrameTrailSchema` (`src/_shared/frametrail-core/schema/`). [`tests/`](../tests/README.md) holds valid and invalid documents for them, with the errors expected for each.
 
-The player validates with a copy of these schemas, without titles and descriptions: `src/_shared/frametrail-core/schema/FrameTrailSchemas.js`. After changing a schema, write it again with `node scripts/bundle-schemas.mjs`; the tests fail while it is out of date.
+The player validates with a copy of these schemas, without titles and descriptions: `src/_shared/frametrail-core/schema/FrameTrailSchemas.js`. The descriptions of `attributes/` are the source of [`docs/TYPES.md`](../docs/TYPES.md), the reference of the item types. After changing a schema, write both again with `node scripts/bundle-schemas.mjs`; the tests fail while either is out of date.

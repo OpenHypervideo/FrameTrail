@@ -1,0 +1,162 @@
+{
+    "description": "How things are arranged: overlays over one another, chapters out of order; picking rules; older data.",
+    "data": "lecture",
+    "duration": 600,
+    "cases": [
+        {
+            "name": "an image over the title card, reported on the later one",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/2/target/selector/value",
+                    "value": "t=5,20&xywh=percent:40,15,30,30"
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "overlay-overlap",
+                    "severity": "warning",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:02.000Z",
+                    "related": { "kind": "overlays", "ref": "2026-10-01T10:00:00.000Z" },
+                    "message": "Covers the same area as overlay 2026-10-01T10:00:00.000Z from 5 s to 8 s."
+                }
+            ]
+        },
+        {
+            "name": "boxes that only touch do not overlap",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/2/target/selector/value",
+                    "value": "t=5,20&xywh=percent:60,10,30,30"
+                }
+            ],
+            "findings": []
+        },
+        {
+            "name": "one after the other in time do not overlap",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/2/target/selector/value",
+                    "value": "t=8,20&xywh=percent:40,15,30,30"
+                }
+            ],
+            "findings": []
+        },
+        {
+            "name": "hotspots are meant to lie over others",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/1/target/selector/value",
+                    "value": "t=0,8&xywh=percent:20,15,10,10"
+                }
+            ],
+            "findings": []
+        },
+        {
+            "name": "a moving overlay covers the area it moves in",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/3/body",
+                    "value": {
+                        "type": "TextualBody",
+                        "frametrail:type": "text",
+                        "format": "text/html",
+                        "value": "",
+                        "frametrail:attributes": { "text": "Protein" }
+                    }
+                },
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/2/target/selector/value",
+                    "value": "t=210,215&xywh=percent:50,40,20,20"
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "overlay-overlap",
+                    "severity": "warning",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:03.000Z",
+                    "related": { "kind": "overlays", "ref": "2026-10-01T10:00:02.000Z" },
+                    "message": "Covers the same area as overlay 2026-10-01T10:00:02.000Z from 210 s to 215 s."
+                }
+            ]
+        },
+        {
+            "name": "chapters out of order",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/chapters",
+                    "value": [
+                        { "start": 0, "title": "Introduction" },
+                        { "start": 300, "title": "Transport" },
+                        { "start": 120, "title": "Membranes" }
+                    ]
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "chapter-order",
+                    "severity": "warning",
+                    "kind": "chapters",
+                    "ref": 120,
+                    "message": "The chapter at 120 s is stored after the one at 300 s; chapters are kept in order of their start."
+                }
+            ]
+        },
+        {
+            "name": "two chapters at the same start",
+            "patch": [{ "op": "add", "path": "/hypervideo/chapters/2", "value": { "start": 120, "title": "Membranes, again" } }],
+            "findings": [
+                {
+                    "rule": "chapter-order",
+                    "severity": "warning",
+                    "kind": "chapters",
+                    "ref": 120,
+                    "message": "Two chapters start at 120 s; each start may be used once."
+                }
+            ]
+        },
+        {
+            "name": "only the rules asked for",
+            "rules": ["chapter-order", "missing-license"],
+            "patch": [
+                { "op": "replace", "path": "/hypervideo/contents/0/body/frametrail:attributes", "value": {} },
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/chapters",
+                    "value": [{ "start": 120, "title": "Membranes" }, { "start": 0, "title": "Introduction" }]
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "chapter-order",
+                    "severity": "warning",
+                    "kind": "chapters",
+                    "ref": 0,
+                    "message": "The chapter at 0 s is stored after the one at 120 s; chapters are kept in order of their start."
+                }
+            ]
+        },
+        {
+            "name": "older data: a text overlay whose attributes PHP wrote as []",
+            "data": "legacy",
+            "duration": null,
+            "findings": [
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:00.000Z",
+                    "message": "Is incomplete: no text."
+                }
+            ]
+        }
+    ]
+}

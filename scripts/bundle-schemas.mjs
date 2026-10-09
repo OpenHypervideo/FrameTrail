@@ -1,19 +1,25 @@
 /*
- * Writes src/_shared/frametrail-core/schema/FrameTrailSchemas.js: every schema in schemas/ in one script, so the player can validate data with FrameTrailSchema without fetching anything. Titles and descriptions are left out — they are most of the size and do not take part in validation. Run it after changing a schema:
+ * Writes what is made from the schemas in schemas/. Run it after changing a schema:
  *
  *     node scripts/bundle-schemas.mjs
  *
- * tests/run-js.mjs fails while the file differs from what this writes.
+ * - src/_shared/frametrail-core/schema/FrameTrailSchemas.js: every schema in one script, so the player can validate data with FrameTrailSchema without fetching anything. Titles and descriptions are left out — they are most of the size and do not take part in validation.
+ * - docs/TYPES.md: the reference of the item types and their attributes, from the attribute schemas' descriptions.
+ *
+ * tests/run-js.mjs fails while either file differs from what this writes.
  */
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const require = createRequire(import.meta.url);
+const ROOT    = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-export const SCHEMAS_DIR = path.join(ROOT, 'schemas');
-export const OUTPUT      = path.join(ROOT, 'src', '_shared', 'frametrail-core', 'schema', 'FrameTrailSchemas.js');
+export const SCHEMAS_DIR  = path.join(ROOT, 'schemas');
+export const OUTPUT       = path.join(ROOT, 'src', '_shared', 'frametrail-core', 'schema', 'FrameTrailSchemas.js');
+export const TYPES_OUTPUT = path.join(ROOT, 'docs', 'TYPES.md');
 
 // Where a keyword's value holds schemas (see KEYWORDS in FrameTrailSchema.js). Everywhere else a key named "title" or "description" is data: a property name, a const, a default.
 const SUBSCHEMAS = {
@@ -91,7 +97,236 @@ export function bundleSchemas() {
 }
 
 
+/* ---------------------------------------------------------------------- */
+/*  docs/TYPES.md                                                         */
+/* ---------------------------------------------------------------------- */
+
+// The sentence that starts the standard part of an attribute schema's description; what comes before it is about the type.
+const STANDARD_PART = ' This schema describes ';
+
+const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+
+function readSchemas() {
+    const schemas = {};
+    for (const file of schemaFiles()) { schemas[file] = JSON.parse(fs.readFileSync(path.join(SCHEMAS_DIR, file), 'utf8')); }
+    return schemas;
+}
+
+// A $ref, resolved against the file it is in: { schema, file, pointer }.
+function resolveRef(schemas, ref, file) {
+    const [target, fragment = ''] = ref.split('#'),
+          targetFile = target ? path.posix.normalize(path.posix.join(path.posix.dirname(file), target)) : file;
+    let node = schemas[targetFile];
+    for (const token of fragment.split('/').slice(1)) { node = node && node[token.replace(/~1/g, '/').replace(/~0/g, '~')]; }
+    if (node === undefined) { throw new Error('Cannot resolve ' + ref + ' in ' + file); }
+    return { schema: node, file: targetFile, pointer: targetFile + '#' + fragment };
+}
+
+/*
+ * A schema as the reference shows it: a $ref followed (the description beside it wins), and of a oneOf against PHP's empty array the object.
+ * { schema, file, pointer } – pointer: where a $ref led, else null.
+ */
+function shown(schemas, schema, file) {
+    let result = { schema, file, pointer: null };
+    if (typeof schema.$ref === 'string') {
+        const target = resolveRef(schemas, schema.$ref, file),
+              merged = Object.assign({}, shown(schemas, target.schema, target.file).schema);
+        for (const key of Object.keys(schema)) { if (key !== '$ref') { merged[key] = schema[key]; } }
+        result = { schema: merged, file: target.file, pointer: target.pointer };
+    }
+    if (Array.isArray(result.schema.oneOf)) {
+        const alternatives = result.schema.oneOf.map((alternative) => shown(schemas, alternative, result.file).schema)
+                                                .filter((alternative) => !(Array.isArray(alternative.const) && alternative.const.length === 0));
+        if (alternatives.length === 1) {
+            const merged = Object.assign({}, alternatives[0], { description: result.schema.description || alternatives[0].description });
+            result = Object.assign({}, result, { schema: merged });
+        }
+    }
+    return result;
+}
+
+// The attribute types a schema refers to (attributes/<type>.schema.json), in order.
+function attributeTypesIn(schema) {
+    const types = [];
+    (function walk(node) {
+        if (Array.isArray(node)) { node.forEach(walk); return; }
+        if (!isObject(node)) { return; }
+        const m = (typeof node.$ref === 'string') ? /^attributes\/([a-z]+)\.schema\.json$/.exec(node.$ref) : null;
+        if (m && types.indexOf(m[1]) < 0) { types.push(m[1]); }
+        Object.keys(node).forEach((key) => walk(node[key]));
+    })(schema);
+    return types;
+}
+
+const cell = (text) => String(text).replace(/\|/g, '\\|');
+const code = (value) => '`' + ((typeof value === 'string' && value !== '') ? value : JSON.stringify(value)) + '`';
+
+function firstSentence(text) {
+    const m = /^(.*?[.!?])(?:\s+(?=[A-Z])|$)/.exec(text);
+    return m ? m[1] : text;
+}
+
+const PLURALS = { string: 'strings', number: 'numbers', integer: 'integers', boolean: 'booleans', object: 'objects', array: 'arrays', null: 'null' };
+
+function orList(words) {
+    return (words.length < 2) ? words.join('') : words.slice(0, -1).join(', ') + ' or ' + words[words.length - 1];
+}
+
+function typeText(schemas, schema, file) {
+    const types = Array.isArray(schema.type) ? schema.type : (schema.type ? [schema.type] : []),
+          parts = types.map((type) => {
+              if (type !== 'array' || !isObject(schema.items)) { return type; }
+              const items = shown(schemas, schema.items, file).schema,
+                    of    = Array.isArray(items.type) ? items.type : (items.type ? [items.type] : []);
+              return of.length ? 'array of ' + orList(of.map((t) => PLURALS[t] || t)) : 'array';
+          });
+    if (parts.length < 2) { return parts.join(''); }
+    return parts.slice(0, -1).join(', ') + (parts.some((part) => part.indexOf(' or ') >= 0) ? ', or ' : ' or ') + parts[parts.length - 1];
+}
+
+function valuesText(schema, pointer) {
+    if (pointer === 'common.schema.json#/$defs/ease') { return 'an ease, see [Eases](#eases)'; }
+    if (Array.isArray(schema.enum)) { return schema.enum.map(code).join(', '); }
+    if (schema.const !== undefined) { return code(schema.const); }
+    const min = schema.minimum, max = schema.maximum;
+    if (min !== undefined && max !== undefined) { return min + '–' + max; }
+    if (min !== undefined) { return '≥ ' + min; }
+    if (max !== undefined) { return '≤ ' + max; }
+    return '';
+}
+
+/*
+ * The rows of an attribute table: each property, and one level below it the properties of an object or of an array's items.
+ * notes: name → text added to the description of a property, which is then not expanded.
+ */
+function attributeRows(schemas, properties, file, required, prefix, depth, notes = {}) {
+    const rows = [];
+    for (const name of Object.keys(properties)) {
+        const { schema, file: at, pointer } = shown(schemas, properties[name], file),
+              description = (required.indexOf(name) >= 0 ? 'Required. ' : '') + (schema.description || '') + (notes[name] ? ' ' + notes[name] : '');
+        rows.push('| ' + cell('`' + prefix + name + '`') + ' | ' + cell(typeText(schemas, schema, at)) + ' | ' + cell(valuesText(schema, pointer))
+            + ' | ' + cell(schema.default !== undefined ? code(schema.default) : '') + ' | ' + cell(description) + ' |');
+        if (depth > 0 || notes[name]) { continue; }
+        if (isObject(schema.properties)) {
+            rows.push(...attributeRows(schemas, schema.properties, at, schema.required || [], prefix + name + '.', depth + 1));
+        } else if (isObject(schema.items)) {
+            const items = shown(schemas, schema.items, at);
+            if (isObject(items.schema.properties)) {
+                rows.push(...attributeRows(schemas, items.schema.properties, items.file, items.schema.required || [], prefix + name + '[].', depth + 1));
+            }
+        }
+    }
+    return rows;
+}
+
+function attributeTable(rows) {
+    return ['| Attribute | Type | Values | Default | Description |', '|-----------|------|--------|---------|-------------|'].concat(rows).join('\n');
+}
+
+/**
+ * The contents of docs/TYPES.md for the schemas in schemas/ now.
+ * @return {String}
+ */
+export function typesDoc() {
+
+    const schemas    = readSchemas(),
+          Serializer = require('../src/_shared/frametrail-core/serialization/FrameTrailSerializer.js'),
+          overlay    = attributeTypesIn(schemas['content-item.schema.json']),
+          annotation = attributeTypesIn(schemas['annotation-file.schema.json']),
+          library    = attributeTypesIn(schemas['resources-index.schema.json']),
+          attributes = (type) => schemas['attributes/' + type + '.schema.json'],
+          types      = [...new Set([...overlay, ...annotation, ...library])].filter((type) => !/^Legacy\./.test(attributes(type).description));
+
+    for (const type of types) {
+        if (attributes(type).description.indexOf(STANDARD_PART) < 0) {
+            throw new Error('attributes/' + type + '.schema.json: the description has no "' + STANDARD_PART.trim() + '" part');
+        }
+    }
+
+    const about  = (type) => attributes(type).description.slice(0, attributes(type).description.indexOf(STANDARD_PART)),
+          tick   = (list, type) => (list.indexOf(type) >= 0 ? '✓' : ''),
+          places = (type) => [['overlay', overlay], ['annotation', annotation], ['library resource', library]].filter(([, list]) => list.indexOf(type) >= 0).map(([name]) => name),
+          srcIn  = (type) => {
+              const place = (Serializer.RESOURCE_TYPES[type] || {}).src;
+              return (place === null) ? 'It has no src.' : 'Its src, if it has one, goes into `body.' + (place || 'source') + '`.';
+          };
+
+    // Attributes every overlay type has, all from common.schema.json: shown once.
+    const common = Object.keys(attributes(types[0]).properties).filter((name) => types.every((type) => {
+        const property = attributes(type).properties[name];
+        return property && typeof property.$ref === 'string' && property.$ref.indexOf('../common.schema.json#') === 0;
+    }));
+
+    const lines = [];
+
+    lines.push('# Item Types', '');
+    lines.push('<!-- Generated by scripts/bundle-schemas.mjs from schemas/. Do not edit: change the schemas and run it again. -->', '');
+    lines.push('What each type of overlay, annotation and library resource is for, and what its `frametrail:attributes` hold. The source is the JSON Schemas in [`schemas/attributes/`](../schemas/attributes/); [DATA-MODEL.md](DATA-MODEL.md) explains the items these attributes belong to.', '');
+
+    lines.push('## At a Glance', '');
+    lines.push('| Type | Overlay | Annotation | Library | What it is |', '|------|:-------:|:----------:|:-------:|------------|');
+    for (const type of types) {
+        lines.push('| `' + type + '` | ' + tick(overlay, type) + ' | ' + tick(annotation, type) + ' | ' + tick(library, type) + ' | ' + cell(firstSentence(about(type))) + ' |');
+    }
+    lines.push('');
+    lines.push('Overlay: an item of `hypervideo.json` → `contents`, shown over the video. Annotation: an item of a user\'s annotation file. Library: a resource of `resources/_index.json`, which overlays and annotations can be made from. The type is the body\'s `frametrail:type`.', '');
+
+    lines.push('## Every Overlay', '');
+    lines.push('Every overlay type also takes these attributes; annotations do not use them.', '');
+    lines.push(attributeTable(attributeRows(schemas, Object.fromEntries(common.map((name) => [name, attributes(types[0]).properties[name]])), 'attributes/' + types[0] + '.schema.json', [], '', 0,
+        { animation: 'See [Animation](#animation).' })), '');
+
+    lines.push('## Types', '');
+    for (const type of types) {
+        const file   = 'attributes/' + type + '.schema.json',
+              own    = Object.fromEntries(Object.entries(attributes(type).properties || {}).filter(([name]) => common.indexOf(name) < 0)),
+              where  = places(type);
+        lines.push('### `' + type + '`', '');
+        lines.push(about(type), '');
+        lines.push(where[0].charAt(0).toUpperCase() + where.join(', ').slice(1) + '. ' + srcIn(type) + ' Schema: [`' + file + '`](../schemas/' + file + ').', '');
+        lines.push(Object.keys(own).length ? attributeTable(attributeRows(schemas, own, file, attributes(type).required || [], '', 0)) : 'No attributes of its own.', '');
+    }
+
+    const animation = shown(schemas, { $ref: 'common.schema.json#/$defs/animation' }, 'common.schema.json').schema,
+          phases    = Object.keys(animation.properties),
+          keys      = [...new Set(phases.flatMap((phase) => Object.keys(animation.properties[phase].properties)))];
+
+    lines.push('## Animation', '');
+    lines.push(animation.description + ' Every overlay takes it as its `animation` attribute.', '');
+    lines.push('| Phase | What it is | Presets |', '|-------|------------|---------|');
+    for (const phase of phases) {
+        const spec = animation.properties[phase];
+        lines.push('| `' + phase + '` | ' + cell(spec.description) + ' | ' + spec.properties.preset.enum.map(code).join(', ') + ' |');
+    }
+    lines.push('');
+    lines.push('Each phase is an object:', '');
+    const phaseRows = keys.map((key) => {
+        const with_ = phases.filter((phase) => animation.properties[phase].properties[key]),
+              spec  = animation.properties[with_[0]],
+              row   = attributeRows(schemas, { [key]: spec.properties[key] }, 'common.schema.json', spec.required || [], '', 0);
+        if (key === 'preset') { row[0] = row[0].replace(/^(\|[^|]*\|[^|]*\|)[^|]*\|/, '$1 the phase\'s presets, above |'); }
+        if (with_.length < phases.length) {
+            row[0] = row[0].replace(/\| ([^|])([^|]*) \|$/, (all, first, rest) => '| ' + with_.map((phase) => '`' + phase + '`').join(', ') + ' only: ' + first.toLowerCase() + rest + ' |');
+        }
+        return row;
+    }).flat();
+    lines.push(attributeTable(phaseRows), '');
+
+    const ease  = schemas['common.schema.json'].$defs.ease,
+          eased = types.filter((type) => Object.values(attributes(type).properties || {}).some((property) => shown(schemas, property, 'attributes/' + type + '.schema.json').pointer === 'common.schema.json#/$defs/ease'));
+    lines.push('### Eases', '');
+    lines.push(ease.description + ' The animation phases take one, as do keyframes (the segment to the next keyframe)'
+        + eased.map((type) => ' and the `' + type + '` type').join('') + '.', '');
+    lines.push(ease.enum.map(code).join(', '), '');
+
+    return lines.join('\n');
+
+}
+
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
     fs.writeFileSync(OUTPUT, bundleSchemas());
     console.log('Wrote ' + path.relative(ROOT, OUTPUT));
+    fs.writeFileSync(TYPES_OUTPUT, typesDoc());
+    console.log('Wrote ' + path.relative(ROOT, TYPES_OUTPUT));
 }
