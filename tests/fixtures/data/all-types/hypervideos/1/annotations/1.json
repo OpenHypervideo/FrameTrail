@@ -65,7 +65,7 @@
             "source": "",
             "frametrail:name": "HTML note",
             "frametrail:attributes": {
-                "text": "<p>Raw <em>HTML</em>.</p>"
+                "text": "&lt;p&gt;Raw &lt;em&gt;HTML&lt;/em&gt;.&lt;/p&gt;"
             }
         }
     },

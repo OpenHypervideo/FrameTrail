@@ -204,7 +204,7 @@
                 "source": "",
                 "frametrail:name": "Custom HTML",
                 "frametrail:attributes": {
-                    "text": "<div class=\"badge\" style=\"background:#14161a;color:#fff;padding:8px 12px;border-radius:6px\">Custom HTML</div>",
+                    "text": "&lt;div class=\"badge\" style=\"background:#14161a;color:#fff;padding:8px 12px;border-radius:6px\"&gt;Custom HTML&lt;/div&gt;",
                     "opacity": 0.9
                 }
             }
