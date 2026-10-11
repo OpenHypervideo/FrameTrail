@@ -96,6 +96,7 @@ CSS_FILES=(
     "player/modules/ViewVideo/style.css"
     "player/modules/FreeformShapeEditor/style.css"
     "player/modules/ChaptersController/style.css"
+    "player/modules/TranscriptsEditor/style.css"
     "player/modules/ViewLayout/style.css"
     "player/modules/HypervideoSettingsDialog/style.css"
     "player/modules/AdminSettingsDialog/style.css"
@@ -131,6 +132,7 @@ JS_FILES=(
     "_shared/frametrail-core/serialization/FrameTrailSerializer.js"
     "_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js"
     "_shared/frametrail-core/serialization/FrameTrailLint.js"
+    "_shared/frametrail-core/serialization/FrameTrailWebVTT.js"
 
     # Validation against schemas/ (pure; the schemas are bundled by scripts/bundle-schemas.mjs)
     "_shared/frametrail-core/schema/FrameTrailSchema.js"
@@ -228,6 +230,7 @@ JS_FILES=(
     "player/modules/Titlebar/module.js"
     "player/modules/CodeSnippetsController/module.js"
     "player/modules/ChaptersController/module.js"
+    "player/modules/TranscriptsEditor/module.js"
     "player/modules/TimelineController/module.js"
     "player/modules/ViewOverview/module.js"
     "player/modules/ViewOverviewMap/module.js"

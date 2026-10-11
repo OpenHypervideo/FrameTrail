@@ -470,16 +470,13 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         var pendingSourceChange = null; // Will hold { resourceId, src, duration, outOfRangeItems } if source change needs confirmation
         var sourceChangeConfirmed = false;
 
-        var captionsVisible = hypervideo.config && hypervideo.config.captionsVisible && hypervideo.config.captionsVisible.toString() === 'true';
         var autohideControls = hypervideo.config && hypervideo.config.autohideControls && hypervideo.config.autohideControls.toString() === 'true';
 
         var _efw = document.createElement('div');
         _efw.innerHTML = '<form method="POST" class="editHypervideoForm">'
                         + formBuilder.generateSettingsRow({
                                 name: hypervideo.name || '',
-                                captionsVisible: captionsVisible,
                                 autohideControls: autohideControls,
-                                showExistingSubtitles: true,
                                 showExtendedSettings: true
                             })
                         + '    <hr>'
@@ -506,12 +503,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             if (!isCanvasVideo) return originalDuration;
             return formBuilder.timeStringToSeconds(EditHypervideoForm.querySelector('input[name="duration"]').value);
         }
-
-        // Populate existing subtitles using shared module
-        formBuilder.populateExistingSubtitles(EditHypervideoForm, hypervideo.subtitles);
-
-        // Attach subtitle event handlers using shared module
-        formBuilder.attachSubtitleHandlers(EditHypervideoForm);
 
         // Video Source Tabs Initialization
         (function() {
@@ -705,7 +696,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
             if (DatabaseEntry.config) {
                 for (var configKey in DatabaseEntry.config) {
-                    if (configKey === 'layoutArea' || configKey === 'theme' || configKey === 'captionsVisible' || configKey === 'autohideControls') { continue; }
+                    if (configKey === 'layoutArea' || configKey === 'theme' || configKey === 'autohideControls') { continue; }
                     var newConfigVal = (EditHypervideoForm.querySelector('input[data-configkey="' + configKey + '"]') || {value: undefined}).value;
                     newConfigVal = (newConfigVal === 'true')
                                     ? true
@@ -715,10 +706,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                                             ? DatabaseEntry.config[configKey]
                                             : newConfigVal;
                     DatabaseEntry.config[configKey] = newConfigVal;
-                }
-                var captionsCheckbox = EditHypervideoForm.querySelector('input[name="config[captionsVisible]"]');
-                if (captionsCheckbox) {
-                    DatabaseEntry.config.captionsVisible = captionsCheckbox.checked;
                 }
                 var autohideCheckbox = EditHypervideoForm.querySelector('input[name="config[autohideControls]"]');
                 if (autohideCheckbox) {
@@ -773,30 +760,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 }
             }
 
-            if (!DatabaseEntry.subtitles) {
-                DatabaseEntry.subtitles = [];
-            }
-            DatabaseEntry.subtitles.splice(0, DatabaseEntry.subtitles.length);
-
-            EditHypervideoForm.querySelectorAll('.existingSubtitlesItem').forEach(function(item) {
-                var lang = item.querySelector('.subtitlesDelete').getAttribute('data-lang');
-                if (lang) {
-                    DatabaseEntry.subtitles.push({
-                        "src": lang +".vtt",
-                        "srclang": lang
-                    });
-                }
-            });
-
-            EditHypervideoForm.querySelectorAll('.newSubtitlesContainer input[type=file]').forEach(function(fileInput) {
-                var match = /subtitles\[(.+)\]/g.exec(fileInput.getAttribute('name'));
-                if (match) {
-                    DatabaseEntry.subtitles.push({
-                        "src": match[1] +".vtt",
-                        "srclang": match[1]
-                    });
-                }
-            });
+            // Subtitles are not changed here (the transcripts edit mode does that): the entry keeps its list.
         }
 
         var hypervideoDialogCtrl;
@@ -831,32 +795,24 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
                         FrameTrail.module('HypervideoController').updateDescriptions();
 
-                        // re-init subtitles
-                        FrameTrail.module('Database').loadSubtitleData(
-                            function() {
-                                FrameTrail.module('ViewOverview').refreshList();
+                        FrameTrail.module('ViewOverview').refreshList();
 
-                                FrameTrail.module('HypervideoModel').subtitleFiles = FrameTrail.module('Database').hypervideo.subtitles;
-                                FrameTrail.module('HypervideoModel').initModelOfSubtitles(FrameTrail.module('Database'));
-                                FrameTrail.module('SubtitlesController').initController();
-                                FrameTrail.changeState('hv_config_captionsVisible', false);
+                        // The entry was read again; its subtitle list is the one now (the loaded texts are unchanged).
+                        FrameTrail.module('HypervideoModel').subtitleFiles = FrameTrail.module('Database').hypervideo.subtitles;
 
-                                // Refresh timeline if duration or source changed
-                                if (isCanvasVideo || sourceWasChanged) {
-                                    FrameTrail.module('OverlaysController').initController();
-                                    FrameTrail.module('CodeSnippetsController').initController();
-                                    FrameTrail.module('AnnotationsController').initController();
-                                }
+                        // Refresh timeline if duration or source changed
+                        if (isCanvasVideo || sourceWasChanged) {
+                            FrameTrail.module('OverlaysController').initController();
+                            FrameTrail.module('CodeSnippetsController').initController();
+                            FrameTrail.module('AnnotationsController').initController();
+                        }
 
-                                // If source was changed, reload the hypervideo to get new video
-                                if (sourceWasChanged) {
-                                    FrameTrail.module('HypervideoModel').updateHypervideo(thisID, FrameTrail.getState('editMode'), true);
-                                }
+                        // If source was changed, reload the hypervideo to get new video
+                        if (sourceWasChanged) {
+                            FrameTrail.module('HypervideoModel').updateHypervideo(thisID, FrameTrail.getState('editMode'), true);
+                        }
 
-                                hypervideoDialogCtrl.close();
-                            },
-                            function() {}
-                        );
+                        hypervideoDialogCtrl.close();
 
                         FrameTrail.changeState('viewSize', FrameTrail.getState('viewSize'));
                     } else {
@@ -957,35 +913,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 }
             }
 
-            // Subtitles Validation
-            var err = 0;
-            EditHypervideoForm.querySelectorAll('.subtitlesItem').forEach(function(subtitleItem) {
-                subtitleItem.style.outline = '';
-                var _fileInput = subtitleItem.querySelector('input[type="file"]');
-                var _keySetter = subtitleItem.querySelector('.subtitlesTmpKeySetter');
-                var _errMsg = EditHypervideoForm.querySelector('.message.error');
-                if ((_fileInput && _fileInput.getAttribute('name') == 'subtitles[]') || (_keySetter && _keySetter.value == '')
-                        || (_fileInput && _fileInput.value.length == 0)) {
-                    subtitleItem.style.outline = '1px solid #cd0a0a';
-                    _errMsg.classList.add('active');
-                    _errMsg.innerHTML = labels['ErrorSubtitlesEmptyFields'];
-                    err++;
-                } else if (_fileInput && !(new RegExp('(' + ['.vtt'].join('|').replace(/\./g, '\\.') + ')$')).test(_fileInput.value)) {
-                    subtitleItem.style.outline = '1px solid #cd0a0a';
-                    _errMsg.classList.add('active');
-                    _errMsg.innerHTML = labels['ErrorSubtitlesWrongFormat'];
-                    err++;
-                }
-                var _keyVal = _keySetter ? _keySetter.value : '';
-                if (EditHypervideoForm.querySelectorAll('.subtitlesItem input[type="file"][name="subtitles['+ _keyVal +']"]').length > 1
-                        || EditHypervideoForm.querySelector('.existingSubtitlesItem .subtitlesDelete[data-lang="'+ _keyVal +'"]') ) {
-                    _errMsg.classList.add('active');
-                    _errMsg.innerHTML = labels['ErrorSubtitlesLanguageDuplicate'];
-                    err++;
-                }
-            });
-            if (err > 0) return;
-
             // All validation passed - save
             updateDatabaseFromForm();
             var formData = new FormData(form);
@@ -1000,10 +927,8 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             formData.set('baseVersion', (baseVersion == null ? '' : baseVersion));
 
             // The hypervideo.json written here lists subtitles that were set in the editor and not saved yet; their files go with it.
-            var pendingSubtitles = takePendingSubtitles(thisID),
-                deletedHere      = formData.getAll('SubtitlesToDelete[]');
+            var pendingSubtitles = takePendingSubtitles(thisID);
             Object.keys(pendingSubtitles).forEach(function(lang) {
-                if (deletedHere.indexOf(lang) !== -1) { return; }
                 if (pendingSubtitles[lang] === null) {
                     formData.append('SubtitlesToDelete[]', lang);
                 } else {
@@ -1127,35 +1052,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 }
             }
 
-            // Subtitles validation
-            var err = 0;
-            EditHypervideoForm.querySelectorAll('.subtitlesItem').forEach(function(subtitleItem) {
-                subtitleItem.style.outline = '';
-                var _fileInput = subtitleItem.querySelector('input[type="file"]');
-                var _keySetter = subtitleItem.querySelector('.subtitlesTmpKeySetter');
-                var _errMsg = EditHypervideoForm.querySelector('.message.error');
-                if ((_fileInput && _fileInput.getAttribute('name') == 'subtitles[]') || (_keySetter && _keySetter.value == '')
-                        || (_fileInput && _fileInput.value.length == 0)) {
-                    subtitleItem.style.outline = '1px solid #cd0a0a';
-                    _errMsg.classList.add('active');
-                    _errMsg.innerHTML = labels['ErrorSubtitlesEmptyFields'];
-                    err++;
-                } else if (_fileInput && !(new RegExp('(' + ['.vtt'].join('|').replace(/\./g, '\\.') + ')$')).test(_fileInput.value)) {
-                    subtitleItem.style.outline = '1px solid #cd0a0a';
-                    _errMsg.classList.add('active');
-                    _errMsg.innerHTML = labels['ErrorSubtitlesWrongFormat'];
-                    err++;
-                }
-                var _keyVal = _keySetter ? _keySetter.value : '';
-                if (EditHypervideoForm.querySelectorAll('.subtitlesItem input[type="file"][name="subtitles['+ _keyVal +']"]').length > 1
-                        || EditHypervideoForm.querySelector('.existingSubtitlesItem .subtitlesDelete[data-lang="'+ _keyVal +'"]') ) {
-                    _errMsg.classList.add('active');
-                    _errMsg.innerHTML = labels['ErrorSubtitlesLanguageDuplicate'];
-                    err++;
-                }
-            });
-            if (err > 0) { return; }
-
             // Update the database entry from form
             updateDatabaseFromForm();
             var hypervideoData = hypervideoJSON();
@@ -1169,12 +1065,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 var srcInfo = getNewSourceInfo();
                 newSourcePath = srcInfo.src;
             }
-
-            // Collect subtitle deletions (a deleted language leaves a hidden SubtitlesToDelete[] input) and additions
-            var subtitlesToDelete = [];
-            EditHypervideoForm.querySelectorAll('input[name="SubtitlesToDelete[]"]').forEach(function(input) {
-                if (input.value) { subtitlesToDelete.push(input.value); }
-            });
 
             // In a local folder another program may have written the file since we read it: refuse, as the server does (code 7), before anything is written.
             (adapter.isUnchanged ? adapter.isUnchanged(basePath + '/hypervideo.json') : Promise.resolve(true)).then(function(unchanged) {
@@ -1191,15 +1081,9 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
                 var writeTasks = [adapter.writeJSON(basePath + '/hypervideo.json', hypervideoData)];
 
-                // Delete subtitle files
-                for (var d = 0; d < subtitlesToDelete.length; d++) {
-                    writeTasks.push(adapter.deleteFile(basePath + '/subtitles/' + subtitlesToDelete[d] + '.vtt').catch(function() {}));
-                }
-
                 // Subtitles set in the editor and not saved yet, which the hypervideo.json written here lists
                 var pendingSubtitles = takePendingSubtitles(thisID);
                 Object.keys(pendingSubtitles).forEach(function(lang) {
-                    if (subtitlesToDelete.indexOf(lang) !== -1) { return; }
                     var subtitlePath = basePath + '/subtitles/' + lang + '.vtt';
                     if (pendingSubtitles[lang] === null) {
                         writeTasks.push(adapter.deleteFile(subtitlePath).catch(function() {}));
@@ -1207,18 +1091,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                         writeTasks.push(adapter.createDirectory(basePath + '/subtitles').then(function() {
                             return adapter.writeText(subtitlePath, pendingSubtitles[lang]);
                         }));
-                    }
-                });
-
-                // Write new subtitle files
-                EditHypervideoForm.querySelectorAll('.newSubtitlesContainer input[type=file]').forEach(function(fileInput) {
-                    var match = /subtitles\[(.+)\]/g.exec(fileInput.getAttribute('name'));
-                    if (match && fileInput.files && fileInput.files[0]) {
-                        writeTasks.push(
-                            adapter.createDirectory(basePath + '/subtitles').then(function() {
-                                return adapter.writeFile(basePath + '/subtitles/' + match[1] + '.vtt', fileInput.files[0]);
-                            })
-                        );
                     }
                 });
 

@@ -6,7 +6,7 @@
 /**
  * I am the type definition of a ResourceVideo. I represent a video file resource on the server.
  *
- * Unlike other resource types, which have one or no file at all, a video resource consists of an mp4 and a webm file, plus an arbitrary amount of subtitle files.
+ * Its file is the video (an mp4 after the server's transcoding). Subtitles belong to a hypervideo, not to the video resource.
  *
  * @class ResourceVideo
  * @category TypeDefinition

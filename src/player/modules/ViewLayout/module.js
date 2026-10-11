@@ -647,6 +647,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             '            <div class="contentViewOptionThumb"></div>' +
             '            <div class="contentViewTemplateLabel"><span class="icon-list-bullet">'+ labels['SettingsChapters'] +'</span></div>' +
             '        </div>' +
+            '        <button type="button" class="layoutManagerTranscriptsLink" title="'+ labels['MessageHintTranscriptsEditor'].replace(/"/g, '&quot;') +'"><span class="icon-captions-on"></span> '+ labels['TranscriptsEdit'] +'</button>' +
             '    </div>' +
             '    <div class="layoutManagerBody">' +
             '        <div class="layoutManagerMain">' +
@@ -1087,6 +1088,11 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         self = this;
 
         HypervideoLayoutContainer.append(domElement);
+
+        // Transcript views show the transcripts, which are made in their own edit mode.
+        LayoutManagerOptions.querySelector('.layoutManagerTranscriptsLink').addEventListener('click', function() {
+            FrameTrail.changeState('editMode', 'transcripts');
+        });
 
         // Populate template preview thumbnails
         LayoutManagerOptions.querySelectorAll('.contentViewTemplate').forEach(function(tmpl) {

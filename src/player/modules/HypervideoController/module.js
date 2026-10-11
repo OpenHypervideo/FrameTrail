@@ -31,6 +31,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         CodeSnippetsController = FrameTrail.initModule('CodeSnippetsController'),
         ChaptersController     = FrameTrail.initModule('ChaptersController'),
         SubtitlesController    = FrameTrail.initModule('SubtitlesController'),
+        TranscriptsEditor      = FrameTrail.initModule('TranscriptsEditor'),
         ViewLayout             = FrameTrail.initModule('ViewLayout'),
 
         InteractionController  = FrameTrail.initModule('InteractionController'),
@@ -1334,6 +1335,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         //AnnotationsController.updateStatesOfAnnotations(currentTime);
         ViewLayout.updateTimedStateOfContentViews(currentTime);
         SubtitlesController.updateStatesOfSubtitles(currentTime);
+        TranscriptsEditor.updateActiveCue(currentTime);
         updateCurrentChapter();
 
     };
@@ -1386,6 +1388,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         //AnnotationsController.updateStatesOfAnnotations(currentTime);
         ViewLayout.updateTimedStateOfContentViews(currentTime);
         SubtitlesController.updateStatesOfSubtitles(currentTime);
+        TranscriptsEditor.updateActiveCue(currentTime);
         updateCurrentChapter();
 
     };

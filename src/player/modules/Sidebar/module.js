@@ -57,6 +57,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '                <button class="editMode" data-editmode="overlays"><span class="icon-object-ungroup"></span><span class="editModeLabel">'+ labels['SidebarOverlays'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="codesnippets"><span class="icon-code"></span><span class="editModeLabel">'+ labels['SidebarCustomCode'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="chapters"><span class="icon-list-bullet"></span><span class="editModeLabel">'+ labels['SidebarChapters'] +'</span></button>'
+                   + '                <button class="editMode" data-editmode="transcripts"><span class="icon-captions-on"></span><span class="editModeLabel">'+ labels['SidebarTranscripts'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="annotations"><span class="icon-annotations"></span><span class="editModeLabel">'+ labels['SidebarMyAnnotations'] +'<span class="icon-user"></span></button>'
                    + '                <div class="collaborationInfo"></div>'
                    + '            </div>'
@@ -129,7 +130,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 "slidingTrigger": "key",
                 "theme": "",
                 "autohideControls": (newDialogCtrl.element.querySelector('input[name="config[autohideControls]"]') || {}).checked || false,
-                "captionsVisible": (newDialogCtrl.element.querySelector('input[name="config[captionsVisible]"]') || {}).checked || false,
+                "captionsVisible": false,
                 "clipTimeVisible": false,
                 "layoutArea": {
                     "areaTop": [],
@@ -173,17 +174,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             hypervideoData.config[configKey] = newConfigVal;
         }
 
-        // Collect subtitle info
-        Array.from(newDialogCtrl.element.querySelectorAll('.newSubtitlesContainer input[type=file]')).forEach(function(el) {
-            var match = /subtitles\[(.+)\]/g.exec(el.getAttribute('name'));
-            if (match) {
-                hypervideoData.subtitles.push({
-                    "src": match[1] + ".vtt",
-                    "srclang": match[1]
-                });
-            }
-        });
-
         hypervideoData["annotation-increment"] = 1;
 
         var time = Math.floor(Date.now() / 1000);
@@ -226,14 +216,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                     adapter.writeJSON(basePath + '/annotations/_index.json', annotationIndex),
                     adapter.writeJSON(basePath + '/annotations/1.json', [])
                 ];
-
-                // Write subtitle files
-                Array.from(newDialogCtrl.element.querySelectorAll('.newSubtitlesContainer input[type=file]')).forEach(function(el) {
-                    var match = /subtitles\[(.+)\]/g.exec(el.getAttribute('name'));
-                    if (match && el.files && el.files[0]) {
-                        writeTasks.push(adapter.writeFile(basePath + '/subtitles/' + match[1] + '.vtt', el.files[0]));
-                    }
-                });
 
                 return Promise.all(writeTasks).then(function() {
                     return newID;
@@ -356,9 +338,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                         + '</div>';
         var newDialog = _ndw.firstElementChild;
 
-        // Attach subtitle event handlers using shared module
-        formBuilder.attachSubtitleHandlers(newDialog);
-
         // Render video resource list
         FrameTrail.module('ResourceManager').renderList(newDialog.querySelector('.videoResourceList'), true,
             'type',
@@ -470,28 +449,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 return;
             }
 
-            // Subtitles Validation
-            var err = 0;
-            Array.from(newDialog.querySelectorAll('.subtitlesItem')).forEach(function(el) {
-                el.style.outline = '';
-
-                if ((el.querySelector('input[type="file"]').getAttribute('name') == 'subtitles[]') || (el.querySelector('.subtitlesTmpKeySetter').value == '') || (el.querySelector('input[type="file"]').value.length == 0)) {
-                    el.style.outline = '1px solid #cd0a0a';
-                    _dlgErr.classList.add('active'); _dlgErr.innerHTML = labels['ErrorSubtitlesEmptyFields'];
-                    err++;
-                } else if ( !(new RegExp('(' + ['.vtt'].join('|').replace(/\\./g, '\\\\.') + ')$')).test(el.querySelector('input[type="file"]').value) ) {
-                    el.style.outline = '1px solid #cd0a0a';
-                    _dlgErr.classList.add('active'); _dlgErr.innerHTML = labels['ErrorSubtitlesWrongFormat'];
-                    err++;
-                }
-
-                if (newDialog.querySelectorAll('.subtitlesItem input[type="file"][name="subtitles['+ el.querySelector('.subtitlesTmpKeySetter').value +']"]').length > 1 ) {
-                    _dlgErr.classList.add('active'); _dlgErr.innerHTML = labels['ErrorSubtitlesLanguageDuplicate'];
-                    return;
-                }
-            });
-            if (err > 0) return;
-
             // Build hypervideoData
             var selectedResourcesID = newDialog.querySelector('input[name="resourcesID"]').value || '';
 
@@ -510,7 +467,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                     "slidingTrigger": "key",
                     "theme": "",
                     "autohideControls": (newDialog.querySelector('input[name="config[autohideControls]"]') || {}).checked || false,
-                    "captionsVisible": (newDialog.querySelector('input[name="config[captionsVisible]"]') || {}).checked || false,
+                    "captionsVisible": false,
                     "clipTimeVisible": false,
                     "layoutArea": {
                         "areaTop": [],
@@ -552,16 +509,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                                         : newConfigVal;
                 hypervideoData.config[configKey] = newConfigVal;
             }
-
-            Array.from(newDialog.querySelectorAll('.newSubtitlesContainer input[type=file]')).forEach(function(el) {
-                var match = /subtitles\[(.+)\]/g.exec(el.getAttribute('name'));
-                if (match) {
-                    hypervideoData.subtitles.push({
-                        "src": match[1] + ".vtt",
-                        "srclang": match[1]
-                    });
-                }
-            });
 
             var formData = new FormData(form);
             formData.set('a', 'hypervideoAdd');
@@ -1089,11 +1036,12 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
      */
     function newUnsavedChange(category) {
 
-        // camelCase not valid in attributes
-        var editMode = (category == 'codeSnippets' || category == 'events' || category == 'customCSS') ? 'codesnippets' : category,
+        // camelCase not valid in attributes; subtitles are edited in the transcripts mode
+        var editMode = (category == 'codeSnippets' || category == 'events' || category == 'customCSS') ? 'codesnippets'
+                     : (category == 'subtitles') ? 'transcripts' : category,
             button   = domElement.querySelector('button[data-editmode="'+ editMode +'"]');
 
-        // Subtitles and hypervideo settings have no edit mode, nor does an extension whose mode failed to load.
+        // Hypervideo settings have no edit mode, nor does an extension whose mode failed to load.
         if (button) {
             button.classList.add('unsavedChanges');
         }
@@ -1135,7 +1083,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
      * has always worked. "preview" writes nothing. Extensions' edit modes that
      * edit the hypervideo are added by addEditModeButton().
      */
-    var LOCK_GATED_EDIT_MODES = ['layout', 'overlays', 'codesnippets', 'chapters'];
+    var LOCK_GATED_EDIT_MODES = ['layout', 'overlays', 'codesnippets', 'chapters', 'transcripts'];
 
 
     function isLockGatedMode(editMode) {

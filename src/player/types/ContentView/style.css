@@ -401,6 +401,15 @@
     opacity: .7;
 }
 
+.layoutArea .contentViewContainer .contentViewContents .transcriptContainer .transcriptSpeaker {
+    display: block;
+    margin-top: 8px;
+}
+
+.layoutArea .contentViewContainer .contentViewContents .transcriptContainer .transcriptSpeaker:first-child {
+    margin-top: 0;
+}
+
 .layoutArea .contentViewContainer .contentViewContents .transcriptContainer span:hover,
 .layoutArea .contentViewContainer .contentViewContents .transcriptContainer span.active,
 .layoutArea .contentViewContainer .contentViewContents .customhtmlContainer .timebased:hover,

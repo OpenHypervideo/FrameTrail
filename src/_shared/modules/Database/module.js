@@ -43,12 +43,7 @@
 
         annotations  = [],
 
-        subtitles              = {},
-        subtitlesLangMapping   = {
-            'en': 'English',
-            'de': 'Deutsch',
-            'fr': 'Français'
-        },
+        subtitles    = {},
 
         users  = {},
 
@@ -1283,7 +1278,7 @@
                 var parsed = parseSubtitles(data);
                 parsed.errors.forEach(function(e) { console.log(e); });
 
-                var langLabel = subtitlesLangMapping[currentSubtitles.srclang] || currentSubtitles.srclang;
+                var langLabel = FrameTrail.module('Localization').languageName(currentSubtitles.srclang);
                 subtitles[currentSubtitles.srclang] = {};
                 subtitles[currentSubtitles.srclang]['label'] = langLabel;
                 subtitles[currentSubtitles.srclang]['cues'] = parsed.cues;
@@ -1426,7 +1421,7 @@
         }
 
         subtitles[lang] = {
-            label: subtitlesLangMapping[lang] || lang,
+            label: FrameTrail.module('Localization').languageName(lang),
             cues:  parseSubtitles(text).cues,
             vtt:   text
         };
@@ -2357,13 +2352,6 @@
          * @attribute subtitles
          */
         get subtitles()        { return subtitles       },
-
-        /**
-         * I store a map of subtitle language codes and labels.
-         *
-         * @attribute subtitlesLangMapping
-         */
-        get subtitlesLangMapping() { return subtitlesLangMapping },
 
         /**
          * I store the resource index data (from the server's _data/resources/_index.json)

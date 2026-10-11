@@ -1089,6 +1089,9 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             case 'chapters':
                 enterChapterMode();
                 break;
+            case 'transcripts':
+                enterTranscriptMode();
+                break;
             case 'annotations':
                 enterAnnotationMode();
                 break;
@@ -1267,6 +1270,17 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         ChapterTimeline.classList.add('editable');
 
         EditPropertiesContainer.setAttribute('data-editmode', 'chapters');
+    }
+
+    /**
+     * I am called when the app enters the editMode "transcripts". The TranscriptsEditor fills the panel; there is no
+     * timeline to edit.
+     * @method enterTranscriptMode
+     */
+    function enterTranscriptMode() {
+        initEditMode();
+
+        EditPropertiesContainer.setAttribute('data-editmode', 'transcripts');
     }
 
     /**

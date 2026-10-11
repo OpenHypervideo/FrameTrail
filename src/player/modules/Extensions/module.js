@@ -28,6 +28,9 @@
  * * titlebarAction: a button in the title bar.
  * * editPanel: an edit mode of its own, with a button among the edit modes in
  *   the sidebar and the shared edit panel (Add / Properties) while it is active.
+ * * transcriber: makes the transcript of the open hypervideo's video, which the
+ *   transcripts edit mode offers as "Generate" (see TranscriptsEditor). No
+ *   element of its own.
  *
  * Lifecycle: init(settings) once loaded, onReady() once the interface is up,
  * onHypervideoChange(hypervideoID) whenever a hypervideo has been (re)loaded,
@@ -58,7 +61,7 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
         SIDE_PANEL_MAX_WIDTH = 800,
 
         // Edit modes FrameTrail has itself: an edit panel cannot take their names.
-        BUILT_IN_EDIT_MODES = ['preview', 'layout', 'overlays', 'codesnippets', 'chapters', 'annotations', 'audio', 'map', 'settings'];
+        BUILT_IN_EDIT_MODES = ['preview', 'layout', 'overlays', 'codesnippets', 'chapters', 'transcripts', 'annotations', 'audio', 'map', 'settings'];
 
     var loadState       = 'idle',   // 'idle' | 'loading' | 'done'
         waiting         = [],
@@ -75,7 +78,9 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
 
         titlebarActions = {},       // name → { slot, button }
         editPanels      = {},       // name → { slot, button }
-        activeEditPanel = null;
+        activeEditPanel = null,
+
+        transcribers    = [];       // [{ name, slot }] in load order
 
 
     /**
@@ -472,6 +477,7 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
                 if (slots.sidePanel)      createSidePanel(item.name, slots.sidePanel);
                 if (slots.titlebarAction) createTitlebarAction(item.name, slots.titlebarAction);
                 if (slots.editPanel)      createEditPanel(item.name, slots.editPanel);
+                if (slots.transcriber)    createTranscriber(item.name, slots.transcriber);
             } catch (e) {
                 console.error('FrameTrail extension "' + item.name + '": its slots could not be created.', e);
             }
@@ -479,6 +485,26 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
         });
 
         updateSlotVisibility();
+
+    }
+
+
+    /**
+     * A transcriber: { label?, available?(context), transcribe({ hypervideoId, language, signal, onProgress }) }.
+     * It needs transcribe(); the transcripts edit mode calls it (TranscriptsEditor), each call guarded there.
+     * available() answers true, false (not offered here: no button) or why it cannot be used now.
+     *
+     * @method createTranscriber
+     * @private
+     */
+    function createTranscriber(name, slot) {
+
+        if (typeof slot !== 'object' || typeof slot.transcribe !== 'function') {
+            console.warn('FrameTrail extension "' + name + '": its transcriber has no transcribe() and is left out.');
+            return;
+        }
+
+        transcribers.push({ name: name, slot: slot });
 
     }
 
@@ -947,6 +973,7 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
         sidePanels = {};
         titlebarActions = {};
         editPanels = {};
+        transcribers = [];
         wantedSidePanel = null;
         shownSidePanel = null;
 
@@ -973,6 +1000,15 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
          */
         hasEditPanel: function(editMode) {
             return !!editPanels[editMode];
+        },
+
+        /**
+         * I list the extensions' transcribers, [{ name, slot }], in load order.
+         * @method transcribers
+         * @return {Array}
+         */
+        transcribers: function() {
+            return transcribers.slice();
         },
 
         /**

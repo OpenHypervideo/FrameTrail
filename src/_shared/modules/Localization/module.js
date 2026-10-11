@@ -85,6 +85,54 @@ FrameTrail.defineModule('Localization', function(FrameTrail){
 
     }
 
+    /**
+     * The ISO 639-1 language codes, which the language pickers suggest (any
+     * other code a person types is taken as it is).
+     */
+    var LANGUAGE_CODES = ('aa ab ae af ak am an ar as av ay az ba be bg bi bm bn bo br bs ca ce ch co cr cs cu cv cy '
+        + 'da de dv dz ee el en eo es et eu fa ff fi fj fo fr fy ga gd gl gn gu gv ha he hi ho hr ht hu hy hz '
+        + 'ia id ie ig ii ik io is it iu ja jv ka kg ki kj kk kl km kn ko kr ks ku kv kw ky la lb lg li ln lo lt lu lv '
+        + 'mg mh mi mk ml mn mr ms mt my na nb nd ne ng nl nn no nr nv ny oc oj om or os pa pi pl ps pt qu '
+        + 'rm rn ro ru rw sa sc sd se sg si sk sl sm sn so sq sr ss st su sv sw ta te tg th ti tk tl tn to tr ts tt tw ty '
+        + 'ug uk ur uz ve vi vo wa wo xh yi yo za zh zu').split(' ');
+
+    var languageNames = {};
+
+    /**
+     * I name a language code (e.g. 'de', 'pt-BR') in the interface language:
+     * 'German' in English, 'Deutsch' in German. The code itself when the
+     * browser cannot name it.
+     *
+     * @method languageName
+     * @param {String} code
+     * @return {String}
+     */
+    function languageName(code) {
+
+        code = String(code || '');
+
+        if (!code) { return ''; }
+
+        if (!languageNames[locale]) {
+            try {
+                languageNames[locale] = new Intl.DisplayNames([locale], { type: 'language' });
+            } catch (e) {
+                languageNames[locale] = null;
+            }
+        }
+
+        var name = null;
+
+        try {
+            name = languageNames[locale] ? languageNames[locale].of(code) : null;
+        } catch (e) {
+            name = null;
+        }
+
+        return (name && name !== code) ? name.charAt(0).toLocaleUpperCase(locale) + name.slice(1) : code;
+
+    }
+
     var labelsProxy = new Proxy({}, {
         get: function(target, prop) {
             return lookup(prop);
@@ -99,6 +147,13 @@ FrameTrail.defineModule('Localization', function(FrameTrail){
         updateLabels: updateLabels,
         setLanguage:  setLanguage,
         addLabels:    addLabels,
+        languageName: languageName,
+
+        /**
+         * The ISO 639-1 language codes, for language pickers.
+         * @attribute LANGUAGE_CODES
+         */
+        LANGUAGE_CODES: LANGUAGE_CODES,
 
         /**
          * A stable Proxy object that always forwards property lookups to the

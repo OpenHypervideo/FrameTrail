@@ -222,6 +222,8 @@ The resource library: uploaded files and external links that overlays and annota
 
 An item made from a resource keeps its **own copy** of the resource's data (`src`, `thumb`, licence, attributes) and refers back with `frametrail:resourceId`. Changing or deleting the resource does not change the item. `created` here is in seconds, unlike almost everywhere else.
 
+A video entry may still carry `subtitles` (file names keyed by language) from earlier versions, which stored subtitle files uploaded together with a video. Nothing reads or writes them any more: a hypervideo's subtitles are in its own `subtitles/` folder.
+
 ### `hypervideos/_index.json` and the overview map
 
 ```jsonc
@@ -262,7 +264,7 @@ The overview shows the hypervideos as a grid or, when `config.json` has `overvie
 - **`clips`** — only the first clip is played. `src` is a file name in `_data/resources/` or a URL (MP4, WebM, HLS, YouTube, Vimeo). Without `src` and `resourceId` the hypervideo has no video, just a timeline of `duration` seconds. `in` and `out` clip the media: the hypervideo shows the media from `in` to `out` (`0` or missing: its end).
 - **`config.layoutArea`** — the content views around the video, in four areas. A content view is told apart by `type`: `TimedContent` (a collection of annotations, filtered by `collectionFilter`), `CustomHTML`, `Transcript` (built from the subtitles of `transcriptSource`), `Timelines` and `Chapters`. A transcript view is stored as a transcript; only an export that has to stand alone may turn it into `CustomHTML`.
 - **`chapters`** — `{ start, title }`, ordered by `start`. A chapter has no other identity than its `start`, which is unique within the hypervideo.
-- **`subtitles`** — one WebVTT file per language in the `subtitles/` folder next to the file, named `<srclang>.vtt`.
+- **`subtitles`** — one WebVTT file per language in the `subtitles/` folder next to the file, named `<srclang>.vtt`. The editor shows them as transcripts (the Transcripts edit mode), in Transcript views and as captions; cue times are on the video's timeline (a clip with an in point starts later than 0). It keeps what it does not change in a file (header, NOTE, STYLE and REGION blocks, cue ids and settings, line endings) and writes cues in the order of their start. A speaker is a voice tag at the start of a cue (`<v Ada>Hello`); `config.captionsVisible` turns captions on from the start.
 - **`globalEvents`** and **`customCSS`** — JavaScript run on player events and CSS for this hypervideo. Event code is the body of a function called with `FrameTrail` (the instance) and `hypervideo` (its HypervideoController).
 
 ### `annotations/_index.json` and `annotations/<userId>.json`

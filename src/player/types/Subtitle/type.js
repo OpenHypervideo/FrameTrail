@@ -67,7 +67,47 @@ FrameTrail.defineType(
 
                     ViewVideo.CaptionContainer.appendChild(this.subtitleElement);
 
-                    this.subtitleElement.innerHTML = this.data.text;
+                    this.renderText();
+
+                },
+
+                /**
+                 * I show my cue text: its markup as elements (vtt.js makes only those WebVTT allows, so nothing in a cue runs), and the speaker of a voice tag in front.
+                 *
+                 * @method renderText
+                 */
+                renderText: function () {
+
+                    var voice = window.FrameTrailWebVTT.speakerOf(this.data.text),
+                        tree  = window.WebVTT.convertCueToDOMTree(window, voice.text);
+
+                    this.subtitleElement.innerHTML = '';
+
+                    if (voice.speaker) {
+                        var speakerElement = document.createElement('span');
+                        speakerElement.className = 'subtitleSpeaker';
+                        speakerElement.textContent = voice.speaker + ': ';
+                        this.subtitleElement.appendChild(speakerElement);
+                    }
+
+                    if (tree) {
+                        while (tree.firstChild) {
+                            this.subtitleElement.appendChild(tree.firstChild);
+                        }
+                    }
+
+                },
+
+                /**
+                 * I change my cue text (the transcripts editor, while a cue is being typed) and show it.
+                 *
+                 * @method setText
+                 * @param {String} text cue text, as stored
+                 */
+                setText: function (text) {
+
+                    this.data.text = text;
+                    this.renderText();
 
                 },
 

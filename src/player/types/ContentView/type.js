@@ -398,11 +398,21 @@ FrameTrail.defineType(
 
                             var subtitles = FrameTrail.module('Database').subtitles[self.contentViewData.transcriptSource];
                             if ( subtitles ) {
+                                // Cue text without its markup; a new speaker (a voice tag) starts a new paragraph, named.
+                                var lastSpeaker = '';
                                 for (var i=0; i<subtitles.cues.length; i++) {
+                                    var voice = window.FrameTrailWebVTT.speakerOf(subtitles.cues[i].text);
+                                    if (voice.speaker && voice.speaker !== lastSpeaker) {
+                                        var speakerElement = document.createElement('strong');
+                                        speakerElement.className = 'transcriptSpeaker';
+                                        speakerElement.textContent = voice.speaker;
+                                        transcriptContainer.appendChild(speakerElement);
+                                    }
+                                    lastSpeaker = voice.speaker || lastSpeaker;
                                     var cueElement = document.createElement('span');
                                     cueElement.setAttribute('data-start', subtitles.cues[i].startTime);
                                     cueElement.setAttribute('data-end', subtitles.cues[i].endTime);
-                                    cueElement.textContent = subtitles.cues[i].text + ' ';
+                                    cueElement.textContent = window.FrameTrailWebVTT.toPlain(voice.text).replace(/\s+/g, ' ') + ' ';
                                     transcriptContainer.appendChild(cueElement);
                                 }
                             }
@@ -2435,7 +2445,7 @@ FrameTrail.defineType(
                                     +'    </div>'
                                     +'    <div class="typeSpecific '+ (contentViewData.type == 'Transcript' ? 'active' : '') +'" data-type="Transcript">'
                                     +'        <label>'+ self.labels['SettingsTranscriptSource'] +':</label>'
-                                    +'        <div class="message active">'+ self.labels['MessageHintNewTranscriptsUpload'] +'</div>'
+                                    +'        <div class="message active transcriptsHintMessage"><span class="transcriptsHintText"></span> <button type="button" class="transcriptsEditButton"><span class="icon-captions-on"></span> '+ self.labels['TranscriptsEdit'] +'</button></div>'
                                     +'        <div class="existingTranscripts"></div>'
                                     +'        <input type="hidden" class="contentViewData" data-property="transcriptSource" data-value="'+ contentViewData.transcriptSource +'" value="'+ contentViewData.transcriptSource +'">'
                                     +'        <div class="checkboxRow">'
@@ -2546,6 +2556,20 @@ FrameTrail.defineType(
 
                     // Transcripts
 
+                    // Transcripts are made in the transcripts edit mode; this view only chooses one.
+                    (function() {
+                        var subtitleFiles = FrameTrail.module('Database').hypervideo.subtitles || [];
+                        editingUI.querySelector('.transcriptsHintText').textContent = subtitleFiles.length
+                            ? self.labels['MessageHintTranscriptsEditor']
+                            : self.labels['MessageHintNoTranscripts'];
+                        editingUI.querySelector('.transcriptsEditButton').addEventListener('click', function() {
+                            var dialog      = editingUI.closest('dialog'),
+                                closeButton = dialog && dialog.querySelector('.ft-dialog-titlebar-close');
+                            if (closeButton) { closeButton.click(); }
+                            FrameTrail.changeState('editMode', 'transcripts');
+                        });
+                    })();
+
                     function updateExistingTranscripts() {
                         editingUI.querySelector('.existingTranscripts').innerHTML = '';
 
@@ -2553,14 +2577,14 @@ FrameTrail.defineType(
 
                         if ( database.hypervideo.subtitles ) {
 
-                            var langMapping = database.subtitlesLangMapping;
-
                             for (var i=0; i < database.hypervideo.subtitles.length; i++) {
                                 var currentSubtitles = database.hypervideo.subtitles[i],
-                                    existingSubtitlesItem = document.createElement('div');
+                                    existingSubtitlesItem = document.createElement('div'),
+                                    languageName = document.createElement('span');
                                 existingSubtitlesItem.className = 'existingSubtitlesItem';
                                 existingSubtitlesItem.setAttribute('data-srclang', currentSubtitles.srclang);
-                                existingSubtitlesItem.innerHTML = '<span>'+ langMapping[currentSubtitles.srclang] +'</span>';
+                                languageName.textContent = FrameTrail.module('Localization').languageName(currentSubtitles.srclang);
+                                existingSubtitlesItem.appendChild(languageName);
 
                                 if ( editingUI.querySelector('.contentViewData[data-property="transcriptSource"]').value == currentSubtitles.srclang ) {
                                     existingSubtitlesItem.classList.add('active');

@@ -15,3 +15,7 @@
 .captionContainer .subtitleElement.active {
     display: block;
 }
+
+.captionContainer .subtitleElement .subtitleSpeaker {
+    opacity: 0.7;
+}

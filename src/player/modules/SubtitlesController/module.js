@@ -5,7 +5,8 @@
 
 /**
  * I am the SubtitlesController. I am responsible for managing all the {{#crossLink "Subtitle"}}subtitles{{/crossLink}}
- * in the current {{#crossLink "HypervideoModel"}}HypervideoModel{{/crossLink}}.
+ * in the current {{#crossLink "HypervideoModel"}}HypervideoModel{{/crossLink}}: the captions on the video, the CC button's
+ * list of languages, and, where the player cannot go fullscreen itself (iOS), the video's own text tracks.
  *
  * @class SubtitlesController
  * @static
@@ -15,23 +16,86 @@
 FrameTrail.defineModule('SubtitlesController', function(FrameTrail){
 
 
-    var HypervideoModel   = FrameTrail.module('HypervideoModel'),
+    var HypervideoModel = FrameTrail.module('HypervideoModel'),
         ViewVideo       = FrameTrail.module('ViewVideo'),
-        subtitleFiles   = FrameTrail.module('HypervideoModel').subtitleFiles
-        subtitles       = FrameTrail.module('HypervideoModel').subtitles
+        subtitleFiles   = HypervideoModel.subtitleFiles,
+        subtitles       = HypervideoModel.subtitles,
+        shownLang       = null,     // the language whose captions are in the DOM
+        trackURLs       = [];
 
     /**
-     * I tell all subtitles in the
-     * {{#crossLink "HypervideoModel/subtitles:attribute"}}HypervideoModel/overlays attribute{{/crossLink}}
-     * to render themselves into the DOM.
+     * I show the subtitles of the current data model: all of them when no language is given, otherwise
+     * only what a change of that language needs (its captions only when it is the one shown).
      *
      * @method initController
+     * @param {String} [lang] the language that changed
      */
-    function initController() {
+    function initController(lang) {
 
-        subtitles = HypervideoModel.subtitles;
+        if (lang !== undefined && lang !== shownLang && shownLang === HypervideoModel.selectedLang && !!document.fullscreenEnabled) {
+            subtitleFiles = HypervideoModel.subtitleFiles;
+            renderLanguageList();
+            updateButtonVisibility();
+            return;
+        }
 
         initSubtitles();
+
+    };
+
+
+    /**
+     * I list the languages in the CC button's menu.
+     *
+     * @method renderLanguageList
+     * @private
+     */
+    function renderLanguageList() {
+
+        var list     = ViewVideo.CaptionsButton.querySelector('.captionSelectList'),
+            database = FrameTrail.module('Database');
+
+        if (!list) { return; }
+
+        list.innerHTML = '';
+
+        (subtitleFiles || []).forEach(function(file) {
+
+            // A listed language whose file could not be loaded has nothing to show.
+            if (!database.subtitles[file.srclang]) { return; }
+
+            var captionSelect = document.createElement('div');
+            captionSelect.className = 'captionSelect';
+            captionSelect.dataset.lang = file.srclang;
+            captionSelect.dataset.config = 'hv_config_captionsVisible';
+            captionSelect.textContent = database.subtitles[file.srclang].label;
+            captionSelect.addEventListener('click', function() {
+                HypervideoModel.selectedLang = this.dataset.lang;
+                initSubtitles();
+                FrameTrail.changeState('hv_config_captionsVisible', true);
+            });
+
+            list.appendChild(captionSelect);
+
+        });
+
+    };
+
+
+    /**
+     * I show the CC button while there are subtitles to choose from.
+     *
+     * @method updateButtonVisibility
+     * @private
+     */
+    function updateButtonVisibility() {
+
+        var hasAny = Object.keys(FrameTrail.module('Database').subtitles).length > 0;
+
+        ViewVideo.CaptionsButton.style.display = hasAny ? '' : 'none';
+
+        // update state
+        FrameTrail.changeState('hv_config_captionsVisible', FrameTrail.getState('hv_config_captionsVisible'));
 
     };
 
@@ -46,85 +110,112 @@ FrameTrail.defineModule('SubtitlesController', function(FrameTrail){
      */
     function initSubtitles() {
 
-        var hypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
-
-        subtitles = FrameTrail.module('HypervideoModel').subtitles;
-        subtitleFiles = FrameTrail.module('HypervideoModel').subtitleFiles;
+        subtitles     = HypervideoModel.subtitles;
+        subtitleFiles = HypervideoModel.subtitleFiles;
+        shownLang     = HypervideoModel.selectedLang;
 
         ViewVideo.CaptionContainer.innerHTML = '';
-        var _csl = ViewVideo.CaptionsButton.querySelector('.captionSelectList'); if (_csl) _csl.innerHTML = '';
+
+        var list = ViewVideo.CaptionsButton.querySelector('.captionSelectList');
+        if (list) { list.innerHTML = ''; }
 
         if ( !subtitleFiles || !subtitles ) {
 
             ViewVideo.CaptionsButton.style.display = 'none';
+            removeTextTracks();
+
+        } else if (!!document.fullscreenEnabled) {
+
+            renderLanguageList();
+
+            for (var i = 0; i < subtitles.length; i++) {
+                subtitles[i].renderInDOM();
+            }
+
+            ViewVideo.CaptionsButton.style.display = '';
+            updateStatesOfSubtitles(FrameTrail.module('HypervideoController').currentTime);
+
+            // update state
+            var captionsVisible = FrameTrail.getState('hv_config_captionsVisible');
+            FrameTrail.changeState('hv_config_captionsVisible', captionsVisible);
 
         } else {
 
-            if (!!document.fullscreenEnabled) {
-                
-                for (var s = 0; s < subtitleFiles.length; s++) {
-                    // A listed language whose file could not be loaded has nothing to show.
-                    if (!FrameTrail.module('Database').subtitles[subtitleFiles[s].srclang]) { continue; }
-                    var captionSelect = document.createElement('div');
-                    captionSelect.className = 'captionSelect';
-                    captionSelect.dataset.lang = subtitleFiles[s].srclang;
-                    captionSelect.dataset.config = 'hv_config_captionsVisible';
-                    captionSelect.textContent = FrameTrail.module('Database').subtitles[subtitleFiles[s].srclang].label;
-                    captionSelect.addEventListener('click', function(evt) {
-                        HypervideoModel.selectedLang = this.dataset.lang;
-                        subtitles = HypervideoModel.subtitles;
+            // The video goes fullscreen natively here, where our captions are not on it: it gets text tracks instead.
+            ViewVideo.CaptionContainer.style.setProperty('display', 'none', 'important');
 
-                        initSubtitles();
-
-                        FrameTrail.changeState('hv_config_captionsVisible', true);
-
-                    });
-                    var _csl2 = ViewVideo.CaptionsButton.querySelector('.captionSelectList'); if (_csl2) _csl2.appendChild(captionSelect);
-                }
-
-
-                for (var i = 0; i < subtitles.length; i++) {
-                    subtitles[i].renderInDOM();
-                }
-
-                ViewVideo.CaptionsButton.style.display = '';
-                updateStatesOfSubtitles(FrameTrail.module('HypervideoController').currentTime);
-
-                // update state
-                var captionsVisible = FrameTrail.getState('hv_config_captionsVisible');
-                FrameTrail.changeState('hv_config_captionsVisible', captionsVisible);
-
-            } else {
-                
-                ViewVideo.CaptionContainer.style.setProperty('display', 'none', 'important');
-                
-                var videoElement = FrameTrail.module('ViewVideo').Video;
-                
-                for (var s=0; s<HypervideoModel.subtitleFiles.length; s++) {
-                    var fallbackSrc = HypervideoModel.subtitleFiles[s].src.replace('.vtt', '_iphone.vtt');
-                    var vttSource = '_data/hypervideos/' + hypervideoID + '/subtitles/' + fallbackSrc;
-                    
-                    var track = document.createElement('track');
-                    track.kind = 'captions';
-                    track.label = HypervideoModel.subtitleFiles[s].srclang;
-                    track.srclang = HypervideoModel.subtitleFiles[s].srclang;
-                    track.src = vttSource;
-
-                    if (s == 0) {
-                        
-                        track.setAttribute('default', '');
-
-                        track.addEventListener('load', function() {
-                           this.mode = 'showing';
-                           videoElement.textTracks[0].mode = 'showing';
-                        });
-                    }
-
-                    videoElement.appendChild(track);
-                }
-            }
+            addTextTracks();
 
         }
+
+    };
+
+
+    /**
+     * I remove the text tracks I gave the video, and free their texts.
+     *
+     * @method removeTextTracks
+     * @private
+     */
+    function removeTextTracks() {
+
+        var videoElement = ViewVideo.Video;
+
+        if (videoElement && videoElement.querySelectorAll) {
+            videoElement.querySelectorAll('track[data-frametrail-track]').forEach(function(track) { track.remove(); });
+        }
+
+        trackURLs.forEach(function(url) { URL.revokeObjectURL(url); });
+        trackURLs = [];
+
+    };
+
+
+    /**
+     * I give an HTML5 video a text track per language, made from the loaded WebVTT texts.
+     *
+     * @method addTextTracks
+     * @private
+     */
+    function addTextTracks() {
+
+        removeTextTracks();
+
+        var videoElement = ViewVideo.Video,
+            database     = FrameTrail.module('Database');
+
+        if (!videoElement || videoElement.tagName !== 'VIDEO') { return; }
+
+        subtitleFiles.forEach(function(file, s) {
+
+            var loaded = database.subtitles[file.srclang];
+
+            if (!loaded || typeof loaded.vtt !== 'string') { return; }
+
+            var url   = URL.createObjectURL(new Blob([loaded.vtt], { type: 'text/vtt' })),
+                track = document.createElement('track');
+
+            trackURLs.push(url);
+
+            track.kind    = 'captions';
+            track.label   = loaded.label;
+            track.srclang = file.srclang;
+            track.src     = url;
+            track.setAttribute('data-frametrail-track', '');
+
+            if (s == 0) {
+
+                track.setAttribute('default', '');
+
+                track.addEventListener('load', function() {
+                   this.mode = 'showing';
+                   videoElement.textTracks[0].mode = 'showing';
+                });
+            }
+
+            videoElement.appendChild(track);
+
+        });
 
     };
 
@@ -138,9 +229,11 @@ FrameTrail.defineModule('SubtitlesController', function(FrameTrail){
      */
     function updateStatesOfSubtitles(currentTime) {
 
-        for (var idx in subtitles) {
+        if (!subtitles) { return; }
 
-            subtitle = subtitles[idx];
+        for (var i = 0; i < subtitles.length; i++) {
+
+            var subtitle = subtitles[i];
 
             if (    subtitle.data.startTime <= currentTime
                  && subtitle.data.endTime   >= currentTime) {
@@ -166,33 +259,10 @@ FrameTrail.defineModule('SubtitlesController', function(FrameTrail){
     };
 
 
-    /**
-     * I react to a change in the global state "editMode".
-     *
-     * When we enter the editMode "overlays", I prepare all {{#crossLink "Overlay"}}overlays{{/crossLink}}
-     * and the editor interface elements.
-     *
-     * When leaving the editMode "overlays", I restore them.
-     *
-     * @method toggleEditMode
-     * @param {String} editMode
-     * @param {String} oldEditMode
-     */
-    function toggleEditMode(editMode, oldEditMode) {
-
-    };
-
-
     return {
 
-        onChange: {
-
-            editMode:       toggleEditMode
-
-        },
-
         initController:           initController,
-        updateStatesOfSubtitles:  updateStatesOfSubtitles,
+        updateStatesOfSubtitles:  updateStatesOfSubtitles
 
     };
 

@@ -2,7 +2,7 @@
  * FrameTrail's tests: the fixtures in tests/fixtures/ against the JSON Schemas
  * in schemas/ (with FrameTrailSchema), through FrameTrailSerializer and
  * FrameTrailLint, plus unit tests of FrameTrailSchema, FrameTrailSerializer,
- * FrameTrailHTMLFormat, FrameTrailLint and FrameTrailKeyframes.
+ * FrameTrailHTMLFormat, FrameTrailLint, FrameTrailKeyframes and FrameTrailWebVTT.
  * No dependencies, Node 20 or later:
  *
  *     node tests/run-js.mjs
@@ -30,6 +30,7 @@ const Serializer = require('../src/_shared/frametrail-core/serialization/FrameTr
 const Keyframes  = require('../src/_shared/frametrail-core/serialization/FrameTrailKeyframes.js');
 const HTMLFormat = require('../src/_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js');
 const Lint       = require('../src/_shared/frametrail-core/serialization/FrameTrailLint.js');
+const WebVTT     = require('../src/_shared/frametrail-core/serialization/FrameTrailWebVTT.js');
 
 const NOW = 1999999999999;
 
@@ -1218,6 +1219,85 @@ describe('FrameTrailKeyframes', () => {
     test('every ease the schemas allow exists', () => {
         const eases = readJSON(path.join(ROOT, 'schemas', 'common.schema.json')).$defs.ease.enum;
         assert.deepStrictEqual(eases.filter((ease) => !Keyframes.hasEase(ease)), []);
+    });
+
+});
+
+describe('FrameTrailWebVTT', () => {
+
+    const vttFiles = (function find(dir) {
+        return fs.readdirSync(dir).sort().flatMap((name) => {
+            const file = path.join(dir, name);
+            if (fs.statSync(file).isDirectory()) { return find(file); }
+            return name.endsWith('.vtt') ? [file] : [];
+        });
+    })(FIXTURES);
+
+    test('every .vtt fixture is written back as it is', () => {
+        assert.ok(vttFiles.length > 0);
+        for (const file of vttFiles) {
+            const text = fs.readFileSync(file, 'utf8');
+            assert.equal(WebVTT.write(WebVTT.parse(text)), text, path.relative(ROOT, file));
+        }
+    });
+
+    test('what is not changed stays: byte order mark, line endings, header, notes, styles, ids, settings, timing lines', () => {
+        const text = String.fromCharCode(0xFEFF) + 'WEBVTT - Lecture\r\nKind: captions\r\n\r\nSTYLE\r\n::cue { color: lime }\r\n\r\nNOTE written by hand\r\n\r\nintro\r\n0:01.5 --> 0:03.000 align:start line:0\r\n<v Ada>Hello</v>\r\n\r\n00:03.000 --> 00:04.000\r\nSecond\r\n',
+              doc  = WebVTT.parse(text);
+        assert.equal(WebVTT.write(doc), text);
+        assert.deepStrictEqual(doc.header, ['WEBVTT - Lecture', 'Kind: captions']);
+        assert.deepStrictEqual(doc.blocks.map((block) => block.type), ['style', 'note', 'cue', 'cue']);
+        const cue = WebVTT.cuesOf(doc)[0];
+        assert.deepStrictEqual([cue.id, cue.start, cue.end, cue.settings, cue.text], ['intro', 1.5, 3, 'align:start line:0', '<v Ada>Hello</v>']);
+        cue.end = 2.5;
+        assert.equal(WebVTT.write(doc), text.replace('0:01.5 --> 0:03.000', '00:01.500 --> 00:02.500'), 'a changed cue gets a new timing line, the file keeps its line endings');
+    });
+
+    test('cues are written in the order of their start; a note stays with the cue after it', () => {
+        const doc = WebVTT.parse('WEBVTT\n\nREGION\nid:r\n\n00:05.000 --> 00:06.000\nB\n\nNOTE about A\n\n00:01.000 --> 00:02.000\nA\n\n00:01.000 --> 00:03.000\nA2\n');
+        assert.equal(WebVTT.write(doc), 'WEBVTT\n\nREGION\nid:r\n\nNOTE about A\n\n00:01.000 --> 00:02.000\nA\n\n00:01.000 --> 00:03.000\nA2\n\n00:05.000 --> 00:06.000\nB\n');
+    });
+
+    test('new documents and cues; text that would break the file', () => {
+        const doc = WebVTT.create();
+        assert.equal(WebVTT.write(doc), 'WEBVTT\n');
+        doc.blocks.push({ type: 'cue', id: '', start: 3725.5, end: 3727, settings: '', text: 'one\n\n  \ntwo --> three' });
+        assert.equal(WebVTT.write(doc), 'WEBVTT\n\n01:02:05.500 --> 01:02:07.000\none\ntwo --&gt; three\n');
+        assert.deepStrictEqual(Lint.checkVTT(WebVTT.write(doc)), []);
+    });
+
+    test('times', () => {
+        assert.equal(WebVTT.parseTime('12'), 12);
+        assert.equal(WebVTT.parseTime('12,5'), 12.5);
+        assert.equal(WebVTT.parseTime('1:02.5'), 62.5);
+        assert.equal(WebVTT.parseTime('01:02:03.456'), 3723.456);
+        assert.equal(WebVTT.parseTime('1:75'), null);
+        assert.equal(WebVTT.parseTime('a minute'), null);
+        assert.equal(WebVTT.formatTime(5.5), '00:05.500');
+        assert.equal(WebVTT.formatTime(5.5, true), '00:00:05.500');
+        assert.equal(WebVTT.formatTime(3723.4567), '01:02:03.457');
+    });
+
+    test('SubRip', () => {
+        const srt = '1\r\n00:00:01,000 --> 00:00:04,500 X1:10 X2:20\r\n{\\an8}<font color="red">Hello</font> <i>you</i>\r\n\r\n2\r\n00:00:05,000 --> 00:00:06,000\r\nBye\r\n';
+        assert.equal(WebVTT.sniff(srt), 'srt');
+        assert.equal(WebVTT.sniff('WEBVTT\n'), 'vtt');
+        assert.equal(WebVTT.sniff('Hello'), null);
+        const vtt = WebVTT.fromSRT(srt);
+        assert.equal(vtt, 'WEBVTT\n\n00:00:01.000 --> 00:00:04.500\nHello <i>you</i>\n\n00:00:05.000 --> 00:00:06.000\nBye\n');
+        assert.deepStrictEqual(Lint.checkVTT(vtt), []);
+    });
+
+    test('cue text: references, markup, speakers', () => {
+        assert.equal(WebVTT.decodeText('Fish &amp; chips &lt;3 <i>yes</i> &#x41;'), 'Fish & chips <3 <i>yes</i> A');
+        assert.equal(WebVTT.encodeText('Fish & chips <3 <i>yes</i> <00:01.000>later'), 'Fish &amp; chips &lt;3 <i>yes</i> <00:01.000>later');
+        assert.equal(WebVTT.encodeText(WebVTT.decodeText('a &lt;b&gt; <b>c</b>')), 'a <b> <b>c</b>', 'text that reads as a tag becomes markup: the one ambiguity');
+        assert.equal(WebVTT.toPlain('<v Ada><i>Fish</i> &amp; chips</v>'), 'Fish & chips');
+        assert.deepStrictEqual(WebVTT.speakerOf('<v.loud Ada Lovelace>Hello</v>'), { speaker: 'Ada Lovelace', classes: '.loud', text: 'Hello' });
+        assert.deepStrictEqual(WebVTT.speakerOf('<v Ada>Hi <v Bob>there'), { speaker: '', classes: '', text: '<v Ada>Hi <v Bob>there' }, 'two speakers: none of them is the cue\'s');
+        assert.deepStrictEqual(WebVTT.speakerOf('No one'), { speaker: '', classes: '', text: 'No one' });
+        assert.equal(WebVTT.withSpeaker('Ada & <Bob>', 'Hi', '.loud'), '<v.loud Ada &amp; &lt;Bob&gt;>Hi');
+        assert.equal(WebVTT.withSpeaker('  ', 'Hi'), 'Hi');
     });
 
 });

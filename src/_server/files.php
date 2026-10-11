@@ -320,21 +320,6 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
             $newResource["src"] = $filename.".mp4";
             $newResource["type"] = "video";
             $newResource["attributes"] = [];
-
-            // Handle subtitle files if provided
-            if (!empty($files["subtitles"]["name"]) && is_array($files["subtitles"]["name"])) {
-                foreach ($files["subtitles"]["name"] as $k => $v) {
-                    // WebVTT only, keyed by a language code: both end up in the
-                    // file name.
-                    if (strtolower(pathinfo((string)$v, PATHINFO_EXTENSION)) !== "vtt"
-                        || !preg_match('/^[A-Za-z0-9_-]{1,32}$/', (string)$k)) {
-                        continue;
-                    }
-                    $subFilename = substr($_SESSION["ohv"]["user"]["id"]."_".$cTime."_".sanitize($name), 0, 90)."_sub_".$k.".vtt";
-                    move_uploaded_file($files["subtitles"]["tmp_name"][$k], $conf["dir"]["data"]."/resources/".$subFilename);
-                    $newResource["subtitles"][$k] = $subFilename;
-                }
-            }
         break;
 
         case "map":

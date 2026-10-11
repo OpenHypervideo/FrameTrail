@@ -342,28 +342,30 @@
      * I create the {{#crossLink "Subtitle"}}Subtitle{{/crossLink}} objects from the data in the {{#crossLink "Database"}}Database{{/crossLink}} and store them
      * in my {{#crossLink "HypervideoModel/subtitles:attribute"}}subtitles{{/crossLink}} attribute.
      *
+     * Given a language, I rebuild only that one (gone from the Database: removed); otherwise all.
+     *
      * @method initModelOfSubtitles
      * @param {Database} database
+     * @param {String} [lang]
      */
-    function initModelOfSubtitles(database) {
+    function initModelOfSubtitles(database, lang) {
 
-        // Called again when subtitles change, so languages that are gone must go here too.
-        subtitles = {};
+        function build(code) {
+            subtitles[code] = (database.subtitles[code].cues || []).map(function(cue) {
+                return FrameTrail.newObject('Subtitle', cue);
+            });
+        }
 
-        for (var lang in database.subtitles) {
-
-            subtitles[lang] = [];
-
-            for (var idx in database.subtitles[lang].cues) {
-
-                subtitles[lang].push(
-                    FrameTrail.newObject('Subtitle',
-                        database.subtitles[lang].cues[idx]
-                    )
-                );
-
-
+        if (lang !== undefined) {
+            if (database.subtitles[lang]) {
+                build(lang);
+            } else {
+                delete subtitles[lang];
             }
+        } else {
+            // Called again when subtitles change, so languages that are gone must go here too.
+            subtitles = {};
+            Object.keys(database.subtitles).forEach(build);
         }
 
         // Keep the chosen language while it is there.
@@ -766,12 +768,17 @@
         database.setSubtitleData(lang, text);
 
         subtitleFiles = database.hypervideo.subtitles;
-        initModelOfSubtitles(database);
+        initModelOfSubtitles(database, lang);
 
         pendingSubtitles[lang] = text;
 
         if (FrameTrail.module('SubtitlesController')) {
-            FrameTrail.module('SubtitlesController').initController();
+            FrameTrail.module('SubtitlesController').initController(lang);
+        }
+
+        // The transcripts editor shows the change when it did not make it (undo, the edit API, a transcriber).
+        if (FrameTrail.module('TranscriptsEditor')) {
+            FrameTrail.module('TranscriptsEditor').subtitlesChanged(lang);
         }
 
         newUnsavedChange('subtitles');
@@ -1271,6 +1278,11 @@
      * @param {Function} callbackCancel
      */
     function save(callback, callbackCancel, silent) {
+
+        // A cue being written in the transcripts editor belongs to an explicit save (not to the automatic one, mid-word).
+        if (!silent && FrameTrail.module('TranscriptsEditor')) {
+            FrameTrail.module('TranscriptsEditor').flush();
+        }
 
         // A save must never be trailed by the auto-save timer firing into the
         // middle of it. The debounce is armed from the last edit, so ~10s later
@@ -1935,6 +1947,11 @@
         // A transaction still changing this hypervideo ends with it.
         if (FrameTrail.module('EditAPI')) {
             FrameTrail.module('EditAPI').stop(false);
+        }
+
+        // So does a transcriber at work on it.
+        if (FrameTrail.module('TranscriptsEditor')) {
+            FrameTrail.module('TranscriptsEditor').reset();
         }
 
         // Clear undo history when switching hypervideos

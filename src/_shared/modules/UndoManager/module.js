@@ -26,6 +26,7 @@ FrameTrail.defineModule('UndoManager', function(FrameTrail){
         'annotations': 'annotations',
         'codeSnippets': 'codesnippets',
         'chapters': 'chapters',
+        'subtitles': 'transcripts',
         'layout': 'layout'
     };
 

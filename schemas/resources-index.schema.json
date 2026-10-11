@@ -52,7 +52,7 @@
                     "items": { "type": "string" }
                 },
                 "subtitles": {
-                    "description": "video only: subtitle files uploaded with the video, file names in _data/resources/ keyed by language code. Not used by the player.",
+                    "description": "Legacy. video only: subtitle files uploaded with the video, file names in _data/resources/ keyed by language code. No longer written, and not used by the player: a hypervideo's subtitles are in its own subtitles/ folder.",
                     "type": "object",
                     "properties": {},
                     "additionalProperties": { "type": "string" }

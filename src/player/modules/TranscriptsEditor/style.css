@@ -1,0 +1,158 @@
+/* ===========================================
+   Transcripts editor (editMode "transcripts", in the EditingOptions panel)
+   =========================================== */
+
+.editingOptions .transcriptsEditor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1 1 auto;
+    min-height: 0;
+}
+
+.editingOptions .transcriptsEditor .message {
+    margin-bottom: 0;
+}
+
+.editingOptions .transcriptsEditor .transcriptsMessage {
+    white-space: pre-line;
+}
+
+.editingOptions .transcriptsEditor .transcriptsLayoutLink {
+    margin-left: 4px;
+}
+
+.editingOptions .transcriptsEditor .transcriptsLanguageBar,
+.editingOptions .transcriptsEditor .transcriptsToolbar,
+.editingOptions .transcriptsEditor .transcriptsGeneration.active {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.editingOptions .transcriptsEditor .transcriptsLanguageBar .custom-select {
+    flex: 1 1 auto;
+}
+
+.editingOptions .transcriptsEditor .transcriptsLanguageBar select {
+    width: 100%;
+}
+
+.editingOptions .transcriptsEditor .transcriptsGeneration .transcriptsGenerationText {
+    flex: 1 1 auto;
+}
+
+.editingOptions .transcriptsEditor .transcriptsNew {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.editingOptions .transcriptsEditor .transcriptsNew p {
+    margin: 0 0 4px 0;
+}
+
+.editingOptions .transcriptsEditor .transcriptsNewActions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.editingOptions .transcriptsEditor .transcriptsUsage,
+.editingOptions .transcriptsEditor .transcriptsKeys {
+    font-size: 12px;
+    opacity: 0.8;
+}
+
+/* The list of cues: the part of the panel that scrolls */
+
+.editingOptions .transcriptsEditor .transcriptsCueList {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.editingOptions .transcriptsEditor .transcriptsEmpty {
+    padding: 6px 0;
+    opacity: 0.7;
+    font-style: italic;
+}
+
+.editingOptions .transcriptsEditor .transcriptCue {
+    padding: 2px 4px;
+    border-left: 3px solid transparent;
+    border-radius: 3px;
+}
+
+.editingOptions .transcriptsEditor .transcriptCue.active {
+    border-left-color: var(--primary-bg-color);
+    background-color: var(--secondary-fg-color);
+}
+
+.editingOptions .transcriptsEditor .transcriptCue.outside {
+    opacity: 0.5;
+}
+
+.editingOptions .transcriptsEditor .transcriptCue.overlap .transcriptCueStart {
+    border-color: #cd0a0a;
+}
+
+.editingOptions .transcriptsEditor .transcriptCueHead {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.editingOptions .transcriptsEditor .transcriptCueHead input {
+    margin: 2px 0;
+}
+
+.editingOptions .transcriptsEditor .transcriptCueHead .transcriptCueStart,
+.editingOptions .transcriptsEditor .transcriptCueHead .transcriptCueEnd {
+    flex: 0 0 auto;
+    width: 92px;
+    font-variant-numeric: tabular-nums;
+}
+
+.editingOptions .transcriptsEditor .transcriptCueHead .transcriptCueSpeaker {
+    flex: 1 1 auto;
+    min-width: 50px;
+}
+
+.editingOptions .transcriptsEditor .transcriptCueHead button {
+    flex: 0 0 auto;
+    padding: 4px 6px;
+}
+
+.editingOptions .transcriptsEditor .transcriptCueText {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 2px 0;
+    resize: none;
+    overflow: hidden;
+    field-sizing: content;
+    min-height: 2.2em;
+}
+
+/* The language's menu */
+
+.contextSelectList.transcriptsMenu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    max-height: none;
+    overflow: visible;
+}
+
+.contextSelectList.transcriptsMenu:popover-open {
+    display: block;
+}
+
+.contextSelectList.transcriptsMenu div.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}

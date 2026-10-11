@@ -400,7 +400,7 @@ Two things to know:
 
 ### Slots
 
-`slots` names the places the extension takes in the interface; each one is optional. `label` is the tooltip and title; `icon` is a class of FrameTrail's icon font, e.g. `icon-comment` (default `icon-puzzle`).
+`slots` names the places the extension takes in the interface, and the services it offers there; each one is optional. `label` is the tooltip and title; `icon` is a class of FrameTrail's icon font, e.g. `icon-comment` (default `icon-puzzle`).
 
 **`sidePanel`**: a panel docked to the right of the player and the overview, opened and closed from a button in the title bar. While it is open the main area gives up its width; on screens up to 768 px wide it covers the main area instead. It stays open across edit modes and hypervideo switches. One side panel is open at a time.
 
@@ -444,7 +444,31 @@ editPanel: {
 }
 ```
 
-A mode that edits the hypervideo (the default) follows the rules of layout, overlays, custom code and chapters: it is offered to admins and the hypervideo's owner only, entering it claims the collaboration lock, and while another editor holds that lock the video area is blocked. Set `editsHypervideo: false` for a mode that does not write to the hypervideo; like annotations, it is then open to everyone editing. The names of FrameTrail's own modes (`preview`, `layout`, `overlays`, `codesnippets`, `chapters`, `annotations`) cannot be used. While the mode is active, `.mainContainer` carries `data-edit-mode="<name>"`.
+A mode that edits the hypervideo (the default) follows the rules of layout, overlays, custom code and chapters: it is offered to admins and the hypervideo's owner only, entering it claims the collaboration lock, and while another editor holds that lock the video area is blocked. Set `editsHypervideo: false` for a mode that does not write to the hypervideo; like annotations, it is then open to everyone editing. The names of FrameTrail's own modes (`preview`, `layout`, `overlays`, `codesnippets`, `chapters`, `transcripts`, `annotations`) cannot be used. While the mode is active, `.mainContainer` carries `data-edit-mode="<name>"`.
+
+**`transcriber`**: makes the transcript of the open hypervideo's video, for instance with a speech recognition service. FrameTrail's Transcripts editor then offers it as a button (the slot's `label`, default "Generate transcript"), both for a new transcript and to replace one; the result becomes the subtitles of its language, as one undo step, written with the next save. The slot has no element of its own; when several extensions have one, the first loaded that is offered for the open hypervideo is used.
+
+```javascript
+transcriber: {
+    label:     'Transcribe the video',
+    available: function(context) {
+        // context: { hypervideoId, info } (info as edit.getInfo() returns it).
+        // true; false when it is not offered here at all (no button, e.g. a service this storage mode
+        // cannot reach); or a sentence saying why it cannot be used for this hypervideo now
+        // (the button is there, and says so when pressed).
+        return true;
+    },
+    transcribe: function(request) {
+        // request: { hypervideoId, language, signal, onProgress }
+        //   language: the code the user chose ('de', 'pt-BR'), or null to detect it
+        //   signal:   an AbortSignal; aborted when the user stops, leaves editing or the hypervideo
+        //   onProgress('text') or onProgress({ message, fraction }): shown while it runs
+        return Promise.resolve({ language: 'de', vtt: 'WEBVTT\n\n00:01.000 --> 00:04.000\nHallo\n' });
+    }
+}
+```
+
+The promise resolves with the WebVTT text and its language (a code of letters, digits, `_` and `-`; when missing, the language asked for). FrameTrail checks the text as the player reads it (`FrameTrailLint.checkVTT`) and asks before it replaces a transcript that has cues. A rejection is shown to the user with its message. Cue times are on the video's timeline, so a clip with an in point starts later than 0. A run goes on while the user works in other edit modes.
 
 ### Labels
 
