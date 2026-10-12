@@ -137,12 +137,50 @@ FrameTrail.defineType(
                  * @param {Number} step
                  */
                 slideBy: function(step) {
+                    var slides = this._slides(),
+                        index  = this._shownSlideIndex();
+                    if (index < 0) { return; }
+                    this.slideTo(slides[Math.max(0, Math.min(slides.length - 1, index + step))]);
+                },
+
+
+                /**
+                 * I move a phone's large collection to one of its annotations (its element), so that it is in the middle.
+                 *
+                 * @method slideTo
+                 * @param {HTMLElement} element
+                 */
+                slideTo: function(element) {
                     var scrollContainer = this.contentViewContainer && this.contentViewContainer.querySelector('.contentViewScroll');
-                    if (!scrollContainer || !scrollContainer.clientWidth) { return; }
-                    var width = scrollContainer.clientWidth,
-                        last  = Math.max(0, Math.round((scrollContainer.scrollWidth - width) / width)),
-                        index = Math.max(0, Math.min(last, Math.round(scrollContainer.scrollLeft / width) + step));
-                    scrollContainer.scrollTo({ left: index * width, behavior: 'smooth' });
+                    if (!scrollContainer || !element) { return; }
+                    scrollContainer.scrollTo({
+                        left: element.offsetLeft + element.offsetWidth / 2 - scrollContainer.clientWidth / 2,
+                        behavior: 'smooth'
+                    });
+                },
+
+
+                // The elements of my collection, in the order of contentGroups.
+                _slides: function() {
+                    var contents = this.contentViewContainer && this.contentViewContainer.querySelector('.contentViewContents');
+                    return contents ? Array.from(contents.children).filter(function(el) {
+                        return el.classList.contains('collectionElement');
+                    }) : [];
+                },
+
+                // The index of the element nearest to the middle of a phone's large collection (the one on screen), or -1.
+                _shownSlideIndex: function() {
+                    var scrollContainer = this.contentViewContainer && this.contentViewContainer.querySelector('.contentViewScroll'),
+                        slides = this._slides();
+                    if (!scrollContainer || !scrollContainer.clientWidth || !slides.length) { return -1; }
+                    var middle = scrollContainer.scrollLeft + scrollContainer.clientWidth / 2,
+                        shown = 0,
+                        nearest = Infinity;
+                    slides.forEach(function(el, i) {
+                        var distance = Math.abs(el.offsetLeft + el.offsetWidth / 2 - middle);
+                        if (distance < nearest) { nearest = distance; shown = i; }
+                    });
+                    return shown;
                 },
 
 
@@ -226,6 +264,9 @@ FrameTrail.defineType(
                         if (element) {
                             element.classList.toggle('active', group.activeItems.length > 0);
                         }
+                        if (group.stripElement) {
+                            group.stripElement.classList.toggle('active', group.activeItems.length > 0);
+                        }
                     });
                 },
 
@@ -234,6 +275,9 @@ FrameTrail.defineType(
                     if (!group) { return; }
                     if (group.activeItems.indexOf(contentItem) === -1) {
                         group.activeItems.push(contentItem);
+                    }
+                    if (group.stripElement) {
+                        group.stripElement.classList.add('active');
                     }
                     var element = this.getContentViewElementFromContentItem(group.representative);
                     if (!element) { return; }
@@ -262,6 +306,9 @@ FrameTrail.defineType(
                         var element = this.getContentViewElementFromContentItem(group.representative);
                         if (element) {
                             element.classList.remove('active');
+                        }
+                        if (group.stripElement) {
+                            group.stripElement.classList.remove('active');
                         }
                     }
                 },
@@ -342,6 +389,10 @@ FrameTrail.defineType(
                                 self.contentGroups.forEach(function(group, indexOfGroup) {
                                     self.appendContentCollectionElements(group.representative, indexOfGroup);
                                 });
+
+                                if (self.collectionStrip) {
+                                    self.renderCollectionStrip();
+                                }
 
                                 // Restore the open state on the re-rendered group
                                 var openGroup = null;
@@ -819,7 +870,7 @@ FrameTrail.defineType(
 
                     // A phone's large collection is swiped through as the bottom area's details are: an overlay
                     // over embedded players and maps turns a horizontal swipe into the next or previous
-                    // annotation and lets taps through to the content.
+                    // annotation and lets taps through to the content. Beneath it, a strip shows all its annotations.
                     if (FrameTrail.getState('companion') && this.isSlideshow()) {
                         var slideshowOverlay = document.createElement('div');
                         slideshowOverlay.className = 'swipeOverlay';
@@ -827,6 +878,7 @@ FrameTrail.defineType(
                         this.initSwipeOverlay(contentViewContainer, function(step) {
                             self.slideBy(step);
                         });
+                        this.initCollectionStrip(contentViewContainer);
                     }
 
                     this.contentViewTab = contentViewTab;
@@ -859,6 +911,12 @@ FrameTrail.defineType(
                         this.scrollbarObserver.disconnect();
                         this.scrollbarObserver = null;
                     }
+
+                    if (this.collectionStripObserver) {
+                        this.collectionStripObserver.disconnect();
+                        this.collectionStripObserver = null;
+                    }
+                    clearTimeout(this._stripCentreTimeout);
 
                     this.contentViewContainer.remove();
                     this.contentViewTab.remove();
@@ -1574,6 +1632,159 @@ FrameTrail.defineType(
                     });
 
                     return { reactivate: reactivateOverlay };
+
+                },
+
+
+                /**
+                 * I add the strip beneath a phone's large collection: every annotation as a small thumbnail in a row,
+                 * like the bottom area's small view (renderCollectionStrip fills it). The playing ones are highlighted,
+                 * the one on screen is marked and kept in view, a tap slides there, and the edges show when there are
+                 * more to the left or the right (a tap on one scrolls the strip that way).
+                 *
+                 * @method initCollectionStrip
+                 * @param {HTMLElement} contentViewContainer
+                 */
+                initCollectionStrip: function(contentViewContainer) {
+
+                    var self = this,
+                        _ws  = document.createElement('div');
+                    _ws.innerHTML = '<div class="collectionStrip">'
+                                  + '    <div class="collectionStripScroll">'
+                                  + '        <div class="collectionStripContents"></div>'
+                                  + '    </div>'
+                                  + '    <div class="collectionStripMore left"><span class="icon-left-open-big"></span></div>'
+                                  + '    <div class="collectionStripMore right"><span class="icon-right-open-big"></span></div>'
+                                  + '</div>';
+                    var strip           = _ws.firstElementChild,
+                        stripScroll     = strip.querySelector('.collectionStripScroll'),
+                        scrollContainer = contentViewContainer.querySelector('.contentViewScroll'),
+                        frame           = null;
+
+                    // Beyond the strip's padding (10px, see CompanionLauncher/style.css) a thumbnail is cut off.
+                    function updateEdges() {
+                        strip.classList.toggle('moreLeft', stripScroll.scrollLeft > 10);
+                        strip.classList.toggle('moreRight', stripScroll.scrollLeft + stripScroll.clientWidth < stripScroll.scrollWidth - 10);
+                    }
+
+                    stripScroll.addEventListener('scroll', updateEdges, { passive: true });
+
+                    // A new size (a view shown, a turned phone, new thumbnails) puts the one on screen back in the middle.
+                    this.collectionStripObserver = new ResizeObserver(function() {
+                        self._stripNeedsCentre = true;
+                        self.updateCollectionStrip(true);
+                        updateEdges();
+                    });
+                    this.collectionStripObserver.observe(stripScroll);
+                    this.collectionStripObserver.observe(strip.querySelector('.collectionStripContents'));
+
+                    scrollContainer.addEventListener('scroll', function() {
+                        if (frame) { return; }
+                        frame = requestAnimationFrame(function() {
+                            frame = null;
+                            self.updateCollectionStrip();
+                        });
+                    }, { passive: true });
+
+                    strip.querySelectorAll('.collectionStripMore').forEach(function(button) {
+                        button.addEventListener('click', function() {
+                            var direction = button.classList.contains('left') ? -1 : 1;
+                            stripScroll.scrollBy({ left: direction * stripScroll.clientWidth * 0.8, behavior: 'smooth' });
+                        });
+                    });
+
+                    contentViewContainer.appendChild(strip);
+                    this.collectionStrip = strip;
+
+                },
+
+
+                /**
+                 * I fill the strip of a phone's large collection with one thumbnail per element (group), in the same
+                 * order, and keep each as the group's stripElement, which follows the group's active state.
+                 *
+                 * @method renderCollectionStrip
+                 */
+                renderCollectionStrip: function() {
+
+                    var self     = this,
+                        contents = self.collectionStrip.querySelector('.collectionStripContents');
+
+                    contents.innerHTML = '';
+
+                    self.contentGroups.forEach(function(group) {
+                        var item = document.createElement('div');
+                        item.className = 'collectionStripItem';
+                        item.appendChild(group.representative.resourceItem.renderThumb());
+                        item.addEventListener('click', function() {
+                            self.slideTo(self.getContentViewElementFromContentItem(group.representative));
+                        });
+                        contents.appendChild(item);
+                        group.stripElement = item;
+                    });
+
+                    self.contentViewContainer.classList.toggle('withStrip', self.contentGroups.length > 0);
+
+                    self._shownStripIndex = -1;
+                    self._stripNeedsCentre = true;
+                    self.updateCollectionStrip(true);
+
+                },
+
+
+                /**
+                 * I mark the annotation a phone's large collection shows (.shown, on its element and its thumbnail), and
+                 * bring its thumbnail to the middle of the strip once the collection stops moving (at once if instant).
+                 * Only when that annotation changed (or the size did): scrolling the strip by hand is not undone.
+                 *
+                 * @method updateCollectionStrip
+                 * @param {Boolean} instant
+                 */
+                updateCollectionStrip: function(instant) {
+
+                    var self  = this,
+                        index = self.collectionStrip ? self._shownSlideIndex() : -1;
+
+                    if (index < 0) { return; }
+
+                    if (index !== self._shownStripIndex) {
+                        self.contentViewContainer.querySelectorAll('.collectionElement.shown, .collectionStripItem.shown').forEach(function(el) {
+                            el.classList.remove('shown');
+                        });
+                        var group = self.contentGroups[index],
+                            slide = self._slides()[index];
+                        if (slide) {
+                            slide.classList.add('shown');
+                        }
+                        if (group && group.stripElement) {
+                            group.stripElement.classList.add('shown');
+                        }
+                        self._shownStripIndex = index;
+                        self._stripNeedsCentre = true;
+                    }
+
+                    if (!self._stripNeedsCentre) { return; }
+
+                    function centre() {
+                        var stripScroll = self.collectionStrip.querySelector('.collectionStripScroll'),
+                            group       = self.contentGroups[self._shownStripIndex],
+                            item        = group && group.stripElement;
+                        if (!item || !stripScroll.clientWidth) { return; }
+                        var left = item.offsetLeft + item.offsetWidth / 2 - stripScroll.clientWidth / 2;
+                        if (instant) {
+                            stripScroll.scrollLeft = left;
+                        } else {
+                            stripScroll.scrollTo({ left: left, behavior: 'smooth' });
+                        }
+                        self._stripNeedsCentre = false;
+                    }
+
+                    clearTimeout(self._stripCentreTimeout);
+                    if (instant) {
+                        centre();
+                    } else {
+                        self._stripCentreTimeout = setTimeout(centre, 150);
+                    }
 
                 },
 

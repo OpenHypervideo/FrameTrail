@@ -634,7 +634,7 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     flex: 0 0 auto;
 }
 /* The phone: the companion area (layoutArea.areaCompanion), the views a paired phone shows.
-   Laid out like the right area, which is what the phone makes of it. */
+   Laid out as the phone shows them: the tabs in a row above the views, which take the whole width. */
 
 .layoutManagerContainer .companionLayoutManager {
     flex: 0 0 210px;
@@ -659,34 +659,24 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     min-height: 200px;
 }
 
-.layoutArea[data-area="areaCompanion"] .layoutAreaTabs {
-    transform-origin: top right;
-    transform: rotate(-90deg);
-    text-align: right;
-    right: 100%;
-    width: var(--ft-height, 100vh);
-}
-
 .layoutManager .layoutArea[data-area="areaCompanion"] .layoutAreaTabs {
-    top: 10px;
-    right: calc(100% - 11px);
-}
-
-.layoutArea[data-area="areaCompanion"] .layoutAreaTabs .contentViewTab .contentViewTabName [class^="icon-"]::before {
-    transform-origin: center;
-    transform: rotate(90deg);
-}
-
-.layoutManager .layoutArea[data-area="areaCompanion"] .contentViewPreview {
-    top: 10px;
-    left: 46px;
-    height: calc(100% - 20px);
-    width: calc(100% - 56px);
-}
-
-.layoutManager .layoutArea[data-area="areaCompanion"].hiddenTabs .contentViewPreview {
+    top: 11px;
     left: 10px;
-    width: calc(100% - 20px);
+    right: 10px;
+    width: auto;
+    text-align: left;
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+}
+
+.layoutManager .layoutArea[data-area="areaCompanion"] .layoutAreaTabs::-webkit-scrollbar {
+    display: none;
+}
+
+.layoutManager .layoutArea[data-area="areaCompanion"] .layoutAreaTabs .contentViewTab:first-child {
+    margin-left: 0;
 }
 
 .layoutManager .layoutArea[data-area="areaCompanion"] .contentViewPreview .contentViewOptions {

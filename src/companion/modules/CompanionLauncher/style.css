@@ -96,9 +96,10 @@
 
 
 /* The phone's player: the views, play/pause, the time and the progress bar.
-   The views are the right area at full width (ViewLayout puts the companion
-   area's views there); no video, timelines, title bar, sidebar or editing,
-   and no loading screen: the page shows its own until the player is ready. */
+   The views fill the right area's container (ViewLayout puts the companion
+   area's views there), at full width below their tabs; no video, timelines,
+   title bar, sidebar or editing, and no loading screen: the page shows its
+   own until the player is ready. */
 
 .companionMode .loadingScreen,
 .companionMode > .titlebar,
@@ -143,6 +144,52 @@
     border: none;
 }
 
+/* The tabs of several views: one row above them, as in the bottom area, that scrolls sideways when it is
+   too long. The views below take the whole width; the area cannot be closed. */
+
+.companionMode .areaRightContainer .layoutAreaTabs {
+    display: flex;
+    align-items: flex-start;
+    left: 0;
+    right: 0;
+    width: auto;
+    height: 36px;
+    transform: none;
+    text-align: left;
+    padding-right: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+}
+
+.companionMode .areaRightContainer .layoutAreaTabs::-webkit-scrollbar {
+    display: none;
+}
+
+.companionMode .areaRightContainer .layoutAreaTabs .contentViewTab {
+    flex: 0 0 auto;
+}
+
+.companionMode .areaRightContainer .layoutAreaTabs .contentViewTab:first-child {
+    margin-left: 0;
+}
+
+.companionMode .areaRightContainer .layoutAreaTabs .contentViewTab .contentViewTabName [class^="icon-"]::before {
+    transform: none;
+}
+
+.companionMode .layoutAreaToggleCloseButton {
+    display: none !important;
+}
+
+.companionMode .areaRightContainer:not(.hiddenTabs) .contentViewContainer {
+    top: 36px;
+    left: 0;
+    width: 100%;
+    height: calc(100% - 36px);
+}
+
 /* A phone that may not control the player follows it without controls. */
 
 .companionMode.companionNoControl .playerProgress,
@@ -155,8 +202,11 @@
 }
 
 /* A phone's large collection (ContentView.isSlideshow): the annotations at full size in a row that follows
-   the playback and is swiped through, like the bottom area's large view. Its overlay (initSwipeOverlay)
-   turns swipes over embedded players and maps into the next or previous annotation. */
+   the playback and is swiped through, like the bottom area's large view, with its 10px around each one
+   (the active one has a border, the others are dimmed unless on screen). Its overlay (initSwipeOverlay) turns swipes over
+   embedded players and maps into the next or previous annotation. An annotation never scrolls itself (its
+   content fills it and scrolls inside, .resourceContent): a pixel of rounding would let it take the start
+   of a swipe. */
 
 .companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .contentViewScroll {
     overflow-x: auto;
@@ -170,10 +220,11 @@
     display: flex;
     flex-wrap: nowrap;
     align-items: stretch;
+    gap: 10px;
     width: max-content;
     min-width: 100%;
     height: 100%;
-    padding: 0;
+    padding: 10px;
 }
 
 .companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .collectionElement,
@@ -184,14 +235,24 @@
     left: 0;
     float: none;
     flex: 0 0 auto;
-    width: 100cqw;
+    width: calc(100cqw - 20px);
     height: 100%;
     margin: 0;
-    border: none;
-    opacity: 1;
-    overflow-y: auto;
+    border: 2px solid var(--primary-bg-color);
+    overflow: hidden;
+    transition: opacity 200ms;
     scroll-snap-align: center;
     scroll-snap-stop: always;
+}
+
+.companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .collectionElement.active {
+    border-color: var(--primary-fg-color);
+    opacity: 1;
+}
+
+/* The one on screen (ContentView.updateCollectionStrip) is not dimmed, whether it plays or not. */
+.companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .collectionElement.shown {
+    opacity: 1;
 }
 
 .companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .contentViewScrollbar {
@@ -213,6 +274,149 @@
     inset: 0;
     z-index: 3;
     touch-action: none;
+}
+
+/* Beneath it, every annotation of the collection as a small thumbnail in a row, like the bottom area's
+   small view (ContentView.initCollectionStrip): the playing ones are highlighted, the one on screen has a
+   bar beneath it, a tap slides there, and the edges show when there are more to the left or right. The
+   strip shows where the large view is, so the large view's scrollbar is not needed. */
+
+.companionMode .areaRightContainer .contentViewContainer.withStrip .contentViewScroll {
+    height: calc(100% - 56px);
+}
+
+.companionMode .areaRightContainer .contentViewContainer.withStrip > .swipeOverlay {
+    bottom: 56px;
+}
+
+.companionMode .areaRightContainer .contentViewContainer.withStrip .contentViewScrollbar {
+    display: none;
+}
+
+.companionMode .collectionStrip {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 56px;
+    display: none;
+}
+
+.companionMode .contentViewContainer.withStrip .collectionStrip {
+    display: block;
+}
+
+.companionMode .collectionStripScroll {
+    height: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+}
+
+.companionMode .collectionStripScroll::-webkit-scrollbar {
+    display: none;
+}
+
+.companionMode .collectionStripContents {
+    position: relative;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    gap: 4px;
+    width: max-content;
+    min-width: 100%;
+    height: 100%;
+    padding: 4px 10px 20px;
+    box-sizing: border-box;
+}
+
+/* A width, not a flex-basis: Firefox sizes the max-content row from its items' widths, and with a basis only
+   the row stays as wide as the strip, the thumbnails overflow it and the last one ends at the edge. */
+.companionMode .collectionStripItem {
+    position: relative;
+    flex: none;
+    width: 44px;
+    height: 32px;
+    box-sizing: border-box;
+    border: 2px solid var(--primary-bg-color);
+    background: var(--primary-bg-color);
+    opacity: .7;
+}
+
+.companionMode .collectionStripItem.active {
+    border-color: var(--primary-fg-color);
+    opacity: 1;
+}
+
+.companionMode .collectionStripItem.shown {
+    opacity: 1;
+}
+
+.companionMode .collectionStripItem.shown::after {
+    content: '';
+    position: absolute;
+    left: 6px;
+    right: 6px;
+    bottom: -8px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--primary-fg-color);
+}
+
+.companionMode .collectionStripItem .resourceThumb {
+    width: 100%;
+    height: 100%;
+    outline: none;
+    border-radius: 0;
+}
+
+.companionMode .collectionStripItem .resourceThumb .resourceOverlay .resourceIcon {
+    width: 30px;
+    right: 4px;
+    bottom: 8px;
+}
+
+.companionMode .collectionStripItem .resourceTitle,
+.companionMode .collectionStripItem .resourceTextPreview,
+.companionMode .collectionStripItem .resourcePreviewButton,
+.companionMode .collectionStripItem .resourceEditButton {
+    display: none !important;
+}
+
+.companionMode .collectionStripMore {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    width: 36px;
+    display: flex;
+    align-items: center;
+    padding-bottom: 6px;
+    box-sizing: border-box;
+    font-size: 16px;
+    color: var(--primary-fg-color);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 200ms;
+}
+
+.companionMode .collectionStripMore.left {
+    left: 0;
+    justify-content: flex-start;
+    background: linear-gradient(to right, var(--secondary-bg-color) 40%, transparent);
+}
+
+.companionMode .collectionStripMore.right {
+    right: 0;
+    justify-content: flex-end;
+    background: linear-gradient(to left, var(--secondary-bg-color) 40%, transparent);
+}
+
+.companionMode .collectionStrip.moreLeft .collectionStripMore.left,
+.companionMode .collectionStrip.moreRight .collectionStripMore.right {
+    opacity: 1;
+    pointer-events: auto;
 }
 
 /* "Play from here" in the large collection sends the player to the annotation (a seek request) —
