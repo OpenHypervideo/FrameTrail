@@ -18,8 +18,14 @@
     font-size: 12px;
 }
 
-.pairingDialog .pairingPath {
-    opacity: .7;
+/* The phones reuse the rows of the user list; a classroom of them scrolls. */
+.pairingDialog .pairingPhones {
+    max-height: 240px;
+}
+
+.pairingDialog .pairingPhones .userListActions {
+    display: flex;
+    align-items: center;
 }
 
 .playerControl.pairingButton.active {

@@ -4,7 +4,7 @@
 
 
 /**
- * I am the PairingHost: the player's side of pairing a phone (docs/PAIRING.md).
+ * I am the PairingHost: the player's side of pairing phones (docs/PAIRING.md).
  *
  * I open a room on the pairing broker (config.pairingBrokerURL) and make the
  * join link a QR code shows (PairingDialog draws it). A phone that opens the
@@ -20,13 +20,15 @@
  * extrapolates my playhead and shows its content views (the companion area)
  * in step. What it sends are requests — play, pause, seek — which I carry
  * out through the HypervideoController when it may control me (canControl,
- * which the dialog switches). The state is mine alone, so a request and the
- * state it causes can never chase each other in a loop.
+ * which the dialog switches per phone). The state is mine alone, so a request
+ * and the state it causes can never chase each other in a loop.
  *
- * This milestone accepts one phone at a time; the broker contract and the
- * protocol are made for rooms with many. While a phone is connected the room
- * is closed; when it drops, the room opens again, and a phone that comes back
- * with its resume token within two minutes keeps its control rights.
+ * A whole classroom can pair: the room stays open until pairing is stopped,
+ * so the QR code can stay on the screen, and up to MAX_PHONES phones are
+ * connected at once. The first phone may control the playback; the ones that
+ * join it only watch, until the dialog lets them. Every phone gets the same
+ * bundle, made once, and the same states. A phone that drops may come back
+ * with its resume token within two minutes and keeps its control right.
  *
  * HypervideoModel.updateHypervideo() clears every timer of the page, so
  * hypervideoChanged() starts mine again.
@@ -39,9 +41,9 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
 
     var Pairing = window.FrameTrailPairing;
 
-    var RESUME_WINDOW     = 120000,   // ms a dropped phone may come back in
-        HANDSHAKE_TIMEOUT = 15000,    // ms from an offer to an open channel
-        HANDSHAKE_PATIENCE = 10000,   // ms a phone still connecting holds the place against another one
+    var MAX_PHONES        = 50,       // phones connecting or connected at once; more are refused ('full')
+        RESUME_WINDOW     = 120000,   // ms a dropped phone may come back in
+        HANDSHAKE_TIMEOUT = 15000,    // ms from an offer to the phone's hello
         HELLO_TIMEOUT     = 10000,    // ms from an open channel to the phone's hello
         DISCONNECT_GRACE  = 5000,     // ms a connection may stay 'disconnected' before it counts as lost
         SAMPLE_INTERVAL   = 100,      // ms between looks at the playback
@@ -49,16 +51,19 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         HEARTBEAT_PAUSED  = 5000,     // … and while not
         SEEK_THRESHOLD    = 0.2;      // s the playhead may be off its course before it counts as a seek
 
-    var session      = null,   // the open room: { room, hostKey, broker, certificate, iceServers, link, cursor, accepting, polling }
-        opening      = null,   // the promise of open() while it runs
-        guest        = null,   // the phone: { id, label, pc, channel, status, canControl, resume, path, … }
-        returning    = null,   // the phone that dropped, until the resume window ends: { token, canControl, label }
-        status       = 'off',  // off, opening, waiting, connecting, connected, reconnecting
-        problem      = null,   // the code of what went wrong last, for the dialog
-        readyID      = null,   // the hypervideo that is completely open (not just being switched to)
-        generation   = 0,      // counts close(): an open() that close() overtook gives up
-        lastState    = null,   // the state sent last, with the time it was sent
+    var session      = null,       // the open room: { room, hostKey, broker, certificate, iceServers, link, cursor, polling }
+        opening      = null,       // the promise of open() while it runs
+        guests       = new Map(),  // the phones, by guest id: { id, number, label, pc, channel, status, canControl, resume, path, … }
+        returning    = new Map(),  // the phones that dropped, by resume token, until their window ends: { id, number, label, canControl, until }
+        joined       = 0,          // numbers the phones in the order they paired
+        status       = 'off',      // off, opening, open
+        problem      = null,       // the code of what went wrong last, for the dialog
+        readyID      = null,       // the hypervideo that is completely open (not just being switched to)
+        generation   = 0,          // counts close(): an open() that close() overtook gives up
+        lastState    = null,       // the state sent last (to every phone), with the time it was sent
         seq          = 0,
+        shared       = null,       // the bundle every phone gets: { key, id, texts: Promise }
+        revision     = 0,          // counts the changes that make the bundle out of date
         timers       = { poll: null, sample: null, resume: null };
 
 
@@ -72,36 +77,72 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         return error;
     }
 
+    // Is this still the phone of its id (not one that was let go, or replaced by its own retry)?
+    function current(g) {
+        return guests.get(g.id) === g;
+    }
+
+    function connectedPhones() {
+        var list = [];
+        guests.forEach(function(g) { if (g.status === 'connected') { list.push(g); } });
+        return list;
+    }
+
+    function returningPhone(id) {
+        var found = null;
+        returning.forEach(function(r) { if (r.id === id) { found = r; } });
+        return found;
+    }
+
 
     /* ------------------------------------------------------------------ */
     /*  Status                                                            */
     /* ------------------------------------------------------------------ */
 
+    // How a phone is connected: on the local network, directly through the internet, or through a TURN relay.
+    function pathOf(g) {
+        if (!g.path) { return null; }
+        return g.path.relayed ? 'relay' : ((g.path.local === 'host' && g.path.remote === 'host') ? 'lan' : 'direct');
+    }
+
     /**
      * What the dialog and the pairing button show, also published as the
-     * state "pairing".
+     * state "pairing". The phones are in the order they paired, those still
+     * connecting last.
      *
      * @method snapshot
-     * @return {Object} { status, link, guest: { label, canControl, path } | null, problem }
+     * @return {Object} { status, link, phones: [{ id, number, label, status, canControl, path }], connected, max, problem }
      */
     function snapshot() {
-        var who = guest || returning;
+        var phones    = [],
+            connected = 0;
+        guests.forEach(function(g) {
+            if (g.status === 'connected') { connected++; }
+            phones.push({ id: g.id, number: g.number || 0, label: g.label || '', status: g.status, canControl: !!g.canControl, path: pathOf(g) });
+        });
+        returning.forEach(function(r) {
+            // Back already, still connecting: listed once.
+            if (guests.has(r.id)) { return; }
+            phones.push({ id: r.id, number: r.number, label: r.label || '', status: 'reconnecting', canControl: !!r.canControl, path: null });
+        });
+        phones.sort(function(a, b) { return (a.number || 1e9) - (b.number || 1e9); });
         return {
-            status:  status,
-            link:    session ? session.link : null,
-            guest:   who ? {
-                label:      who.label || '',
-                canControl: !!who.canControl,
-                // How the phone is connected: on the local network, directly through the internet, or through a TURN relay.
-                path:       (guest && guest.path) ? (guest.path.relayed ? 'relay' : ((guest.path.local === 'host' && guest.path.remote === 'host') ? 'lan' : 'direct')) : null
-            } : null,
-            problem: problem
+            status:    status,
+            link:      session ? session.link : null,
+            phones:    phones,
+            connected: connected,
+            max:       MAX_PHONES,
+            problem:   problem
         };
+    }
+
+    function publish() {
+        FrameTrail.changeState('pairing', snapshot());
     }
 
     function setStatus(newStatus) {
         status = newStatus;
-        FrameTrail.changeState('pairing', snapshot());
+        publish();
     }
 
 
@@ -110,7 +151,7 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
     /* ------------------------------------------------------------------ */
 
     /**
-     * I open a room for a phone, or return the one that is open. Rejects with
+     * I open a room for phones, or return the one that is open. Rejects with
      * an error whose code says what is missing: brokerMissing, brokerInvalid,
      * brokerInsecure, brokerUnreachable, companionMissing,
      * companionUnreachable, noHypervideo, noWebRTC.
@@ -148,7 +189,6 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
             hostKey:  Pairing.randomId(),
             broker:   Pairing.brokerClient(brokerURL),
             cursor:   0,
-            accepting: false,
             polling:  false
         };
 
@@ -173,8 +213,8 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
             room.link = Pairing.joinURL(companion, room.room, brokerURL, Pairing.certificateFingerprint(room.certificate));
             session = room;
             opening = null;
-            startAccepting(false);
-            setStatus('waiting');
+            startPolling();
+            setStatus('open');
             return snapshot();
         }).catch(function(error) {
             if (mine !== generation) { throw failure('stopped'); }
@@ -202,34 +242,22 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         });
     }
 
-    function startAccepting(reopen) {
-        var room = session;
-        if (!room) { return; }
-        room.accepting = true;
+    // The room takes phones until pairing ends: I look for offers every second (which also keeps it alive).
+    function startPolling() {
         window.clearInterval(timers.poll);
+        if (!session) { return; }
         timers.poll = window.setInterval(poll, Pairing.POLL_INTERVAL);
-        (reopen ? room.broker.openRoom(room.room, room.hostKey) : Promise.resolve()).then(poll, function() {
-            problem = 'brokerUnreachable';
-            setStatus(status);
-        });
-    }
-
-    function stopAccepting() {
-        var room = session;
-        window.clearInterval(timers.poll);
-        if (!room || !room.accepting) { return; }
-        room.accepting = false;
-        room.broker.closeRoom(room.room, room.hostKey).catch(function() { /* it expires on its own */ });
+        poll();
     }
 
     function poll() {
         var room = session;
-        if (!room || !room.accepting || room.polling) { return; }
+        if (!room || room.polling) { return; }
         room.polling = true;
         room.broker.listOffers(room.room, room.hostKey, room.cursor).then(function(result) {
             room.polling = false;
-            if (session !== room || !room.accepting) { return; }
-            if (problem === 'brokerUnreachable') { problem = null; setStatus(status); }
+            if (session !== room) { return; }
+            if (problem === 'brokerUnreachable') { problem = null; publish(); }
             room.cursor = result.cursor;
             result.offers.forEach(handleOffer);
         }, function(error) {
@@ -240,14 +268,14 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
                 room.broker.openRoom(room.room, room.hostKey).catch(function() {});
             } else {
                 problem = 'brokerUnreachable';
-                setStatus(status);
+                publish();
             }
         });
     }
 
 
     /* ------------------------------------------------------------------ */
-    /*  The phone                                                         */
+    /*  The phones                                                        */
     /* ------------------------------------------------------------------ */
 
     function refuse(guestID, reason) {
@@ -264,13 +292,15 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         if (read.error === 'version') { return refuse(offer.guest, 'version'); }
         if (read.error) { return; }
 
-        // One phone at a time. The same phone offering again (a retry) replaces its attempt, and so does
-        // another phone when this one is not getting anywhere (it may have refused the answer: a forged link).
-        if (guest && guest.id !== offer.guest
-                && (guest.status === 'connected' || Date.now() - guest.since < HANDSHAKE_PATIENCE)) {
+        // The same phone offering again (a retry, a reload, a connection it gave up on before I noticed) replaces
+        // its attempt; a connected one is let go as dropped, so its hello with the resume token keeps its rights.
+        // A phone coming back gets its place even when the room is full.
+        var previous = guests.get(offer.guest);
+        if (previous) {
+            lose(previous);
+        } else if (guests.size >= MAX_PHONES && !returningPhone(offer.guest)) {
             return refuse(offer.guest, 'full');
         }
-        if (guest) { closeGuest(guest); guest = null; }
 
         answer(offer.guest, read);
 
@@ -286,19 +316,15 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
                 pc:         pc,
                 channel:    pc.createDataChannel(Pairing.CHANNEL.label, { negotiated: Pairing.CHANNEL.negotiated, id: Pairing.CHANNEL.id }),
                 status:     'connecting',
-                since:      Date.now(),
-                canControl: true,
+                canControl: false,
                 timers:     {}
             };
 
-        guest = g;
-        setStatus('connecting');
+        guests.set(guestID, g);
+        publish();
 
         wire(g);
-
-        g.timers.handshake = window.setTimeout(function() {
-            if (guest === g && g.status === 'connecting') { lose(g); }
-        }, HANDSHAKE_TIMEOUT);
+        armHandshake(g);
 
         pc.setRemoteDescription({ type: 'offer', sdp: offer.sdp }).then(function() {
             return pc.createAnswer();
@@ -307,25 +333,32 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         }).then(function() {
             return Pairing.gatherComplete(pc);
         }).then(function() {
-            if (guest !== g || session !== room) { return; }
+            if (!current(g) || session !== room) { return; }
             return room.broker.putAnswer(room.room, guestID, room.hostKey, Pairing.answerBlob(pc.localDescription.sdp));
         }).catch(function(error) {
             console.warn('FrameTrail pairing: could not answer the phone.', error);
-            if (guest === g) { lose(g); }
+            lose(g);
         });
 
+    }
+
+    function armHandshake(g) {
+        window.clearTimeout(g.timers.handshake);
+        g.timers.handshake = window.setTimeout(function() {
+            if (current(g) && g.status === 'connecting') { lose(g); }
+        }, HANDSHAKE_TIMEOUT);
     }
 
     function wire(g) {
 
         g.channel.addEventListener('open', function() {
             g.timers.hello = window.setTimeout(function() {
-                if (guest === g && g.status === 'connecting') { lose(g); }
+                if (current(g) && g.status === 'connecting') { lose(g); }
             }, HELLO_TIMEOUT);
         });
 
         g.channel.addEventListener('message', function(event) {
-            if (guest === g && typeof event.data === 'string') { receive(g, event.data); }
+            if (current(g) && typeof event.data === 'string') { receive(g, event.data); }
         });
 
         g.channel.addEventListener('close', function() { lose(g); });
@@ -343,7 +376,7 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
             } else if (state === 'connected') {
                 g.pc.getStats().then(function(stats) {
                     g.path = Pairing.selectedPath(stats);
-                    if (guest === g) { setStatus(status); }
+                    if (current(g)) { publish(); }
                 }).catch(function() {});
             }
         });
@@ -367,6 +400,7 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         switch (message.type) {
 
             case 'hello':
+                if (g.status === 'connected') { return; }
                 if (message.v !== Pairing.PROTOCOL_VERSION) {
                     send(g, { type: 'bye', reason: 'version' });
                     lose(g);
@@ -375,24 +409,28 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
                 window.clearTimeout(g.timers.hello);
                 window.clearTimeout(g.timers.handshake);
                 g.label = message.label || g.label;
-                if (returning && message.resume && message.resume === returning.token) {
-                    g.canControl = returning.canControl;
+                var back = message.resume ? returning.get(message.resume) : null;
+                if (back) {
+                    returning.delete(message.resume);
+                    scheduleResumeCheck();
+                    g.canControl = back.canControl;
+                    g.number     = back.number;
+                } else {
+                    // The first phone may control the playback; the ones that join it only watch, until they are let.
+                    g.canControl = !connectedPhones().length && !returning.size;
+                    g.number     = ++joined;
                 }
-                returning = null;
-                window.clearTimeout(timers.resume);
                 g.resume = Pairing.randomId();
                 g.status = 'connected';
                 send(g, { type: 'welcome', v: Pairing.PROTOCOL_VERSION, canControl: g.canControl, resume: g.resume, label: hostLabel() });
-                stopAccepting();
-                setStatus('connected');
-                lastState = null;
+                publish();
                 startSampling();
                 sample();
                 break;
 
             case 'ready':
                 if (message.id === g.bundleID) {
-                    lastState = null;
+                    g.fresh = true;
                     sample();
                 }
                 break;
@@ -420,41 +458,53 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         try { g.pc.close(); } catch (e) { /* closed */ }
     }
 
-    // The phone is gone: it left, the connection broke, or the handshake did not finish.
+    // A phone is gone: it left, the connection broke, or the handshake did not finish.
     function lose(g) {
 
-        if (guest !== g) { return; }
+        if (!current(g)) { return; }
 
         var wasConnected = (g.status === 'connected');
 
-        guest = null;
+        guests.delete(g.id);
         closeGuest(g);
-        stopSampling();
+        if (!connectedPhones().length) { stopSampling(); }
 
         if (!session) { return; }
 
         if (wasConnected && !g.leftOnPurpose) {
-            // The room opens again for two minutes, for this phone to come back.
-            returning = { token: g.resume, canControl: g.canControl, label: g.label };
-            window.clearTimeout(timers.resume);
-            timers.resume = window.setTimeout(resumeWindowOver, RESUME_WINDOW);
-            setStatus('reconnecting');
-        } else {
-            setStatus('waiting');
+            // Two minutes for this phone to come back.
+            returning.set(g.resume, { id: g.id, number: g.number, label: g.label, canControl: g.canControl, until: Date.now() + RESUME_WINDOW });
+            scheduleResumeCheck();
         }
 
-        startAccepting(wasConnected);
+        publish();
 
     }
 
-    function resumeWindowOver() {
-        returning = null;
-        if (status !== 'reconnecting') { return; }
-        // Nobody is looking at the QR code: pairing ends. Otherwise it waits for a phone, as before.
-        if (FrameTrail.module('PairingDialog') && FrameTrail.module('PairingDialog').isOpen) {
-            setStatus('waiting');
-        } else {
+    // One timer for the resume window that ends first.
+    function scheduleResumeCheck() {
+        var next = Infinity;
+        window.clearTimeout(timers.resume);
+        timers.resume = null;
+        returning.forEach(function(r) { next = Math.min(next, r.until); });
+        if (next !== Infinity) {
+            timers.resume = window.setTimeout(resumeWindowsOver, Math.max(0, next - Date.now()));
+        }
+    }
+
+    function resumeWindowsOver() {
+        var now   = Date.now(),
+            ended = false;
+        returning.forEach(function(r, token) {
+            if (r.until <= now) { returning.delete(token); ended = true; }
+        });
+        scheduleResumeCheck();
+        if (!ended) { return; }
+        // No phone is left and nobody is looking at the QR code: pairing ends. Otherwise it waits for phones, as before.
+        if (!guests.size && !returning.size && !(FrameTrail.module('PairingDialog') && FrameTrail.module('PairingDialog').isOpen)) {
             close();
+        } else {
+            publish();
         }
     }
 
@@ -464,7 +514,7 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
 
 
     /* ------------------------------------------------------------------ */
-    /*  What the phone shows                                              */
+    /*  What the phones show                                              */
     /* ------------------------------------------------------------------ */
 
     function playback() {
@@ -486,22 +536,25 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
     }
 
     /**
-     * I look at the playback and send the phone what changed: the overview,
+     * I look at the playback and send the phones what changed: the overview,
      * a new hypervideo (its bundle first), or the state — when playing,
      * waiting or the rate changed, when the playhead left its course (a seek),
-     * or when the heartbeat is due.
+     * or when the heartbeat is due. A phone that has just shown a bundle or
+     * come back from the overview (fresh) gets the state at once.
      */
     function sample() {
 
-        var g = guest;
+        var phones = connectedPhones().filter(function(g) { return g.channel.readyState === 'open'; });
 
-        if (!g || g.status !== 'connected' || g.channel.readyState !== 'open') { return; }
+        if (!phones.length) { return; }
 
         if (FrameTrail.getState('viewMode') !== 'video') {
-            if (g.view !== 'overview') {
-                g.view = 'overview';
-                send(g, { type: 'view', mode: 'overview' });
-            }
+            phones.forEach(function(g) {
+                if (g.view !== 'overview') {
+                    g.view = 'overview';
+                    send(g, { type: 'view', mode: 'overview' });
+                }
+            });
             return;
         }
 
@@ -509,16 +562,6 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
 
         // A hypervideo that is still being opened has no duration yet: wait for it.
         if (!id || id !== readyID) { return; }
-
-        if (g.view === 'overview') {
-            g.view = 'video';
-            lastState = null;
-        }
-
-        if (g.bundleFor !== id) {
-            sendBundle(g);
-            return;
-        }
 
         var now     = Date.now(),
             current = playback();
@@ -531,12 +574,28 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
                || lastState.rate !== current.rate
                || lastState.waiting !== current.waiting
                || Math.abs(expectedTime(lastState, now) - current.time) > SEEK_THRESHOLD
-               || now - lastState.at >= (current.playing ? HEARTBEAT_PLAYING : HEARTBEAT_PAUSED);
+               || now - lastState.at >= (current.playing ? HEARTBEAT_PLAYING : HEARTBEAT_PAUSED),
+            text = null;
 
-        if (!due) { return; }
+        phones.forEach(function(g) {
+            if (g.view === 'overview') {
+                g.view  = 'video';
+                g.fresh = true;
+            }
+            if (g.bundleFor !== id) {
+                sendBundle(g);
+                return;
+            }
+            if (!due && !g.fresh) { return; }
+            if (text === null) {
+                current.seq = ++seq;
+                text = Pairing.encode(current);
+            }
+            g.channel.send(text);
+            g.fresh = false;
+        });
 
-        current.seq = ++seq;
-        if (send(g, current)) {
+        if (due && text !== null) {
             lastState = current;
             lastState.at = now;
         }
@@ -550,26 +609,29 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
 
     function stopSampling() {
         window.clearInterval(timers.sample);
+        timers.sample = null;
         lastState = null;
     }
 
     /**
-     * I send the open hypervideo to the phone: its bundle without code, where
-     * its relative media paths resolve, the page's playback settings and the
-     * time span (the phone has no video to learn it from).
+     * The open hypervideo as the phones get it, made once for all of them:
+     * its bundle without code, where its relative media paths resolve, the
+     * page's playback settings and the time span (a phone has no video to
+     * learn it from), in pieces ready to send.
      */
-    function sendBundle(g) {
+    function currentBundle() {
 
-        var id       = openID(),
+        var id  = openID(),
+            key = id + ':' + revision;
+
+        if (shared && shared.key === key) { return shared; }
+
+        var Export   = FrameTrail.module('BundleExport'),
+            Model    = FrameTrail.module('HypervideoModel'),
             bundleID = Pairing.randomId(8),
-            Export   = FrameTrail.module('BundleExport'),
-            Model    = FrameTrail.module('HypervideoModel');
+            made     = { key: key, id: bundleID };
 
-        g.bundleFor = id;
-        g.bundleID  = bundleID;
-
-        Export.bundle('hypervideo', id).then(function(bundle) {
-            if (guest !== g || g.bundleID !== bundleID) { return; }
+        made.texts = Export.bundle('hypervideo', id).then(function(bundle) {
             var payload = {
                 bundle:   Pairing.companionBundle(bundle),
                 datapath: Export.pageDatapath(),
@@ -577,7 +639,27 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
                 offsetIn: Model.offsetIn || 0,
                 duration: Model.duration || 0
             };
-            return sendAll(g, Pairing.bundleMessages(bundleID, JSON.stringify(payload)));
+            return Pairing.bundleMessages(bundleID, JSON.stringify(payload)).map(Pairing.encode);
+        });
+
+        // One that failed is not kept, so the next phone gets a new try.
+        made.texts.catch(function() { if (shared === made) { shared = null; } });
+
+        shared = made;
+        return made;
+
+    }
+
+    function sendBundle(g) {
+
+        var bundle = currentBundle();
+
+        g.bundleFor = openID();
+        g.bundleID  = bundle.id;
+
+        bundle.texts.then(function(texts) {
+            if (!current(g) || g.bundleID !== bundle.id) { return; }
+            return sendAll(g, texts);
         }).then(function() {
             sample();
         }).catch(function(error) {
@@ -587,7 +669,7 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
     }
 
     // Messages one after the other, holding back while the channel's buffer is full.
-    function sendAll(g, messages) {
+    function sendAll(g, texts) {
 
         var channel = g.channel,
             index   = 0;
@@ -596,13 +678,13 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
 
         return new Promise(function(resolve) {
             function pump() {
-                while (index < messages.length) {
-                    if (guest !== g || channel.readyState !== 'open') { return resolve(false); }
+                while (index < texts.length) {
+                    if (!current(g) || channel.readyState !== 'open') { return resolve(false); }
                     if (channel.bufferedAmount > 1024 * 1024) {
                         channel.addEventListener('bufferedamountlow', pump, { once: true });
                         return;
                     }
-                    channel.send(Pairing.encode(messages[index++]));
+                    channel.send(texts[index++]);
                 }
                 resolve(true);
             }
@@ -612,7 +694,7 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
     }
 
     /**
-     * The phone asks for play, pause or a seek; I do it if it may.
+     * A phone asks for play, pause or a seek; I do it if it may.
      */
     function carryOut(g, request) {
 
@@ -636,12 +718,12 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
 
     }
 
-    // The hypervideo changed where the phone cannot see it: it gets it again.
+    // The hypervideo changed where the phones cannot see it: they get it again.
     function resendBundle() {
-        if (guest && guest.status === 'connected') {
-            guest.bundleFor = null;
-            sample();
-        }
+        revision++;
+        shared = null;
+        guests.forEach(function(g) { g.bundleFor = null; });
+        sample();
     }
 
 
@@ -650,88 +732,130 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
     /* ------------------------------------------------------------------ */
 
     /**
-     * I end pairing: the phone is told and let go, the room closed.
+     * I end pairing: the phones are told and let go, the room closed.
      *
      * @method close
      */
     function close() {
 
-        var g = guest;
+        var room = session,
+            gone = [];
 
-        if (g) {
-            guest = null;
+        guests.forEach(function(g) {
             send(g, { type: 'bye', reason: 'stopped' });
-            stopSampling();
-            // A moment for the goodbye to leave before the channel closes.
-            window.setTimeout(function() { closeGuest(g); }, 300);
+            gone.push(g);
+        });
+        guests.clear();
+        stopSampling();
+        // A moment for the goodbyes to leave before the channels close.
+        if (gone.length) {
+            window.setTimeout(function() { gone.forEach(closeGuest); }, 300);
         }
 
-        stopAccepting();
+        window.clearInterval(timers.poll);
         window.clearTimeout(timers.resume);
+        timers.resume = null;
+        if (room) {
+            room.broker.closeRoom(room.room, room.hostKey).catch(function() { /* it expires on its own */ });
+        }
+
         generation++;
         opening   = null;
         session   = null;
-        returning = null;
         problem   = null;
+        shared    = null;
+        joined    = 0;
+        returning.clear();
         setStatus('off');
 
     }
 
     /**
-     * I let the phone control playback, or stop it from doing so.
+     * I let a phone control playback, or stop it from doing so. A phone that
+     * dropped keeps what I set when it comes back.
      *
      * @method setCanControl
+     * @param {String} id the phone's id in the snapshot
      * @param {Boolean} canControl
      */
-    function setCanControl(canControl) {
-        if (!guest) { return; }
-        guest.canControl = !!canControl;
-        send(guest, { type: 'control', canControl: guest.canControl });
-        setStatus(status);
+    function setCanControl(id, canControl) {
+        var g = guests.get(id),
+            r = returningPhone(id);
+        if (g && g.status === 'connected') {
+            g.canControl = !!canControl;
+            send(g, { type: 'control', canControl: g.canControl });
+        } else if (r) {
+            r.canControl = !!canControl;
+        } else {
+            return;
+        }
+        publish();
+    }
+
+    /**
+     * I let a phone go: it is told pairing ended and cannot come back with
+     * its rights (scanning the code again, it joins as a new phone).
+     *
+     * @method disconnect
+     * @param {String} id the phone's id in the snapshot
+     */
+    function disconnect(id) {
+        var g = guests.get(id);
+        if (g) {
+            guests.delete(id);
+            send(g, { type: 'bye', reason: 'stopped' });
+            window.setTimeout(function() { closeGuest(g); }, 300);
+            if (!connectedPhones().length) { stopSampling(); }
+        }
+        returning.forEach(function(r, token) {
+            if (r.id === id) { returning.delete(token); }
+        });
+        scheduleResumeCheck();
+        publish();
     }
 
     /**
      * A hypervideo is completely open, at the start or after a switch. The
      * switch cleared every timer of the page, so I start mine again; the
-     * phone gets the new hypervideo with the next look at the playback.
+     * phones get the new hypervideo with the next look at the playback.
      *
      * @method hypervideoChanged
      * @param {String} hypervideoID
      */
     function hypervideoChanged(hypervideoID) {
         readyID = hypervideoID ? String(hypervideoID) : null;
-        if (session && session.accepting) {
+        if (session) {
             window.clearInterval(timers.poll);
             timers.poll = window.setInterval(poll, Pairing.POLL_INTERVAL);
         }
-        if (guest && guest.status === 'connected') {
+        guests.forEach(function(g) {
+            if (g.status === 'connecting') { armHandshake(g); }
+        });
+        if (connectedPhones().length) {
             startSampling();
             sample();
         }
-        if (returning) {
-            window.clearTimeout(timers.resume);
-            timers.resume = window.setTimeout(resumeWindowOver, RESUME_WINDOW);
-        }
+        scheduleResumeCheck();
     }
 
-    // After a save the phone gets what was saved; nothing of an edit reaches it before.
+    // After a save the phones get what was saved; nothing of an edit reaches them before.
     FrameTrail.addEventListener('userAction', function(event) {
         if (event.detail && event.detail.action === 'EditSave') { resendBundle(); }
     });
 
-    // Seeks (setCurrentTime updates at once) and playback reach the phone without waiting for the next look,
+    // Seeks (setCurrentTime updates at once) and playback reach the phones without waiting for the next look,
     // which a hidden tab's throttled timers would delay. A native video's pause lands a moment after the event.
-    FrameTrail.addEventListener('timeupdate', function() { if (guest) { sample(); } });
-    FrameTrail.addEventListener('play', function() { if (guest) { sample(); } });
+    FrameTrail.addEventListener('timeupdate', function() { if (guests.size) { sample(); } });
+    FrameTrail.addEventListener('play', function() { if (guests.size) { sample(); } });
     FrameTrail.addEventListener('pause', function() {
-        if (guest) {
+        if (guests.size) {
             window.setTimeout(sample, 0);
             window.setTimeout(sample, 60);
         }
     });
 
     window.addEventListener('pagehide', function() {
-        if (guest) { send(guest, { type: 'bye', reason: 'stopped' }); }
+        guests.forEach(function(g) { send(g, { type: 'bye', reason: 'stopped' }); });
     });
 
 
@@ -739,13 +863,14 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
 
         onChange: {
             viewMode: function() { window.setTimeout(sample, 0); },
-            // Edit mode ended: what the phone has may be out of date (where nothing is saved, this is the only moment it gets the edits).
+            // Edit mode ended: what the phones have may be out of date (where nothing is saved, this is the only moment they get the edits).
             editMode: function(editMode, oldEditMode) { if (!editMode && oldEditMode) { resendBundle(); } }
         },
 
         open:              open,
         close:             close,
         setCanControl:     setCanControl,
+        disconnect:        disconnect,
         hypervideoChanged: hypervideoChanged,
 
         /**

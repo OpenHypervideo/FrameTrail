@@ -1,6 +1,6 @@
-# Pairing a Phone
+# Pairing Phones
 
-A phone pairs with a FrameTrail player by scanning a QR code. From then on the player shows the video, and the phone shows the hypervideo's content views — by default the annotations, one at a time, full screen — in step with the player's playback. The phone can play, pause and seek the player, unless the player takes that right away. Playback is synchronised peer to peer over a WebRTC DataChannel; the hypervideo itself goes the same way, so pairing works in every storage mode, includes unsaved edits and needs no login on the phone.
+A phone pairs with a FrameTrail player by scanning a QR code. From then on the player shows the video, and the phone shows the hypervideo's content views — by default the annotations, one at a time, full screen — in step with the player's playback. A whole classroom can pair with one player: the first phone may play, pause and seek it, the ones that join it only watch, and the player can give or take that right per phone. Playback is synchronised peer to peer over a WebRTC DataChannel; the hypervideo itself goes the same way, so pairing works in every storage mode, includes unsaved edits and needs no login on the phone.
 
 The only server in between is a **pairing broker**: a small HTTP service that passes the WebRTC offer and answer on, and nothing else. FrameTrail ships a stub of it for development and tests (`scripts/pairing-broker.mjs`); a production broker implements the contract below.
 
@@ -28,6 +28,12 @@ What the phone shows is authored per hypervideo: the layout editor shows a phone
 | project file | yes | beside the file, if it is served over http(s) | from the file's datapath, if http(s) |
 | download / portable page | yes | beside the page, if there is one | from the page's datapath |
 | overview, no hypervideo open | no | — | — |
+
+### In a classroom
+
+The QR code stays on the screen until pairing is stopped, so it can be projected while a class joins. The player takes up to 50 phones at once; more are told it is full. The first phone to pair (usually the presenter's) may play, pause and seek; every phone that joins it only watches, until the switch beside it in the pairing dialog is turned on. The dialog lists the phones in the order they paired, numbered, with how each is connected, and can let one go. The player sends the hypervideo to every phone itself — prepared once, the hypervideo's data without its media, which the phones load from their own URLs — and after that only the playback state, a few hundred bytes a second per phone.
+
+The network matters more than the player. School and guest WiFi often keeps devices apart (client isolation): then the phones cannot reach the player directly and need a TURN relay (below), which carries every phone's traffic. And a class reaches the broker from one public address: each phone makes a handful of requests while it pairs, so a broker for classrooms must allow that per address (the stub allows 600 requests a minute per address and 64 waiting offers per room).
 
 ## The Stub Broker
 
@@ -102,12 +108,12 @@ Blobs are the clients' JSON: an offer `{ v: 1, sdp, label }`, an answer `{ v: 1,
 
 ## Handshake
 
-1. **The player** (`PairingHost`) generates an ECDSA P-256 `RTCCertificate`, fetches `/ice`, makes a room id and a host key, opens the room, and shows the QR code of `<companion page>#pair=<room>&b=<broker>&fp=<SHA-256 fingerprint of its certificate, base64url>`. The fragment is never sent to a server. It polls for offers every second while it accepts phones.
+1. **The player** (`PairingHost`) generates an ECDSA P-256 `RTCCertificate`, fetches `/ice`, makes a room id and a host key, opens the room, and shows the QR code of `<companion page>#pair=<room>&b=<broker>&fp=<SHA-256 fingerprint of its certificate, base64url>`. The fragment is never sent to a server. It polls for offers every second until pairing is stopped.
 2. **The phone** (`companion.html`, `CompanionLauncher`) reads the fragment (kept in `sessionStorage`, with its guest id and resume token, for reloads), fetches `/ice`, creates the peer connection and the negotiated channel (`createDataChannel('frametrail', { negotiated: true, id: 0 })`), waits for ICE gathering to complete (or 3 s), posts its offer and polls for the answer for up to 60 s.
-3. **The player** answers the offer with its certificate, after the same gathering wait — or refuses it: `full` while another phone is paired (this release accepts one), `version` for another protocol version.
+3. **The player** answers the offer with its certificate, after the same gathering wait — or refuses it: `full` while 50 phones are connected or connecting, `version` for another protocol version.
 4. **The phone** checks that every `a=fingerprint` of the answer is the fingerprint from the QR code, so a broker cannot put itself in the player's place, and the channel opens. The phone says `hello`, the player `welcome`.
 
-While a phone is connected the player closes the room. When the phone drops, the player opens the same room again for two minutes; a phone that comes back with its resume token in that time keeps its control rights. Then, unless the dialog is open, pairing ends.
+The room stays open until pairing is stopped. A phone gets `canControl` when it is the first: no other phone is connected or within its time to come back; the ones that join it get `false`, until the player switches them (`control`). When a phone drops, it has two minutes to come back with its resume token and keeps its control right. When the last phone's two minutes are over and the pairing dialog is closed, pairing ends. A phone the player lets go is told `bye`; scanning the code again, it joins as a new phone.
 
 ## Protocol v1
 
@@ -126,21 +132,20 @@ JSON messages over the channel, `{ type, … }`; `FrameTrailPairing.decode(text,
 | phone | `request { action: 'play' \| 'pause' \| 'seek', time? }` | Carried out only while `canControl` |
 | phone | `ping { id }`, `bye { reason? }` | Round trip (every 2 s); leaving |
 
-The bundle payload is `{ bundle, datapath, config, offsetIn, duration }`: the hypervideo bundle without code (`FrameTrailPairing.companionBundle()`: no overlays and code snippets, no global events, no `onClickContentItem`), what its relative media paths resolve against, the page's playback settings, and the time span (the phone has no video to learn it from). It is sent when a phone is paired, after every save, when edit mode ends and when another hypervideo is opened; edits in between do not reach the phone.
+The bundle payload is `{ bundle, datapath, config, offsetIn, duration }`: the hypervideo bundle without code (`FrameTrailPairing.companionBundle()`: no overlays and code snippets, no global events, no `onClickContentItem`), what its relative media paths resolve against, the page's playback settings, and the time span (the phone has no video to learn it from). It is sent when a phone is paired, after every save, when edit mode ends and when another hypervideo is opened; edits in between do not reach the phones. The player makes it once for all phones, so every phone shows the same.
 
 **The state belongs to the player.** The phone sends only requests; the player carries them out through the `HypervideoController` and sends its new state. The phone never sends anything in reaction to a state, so the two cannot chase each other. The phone's clock extrapolates the last state: `time + (now − receivedAt + rtt / 2) × rate` while playing and not waiting; a new state moves it when the player started or stopped, changed its rate, or the clock is more than 0.25 s off. The phone's player (the `companion` state) is a player without video: `HypervideoModel` uses a canvas clock over the player's time span, `HypervideoController` reads the extrapolated time and turns play, pause and seeks into requests, `ViewLayout` renders the companion views into the right area's container (`ViewVideo.AreaCompanionContainer`).
 
 ## Security Model
 
 - **The broker cannot impersonate the player**: the QR code carries the fingerprint of the player's certificate, and the phone refuses an answer with another one. WebRTC encrypts the channel (DTLS), so neither the broker nor a TURN relay can read it.
-- **Spectators cannot take over**: the room's host key keeps everyone else from answering phones, the player accepts one phone at a time, and it can take that phone's control rights away. A projected QR code stays valid while the player accepts phones; Stop ends it.
+- **Spectators cannot take over**: the room's host key keeps everyone else from answering phones, phones that join while another is paired only watch, the player takes at most 50 at once, and it can take any phone's control right away or let the phone go. A projected QR code stays valid until Stop.
 - **Nothing an author wrote runs on the phone.** The phone may be outside the local network, so this is a must: the bundle comes without code, the companion page's Content Security Policy (`script-src 'self'; object-src 'none'; base-uri 'none'`) refuses inline scripts, inline event handlers and `eval`, and the page has no script of its own (CompanionLauncher starts itself on pages marked `data-frametrail-companion`). Third-party embeds that need inline scripts fall back to what they show without.
 - **What the broker learns**: when a room exists, how many offers it gets, and the IP addresses inside the SDPs (local addresses are hidden behind mDNS names by default). Not the hypervideo, the playback, or who is who.
 - **Private instances**: the phone gets the hypervideo from the player, but loads its relative media from the instance itself, which refuses it without a session. Pair such hypervideos only where the media are public URLs.
 
 ## Not in This Release
 
-- Several phones at once (the contract and the protocol are ready; the player's interface and limits are not).
 - Media of local-folder hypervideos on the phone (small images over the channel).
 - A phone browsing ahead of the player; opting a hypervideo out of pairing.
 - A production broker, coturn setup and hosted companion page: a separate project, `FrameTrail-Pairing`. FrameTrail has no public default broker.

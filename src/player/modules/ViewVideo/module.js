@@ -339,7 +339,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
     /**
      * I show the pairing button (docs/PAIRING.md) where it belongs: in the video view of a computer (not a phone
      * or tablet), when the instance has a pairing broker and wants the button (config.pairingButtonVisible), and
-     * not on a phone's own player. In edit mode only while a phone is paired, so the connection can be seen and
+     * not on a phone's own player. In edit mode only while a phone is paired, so the connections can be seen and
      * ended. Marked active while one is.
      *
      * @method updatePairingButton
@@ -348,7 +348,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         var config  = FrameTrail.module('Database').config || {},
             pairing = FrameTrail.getState('pairing') || {},
-            paired  = pairing.status === 'connected',
+            paired  = (pairing.connected || 0) > 0,
             show    = FrameTrail.getState('viewMode') === 'video'
                    && !FrameTrail.isTouchPrimary()
                    && config.pairingButtonVisible === true

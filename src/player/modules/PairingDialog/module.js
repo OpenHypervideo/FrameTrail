@@ -4,10 +4,11 @@
 
 
 /**
- * I am the PairingDialog: the QR code a phone scans to pair with the player,
- * the link it holds, who is paired and whether that phone may control
- * playback (docs/PAIRING.md). The pairing itself is the PairingHost's; it
- * goes on when I am closed, and the pairing button opens me again.
+ * I am the PairingDialog: the QR code phones scan to pair with the player,
+ * the link it holds, and the phones that are paired: which of them may
+ * control playback, and a way to let one go (docs/PAIRING.md). The pairing
+ * itself is the PairingHost's; it goes on when I am closed, and the pairing
+ * button opens me again.
  *
  * @class PairingDialog
  * @static
@@ -17,9 +18,10 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
 
     var labels = FrameTrail.module('Localization').labels;
 
-    var dialogCtrl = null,
-        elements   = null,
-        shownLink  = null;
+    var dialogCtrl  = null,
+        elements    = null,
+        shownLink   = null,
+        shownPhones = null;
 
 
     function escapeHTML(text) {
@@ -79,9 +81,7 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
                           + '            <label class="mt-1" for="pairingLink">'+ labels['PairingLink'] +'</label>'
                           + '            <input type="text" id="pairingLink" class="pairingLink" readonly>'
                           + '        </div>'
-                          + '        <div class="pairingGuest">'
-                          + '            <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" id="pairingAllowControl" class="pairingAllowControl"><span class="slider round"></span></label><label for="pairingAllowControl">'+ labels['PairingAllowControl'] +'</label></div>'
-                          + '        </div>'
+                          + '        <div class="userList pairingPhones mt-1"></div>'
                           + '    </div>'
                           + '</div>';
 
@@ -91,15 +91,10 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
             status:     content.querySelector('.pairingStatus'),
             invitation: content.querySelector('.pairingInvitation'),
             link:       content.querySelector('.pairingLink'),
-            guest:      content.querySelector('.pairingGuest'),
-            control:    content.querySelector('.pairingAllowControl')
+            phones:     content.querySelector('.pairingPhones')
         };
 
         elements.link.addEventListener('click', function() { this.select(); });
-
-        elements.control.addEventListener('change', function() {
-            FrameTrail.module('PairingHost').setCanControl(this.checked);
-        });
 
         dialogCtrl = Dialog({
             title:        labels['PairingTitle'],
@@ -111,9 +106,10 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
             width:        620,
             close: function() {
                 dialogCtrl.destroy();
-                dialogCtrl = null;
-                elements   = null;
-                shownLink  = null;
+                dialogCtrl  = null;
+                elements    = null;
+                shownLink   = null;
+                shownPhones = null;
             },
             buttons: [
                 { text: labels['PairingStop'], class: 'pairingStopButton', click: function() {
@@ -164,24 +160,23 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
 
         if (!elements || !pairing) { return; }
 
-        var name      = (pairing.guest && pairing.guest.label) || labels['PairingPhone'],
-            inviting  = (pairing.status === 'waiting' || pairing.status === 'reconnecting' || pairing.status === 'connecting'),
-            statusText = {
-                off:          '',
-                opening:      labels['PairingStatusOpening'],
-                waiting:      labels['PairingStatusWaiting'],
-                connecting:   labels['PairingStatusConnecting'].replace('%s', escapeHTML(name)),
-                connected:    labels['PairingStatusConnected'].replace('%s', escapeHTML(name)),
-                reconnecting: labels['PairingStatusReconnecting'].replace('%s', escapeHTML(name))
-            }[pairing.status] || '';
+        var phones     = pairing.phones || [],
+            open       = (pairing.status === 'open'),
+            statusText = '';
 
-        if (pairing.status === 'connected' && pairing.guest && pairing.guest.path) {
-            statusText += ' <span class="pairingPath">(' + labels['PairingPath' + pairing.guest.path.charAt(0).toUpperCase() + pairing.guest.path.slice(1)] + ')</span>';
+        if (pairing.status === 'opening') {
+            statusText = labels['PairingStatusOpening'];
+        } else if (open) {
+            statusText = (pairing.connected === 0) ? labels['PairingStatusWaiting']
+                       : (pairing.connected === 1) ? labels['PairingStatusPairedOne']
+                       : labels['PairingStatusPairedMany'].replace('%s', pairing.connected);
+            var taking = phones.filter(function(phone) { return phone.status !== 'reconnecting'; }).length;
+            if (taking >= pairing.max) { statusText += ' (' + labels['PairingStatusFull'] + ')'; }
         }
 
-        elements.status.innerHTML = statusText ? '<div class="message active' + (pairing.status === 'connected' ? ' success' : '') + '">' + statusText + '</div>' : '';
+        elements.status.innerHTML = statusText ? '<div class="message active' + (pairing.connected ? ' success' : '') + '">' + escapeHTML(statusText) + '</div>' : '';
 
-        if (pairing.link && inviting) {
+        if (pairing.link && open) {
             if (shownLink !== pairing.link) {
                 elements.code.innerHTML = qrCode(pairing.link);
                 elements.link.value = pairing.link;
@@ -201,8 +196,7 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
         elements.side.classList.toggle('pl-1', codeShown);
         elements.side.classList.toggle('column-12', !codeShown);
 
-        elements.guest.style.display = (pairing.status === 'connected' && pairing.guest) ? '' : 'none';
-        elements.control.checked = !!(pairing.guest && pairing.guest.canControl);
+        renderPhones(phones);
 
         elements.stop.style.display = (pairing.status === 'off') ? 'none' : '';
 
@@ -210,6 +204,79 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
 
     }
 
+    /**
+     * I list the phones: number and device, how each is connected, whether it
+     * may control playback (a switch) and a button that lets it go.
+     *
+     * @method renderPhones
+     * @param {Array} phones the snapshot's phones
+     */
+    function renderPhones(phones) {
+
+        var key = JSON.stringify(phones);
+
+        if (key === shownPhones) { return; }
+        shownPhones = key;
+
+        var list = elements.phones,
+            Host = FrameTrail.module('PairingHost');
+
+        list.innerHTML = '';
+        list.style.display = phones.length ? '' : 'none';
+
+        phones.forEach(function(phone) {
+
+            var _tw = document.createElement('div');
+            _tw.innerHTML = '<div class="userListItem">'
+                + '    <div class="userListInfo">'
+                + '        <div class="userListName"></div>'
+                + '        <div class="userListMeta"></div>'
+                + '    </div>'
+                + '    <div class="userListActions">'
+                + '        <label class="switch" title="'+ labels['PairingAllowControl'] +'"><input type="checkbox" aria-label="'+ labels['PairingAllowControl'] +'"><span class="slider round"></span></label>'
+                + '        <button type="button" class="pairingDisconnectButton" title="'+ labels['PairingDisconnect'] +'"><span class="icon-cancel"></span></button>'
+                + '    </div>'
+                + '</div>';
+            var item    = _tw.firstElementChild,
+                control = item.querySelector('.switch'),
+                meta    = [];
+
+            if (phone.status !== 'connected') { item.classList.add('inactive'); }
+
+            if (phone.status === 'connecting') {
+                meta.push(labels['PairingPhoneConnecting']);
+            } else {
+                if (phone.status === 'reconnecting') {
+                    meta.push(labels['PairingPhoneReconnecting']);
+                } else if (phone.path) {
+                    meta.push(labels['PairingPath' + phone.path.charAt(0).toUpperCase() + phone.path.slice(1)]);
+                }
+                meta.push(phone.canControl ? labels['PairingPhoneControls'] : labels['PairingPhoneWatches']);
+            }
+
+            // textContent, not interpolation: the device label comes from the phone.
+            item.querySelector('.userListName').textContent = (phone.number ? phone.number + ' · ' : '') + (phone.label || labels['PairingPhone']);
+            item.querySelector('.userListMeta').textContent = meta.join('  ·  ');
+
+            // Whether a phone may control is decided when it has paired.
+            if (phone.status === 'connecting') {
+                control.style.display = 'none';
+            } else {
+                control.querySelector('input').checked = !!phone.canControl;
+                control.querySelector('input').addEventListener('change', function() {
+                    Host.setCanControl(phone.id, this.checked);
+                });
+            }
+
+            item.querySelector('.pairingDisconnectButton').addEventListener('click', function() {
+                Host.disconnect(phone.id);
+            });
+
+            list.appendChild(item);
+
+        });
+
+    }
 
     return {
 
