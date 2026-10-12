@@ -268,9 +268,9 @@
             }
         },
         "pairingBrokerURL": {
-            "description": "Base URL of the pairing broker through which phones pair with the player by scanning a QR code, and then show its content views in step with its playback (docs/PAIRING.md). The broker only passes the WebRTC handshake on; it must answer from the page's origin (CORS) and be https on an https page (except on localhost). Empty switches pairing off.",
+            "description": "Base URL of the pairing broker through which phones pair with the player by scanning a QR code, and then show its content views in step with its playback (docs/PAIRING.md): http(s), or a path starting with \"/\" for a broker on the player page's own server. The broker only passes the WebRTC handshake on; it must answer the page's origin (CORS) and be https on an https page (except on localhost). Empty switches pairing off.",
             "type": "string",
-            "pattern": "^(https?://.+)?$",
+            "pattern": "^(https?://.+|/[^/].*)?$",
             "default": ""
         },
         "pairingButtonVisible": {

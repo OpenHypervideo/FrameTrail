@@ -234,6 +234,25 @@
     }
 
     /**
+     * The broker URL a page uses: the configured one, or — for a path starting
+     * with "/" (a broker on the page's own server) — that path on the page's
+     * origin. Only a page on http(s) has one; elsewhere the value stays as it
+     * is (and checkBrokerURL finds it invalid).
+     *
+     * @method resolveBrokerURL
+     * @param {String} configured  config.pairingBrokerURL
+     * @param {String} pageURL     location.href
+     * @return {String}
+     */
+    function resolveBrokerURL(configured, pageURL) {
+        configured = String(configured || '').trim();
+        if (/^\/(?!\/)/.test(configured) && /^https?:/i.test(pageURL || '')) {
+            try { return new URL(configured, pageURL).href; } catch (e) { /* not a URL */ }
+        }
+        return configured;
+    }
+
+    /**
      * What is wrong with a broker URL for a page, or null: 'missing',
      * 'invalid' (not http(s)), 'insecure' (http on an https page, which the
      * browser would block — except on this machine: localhost, 127.0.0.1).
@@ -385,7 +404,7 @@
 
             base: base,
 
-            // The ICE servers to use: [] when the broker has none (LAN only).
+            // The ICE servers to use: [] when the broker has none (LAN only; a broker may also answer 404 for that).
             ice: function() {
                 return request('GET', 'ice', { accept: [404] }).then(function(response) {
                     if (response.status === 404) { return []; }
@@ -400,7 +419,7 @@
             },
 
             closeRoom: function(room, hostKey) {
-                return request('DELETE', path(room), { hostKey: hostKey, accept: [404] }).then(function() {});
+                return request('DELETE', path(room), { hostKey: hostKey }).then(function() {});
             },
 
             postOffer: function(room, guest, blob) {
@@ -426,10 +445,10 @@
                 return request('PUT', path(room, '/answers/' + encodeURIComponent(guest)), { hostKey: hostKey, body: blob }).then(function() {});
             },
 
-            // The answer, or null while there is none.
+            // The answer, or null while there is none (204); rejects with noRoom when the room is gone.
             getAnswer: function(room, guest) {
-                return request('GET', path(room, '/answers/' + encodeURIComponent(guest)), { accept: [404] }).then(function(response) {
-                    if (response.status === 404) { return null; }
+                return request('GET', path(room, '/answers/' + encodeURIComponent(guest))).then(function(response) {
+                    if (response.status === 204) { return null; }
                     return response.text().then(readBlob);
                 });
             }
@@ -868,6 +887,7 @@
         checkFingerprint: checkFingerprint,
 
         brokerBase:       brokerBase,
+        resolveBrokerURL: resolveBrokerURL,
         checkBrokerURL:   checkBrokerURL,
         companionURL:     companionURL,
         joinURL:          joinURL,

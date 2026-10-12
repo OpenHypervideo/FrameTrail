@@ -104,8 +104,10 @@
     // Body types whose body may carry a media fragment of the embedded media.
     var MEDIA_SELECTOR_TYPES = ['video', 'vimeo', 'youtube'];
 
-    // The playback-relevant keys of config.json, the only ones a project bundle carries.
-    var PLAYBACK_CONFIG_KEYS = ['defaultTheme', 'defaultLanguage', 'videoFit', 'overviewMode', 'overviewTitle', 'overviewShowSearchBar'];
+    // The playback-relevant keys of config.json, the only ones a project bundle carries: how its pages play,
+    // and how they pair with phones (so a project file can do that too, docs/PAIRING.md).
+    var PLAYBACK_CONFIG_KEYS = ['defaultTheme', 'defaultLanguage', 'videoFit', 'overviewMode', 'overviewTitle', 'overviewShowSearchBar',
+                                'pairingBrokerURL', 'pairingButtonVisible', 'pairingCompanionURL'];
 
     // Keys of annotations/_index.json that are not legacy per-user entries.
     var ANNOTATION_INDEX_KEYS = ['mainAnnotation', 'annotation-increment', 'annotationfiles'];

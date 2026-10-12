@@ -339,6 +339,24 @@
             }
         },
         {
+            "name": "project bundle that pairs with phones (pairing keys are playback settings)",
+            "schema": "project-bundle.schema.json",
+            "data": {
+                "bundle": "project",
+                "formatVersion": 1,
+                "hypervideosIndex": {
+                    "hypervideos": {}
+                },
+                "hypervideos": {},
+                "config": {
+                    "defaultTheme": "studio",
+                    "pairingBrokerURL": "https://pair.example.org/",
+                    "pairingButtonVisible": true,
+                    "pairingCompanionURL": ""
+                }
+            }
+        },
+        {
             "name": "generator and unknown properties on an overlay",
             "schema": "content-item.schema.json",
             "data": {
@@ -634,6 +652,13 @@
                 "pairingBrokerURL": "https://pair.example.org/broker/",
                 "pairingButtonVisible": true,
                 "pairingCompanionURL": "https://pair.example.org/companion.html"
+            }
+        },
+        {
+            "name": "pairing broker on the player's own server (a path)",
+            "schema": "config.schema.json",
+            "data": {
+                "pairingBrokerURL": "/pairing-broker/"
             }
         }
     ]

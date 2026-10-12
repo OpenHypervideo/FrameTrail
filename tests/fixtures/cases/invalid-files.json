@@ -484,7 +484,7 @@
             "errors": [
                 {
                     "path": "/pairingBrokerURL",
-                    "message": "must match the pattern ^(https?://.+)?$"
+                    "message": "must match the pattern ^(https?://.+|/[^/].*)?$"
                 },
                 {
                     "path": "/pairingButtonVisible",

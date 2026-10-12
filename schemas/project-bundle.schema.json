@@ -28,7 +28,7 @@
         "resources": { "$ref": "resources-index.schema.json" },
         "tagdefinitions": { "$ref": "tagdefinitions.schema.json" },
         "config": {
-            "description": "The playback-relevant part of config.json. Nothing else from config.json travels: accounts, authentication, privacy and upload settings belong to an instance.",
+            "description": "The playback-relevant part of config.json: how the pages play, and how they pair with phones. Nothing else from config.json travels: accounts, authentication, privacy and upload settings belong to an instance.",
             "type": "object",
             "properties": {
                 "defaultTheme": { "$ref": "config.schema.json#/properties/defaultTheme" },
@@ -36,7 +36,10 @@
                 "videoFit": { "$ref": "config.schema.json#/properties/videoFit" },
                 "overviewMode": { "$ref": "config.schema.json#/properties/overviewMode" },
                 "overviewTitle": { "$ref": "config.schema.json#/properties/overviewTitle" },
-                "overviewShowSearchBar": { "$ref": "config.schema.json#/properties/overviewShowSearchBar" }
+                "overviewShowSearchBar": { "$ref": "config.schema.json#/properties/overviewShowSearchBar" },
+                "pairingBrokerURL": { "$ref": "config.schema.json#/properties/pairingBrokerURL" },
+                "pairingButtonVisible": { "$ref": "config.schema.json#/properties/pairingButtonVisible" },
+                "pairingCompanionURL": { "$ref": "config.schema.json#/properties/pairingCompanionURL" }
             },
             "additionalProperties": false
         },

@@ -6,11 +6,11 @@ The only server in between is a **pairing broker**: a small HTTP service that pa
 
 ## Setting It Up
 
-Three keys in `_data/config.json` (Administration → Advanced Settings → Pairing with phones), or in `data-frametrail-config` on a portable page:
+Three keys in `_data/config.json` (Administration → Advanced Settings → Pairing with phones), or in `data-frametrail-config` on a portable page. They are among the playback settings a project bundle carries, so a project file keeps them, an exported project page offers pairing with the same broker, and importing a project's settings brings them along:
 
 | Key | Default | Meaning |
 |-----|---------|---------|
-| `pairingBrokerURL` | `""` | Base URL of the broker. Empty: no pairing. It must answer the page's origin (CORS) and be https on an https page (except on `localhost`) |
+| `pairingBrokerURL` | `""` | Base URL of the broker, or a path starting with `/` for a broker on the player page's own server (it then works under every name the page is opened by). Empty: no pairing. It must answer the page's origin (CORS) and be https on an https page (except on `localhost`) |
 | `pairingButtonVisible` | `false` | Show the pairing button (a phone) in the player controls, while a hypervideo is open. Never on phones and tablets (`FrameTrail.isTouchPrimary()`); in edit mode only while a phone is paired |
 | `pairingCompanionURL` | `""` | The page a phone opens. Empty: `companion.html` beside the player page, which exists only where that page is served over http(s) |
 
@@ -41,9 +41,25 @@ node scripts/pairing-broker.mjs --cert cert.pem --key key.pem    # https
 
 Node 20 or later, no dependencies. It keeps everything in memory and logs method, path (ids shortened) and status, never a blob. For a phone on the LAN, serve FrameTrail under the computer's LAN name with a certificate the phone accepts, and run the broker with `--host 0.0.0.0` and the same certificate (an https page may only call an https broker).
 
+### Trying It with a Phone
+
+A phone cannot use a player that runs on `localhost`: the QR code, the broker and the media all point at `localhost`, which on the phone is the phone. `scripts/pairing-lan.mjs` serves FrameTrail and the stub broker on one https origin the phone can reach on the same WiFi:
+
+```bash
+node scripts/pairing-lan.mjs --path /frametrail/src/          # proxies https://localhost; --target for another local server
+```
+
+It listens on `https://<this computer>.local:8443` (and the computer's addresses), passes every request on to the local web server (`--target`, default `https://localhost`, PHP included) and answers `/pairing-broker/…` itself. Then:
+
+1. Open the player through it on the computer, not through `localhost`: the phone gets the links the page makes. Android phones may not resolve `.local` names; open the page under the computer's address then.
+2. Set the pairing broker to the path `/pairing-broker/` (Administration → Advanced Settings) and switch the pairing button on.
+3. Tap the phone button and scan the QR code with the phone.
+
+The certificate comes from [mkcert](https://github.com/FiloSottile/mkcert) when it is installed (the computer trusts it already; on the phone, install mkcert's root CA once — the script prints where it is), otherwise it is self-signed. Either way the phone may also just accept the warning once: everything is on this one origin. Where the WiFi keeps devices apart or does not pass mDNS, add `--stun stun:stun.l.google.com:19302` (or any other public STUN server).
+
 ### Off the local network: STUN and TURN
 
-Without ICE servers (`GET /ice` answers 404) the two sides connect only through their local addresses, so the phone has to be on the same network — and that network must let its devices reach each other and resolve the mDNS names browsers hide local addresses behind (some campus and guest networks do neither). A STUN server lets them connect through their public addresses as well, which works across most home routers. A phone on cellular, or networks that block direct connections, needs a TURN relay: [coturn](https://github.com/coturn/coturn) with the REST API's shared secret.
+Without ICE servers (`GET /ice` answers an empty list) the two sides connect only through their local addresses, so the phone has to be on the same network — and that network must let its devices reach each other and resolve the mDNS names browsers hide local addresses behind (some campus and guest networks do neither). A STUN server lets them connect through their public addresses as well, which works across most home routers. A phone on cellular, or networks that block direct connections, needs a TURN relay: [coturn](https://github.com/coturn/coturn) with the REST API's shared secret.
 
 ```
 # /etc/turnserver.conf (excerpt)
@@ -63,13 +79,13 @@ The broker hands out short-lived credentials made from that secret (`username = 
 The broker passes opaque blobs between the player (host) and phones (guests) of a room. It never reads them.
 
 ```
-GET    /ice                                     → 200 { iceServers: [...] } | 404 (LAN only)
+GET    /ice                                     → 200 { iceServers: [...] }   ([] for the local network only)
 PUT    /rooms/{room}                [host key]  → 204   create, or keep alive
-DELETE /rooms/{room}                [host key]  → 204 | 404
+DELETE /rooms/{room}                [host key]  → 204   (also when the room is gone already)
 POST   /rooms/{room}/offers/{guest} blob        → 204 | 404 no room | 413 too large | 429
 GET    /rooms/{room}/offers?after=c [host key]  → 200 { offers: [{ guest, cursor, blob }], cursor }
 PUT    /rooms/{room}/answers/{guest} [host key] blob → 204
-GET    /rooms/{room}/answers/{guest}            → 200 blob | 404 not yet
+GET    /rooms/{room}/answers/{guest}            → 200 blob | 204 not yet | 404 no room
 ```
 
 - **Ids** (`room`, `guest`) are 128-bit random values in base64url (`[A-Za-z0-9_-]{16,64}` is accepted). Paths with anything else are not part of the contract (404).
@@ -79,6 +95,7 @@ GET    /rooms/{room}/answers/{guest}            → 200 blob | 404 not yet
 - **CORS**: any origin; `Authorization` and `Content-Type` allowed; preflight answered. Guests post `text/plain`, so their first request needs no preflight.
 - **Rate limit** per address (the stub: 600 requests a minute, 429 with `Retry-After`). Mind classrooms behind one address.
 - **No logs of blobs**: an SDP holds IP addresses.
+- **No error status in the normal course**: browsers log every 4xx answer to `fetch` in the console, and a phone asks for its answer once a second, so "nothing yet" is `204` and "no ICE servers" an empty list. A 4xx means something went wrong (a closed room, a wrong key). Clients still read a `404` from `GET /ice` as "no ICE servers".
 - **Base URL**: everything is relative to `pairingBrokerURL`, so a broker can live under a path; a PHP implementation can take the path from `PATH_INFO`.
 
 Blobs are the clients' JSON: an offer `{ v: 1, sdp, label }`, an answer `{ v: 1, sdp }` or a refusal `{ v: 1, refused: 'full' | 'closed' | 'version' }`.

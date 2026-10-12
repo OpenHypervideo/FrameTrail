@@ -124,7 +124,7 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         if (opening) { return opening; }
 
         var config    = database().config || {},
-            brokerURL = String(config.pairingBrokerURL || '').trim(),
+            brokerURL = Pairing.resolveBrokerURL(config.pairingBrokerURL, window.location.href),
             brokerProblem = Pairing.checkBrokerURL(brokerURL, window.location.protocol),
             companion = Pairing.companionURL(config.pairingCompanionURL, window.location.href);
 

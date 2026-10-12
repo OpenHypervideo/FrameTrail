@@ -5,7 +5,7 @@
  * contract") for development, tests and trying it out on a LAN; a production
  * broker is a separate project. Node 20 or later, no dependencies:
  *
- *     node scripts/pairing-broker.mjs                        # http://localhost:8787, LAN only (GET /ice answers 404)
+ *     node scripts/pairing-broker.mjs                        # http://localhost:8787, LAN only (GET /ice: no servers)
  *     node scripts/pairing-broker.mjs --port 8787 --host 0.0.0.0
  *     node scripts/pairing-broker.mjs --stun stun:stun.example.org:3478
  *     node scripts/pairing-broker.mjs --turn turn:turn.example.org:3478 --turn-secret <coturn static-auth-secret>
@@ -163,7 +163,8 @@ export function createBroker(options = {}) {
 
         ice(req, res) {
             const servers = iceServers();
-            return servers ? send(res, 200, { iceServers: servers }) : send(res, 404, { error: 'no ICE servers: LAN only' });
+            // None: the local network only. An empty list rather than an error, so a browser logs nothing.
+            return send(res, 200, { iceServers: servers || [] });
         },
 
         openRoom(req, res, [id]) {
@@ -182,7 +183,8 @@ export function createBroker(options = {}) {
 
         closeRoom(req, res, [id]) {
             const room = liveRoom(id);
-            if (!room) { return send(res, 404, { error: 'no room' }); }
+            // Gone already (expired): nothing to delete, which is what was asked.
+            if (!room) { return send(res, 204); }
             const refused = hostCheck(req, room);
             if (refused) { return send(res, refused, { error: 'host key' }); }
             rooms.delete(id);
@@ -234,7 +236,9 @@ export function createBroker(options = {}) {
         getAnswer(req, res, [id, guest]) {
             const room = liveRoom(id),
                   answer = room && room.answers.get(guest);
-            if (!answer || answer.expires <= now()) { return send(res, 404, { error: 'no answer yet' }); }
+            if (!room) { return send(res, 404, { error: 'no room' }); }
+            // Not yet: no content, which a browser does not log as a failed request (a 404 would be, once a second).
+            if (!answer || answer.expires <= now()) { return send(res, 204); }
             return send(res, 200, answer.blob, 'text/plain; charset=utf-8');
         }
 

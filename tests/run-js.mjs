@@ -1378,6 +1378,10 @@ describe('FrameTrailPairing', () => {
         assert.equal(Pairing.checkBrokerURL('http://192.168.1.2:8787', 'http:'), null);
         assert.equal(Pairing.checkBrokerURL('http://localhost:8787/', 'https:'), null, 'this machine is trusted');
         assert.equal(Pairing.checkBrokerURL('https://b.example.org', 'https:'), null);
+        assert.equal(Pairing.resolveBrokerURL('/pairing-broker/', 'https://mac.local:8443/ft/index.html#hypervideo=1'), 'https://mac.local:8443/pairing-broker/', 'a path: the broker on the page\'s own server');
+        assert.equal(Pairing.resolveBrokerURL(' https://b.example.org/ ', 'https://ft.example.org/'), 'https://b.example.org/');
+        assert.equal(Pairing.resolveBrokerURL('//b.example.org/', 'https://ft.example.org/'), '//b.example.org/', 'not protocol-relative');
+        assert.equal(Pairing.checkBrokerURL(Pairing.resolveBrokerURL('/pairing-broker/', 'file:///Users/me/index.html'), 'file:'), 'invalid', 'a page without a server has no path for it');
         assert.equal(Pairing.companionURL('', 'https://ft.example.org/sub/index.html#hypervideo=1'), 'https://ft.example.org/sub/companion.html');
         assert.equal(Pairing.companionURL('', 'file:///Users/me/index.html'), null, 'no sibling on file:');
         assert.equal(Pairing.companionURL('https://pair.example.org/c.html#x', 'file:///Users/me/index.html'), 'https://pair.example.org/c.html');
@@ -1579,6 +1583,23 @@ describe('pairing broker (contract v1, scripts/pairing-broker.mjs)', () => {
         await client.closeRoom(room, hostKey);
         await assert.rejects(client.postOffer(room, guest, offer), { code: 'noRoom' });
         await assert.rejects(client.listOffers(room, hostKey, 0), { code: 'noRoom' });
+        await assert.rejects(client.getAnswer(room, guest), { code: 'noRoom' }, 'a phone waiting for an answer learns that the room is gone');
+        await client.closeRoom(room, hostKey);
+    }));
+
+    test('the normal course answers no request with an error status (a browser would log it)', () => withBroker({}, async ({ base, client }) => {
+        const statuses = [];
+        const logged = Pairing.brokerClient(base, { fetch: (url, init) => fetch(url, init).then((response) => { statuses.push(init.method + ' ' + response.status); return response; }) });
+        await logged.ice();
+        await logged.openRoom(room, hostKey);
+        await logged.listOffers(room, hostKey, 0);
+        await logged.postOffer(room, guest, Pairing.offerBlob('v=0'));
+        await logged.getAnswer(room, guest);
+        await logged.putAnswer(room, guest, hostKey, Pairing.answerBlob('v=0'));
+        await logged.getAnswer(room, guest);
+        await logged.closeRoom(room, hostKey);
+        await logged.closeRoom(room, hostKey);
+        assert.deepStrictEqual(statuses, ['GET 200', 'PUT 204', 'GET 200', 'POST 204', 'GET 204', 'PUT 204', 'GET 200', 'DELETE 204', 'DELETE 204']);
     }));
 
     test('only the host of a room acts as its host', () => withBroker({}, async ({ base, client }) => {
@@ -1616,8 +1637,9 @@ describe('pairing broker (contract v1, scripts/pairing-broker.mjs)', () => {
         assert.deepStrictEqual((await client.listOffers(room, hostKey, 0)).offers, [], 'an offer lives 60 s');
         await client.putAnswer(room, guest, hostKey, Pairing.answerBlob('v=0'));
         advance(61000);
+        await client.listOffers(room, hostKey, 0);
         assert.equal(await client.getAnswer(room, guest), null, 'so does an answer');
-        advance(60000);
+        advance(121000);
         await assert.rejects(client.postOffer(room, guest, Pairing.offerBlob('v=0')), { code: 'noRoom' }, 'a room lives 120 s after the host\'s last call');
     }));
 
@@ -1630,9 +1652,11 @@ describe('pairing broker (contract v1, scripts/pairing-broker.mjs)', () => {
     }));
 
     test('GET /ice: none (LAN only), STUN, TURN with coturn REST credentials', async () => {
-        await withBroker({}, async ({ client }) => {
+        await withBroker({}, async ({ base, client }) => {
+            assert.deepStrictEqual(await (await fetch(base + 'ice')).json(), { iceServers: [] });
             assert.deepStrictEqual(await client.ice(), []);
         });
+        assert.deepStrictEqual(await Pairing.brokerClient('http://broker/', { fetch: async () => new Response('', { status: 404 }) }).ice(), [], 'a broker that answers 404: LAN only as well');
         await withBroker({ stun: ['stun:stun.example.org:3478'], turn: ['turn:turn.example.org:3478'], turnSecret: 's3cret', turnTTL: 600 }, async ({ client }) => {
             const servers = await client.ice();
             assert.deepStrictEqual(servers[0], { urls: ['stun:stun.example.org:3478'] });

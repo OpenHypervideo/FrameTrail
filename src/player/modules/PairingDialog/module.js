@@ -64,6 +64,7 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
 
         if (dialogCtrl) {
             render(Host.status);
+            if (Host.status.status === 'off') { startHost(); }
             return;
         }
 
@@ -132,14 +133,18 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
 
         render(Host.status);
 
-        if (Host.status.status === 'off') {
-            Host.open().catch(function(error) {
-                if (error.code === 'stopped') { return; }
-                render(Host.status);
-                showProblem(error.code);
-            });
-        }
+        if (Host.status.status === 'off') { startHost(); }
 
+    }
+
+    // A room for a phone; what is missing, if it cannot be opened.
+    function startHost() {
+        var Host = FrameTrail.module('PairingHost');
+        Host.open().catch(function(error) {
+            if (error.code === 'stopped') { return; }
+            render(Host.status);
+            showProblem(error.code);
+        });
     }
 
     function showProblem(code) {
