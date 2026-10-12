@@ -95,6 +95,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '                    </div>'
                         + '                </div>'
                         + '                <div class="rightControlPanel">'
+                        + '                    <div class="pairingButton playerControl" style="display:none"><span class="icon-mobile-1"></span></div>'
                         + '                    <div class="sharingWidget playerControl"><span class="icon-share"></span></div>'
                         + '                    <div class="annotationSearchButton playerControl contextButton">'
                         + '                        <span class="icon-search"></span>'
@@ -126,6 +127,11 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '        <div class="areaBottomDetails layoutAreaDetails" data-area="areaBottom"></div>'
                         + '    </div>'
                         + '    <div class="hypervideoLayoutContainer"></div>'
+                        // The views of a paired phone (layoutArea.areaCompanion): never shown here, but made like the others so the layout editor can edit them.
+                        + '    <div class="areaCompanionContainer layoutArea" data-area="areaCompanion" style="display: none">'
+                        + '        <div class="layoutAreaTabs"></div>'
+                        + '        <div class="layoutAreaContent"></div>'
+                        + '    </div>'
                         + '    <div class="collabBlocker"></div>'
                         + '</div>';
     var domElement = _dvv.firstElementChild,
@@ -149,6 +155,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         AreaRightContainer          = domElement.querySelector('.areaRightContainer'),
 
+        AreaCompanionContainer      = domElement.querySelector('.areaCompanionContainer'),
+
         AnnotationTimeline          = domElement.querySelector('.annotationTimeline'),
 
         OverlayTimeline             = domElement.querySelector('.overlayTimeline'),
@@ -162,6 +170,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         Controls                    = domElement.querySelector('.controls'),
         SharingWidget               = domElement.querySelector('.sharingWidget'),
+        PairingButton               = domElement.querySelector('.pairingButton'),
         AnnotationSearchButton      = domElement.querySelector('.annotationSearchButton'),
         InfoAreaRight               = domElement.querySelector('.infoAreaRight'),
         EditingOptions              = domElement.querySelector('.editingOptions'),
@@ -316,6 +325,36 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             }
         });
     });
+
+    PairingButton.addEventListener('click', function() {
+        FrameTrail.module('PairingDialog').open();
+    });
+
+    /**
+     * I show the pairing button (docs/PAIRING.md) where it belongs: in the video view of a computer (not a phone
+     * or tablet), when the instance has a pairing broker and wants the button (config.pairingButtonVisible), and
+     * not on a phone's own player. In edit mode only while a phone is paired, so the connection can be seen and
+     * ended. Marked active while one is.
+     *
+     * @method updatePairingButton
+     */
+    function updatePairingButton() {
+
+        var config  = FrameTrail.module('Database').config || {},
+            pairing = FrameTrail.getState('pairing') || {},
+            paired  = pairing.status === 'connected',
+            show    = FrameTrail.getState('viewMode') === 'video'
+                   && !FrameTrail.isTouchPrimary()
+                   && config.pairingButtonVisible === true
+                   && !!String(config.pairingBrokerURL || '').trim()
+                   && !FrameTrail.getState('companion')
+                   && !!FrameTrail.module('PairingDialog')
+                   && (!FrameTrail.getState('editMode') || paired);
+
+        PairingButton.style.display = show ? '' : 'none';
+        PairingButton.classList.toggle('active', paired);
+
+    }
 
     ExpandButton.addEventListener('click', function() {
         showDetails(false);
@@ -631,6 +670,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         changeSlidePosition('middle');
 
+        updatePairingButton();
+
     }
 
     function fixGoddamnSafariBug() {
@@ -749,7 +790,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
     function adjustLayout() {
 
         var mainContainer = document.querySelector(FrameTrail.getState('target') + ' .mainContainer');
-        if (!mainContainer) { return; }
+        if (!mainContainer || FrameTrail.getState('companion')) { return; }
 
         var editMode            = FrameTrail.getState('editMode'),
             inEditMode          = (editMode != false && editMode != 'preview' && editMode != 'layout'),
@@ -892,6 +933,9 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
      * @param {Boolean} animate
      */
     function adjustHypervideo(animate) {
+
+        // A paired phone has no video to fit.
+        if (FrameTrail.getState('companion')) { return; }
 
         var _target = document.querySelector(FrameTrail.getState('target'));
         var _titlebar = _target && _target.querySelector('.titlebar');
@@ -1971,8 +2015,10 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             viewSize:        changeViewSize,
             viewSizeChanged: onViewSizeChanged,
             fullscreen:      toggleFullscreen,
-            viewMode:        toggleViewMode,
-            editMode:        toggleEditMode,
+            viewMode:        function(viewMode) { toggleViewMode(viewMode); updatePairingButton(); },
+            editMode:        function(editMode, oldEditMode) { toggleEditMode(editMode, oldEditMode); updatePairingButton(); },
+            config:          updatePairingButton,
+            pairing:         updatePairingButton,
             slidePosition:   changeSlidePosition,
             videoWorking:    toggleVideoWorking,
             userActive:      toggleUserActive,
@@ -2146,6 +2192,13 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
          * @type HTMLElement
          */
         get AreaRightContainer()     { return AreaRightContainer     },
+
+        /**
+         * I contain the AreaCompanionContainer element: the hidden home of the companion area's views.
+         * @attribute AreaCompanionContainer
+         * @type HTMLElement
+         */
+        get AreaCompanionContainer() { return AreaCompanionContainer },
 
         /**
          * I contain the AnnotationTimeline element.

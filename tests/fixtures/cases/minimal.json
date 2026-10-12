@@ -224,6 +224,30 @@
             }
         },
         {
+            "name": "hypervideo with views for a paired phone and nothing else in its layout",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Lecture"
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaCompanion": [
+                            {
+                                "type": "TimedContent",
+                                "contentSize": "large"
+                            },
+                            {
+                                "type": "Transcript",
+                                "transcriptSource": "en"
+                            }
+                        ]
+                    }
+                },
+                "clips": []
+            }
+        },
+        {
             "name": "empty config.json",
             "schema": "config.schema.json",
             "data": {}
@@ -601,6 +625,15 @@
                 "alwaysForceLogin": false,
                 "userNeedsConfirmation": true,
                 "apiTokens": true
+            }
+        },
+        {
+            "name": "pairing with phones set up",
+            "schema": "config.schema.json",
+            "data": {
+                "pairingBrokerURL": "https://pair.example.org/broker/",
+                "pairingButtonVisible": true,
+                "pairingCompanionURL": "https://pair.example.org/companion.html"
             }
         }
     ]

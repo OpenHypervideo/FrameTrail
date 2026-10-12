@@ -27,6 +27,7 @@
         <script type="text/javascript" src="_lib/fflate/fflate.min.js"></script>
         <script type="text/javascript" src="_lib/codemirror6/cm6.bundle.js"></script>
         <script type="text/javascript" src="_lib/codemirror6/cm6linters.js"></script>
+        <script type="text/javascript" src="_lib/qrcodegen/qrcodegen.js"></script>
 
 
         <script type="text/javascript" src="_shared/frametrail-core/frametrail-core.js"></script>
@@ -37,6 +38,7 @@
         <script type="text/javascript" src="_shared/frametrail-core/serialization/FrameTrailWebVTT.js"></script>
         <script type="text/javascript" src="_shared/frametrail-core/schema/FrameTrailSchema.js"></script>
         <script type="text/javascript" src="_shared/frametrail-core/schema/FrameTrailSchemas.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/pairing/FrameTrailPairing.js"></script>
 
        <!-- Application Code -->
 
@@ -101,6 +103,7 @@
         <link rel="stylesheet" type="text/css" href="player/modules/HypervideoSettingsDialog/style.css">
         <link rel="stylesheet" type="text/css" href="player/modules/AdminSettingsDialog/style.css">
         <link rel="stylesheet" type="text/css" href="player/modules/Extensions/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/PairingDialog/style.css">
 
         <link rel="stylesheet" type="text/css" href="resourcemanager/modules/ResourceManagerLauncher/style.css">
 
@@ -202,6 +205,8 @@
         <script type="text/javascript" src="player/modules/BundleExport/module.js"></script>
         <script type="text/javascript" src="player/modules/ImportDialog/module.js"></script>
         <script type="text/javascript" src="player/modules/Extensions/module.js"></script>
+        <script type="text/javascript" src="player/modules/PairingHost/module.js"></script>
+        <script type="text/javascript" src="player/modules/PairingDialog/module.js"></script>
         
         <script type="text/javascript" src="resourcemanager/modules/ResourceManagerLauncher/module.js"></script>
 
@@ -239,6 +244,7 @@
                     contentTargets:     {},
                     contents:           null,
                     startID:            null,
+                    dataPath:           "_data-pair/",
                     resources:          [{
                         label: "Choose Resources",
                         data: "_data/resources/_index.json",

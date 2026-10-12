@@ -312,6 +312,8 @@ FrameTrail.changeState('editMode', true);
 | `server` | String\|null | Base URL for the `_server/` PHP directory (e.g. `'../_server/'`). `null` = auto-detect or no server. |
 | `extensions` | Array\|null | The `extensions` init option: extension names or `{ name, script, style, settings }` entries (see [EXTENDING.md](EXTENDING.md#writing-an-extension)). |
 | `fullPage` | Boolean | Is this instance the whole page, and may it therefore set `document.title`? Always a boolean — resolved once at init from the `fullPage` option or, when that is omitted, by auto-detection. |
+| `companion` | Object\|null | The player of a paired phone (`companion.html`): the link to the desktop player it follows — no video, its clock, requests instead of playback ([PAIRING.md](PAIRING.md)). |
+| `pairing` | Object | `PairingHost`'s status on the desktop: `{ status, link, guest, problem }`, status `off`, `opening`, `waiting`, `connecting`, `connected` or `reconnecting`. |
 
 ### Reactive Updates
 
@@ -574,6 +576,8 @@ FrameTrail.init({
                                     // entries as in config.json (see EXTENDING.md)
 
     // ── Advanced ──────────────────────────────────────────────────────────────
+    companion:      null,           // On a paired phone only: CompanionLauncher's link to the
+                                    // desktop player (PAIRING.md). Not for host pages.
     contentTargets: {},             // Custom DOM targets for content views
     fullPage:       undefined       // May this player set document.title (to the
                                     // overview title, or the open hypervideo's

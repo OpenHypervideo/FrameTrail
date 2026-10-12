@@ -156,12 +156,22 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         return schematic;
     }
 
+    // The layout areas: my name of each (a content view's whichArea), its key in config.layoutArea and its part of
+    // ViewVideo's element names (Area<cap>Container). The companion area holds the views shown on a phone paired
+    // with the player (see PairingHost); in the player its container stays hidden, the layout editor shows it as
+    // a phone. On the phone (the companion state) its views go into the right area, and the others stay empty.
+    var AREAS = [
+        { name: 'top',       key: 'areaTop',       cap: 'Top'       },
+        { name: 'bottom',    key: 'areaBottom',    cap: 'Bottom'    },
+        { name: 'left',      key: 'areaLeft',      cap: 'Left'      },
+        { name: 'right',     key: 'areaRight',     cap: 'Right'     },
+        { name: 'companion', key: 'areaCompanion', cap: 'Companion' }
+    ];
+
     var configLayoutArea,
 
-        contentViewsTop     = [],
-        contentViewsBottom  = [],
-        contentViewsLeft    = [],
-        contentViewsRight   = [],
+        // The content views of each area, by its name.
+        contentViews        = { top: [], bottom: [], left: [], right: [], companion: [] },
 
         managedAnnotations  = [],
         managedOverlays     = [],
@@ -170,37 +180,48 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         Hypervideo = FrameTrail.module('Database').hypervideo;
 
 
+    function areaByName(whichArea) {
+        for (var i = 0; i < AREAS.length; i++) {
+            if (AREAS[i].name === whichArea) { return AREAS[i]; }
+        }
+        throw new Error('whichArea is string top/bottom/left/right/companion');
+    }
+
+    function allContentViews() {
+        return AREAS.reduce(function(list, area) { return list.concat(contentViews[area.name]); }, []);
+    }
+
+    /**
+     * The views a paired phone shows: the companion area's, or — while it has none — one large collection of all annotations.
+     *
+     * @method companionViewsData
+     * @return {Array}
+     */
+    function companionViewsData() {
+        var views = (configLayoutArea && Array.isArray(configLayoutArea.areaCompanion)) ? configLayoutArea.areaCompanion : [];
+        if (views.length) { return views; }
+        return [{
+            type: 'TimedContent', name: '', description: '', cssClass: '', html: '',
+            collectionFilter: { tags: [], types: [], text: '', users: [] },
+            transcriptSource: '', mode: 'slide', axis: 'y', contentSize: 'large', autoSync: false
+        }];
+    }
+
+
     function create() {
 
         configLayoutArea = FrameTrail.module('Database').hypervideo.config.layoutArea;
 
-        for (var i in configLayoutArea.areaTop) {
-            contentViewsTop.push(
-                new FrameTrail.newObject('ContentView',
-                    configLayoutArea.areaTop[i],
-                    'top'));
-        }
+        var companion = !!FrameTrail.getState('companion');
 
-        for (var i in configLayoutArea.areaBottom) {
-            contentViewsBottom.push(
-                new FrameTrail.newObject('ContentView',
-                    configLayoutArea.areaBottom[i],
-                    'bottom'));
-        }
-
-        for (var i in configLayoutArea.areaLeft) {
-            contentViewsLeft.push(
-                new FrameTrail.newObject('ContentView',
-                    configLayoutArea.areaLeft[i],
-                    'left'));
-        }
-
-        for (var i in configLayoutArea.areaRight) {
-            contentViewsRight.push(
-                new FrameTrail.newObject('ContentView',
-                    configLayoutArea.areaRight[i],
-                    'right'));
-        }
+        AREAS.forEach(function(area) {
+            var views = companion
+                      ? ((area.name === 'right') ? companionViewsData() : [])
+                      : (configLayoutArea[area.key] || []);
+            for (var i = 0; i < views.length; i++) {
+                contentViews[area.name].push(new FrameTrail.newObject('ContentView', views[i], area.name));
+            }
+        });
 
         updateLayoutAreaVisibility();
 
@@ -213,10 +234,10 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
     function updateLayoutAreaVisibility() {
 
-        FrameTrail.changeState('hv_config_areaTopVisible', (contentViewsTop.length != 0));
-        FrameTrail.changeState('hv_config_areaBottomVisible', (contentViewsBottom.length != 0));
-        FrameTrail.changeState('hv_config_areaLeftVisible', (contentViewsLeft.length != 0));
-        FrameTrail.changeState('hv_config_areaRightVisible', (contentViewsRight.length != 0));
+        FrameTrail.changeState('hv_config_areaTopVisible', (contentViews.top.length != 0));
+        FrameTrail.changeState('hv_config_areaBottomVisible', (contentViews.bottom.length != 0));
+        FrameTrail.changeState('hv_config_areaLeftVisible', (contentViews.left.length != 0));
+        FrameTrail.changeState('hv_config_areaRightVisible', (contentViews.right.length != 0));
 
     }
 
@@ -224,21 +245,16 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     function updateHiddenTabs() {
 
         var ViewVideo = FrameTrail.module('ViewVideo');
-        var areas = [
-            { views: contentViewsTop,    key: 'areaTop',    container: ViewVideo.AreaTopContainer },
-            { views: contentViewsBottom,  key: 'areaBottom', container: ViewVideo.AreaBottomContainer },
-            { views: contentViewsLeft,    key: 'areaLeft',   container: ViewVideo.AreaLeftContainer },
-            { views: contentViewsRight,   key: 'areaRight',  container: ViewVideo.AreaRightContainer }
-        ];
 
-        for (var i = 0; i < areas.length; i++) {
-            var area = areas[i];
-            var shouldHide = (area.views.length === 1
-                && !area.views[0].contentViewData.name
-                && !area.views[0].contentViewData.icon);
+        AREAS.forEach(function(area) {
+            var views = contentViews[area.name],
+                container = ViewVideo['Area' + area.cap + 'Container'];
+            var shouldHide = (views.length === 1
+                && !views[0].contentViewData.name
+                && !views[0].contentViewData.icon);
 
-            if (area.container) {
-                area.container.classList.toggle('hiddenTabs', shouldHide);
+            if (container) {
+                container.classList.toggle('hiddenTabs', shouldHide);
             }
 
             // Also update layout manager preview area
@@ -246,34 +262,25 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             if (previewArea) {
                 previewArea.classList.toggle('hiddenTabs', shouldHide);
             }
-        }
+        });
 
     }
 
 
     function createContentView(whichArea, templateContentViewData, renderPreview, skipUndo) {
 
-        var arrayOfContentViews = ({
-            'top': contentViewsTop,
-            'bottom': contentViewsBottom,
-            'left': contentViewsLeft,
-            'right': contentViewsRight
-        })[whichArea];
-
-        if (!Array.isArray(arrayOfContentViews)) {
-            throw new Error('whichArea is string top/bottom/left/right');
-        }
+        var area = areaByName(whichArea),
+            arrayOfContentViews = contentViews[area.name];
 
         var newContentView = new FrameTrail.newObject('ContentView', templateContentViewData, whichArea)
 
         arrayOfContentViews.push(newContentView);
 
-        configLayoutArea[({
-            'top': 'areaTop',
-            'bottom': 'areaBottom',
-            'left': 'areaLeft',
-            'right': 'areaRight'
-        })[whichArea]].push(newContentView.contentViewData);
+        // The companion area is often not stored yet: its first view makes it.
+        if (!Array.isArray(configLayoutArea[area.key])) {
+            configLayoutArea[area.key] = [];
+        }
+        configLayoutArea[area.key].push(newContentView.contentViewData);
 
         updateManagedContent();
 
@@ -293,26 +300,15 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         // Capture data before removal for undo
         var contentViewData = JSON.parse(JSON.stringify(contentViewToRemove.contentViewData)),
-            whichArea = contentViewToRemove.whichArea;
+            whichArea = contentViewToRemove.whichArea,
+            area = areaByName(whichArea);
 
-        var layoutAreaToRemovefrom = ({
-            'top': contentViewsTop,
-            'bottom': contentViewsBottom,
-            'left': contentViewsLeft,
-            'right': contentViewsRight
-        })[contentViewToRemove.whichArea];
+        var layoutAreaToRemovefrom = contentViews[area.name];
 
         // Also remove from config
-        var configAreaName = ({
-            'top': 'areaTop',
-            'bottom': 'areaBottom',
-            'left': 'areaLeft',
-            'right': 'areaRight'
-        })[whichArea];
-
-        var configIndex = configLayoutArea[configAreaName].indexOf(contentViewToRemove.contentViewData);
+        var configIndex = (configLayoutArea[area.key] || []).indexOf(contentViewToRemove.contentViewData);
         if (configIndex > -1) {
-            configLayoutArea[configAreaName].splice(configIndex, 1);
+            configLayoutArea[area.key].splice(configIndex, 1);
         }
 
         contentViewToRemove.contentCollection.forEach(function(contentItem) {
@@ -344,12 +340,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                 },
                 redo: function() {
                     // Find the content view by matching data
-                    var contentViewsArray = ({
-                        'top': contentViewsTop,
-                        'bottom': contentViewsBottom,
-                        'left': contentViewsLeft,
-                        'right': contentViewsRight
-                    })[whichArea];
+                    var contentViewsArray = contentViews[whichArea];
                     for (var i = 0; i < contentViewsArray.length; i++) {
                         if (JSON.stringify(contentViewsArray[i].contentViewData) === JSON.stringify(contentViewData)) {
                             removeContentView(contentViewsArray[i], true);
@@ -367,22 +358,13 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
      * I replace the content views of a layout area with new ones made from their data, and return the data of the ones I removed. In the layout editor the preview follows.
      *
      * @method setContentViews
-     * @param {String} whichArea - top, bottom, left or right
+     * @param {String} whichArea - top, bottom, left, right or companion
      * @param {Array} contentViewsData
      * @return {Array}
      */
     function setContentViews(whichArea, contentViewsData) {
 
-        var arrayOfContentViews = ({
-            'top': contentViewsTop,
-            'bottom': contentViewsBottom,
-            'left': contentViewsLeft,
-            'right': contentViewsRight
-        })[whichArea];
-
-        if (!Array.isArray(arrayOfContentViews)) {
-            throw new Error('whichArea is string top/bottom/left/right');
-        }
+        var arrayOfContentViews = contentViews[areaByName(whichArea).name];
 
         var previous = arrayOfContentViews.map(function(contentView) {
             return JSON.parse(JSON.stringify(contentView.contentViewData));
@@ -422,15 +404,11 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         if (oldIndex === newIndex) { return; }
 
-        var areaKeyMap = { top: 'areaTop', bottom: 'areaBottom', left: 'areaLeft', right: 'areaRight' };
-        var areaCapMap = { top: 'Top',     bottom: 'Bottom',     left: 'Left',    right: 'Right' };
-        var areaKey = areaKeyMap[whichArea];
-        var areaCap = areaCapMap[whichArea];
+        var area    = areaByName(whichArea),
+            areaKey = area.key,
+            areaCap = area.cap;
 
-        var contentViewsArray = {
-            top: contentViewsTop, bottom: contentViewsBottom,
-            left: contentViewsLeft, right: contentViewsRight
-        }[whichArea];
+        var contentViewsArray = contentViews[area.name];
 
         // Update JS arrays
         var movedCV = contentViewsArray.splice(oldIndex, 1)[0];
@@ -477,41 +455,25 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         managedAnnotations = [];
         managedOverlays    = [];
 
-        var contentViewAreas = [
-            contentViewsTop, contentViewsBottom, contentViewsLeft, contentViewsRight
-        ];
-
-        for (var a in contentViewAreas) {
-            for (var i in contentViewAreas[a]) {
-                var contentView = contentViewAreas[a][i];
-                //console.log(contentView.whichArea, contentView.contentCollection);
-                for (var k in contentView.contentCollection) {
-                    var item = contentView.contentCollection[k];
-                    if (item.overlayElement) {
-                        managedOverlays.push([item, contentView]);
-                    } else {
-                        managedAnnotations.push([item, contentView]);
-                    }
+        allContentViews().forEach(function(contentView) {
+            for (var k in contentView.contentCollection) {
+                var item = contentView.contentCollection[k];
+                if (item.overlayElement) {
+                    managedOverlays.push([item, contentView]);
+                } else {
+                    managedAnnotations.push([item, contentView]);
                 }
             }
-        }
-
-        //console.log(managedAnnotations);
+        });
 
     }
 
 
     function updateContentInContentViews() {
-        var contentViewAreas = [
-            contentViewsTop, contentViewsBottom, contentViewsLeft, contentViewsRight
-        ];
 
-        for (var a in contentViewAreas) {
-            for (var i in contentViewAreas[a]) {
-                var contentView = contentViewAreas[a][i];
-                contentView.updateContent(true);
-            }
-        }
+        allContentViews().forEach(function(contentView) {
+            contentView.updateContent(true);
+        });
 
         var currentTime = FrameTrail.module('HypervideoController').currentTime;
         updateTimedStateOfContentViews(currentTime);
@@ -529,21 +491,15 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
      * @method updateChaptersContentViews
      */
     function updateChaptersContentViews() {
-        var contentViewAreas = [
-            contentViewsTop, contentViewsBottom, contentViewsLeft, contentViewsRight
-        ];
 
         var found = false;
 
-        for (var a in contentViewAreas) {
-            for (var i in contentViewAreas[a]) {
-                var contentView = contentViewAreas[a][i];
-                if (contentView.contentViewData.type === 'Chapters') {
-                    contentView.updateContent(true);
-                    found = true;
-                }
+        allContentViews().forEach(function(contentView) {
+            if (contentView.contentViewData.type === 'Chapters') {
+                contentView.updateContent(true);
+                found = true;
             }
-        }
+        });
 
         if (!found) { return; }
 
@@ -559,21 +515,15 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
      * @method updateTranscriptContentViews
      */
     function updateTranscriptContentViews() {
-        var contentViewAreas = [
-            contentViewsTop, contentViewsBottom, contentViewsLeft, contentViewsRight
-        ];
 
         var found = false;
 
-        for (var a in contentViewAreas) {
-            for (var i in contentViewAreas[a]) {
-                var contentView = contentViewAreas[a][i];
-                if (contentView.contentViewData.type === 'Transcript') {
-                    contentView.updateContent(true);
-                    found = true;
-                }
+        allContentViews().forEach(function(contentView) {
+            if (contentView.contentViewData.type === 'Transcript') {
+                contentView.updateContent(true);
+                found = true;
             }
-        }
+        });
 
         if (!found) { return; }
 
@@ -582,8 +532,6 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
 
     function updateTimedStateOfContentViews(currentTime) {
-
-        var self = this;
 
         for (var idx in managedAnnotations) {
             var annotation  = managedAnnotations[idx][0],
@@ -627,21 +575,11 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         }
 
-        for (var i in contentViewsTop) {
-            contentViewsTop[i].updateTimedStateOfContentViews(currentTime);
-        }
-        for (var i in contentViewsBottom) {
-            contentViewsBottom[i].updateTimedStateOfContentViews(currentTime);
-        }
-        for (var i in contentViewsLeft) {
-            contentViewsLeft[i].updateTimedStateOfContentViews(currentTime);
-        }
-        for (var i in contentViewsRight) {
-            contentViewsRight[i].updateTimedStateOfContentViews(currentTime);
-        }
+        allContentViews().forEach(function(contentView) {
+            contentView.updateTimedStateOfContentViews(currentTime);
+        });
 
     }
-
 
     function initLayoutManager() {
         
@@ -652,6 +590,9 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             thisID     = FrameTrail.module('RouteNavigation').hypervideoID;
 
         var currentTheme = hypervideo.config.theme || database.config.defaultTheme || 'classic';
+
+        // The phone is there when pairing is set up, and wherever there are views for it already.
+        var showCompanion = !!(database.config && database.config.pairingBrokerURL) || contentViews.companion.length > 0;
 
         var _lmWrapper = document.createElement('div');
         _lmWrapper.innerHTML = '<div class="layoutManagerContainer">' +
@@ -720,6 +661,14 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             '                </div>' +
             '            </div>' +
             '        </div>' +
+            (showCompanion ?
+            '        <div class="layoutManager companionLayoutManager">' +
+            '            <div class="companionLayoutLabel" data-tooltip-bottom="'+ labels['MessageLayoutManagerCompanion'] +'"><span class="icon-mobile-1">'+ labels['LayoutAreaCompanionTitle'] +'</span></div>' +
+            '            <div data-area="areaCompanion" class="layoutArea">' +
+            '                <div class="layoutAreaTabs"></div>' +
+            '                <div class="layoutAreaContent"></div>' +
+            '            </div>' +
+            '        </div>' : '') +
             '        <div class="layoutManagerThemePanel">' +
             '            <div class="themeContainer">' +
             '                <div class="message active">'+ labels['SettingsSelectColorTheme'] +'</div>' +
@@ -1206,12 +1155,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                     // Register undo command for adding content view
                     (function(areaName, viewData) {
                         var findContentView = function() {
-                            var contentViewsArray = ({
-                                'top': contentViewsTop,
-                                'bottom': contentViewsBottom,
-                                'left': contentViewsLeft,
-                                'right': contentViewsRight
-                            })[areaName];
+                            var contentViewsArray = contentViews[areaName];
                             for (var i = 0; i < contentViewsArray.length; i++) {
                                 if (JSON.stringify(contentViewsArray[i].contentViewData) === JSON.stringify(viewData)) {
                                     return contentViewsArray[i];
@@ -1236,26 +1180,19 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                     })(whichArea, JSON.parse(JSON.stringify(templateContentViewData)));
                 }
         };
-        LayoutManager.querySelectorAll('.layoutAreaContent').forEach(function(el) { interact(el).dropzone(dropzoneOpts); });
+        domElement.querySelectorAll('.layoutManager .layoutAreaContent').forEach(function(el) { interact(el).dropzone(dropzoneOpts); });
         }());
 
-        initLayoutAreaPreview(contentViewsTop);
-        initLayoutAreaPreview(contentViewsBottom);
-        initLayoutAreaPreview(contentViewsLeft);
-        initLayoutAreaPreview(contentViewsRight);
+        AREAS.forEach(function(area) {
+            initLayoutAreaPreview(contentViews[area.name]);
+        });
 
         updateHiddenTabs();
 
         // Make preview tabs sortable within each layout area
-        var sortableAreaConfig = [
-            { area: 'top',    key: 'areaTop'    },
-            { area: 'bottom', key: 'areaBottom' },
-            { area: 'left',   key: 'areaLeft'   },
-            { area: 'right',  key: 'areaRight'  }
-        ];
-
-        sortableAreaConfig.forEach(function(cfg) {
-            var previewArea   = LayoutManager.querySelector('[data-area="' + cfg.key + '"]');
+        AREAS.forEach(function(area) {
+            var cfg = { area: area.name, key: area.key };
+            var previewArea   = domElement.querySelector('.layoutManager [data-area="' + cfg.key + '"]');
             var tabsContainer = previewArea ? previewArea.querySelector('.layoutAreaTabs') : null;
             if (!tabsContainer) { return; }
 
@@ -1367,178 +1304,26 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     }
 
 
-
     /**
-     * I return the data of all ContentViews in all LayoutAreas.
+     * I return the data of all ContentViews in all LayoutAreas: what a save writes as config.layoutArea. The
+     * companion area is there once it has been stored or has a view, so a hypervideo that never had one is
+     * written as it was.
      *
      * @method getLayoutAreaData
      * @return {Object} layoutAreaData
      */
     function getLayoutAreaData() {
 
-        var layoutAreaData = {
-            'areaTop': (function() {
-                var contentViewDataTop = [];
-                for (var i=0; i<contentViewsTop.length; i++) {
-                    contentViewDataTop.push(contentViewsTop[i].contentViewData);
-                }
-                return contentViewDataTop;
-            })(),
-            'areaBottom': (function() {
-                var contentViewDataBottom = [];
-                for (var i=0; i<contentViewsBottom.length; i++) {
-                    contentViewDataBottom.push(contentViewsBottom[i].contentViewData);
-                }
-                return contentViewDataBottom;
-            })(),
-            'areaLeft': (function() {
-                var contentViewDataLeft = [];
-                for (var i=0; i<contentViewsLeft.length; i++) {
-                    contentViewDataLeft.push(contentViewsLeft[i].contentViewData);
-                }
-                return contentViewDataLeft;
-            })(),
-            'areaRight': (function() {
-                var contentViewDataRight = [];
-                for (var i=0; i<contentViewsRight.length; i++) {
-                    contentViewDataRight.push(contentViewsRight[i].contentViewData);
-                }
-                return contentViewDataRight;
-            })()
-        };
+        var layoutAreaData = {};
 
-        return layoutAreaData;
-
-    }
-
-
-    /**
-     * I initialize a LayoutArea Preview and trigger initialization of its ContentViews.
-     *
-     * @method initLayoutAreaPreview
-     * @param {Array} contentViews
-     */
-    function initLayoutAreaPreview(contentViews) {
-
-        for (var i=0; i < contentViews.length; i++) {
-            contentViews[i].renderContentViewPreview();
-        }
-
-    }
-
-
-    /**
-     * I return the data of all ContentViews in all LayoutAreas.
-     *
-     * @method getLayoutAreaData
-     * @return {Object} layoutAreaData
-     */
-    function getLayoutAreaData() {
-
-        var layoutAreaData = {
-            'areaTop': (function() {
-                var contentViewDataTop = [];
-                for (var i=0; i<contentViewsTop.length; i++) {
-                    contentViewDataTop.push(contentViewsTop[i].contentViewData);
-                }
-                return contentViewDataTop;
-            })(),
-            'areaBottom': (function() {
-                var contentViewDataBottom = [];
-                for (var i=0; i<contentViewsBottom.length; i++) {
-                    contentViewDataBottom.push(contentViewsBottom[i].contentViewData);
-                }
-                return contentViewDataBottom;
-            })(),
-            'areaLeft': (function() {
-                var contentViewDataLeft = [];
-                for (var i=0; i<contentViewsLeft.length; i++) {
-                    contentViewDataLeft.push(contentViewsLeft[i].contentViewData);
-                }
-                return contentViewDataLeft;
-            })(),
-            'areaRight': (function() {
-                var contentViewDataRight = [];
-                for (var i=0; i<contentViewsRight.length; i++) {
-                    contentViewDataRight.push(contentViewsRight[i].contentViewData);
-                }
-                return contentViewDataRight;
-            })()
-        };
-
-        return layoutAreaData;
-
-    }
-
-
-    /**
-     * I initialize a LayoutArea Preview and trigger initialization of its ContentViews.
-     *
-     * @method initLayoutAreaPreview
-     * @param {Array} contentViews
-     */
-    function initLayoutAreaPreview(contentViews) {
-
-        for (var i=0; i < contentViews.length; i++) {
-            contentViews[i].renderContentViewPreview();
-        }
-
-    }
-
-    /**
-     * I initialize a LayoutArea Preview and trigger initialization of its ContentViews.
-     *
-     * @method initLayoutAreaPreview
-     * @param {Array} contentViews
-     */
-    function initLayoutAreaPreview(contentViews) {
-
-        for (var i=0; i < contentViews.length; i++) {
-            contentViews[i].renderContentViewPreview();
-        }
-
-    }
-
-
-
-    /**
-     * I return the data of all ContentViews in all LayoutAreas.
-     *
-     * @method getLayoutAreaData
-     * @return {Object} layoutAreaData
-     */
-    function getLayoutAreaData() {
-
-        var layoutAreaData = {
-            'areaTop': (function() {
-                var contentViewDataTop = [];
-                for (var i=0; i<contentViewsTop.length; i++) {
-                    contentViewDataTop.push(contentViewsTop[i].contentViewData);
-                }
-                return contentViewDataTop;
-            })(),
-            'areaBottom': (function() {
-                var contentViewDataBottom = [];
-                for (var i=0; i<contentViewsBottom.length; i++) {
-                    contentViewDataBottom.push(contentViewsBottom[i].contentViewData);
-                }
-                return contentViewDataBottom;
-            })(),
-            'areaLeft': (function() {
-                var contentViewDataLeft = [];
-                for (var i=0; i<contentViewsLeft.length; i++) {
-                    contentViewDataLeft.push(contentViewsLeft[i].contentViewData);
-                }
-                return contentViewDataLeft;
-            })(),
-            'areaRight': (function() {
-                var contentViewDataRight = [];
-                for (var i=0; i<contentViewsRight.length; i++) {
-                    contentViewDataRight.push(contentViewsRight[i].contentViewData);
-                }
-                return contentViewDataRight;
-            })()
-        }
+        AREAS.forEach(function(area) {
+            if (area.name === 'companion' && !contentViews.companion.length && !Array.isArray((configLayoutArea || {}).areaCompanion)) {
+                return;
+            }
+            layoutAreaData[area.key] = contentViews[area.name].map(function(contentView) {
+                return contentView.contentViewData;
+            });
+        });
 
         return layoutAreaData;
 
@@ -1568,7 +1353,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             return;
         }
 
-        var allAreas = [contentViewsTop, contentViewsBottom, contentViewsLeft, contentViewsRight];
+        var allAreas = AREAS.map(function(area) { return contentViews[area.name]; });
 
         for (var a = 0; a < allAreas.length; a++) {
             for (var i in allAreas[a]) {
@@ -1605,12 +1390,12 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         updateTimedStateOfContentViews(currentTime);
 
         if ( FrameTrail.module('ViewVideo').shownDetails == 'top' ) {
-            for (var i in contentViewsTop) {
-                contentViewsTop[i].updateCollectionSlider(true);
+            for (var i in contentViews.top) {
+                contentViews.top[i].updateCollectionSlider(true);
             }
         } else if ( FrameTrail.module('ViewVideo').shownDetails == 'bottom' ) {
-            for (var i in contentViewsBottom) {
-                contentViewsBottom[i].updateCollectionSlider(true);
+            for (var i in contentViews.bottom) {
+                contentViews.bottom[i].updateCollectionSlider(true);
             }
         }
 

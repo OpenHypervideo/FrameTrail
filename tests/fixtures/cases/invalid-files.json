@@ -473,6 +473,24 @@
                     "message": "must be object, is array"
                 }
             ]
+        },
+        {
+            "name": "pairing broker without a scheme, pairing button as text",
+            "schema": "config.schema.json",
+            "data": {
+                "pairingBrokerURL": "pair.example.org",
+                "pairingButtonVisible": "true"
+            },
+            "errors": [
+                {
+                    "path": "/pairingBrokerURL",
+                    "message": "must match the pattern ^(https?://.+)?$"
+                },
+                {
+                    "path": "/pairingButtonVisible",
+                    "message": "must be boolean, is string"
+                }
+            ]
         }
     ]
 }

@@ -230,6 +230,12 @@
     // Set up the loader of extensions (they are loaded once the config is known)
     FrameTrail.initModule('Extensions');
 
+    // Set up pairing with a phone (docs/PAIRING.md); not on the phone's own player
+    if (!FrameTrail.getState('companion')) {
+        FrameTrail.initModule('PairingHost');
+        FrameTrail.initModule('PairingDialog');
+    }
+
 
     // Initialize storage, then start the actual init process
 
@@ -486,6 +492,10 @@
 
                                                     FrameTrail.module('Extensions').ready();
                                                     FrameTrail.module('Extensions').hypervideoChanged(FrameTrail.module('RouteNavigation').hypervideoID);
+
+                                                    if (FrameTrail.module('PairingHost')) {
+                                                        FrameTrail.module('PairingHost').hypervideoChanged(FrameTrail.module('RouteNavigation').hypervideoID);
+                                                    }
 
                                                     resumeAfterAuth();
 

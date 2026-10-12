@@ -160,6 +160,7 @@ Checks the JSON Schemas, the data fixtures and the serializer; Node 20 or later,
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) — Server deployment, local usage, building, releasing
 - [docs/INTEGRATION.md](docs/INTEGRATION.md) — Running FrameTrail inside an LMS or platform: external authentication (OIDC, signed tokens), external settings, personal API tokens
 - [docs/EVENTS.md](docs/EVENTS.md) — The player event API for host pages and analytics
+- [docs/PAIRING.md](docs/PAIRING.md) — Pairing a phone by QR code: it shows the hypervideo's views in step with the player; the broker contract and the stub broker
 
 ---
 

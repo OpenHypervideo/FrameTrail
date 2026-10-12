@@ -365,6 +365,9 @@ The keys the dialog used to write, with what FrameTrail does when a key is missi
 | `captureUserTraces` | boolean | off | on reload |
 | `userTracesStartAction`, `userTracesEndAction` | a user action, e.g. `"UserLogin"`, `"UserLogout"` | **no trace ever starts** | on reload |
 | `userNeedsConfirmation` | boolean | off | has no effect under external authentication |
+| `pairingBrokerURL` | an http(s) URL, `""` | no pairing with phones | at once ([PAIRING.md](PAIRING.md)) |
+| `pairingButtonVisible` | boolean | no pairing button | at once |
+| `pairingCompanionURL` | a URL, `""` | `companion.html` beside the player page | with the next pairing |
 | `custom.css` | a file, not a key | empty | at once |
 
 Three traps worth knowing:

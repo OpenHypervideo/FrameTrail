@@ -226,6 +226,22 @@
     }
 
 
+    /**
+     * I tell whether the device is used by touch first: a phone or a tablet,
+     * as opposed to a computer with a mouse or trackpad (a laptop with a
+     * touchscreen counts as the latter). Touch gestures are wired up only on
+     * such devices, and the pairing button is offered only on the others.
+     *
+     * @method isTouchPrimary
+     * @return {Boolean}
+     */
+    function _isTouchPrimary() {
+
+        return !!(window.matchMedia && window.matchMedia('(hover: none) and (pointer: coarse)').matches);
+
+    }
+
+
     function _init(options, appName) {
 
         var FrameTrail = {
@@ -246,7 +262,8 @@
             newObject:      _newObject,
             triggerEvent:   triggerEvent,
             addEventListener: addEventListener,
-            removeEventListener: removeEventListener
+            removeEventListener: removeEventListener,
+            isTouchPrimary: _isTouchPrimary
         };
 
         var state           = {},
@@ -317,6 +334,8 @@
                 dataPath:           options.dataPath     || null,
                 server:             options.server       || null,
                 extensions:         options.extensions   || null,
+                // A phone's player (companion.html): the link to the desktop it is paired with (docs/PAIRING.md).
+                companion:          options.companion    || null,
                 fullPage:           _fullPage,
 
                 loggedIn:           false,
@@ -393,6 +412,17 @@
                 if (modules['Extensions']) {
                     modules['Extensions'].unload();
                 }
+
+                // Playback stops, and modules that clean up after themselves do (onUnload),
+                // so nothing of this instance runs on once it is gone.
+                if (modules['HypervideoController']) {
+                    try { modules['HypervideoController'].clearIntervals(); } catch (e) { /* half initialised */ }
+                }
+                Object.keys(modules).forEach(function(name) {
+                    if (typeof modules[name].onUnload === 'function') {
+                        try { modules[name].onUnload(); } catch (e) { console.error('FrameTrail: module "' + name + '" could not unload.', e); }
+                    }
+                });
 
                 if (thisDOMElement) {
                     thisDOMElement.parentNode.removeChild(thisDOMElement);

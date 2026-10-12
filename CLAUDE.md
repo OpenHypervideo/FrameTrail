@@ -18,15 +18,17 @@ FrameTrail/
 │   ├── index.html                  # Player/editor entry point
 │   ├── resources.html              # Standalone resource manager
 │   ├── setup.html                  # First-run setup wizard
+│   ├── companion.html              # The page a paired phone opens (strict CSP, no inline script)
 │   ├── .htaccess                   # Apache rewrite rules
 │   ├── favico.png
-│   ├── _lib/                       # Vendored third-party libraries (11 packages)
+│   ├── _lib/                       # Vendored third-party libraries (12 packages)
 │   ├── _shared/
 │   │   ├── frametrail-core/
 │   │   │   ├── frametrail-core.js  # Core: defineModule, defineType, init, state
 │   │   │   ├── serialization/      # FrameTrailSerializer (stored JSON ⇄ model), FrameTrailKeyframes, FrameTrailHTMLFormat (portable HTML), FrameTrailLint (checks beyond the schemas), FrameTrailWebVTT (WebVTT to edit)
 │   │   │   ├── schema/             # FrameTrailSchema (validator for the schemas/ subset), FrameTrailSchemas (generated copy of schemas/)
 │   │   │   ├── storage/            # StorageAdapter + Server/Local/HTMLFile/Download/Static adapters
+│   │   │   ├── pairing/            # FrameTrailPairing (pure: ids, join links, fingerprints, broker client, protocol messages, chunks, the phone's clock)
 │   │   │   ├── _templateModule.js  # Module boilerplate template
 │   │   │   └── _templateType.js    # Type boilerplate template
 │   │   ├── modules/                # 17 shared modules
@@ -34,19 +36,22 @@ FrameTrail/
 │   │   ├── styles/                 # Global CSS (variables, generic, webfont)
 │   │   └── fonts/                  # Webfonts (woff2 only)
 │   ├── player/
-│   │   ├── modules/                # 30 player-specific modules
+│   │   ├── modules/                # 32 player-specific modules
 │   │   └── types/                  # Player types (Annotation, Overlay, etc.)
 │   ├── resourcemanager/
 │   │   └── modules/ResourceManagerLauncher/
+│   ├── companion/
+│   │   └── modules/CompanionLauncher/  # The phone's side of pairing (companion.html)
 │   ├── _server/                    # PHP backend
 ├── schemas/                        # JSON Schemas for the files in _data/ and for bundles
 ├── tests/                          # node tests/run-js.mjs; fixtures/ (data folders, cases, examples, lint)
 ├── scripts/
-│   └── build.sh                    # Production build script
+│   ├── build.sh                    # Production build script
+│   └── pairing-broker.mjs          # Stub pairing broker (contract v1; dev, tests, LAN trials)
 ├── .github/workflows/
 │   ├── build.yml                   # CI: tests + build verification on push/PR
 │   └── release.yml                 # CD: package + GitHub Release on tags
-├── docs/                           # Developer documentation (DATA-MODEL.md: the _data contract; TYPES.md: the item types, generated; HTML-FORMAT.md: the portable HTML format)
+├── docs/                           # Developer documentation (DATA-MODEL.md: the _data contract; TYPES.md: the item types, generated; HTML-FORMAT.md: the portable HTML format; PAIRING.md: pairing a phone)
 ├── build/                          # Build output (git-ignored)
 └── ...                             # README, LICENSE, CONTRIBUTING, etc.
 ```
@@ -55,10 +60,11 @@ FrameTrail/
 
 ### Application Structure
 
-Three HTML entry points in `src/`:
+Four HTML entry points in `src/`:
 - **`src/index.html`** — Main player/editor (bootstraps via `PlayerLauncher` module)
 - **`src/resources.html`** — Standalone resource manager (bootstraps via `ResourceManagerLauncher`)
 - **`src/setup.html`** — Initial setup wizard (one-time)
+- **`src/companion.html`** — The page a paired phone opens (bootstraps via `CompanionLauncher`, which starts itself on pages marked `data-frametrail-companion`; see Device Pairing)
 
 ### Core Framework
 
@@ -131,6 +137,7 @@ _data/
 | `hlsjs/` | HLS.js | Adaptive video streaming |
 | `quill/` | Quill | Rich text editing (replaces WYSIHTML5) |
 | `parsers/` | VTT parser | Subtitle parsing |
+| `qrcodegen/` | QR Code generator (Project Nayuki) | The pairing QR code (`PairingDialog` draws it as SVG); made JavaScript from the TypeScript source with Node's type stripping |
 
 ### Storage Modes (`storageMode` state)
 
@@ -159,6 +166,8 @@ _data/
 - `fullscreen` (true/false) — Fullscreen mode
 - `viewSize` ([width, height]) — Responsive layout dimensions
 - `editBusy` ({ description } / false) — An async transaction of the edit API is open; editing by hand waits
+- `pairing` ({ status, link, guest, problem }) — `PairingHost`'s status: `off`, `opening`, `waiting`, `connecting`, `connected`, `reconnecting`
+- `companion` (link / null) — Init option of a phone's player: the `CompanionLauncher`'s link to the desktop it follows
 
 ### Key Architectural Patterns
 
@@ -174,7 +183,7 @@ _data/
 - The global `FrameTrail` object is the factory/registry. `FrameTrail.module()`, `FrameTrail.changeState()`, etc. are only available on **initialized instances** (the `FrameTrail` parameter passed into `defineModule` callbacks).
 - Modules defined via `FrameTrail.defineModule()` receive the instance as their closure argument — they can freely call `FrameTrail.module('X')`.
 - Plain classes (e.g. `StorageAdapter` subclasses in `src/_shared/frametrail-core/storage/`) are **not** FrameTrail modules and do **not** have access to any instance. If they need to call module APIs, the caller must pass the FrameTrail instance explicitly.
-- `window.FrameTrailSerializer`, `window.FrameTrailKeyframes`, `window.FrameTrailHTMLFormat`, `window.FrameTrailLint` and `window.FrameTrailWebVTT` (`src/_shared/frametrail-core/serialization/`) and `window.FrameTrailSchema` / `window.FrameTrailSchemas` (`src/_shared/frametrail-core/schema/`) are pure globals: no instance, no DOM. Their wrapper also exports them under `require()` in Node; keep it that way (tests and tools load them there).
+- `window.FrameTrailSerializer`, `window.FrameTrailKeyframes`, `window.FrameTrailHTMLFormat`, `window.FrameTrailLint` and `window.FrameTrailWebVTT` (`src/_shared/frametrail-core/serialization/`), `window.FrameTrailSchema` / `window.FrameTrailSchemas` (`src/_shared/frametrail-core/schema/`) and `window.FrameTrailPairing` (`src/_shared/frametrail-core/pairing/`) are pure globals: no instance, no DOM. Their wrapper also exports them under `require()` in Node; keep it that way (tests and tools load them there).
 - Every module must be initialized with `FrameTrail.initModule('ModuleName')` before it can be accessed via `FrameTrail.module('ModuleName')`. Calling `module()` on an uninitialized module returns undefined.
 
 ### Data Flow
@@ -261,7 +270,7 @@ The build script:
 2. Inlines woff2 fonts as base64 data URIs into the CSS
 3. Concatenates all JS files in load order → `build/frametrail.js`
 4. Minifies with terser/csso → `build/frametrail.min.js` + `build/frametrail.min.css`
-5. Generates clean HTML entry points that load only the two bundles
+5. Generates clean HTML entry points that load only the two bundles (`index.html`, `resources.html`, `companion.html`)
 6. Copies `_server/`, `.htaccess`, `favico.png`, `LICENSE.md`
 
 **Docker:** `Dockerfile` + `compose.yaml` in the repo root run this same build in a throwaway Node stage and serve the output via PHP + Apache (`docker compose up -d`). See [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md#option-1-server-deployment-php) for build args (e.g. `WITH_FFMPEG`) and volume details.
@@ -273,6 +282,7 @@ node tests/run-js.mjs                         # Node 20+, no dependencies (node:
 node tests/run-js.mjs --data=src/_data        # also check a real _data folder (its lint findings are listed as diagnostics)
 node tests/extract-examples.mjs               # after changing the data in an examples/*.html page
 node scripts/bundle-schemas.mjs               # after changing a schema (the player's copy and docs/TYPES.md; the tests check both)
+node scripts/pairing-broker.mjs               # stub pairing broker on http://localhost:8787 (see Device Pairing)
 ```
 
 `tests/fixtures/`: `data/<name>/` are `_data` folders (no `users.json`, no media; `all-types` has an item of every type and loads in the player), `cases/*.json` and `examples/*.json` are `{ description, cases: [{ name, schema, data, errors? }] }` — no `errors` means valid, otherwise exactly those errors. The runner validates everything with `FrameTrailSchema`, round-trips valid hypervideos, annotation files and content items through the serializer (allowed differences: `@context`, ISO `created` with de-dup bumps, `meta.lastchanged`, contents order overlays → code snippets → others), and reads data folders as bundles; every data folder must pass `FrameTrailLint.checkFolder`. `lint/*.json` are lint cases (`{ data, hypervideoId?, duration?, cases: [{ name, patch?, rules?, findings }] }`, `patch` a JSON Patch on a bundle in `lint/data/`); every rule needs a case that finds it. tests/README.md states these rules for runners in other languages. Expected errors in a case are what `FrameTrailSchema` reports, expected findings what `FrameTrailLint` reports; check they name the real problem before committing them.
@@ -602,6 +612,19 @@ Extensions are code that is not part of FrameTrail (add-ons, a hosting platform'
 - **Busy editor:** while an async transaction is open, state `editBusy` = `{ description }`: other writes and transactions are refused, `UndoManager` refuses undo/redo, `Interface` sets `.editBusy` (CSS in `ViewVideo/style.css` makes video container, edit panel, timelines and layout editor inert; controls, progress bar and timeline zoom stay usable), the freeform editor ignores keys, `HypervideoSettingsDialog.open()` refuses the loaded hypervideo, `Sidebar` shows a fixed notice (`MessageEditBusy`, "Automated editing in progress") and Stop in its collaboration notice. `EditAPI.stop(true)` (Stop, `leaveEditMode()` before its prompt, `editMode` → false) takes the changes back; `stop(false)` in `updateHypervideo()`. The promise rejects with code `stopped`; `tx.signal` is aborted. A new editing surface must respect `.editBusy` (inside the regions above it does automatically).
 - **Saving:** `subtitles` and `config` are save categories of `HypervideoModel` (`Sidebar.newUnsavedChange` tolerates categories without a button). Pending subtitle texts (`{ lang: text | null }`) go with `Database.saveHypervideo(cb, id, { subtitles })`: multipart `subtitles[<lang>]` / `SubtitlesToDelete[]` in `hypervideoChange` on the server, `writeText` / `deleteFile` through the adapter elsewhere; kept for the next save when it fails. `Database.subtitles[lang].vtt` holds the loaded text.
 - **Permissions** as in the editor: edit mode; hypervideo kinds need admin or creator and no foreign collaboration lock (a write claims the lock); annotations only the user's own. Errors are `FrameTrailEditError` with `code` `invalid` (+ `errors: [{ path, message }]`), `notFound`, `notAllowed`.
+
+## Device Pairing
+
+A phone pairs with the player by scanning a QR code and then shows the hypervideo's views for phones in step with its playback; the phone can play, pause and seek it while it may (`canControl`). User and contract documentation: [docs/PAIRING.md](docs/PAIRING.md); spike results and the real-device matrix still to fill in: `plans/device-pairing-spike.md` (git-ignored).
+
+- **Config:** `pairingBrokerURL` (empty: off), `pairingButtonVisible` (strict `true`), `pairingCompanionURL` (empty: `companion.html` beside the page, http(s) only) — Administration → Advanced Settings; `AdminSettingsDialog` republishes the `config` state after a save, which `ViewVideo.updatePairingButton()` hears. The button (`.pairingButton`, `icon-mobile-1`, before `.sharingWidget`) shows in the video view on non-touch devices (`FrameTrail.isTouchPrimary()` on the internal instance), not in companion mode, in edit mode only while paired.
+- **Pure part** (`FrameTrailPairing`, dual-wrapped): ids, join link (`<companion>#pair=<room>&b=<broker>&fp=<sha-256, base64url>`), fingerprint check of the answer SDP, the broker client of contract v1 (`brokerClient`, `pollAnswer`), offer/answer/refusal blobs, message validation per side (`decode(text, 'host' | 'guest')`), chunking (`bundleMessages`, `createAssembler`), the phone's clock (`createClock`: extrapolates, jumps only beyond 0.25 s or on start/stop/rate), `gatherComplete`, `selectedPath(stats)`, `companionBundle()` (strips overlays, code snippets, global events, `onClickContentItem`).
+- **Broker:** external, against the contract in PAIRING.md; `scripts/pairing-broker.mjs` is the stub (`createBroker({ now })` for tests, `--stun`, `--turn --turn-secret` for coturn REST credentials, `--cert/--key`). The tests run the contract against it in-process.
+- **Host** (`PairingHost`, initialised by `PlayerLauncher` unless companion): room + host key, ECDSA certificate, polls offers every second while accepting, answers one phone (refuses `full` while one is connected or still handshaking < 10 s), closes the room while connected and reopens it for two minutes when the phone drops (resume token keeps `canControl`). Sends the bundle (`BundleExport.bundle()` + `pageDatapath()` / `pageConfig()`, `offsetIn`, `duration`) on pairing, `EditSave`, edit mode ending and a hypervideo switch (once `hypervideoChanged(id)` says the new one is ready), and the state from `timeupdate` / `play` / `pause` events plus a 100 ms sampler (heartbeat 1 s / 5 s). Requests go to `HypervideoController.play/pause/currentTime`. `updateHypervideo()` clears all timers: `hypervideoChanged()` restarts them. Status in the `pairing` state; `PairingDialog` (QR via `qrcodegen`, link, status, "may play, pause and seek" switch, Stop) renders it.
+- **Phone** (`CompanionLauncher` on `companion.html`, its own FrameTrail instance): offers, checks the fingerprint, keeps the channel, and runs `FrameTrail.init({ bundle, config, dataPath, companion: link }, 'PlayerLauncher')` per bundle in a child element (`destroy()` the previous one; core `destroy()` now stops the controller's intervals and calls every module's `onUnload`). Screens: connecting, waiting, loading, overview, reconnecting, full, closed, version, ended, failed, fingerprint, invalid; a chip; Wake Lock while paired; seeks coalesced to one per 100 ms.
+- **Companion mode in the player** (the `companion` state): `HypervideoModel` uses `videoType 'canvas'` over the link's `offsetIn`/`duration`; `HypervideoController` reads `link.time()` in `nullVideoUpdater`, turns `play`/`pause`/`setCurrentTime` into `link.request()` (the local seek is `seekTo()`), follows states via `link.subscribe()`, and sets `.companionNoControl`; `ViewLayout.create()` puts `areaCompanion` (or one large TimedContent view) into the right area and leaves the others empty; `Interface` sets `.companionMode` (CSS in `CompanionLauncher/style.css`); `Extensions` loads nothing; `ViewVideo.adjustHypervideo/adjustLayout` do nothing.
+- **Companion area:** `config.layoutArea.areaCompanion`, a fifth collection in `ViewLayout` (`AREAS` table: name, key, cap; whichArea `'companion'`), rendered into the hidden `.areaCompanionContainer` so its settings UI works, shown in the layout editor as a phone (`.companionLayoutManager`) when a broker is set or views exist. `getLayoutAreaData()` writes the key only once it exists, so other hypervideos are saved as they were. `ContentView.isVerticalArea()` (left, right, companion) replaces the old `left || right` checks; EditAPI and TranscriptsEditor know the area.
+- **No code on the phone:** `companion.html` has `script-src 'self'` and no inline script; the bundle is stripped on both sides.
 
 ## Export and Import
 

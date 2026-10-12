@@ -495,6 +495,13 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
 
     return {
 
+        // The instance is destroyed (FrameTrail's destroy()): the activity check stops.
+        onUnload: function() {
+            clearInterval(activityCheck);
+            clearTimeout(inactivityTimeout);
+            activityCheck = null;
+        },
+
         onChange: {
             
         },

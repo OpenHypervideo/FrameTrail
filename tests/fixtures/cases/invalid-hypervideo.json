@@ -600,6 +600,32 @@
             ]
         },
         {
+            "name": "companion area with a view that is not one",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Lecture"
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaCompanion": [
+                            {
+                                "type": "Slideshow",
+                                "contentSize": "large"
+                            }
+                        ]
+                    }
+                },
+                "clips": []
+            },
+            "errors": [
+                {
+                    "path": "/config/layoutArea/areaCompanion/0/type",
+                    "message": "must be one of \"TimedContent\", \"CustomHTML\", \"Transcript\", \"Timelines\", \"Chapters\""
+                }
+            ]
+        },
+        {
             "name": "chapter without start",
             "schema": "hypervideo.schema.json",
             "data": {

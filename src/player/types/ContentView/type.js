@@ -80,7 +80,18 @@ FrameTrail.defineType(
                 contentViewData:    null,
                 contentCollection: null,
                 contentGroups: null,
-                _AREA_KEYS: { top: 'Top', bottom: 'Bottom', left: 'Left', right: 'Right' },
+                _AREA_KEYS: { top: 'Top', bottom: 'Bottom', left: 'Left', right: 'Right', companion: 'Companion' },
+
+
+                /**
+                 * Whether my area is a vertical strip: left, right, or the companion area (the phone's views, which are laid out like the right area).
+                 *
+                 * @method isVerticalArea
+                 * @return {Boolean}
+                 */
+                isVerticalArea: function() {
+                    return this.whichArea == 'left' || this.whichArea == 'right' || this.whichArea == 'companion';
+                },
 
 
                 _getFilteredCollection: function() {
@@ -178,7 +189,7 @@ FrameTrail.defineType(
 
                     if ( contentItem.data.type == 'location'
                         && this.contentViewData.contentSize == 'large'
-                        && (this.whichArea == 'left' || this.whichArea == 'right') ) {
+                        && this.isVerticalArea() ) {
                         var _resourceDetail = element.querySelector('.resourceDetail');
                         if (_resourceDetail && _resourceDetail._leafletMap) {
                             _resourceDetail._leafletMap.invalidateSize();
@@ -572,7 +583,7 @@ FrameTrail.defineType(
                         });
                     }
 
-                    if ( self.whichArea == 'left' || self.whichArea == 'right' ) {
+                    if ( self.isVerticalArea() ) {
                         collectionElement.addEventListener('click', function() {
                             if ( self.contentViewData.contentSize == 'small' || self.contentViewData.contentSize == 'medium' ) {
                                 var _btn = this.querySelector('.resourcePreviewButton');
@@ -1338,8 +1349,7 @@ FrameTrail.defineType(
                         // via the visible slideButtons or the arrow keys instead).
                         // So on non-touch-primary devices we make it transparent
                         // to input and skip wiring up any handlers.
-                        var isTouchPrimary = window.matchMedia
-                            && window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+                        var isTouchPrimary = FrameTrail.isTouchPrimary();
                         if (!isTouchPrimary) {
                             swipeOverlay.style.pointerEvents = 'none';
                             return;
@@ -1745,7 +1755,7 @@ FrameTrail.defineType(
                     }
 
                     var sprite = (size == 'medium' || size == 'large') ? Controller.getScrubSprite() : null,
-                        isVertical = (self.whichArea == 'left' || self.whichArea == 'right'),
+                        isVertical = self.isVerticalArea(),
                         duration   = HypervideoModel.duration;
 
                     // In a narrow vertical strip the card is only ~44px wide, which is
@@ -1894,7 +1904,7 @@ FrameTrail.defineType(
                  */
                 distributeElements: function() {
 
-                    if ( this.whichArea == 'left' || this.whichArea == 'right' ) {
+                    if ( this.isVerticalArea() ) {
                         return;
                     }
 
@@ -2040,7 +2050,7 @@ FrameTrail.defineType(
                         sliderParent = (details) ? self.contentViewDetailsContainer : self.contentViewContainer;
 
                     if ( self.contentCollection.length == 0
-                        || ( (self.whichArea == 'left' || self.whichArea == 'right') && self.contentViewData.contentSize == 'large')
+                        || ( self.isVerticalArea() && self.contentViewData.contentSize == 'large')
                         || !sliderParent.classList.contains('active') ) {
                         return;
                     }

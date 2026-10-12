@@ -366,6 +366,7 @@ build/
 ├── index.html              # Player entry (loads bundles)
 ├── resources.html          # Resource manager entry
 ├── setup.html              # Setup wizard
+├── companion.html          # The page a paired phone opens (docs/PAIRING.md)
 ├── frametrail.js           # All JS concatenated (~2MB)
 ├── frametrail.min.js       # Minified JS (~800KB)
 ├── frametrail.css          # All CSS concatenated (with inlined fonts)
@@ -465,6 +466,7 @@ Runtime config is in `_data/config.json`:
 - `userAvatars` — Whether profile pictures are shown, and where they may come from (default: `off`, see below)
 - `extensions` — Extensions the instance loads: their browser part, and their server part if `_server/extensions/<name>/` has one ([docs/EXTENDING.md](EXTENDING.md#writing-an-extension))
 - `apiTokens` — Let signed-in users create personal API tokens for other programs (default: off, see below)
+- `pairingBrokerURL`, `pairingButtonVisible`, `pairingCompanionURL` — Pairing with phones: the broker phones and the player find each other through (empty: no pairing), whether the player controls offer the pairing button (default: off), and the page a phone opens (empty: `companion.html` beside the player page). See [docs/PAIRING.md](PAIRING.md), which also covers the stub broker, STUN/TURN and coturn
 
 #### Private instances (`alwaysForceLogin`)
 

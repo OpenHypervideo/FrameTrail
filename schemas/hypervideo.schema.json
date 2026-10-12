@@ -511,7 +511,7 @@
                     "default": ""
                 },
                 "layoutArea": {
-                    "description": "The content views around the video.",
+                    "description": "The content views around the video, and those of a paired phone.",
                     "type": "object",
                     "properties": {
                         "areaTop": {
@@ -534,6 +534,12 @@
                         },
                         "areaRight": {
                             "description": "Views right of the video.",
+                            "type": "array",
+                            "items": { "$ref": "#/$defs/contentView" },
+                            "default": []
+                        },
+                        "areaCompanion": {
+                            "description": "Views shown full screen on a phone paired with the player (docs/PAIRING.md), laid out like the right area; not shown in the player itself. Empty or missing: one TimedContent view of all annotations, size large. Kept whether or not the instance has pairing set up.",
                             "type": "array",
                             "items": { "$ref": "#/$defs/contentView" },
                             "default": []

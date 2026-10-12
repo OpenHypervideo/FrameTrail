@@ -95,6 +95,39 @@
                     "initClosed": true,
                     "html": "<p>Custom HTML with a <span class=\"timebased\" data-start=\"20\" data-end=\"40\">time-based</span> part.</p>"
                 }
+            ],
+            "areaCompanion": [
+                {
+                    "type": "TimedContent",
+                    "name": "",
+                    "description": "",
+                    "icon": "",
+                    "cssClass": "",
+                    "contentSize": "large",
+                    "initClosed": false,
+                    "collectionFilter": {
+                        "tags": [],
+                        "types": [],
+                        "users": [],
+                        "text": ""
+                    },
+                    "onClickContentItem": ""
+                },
+                {
+                    "type": "Chapters",
+                    "name": "Chapters",
+                    "description": "",
+                    "icon": "icon-list-bullet",
+                    "cssClass": "",
+                    "contentSize": "medium",
+                    "initClosed": false,
+                    "collectionFilter": {
+                        "tags": [],
+                        "types": [],
+                        "users": [],
+                        "text": ""
+                    }
+                }
             ]
         }
     },

@@ -142,6 +142,9 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
      */
     function collectEntries() {
 
+        // A paired phone runs no code but FrameTrail's own (docs/PAIRING.md).
+        if (FrameTrail.getState('companion')) { return []; }
+
         var Database = FrameTrail.module('Database'),
             byName   = {},
             entries  = [];

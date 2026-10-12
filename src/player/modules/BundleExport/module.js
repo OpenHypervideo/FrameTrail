@@ -453,7 +453,10 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
         collectFolder: collectFolder,
         bundle:        bundle,
         library:       library,
-        exportData:    exportData
+        exportData:    exportData,
+        // What a page of a bundle needs besides it; PairingHost sends both to a paired phone.
+        pageDatapath:  pageDatapath,
+        pageConfig:    pageConfig
     };
 
 });

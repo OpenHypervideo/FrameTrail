@@ -2,7 +2,9 @@
  * FrameTrail's tests: the fixtures in tests/fixtures/ against the JSON Schemas
  * in schemas/ (with FrameTrailSchema), through FrameTrailSerializer and
  * FrameTrailLint, plus unit tests of FrameTrailSchema, FrameTrailSerializer,
- * FrameTrailHTMLFormat, FrameTrailLint, FrameTrailKeyframes and FrameTrailWebVTT.
+ * FrameTrailHTMLFormat, FrameTrailLint, FrameTrailKeyframes, FrameTrailWebVTT
+ * and FrameTrailPairing, and the pairing broker contract against the stub in
+ * scripts/pairing-broker.mjs.
  * No dependencies, Node 20 or later:
  *
  *     node tests/run-js.mjs
@@ -15,11 +17,14 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import http from 'node:http';
+import crypto from 'node:crypto';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { extractExamples, serialize, FIXTURES_DIR as EXAMPLE_FIXTURES } from './extract-examples.mjs';
 import { bundleSchemas, typesDoc, OUTPUT as SCHEMA_BUNDLE, TYPES_OUTPUT } from '../scripts/bundle-schemas.mjs';
+import { createBroker } from '../scripts/pairing-broker.mjs';
 
 const require  = createRequire(import.meta.url);
 const ROOT     = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -31,6 +36,7 @@ const Keyframes  = require('../src/_shared/frametrail-core/serialization/FrameTr
 const HTMLFormat = require('../src/_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js');
 const Lint       = require('../src/_shared/frametrail-core/serialization/FrameTrailLint.js');
 const WebVTT     = require('../src/_shared/frametrail-core/serialization/FrameTrailWebVTT.js');
+const Pairing    = require('../src/_shared/frametrail-core/pairing/FrameTrailPairing.js');
 
 const NOW = 1999999999999;
 
@@ -1309,6 +1315,346 @@ describe('FrameTrailWebVTT', () => {
         assert.deepStrictEqual(WebVTT.speakerOf('No one'), { speaker: '', classes: '', text: 'No one' });
         assert.equal(WebVTT.withSpeaker('Ada & <Bob>', 'Hi', '.loud'), '<v.loud Ada &amp; &lt;Bob&gt;>Hi');
         assert.equal(WebVTT.withSpeaker('  ', 'Hi'), 'Hi');
+    });
+
+});
+
+
+/* ---------------------------------------------------------------------- */
+/*  Pairing                                                               */
+/* ---------------------------------------------------------------------- */
+
+describe('FrameTrailPairing', () => {
+
+    const hex = (bytes) => Array.from(bytes, (b) => b.toString(16).toUpperCase().padStart(2, '0')).join(':');
+
+    test('ids and base64url', () => {
+        const id = Pairing.randomId();
+        assert.match(id, /^[A-Za-z0-9_-]{22}$/);
+        assert.notEqual(Pairing.randomId(), id);
+        assert.ok(Pairing.isId(id));
+        assert.ok(!Pairing.isId('short') && !Pairing.isId('a/b' + id) && !Pairing.isId(42));
+        for (let length = 0; length < 40; length++) {
+            const bytes = crypto.randomBytes(length);
+            assert.equal(Pairing.toBase64url(bytes), bytes.toString('base64url'));
+            assert.deepStrictEqual(Buffer.from(Pairing.fromBase64url(bytes.toString('base64url'))), bytes);
+        }
+        assert.equal(Pairing.fromBase64url('not base64!'), null);
+    });
+
+    test('fingerprints: of a certificate, in an SDP, and the check of an answer', () => {
+        const bytes = crypto.randomBytes(32),
+              other = crypto.randomBytes(32),
+              fp    = bytes.toString('base64url'),
+              cert  = { getFingerprints: () => [{ algorithm: 'sha-1', value: hex(other.subarray(0, 20)) }, { algorithm: 'sha-256', value: hex(bytes) }] };
+        assert.equal(Pairing.certificateFingerprint(cert), fp);
+        assert.equal(Pairing.certificateFingerprint({ getFingerprints: () => [] }), null);
+        const sdp = (list) => 'v=0\r\no=- 1 2 IN IP4 127.0.0.1\r\n' + list.map((f) => 'a=fingerprint:' + f + '\r\n').join('') + 'm=application 9 UDP/DTLS/SCTP webrtc-datachannel\r\n';
+        assert.deepStrictEqual(Pairing.sdpFingerprints(sdp(['sha-256 ' + hex(bytes)])), [{ algorithm: 'sha-256', value: fp }]);
+        assert.ok(Pairing.checkFingerprint(sdp(['sha-256 ' + hex(bytes)]), fp));
+        assert.ok(Pairing.checkFingerprint(sdp(['SHA-256 ' + hex(bytes).toLowerCase(), 'sha-256 ' + hex(bytes)]), fp), 'case does not matter; every section may repeat it');
+        assert.ok(!Pairing.checkFingerprint(sdp(['sha-256 ' + hex(other)]), fp), 'another certificate');
+        assert.ok(!Pairing.checkFingerprint(sdp(['sha-256 ' + hex(bytes), 'sha-256 ' + hex(other)]), fp), 'one of them is another certificate');
+        assert.ok(!Pairing.checkFingerprint(sdp([]), fp), 'none');
+        assert.ok(!Pairing.checkFingerprint(sdp(['sha-1 ' + hex(bytes.subarray(0, 20))]), fp), 'another algorithm');
+        assert.ok(!Pairing.checkFingerprint(sdp(['sha-256 ' + hex(bytes)]), 'abc'), 'no expected fingerprint');
+    });
+
+    test('join links and URLs', () => {
+        const room = Pairing.randomId(), fp = crypto.randomBytes(32).toString('base64url'),
+              link = Pairing.joinURL('https://ft.example.org/companion.html#old', room, 'https://broker.example.org/pair', fp);
+        assert.equal(link, 'https://ft.example.org/companion.html#pair=' + room + '&b=' + encodeURIComponent('https://broker.example.org/pair/') + '&fp=' + fp);
+        assert.deepStrictEqual(Pairing.parseJoin(link), { room, broker: 'https://broker.example.org/pair/', fp });
+        assert.deepStrictEqual(Pairing.parseJoin(link.split('#')[1]), { room, broker: 'https://broker.example.org/pair/', fp }, 'the fragment alone');
+        assert.equal(Pairing.parseJoin(link.replace(room, 'short')), null, 'room');
+        assert.equal(Pairing.parseJoin(link.replace(fp, fp.slice(1))), null, 'fingerprint');
+        assert.equal(Pairing.parseJoin(link.replace(encodeURIComponent('https://'), encodeURIComponent('ftp://'))), null, 'broker');
+        assert.equal(Pairing.parseJoin(''), null);
+        assert.equal(Pairing.brokerBase('https://b.example.org'), 'https://b.example.org/');
+        assert.equal(Pairing.brokerBase(' https://b.example.org/x/ '), 'https://b.example.org/x/');
+        assert.equal(Pairing.checkBrokerURL(''), 'missing');
+        assert.equal(Pairing.checkBrokerURL('broker.example.org'), 'invalid');
+        assert.equal(Pairing.checkBrokerURL('http://192.168.1.2:8787', 'https:'), 'insecure');
+        assert.equal(Pairing.checkBrokerURL('http://192.168.1.2:8787', 'http:'), null);
+        assert.equal(Pairing.checkBrokerURL('http://localhost:8787/', 'https:'), null, 'this machine is trusted');
+        assert.equal(Pairing.checkBrokerURL('https://b.example.org', 'https:'), null);
+        assert.equal(Pairing.companionURL('', 'https://ft.example.org/sub/index.html#hypervideo=1'), 'https://ft.example.org/sub/companion.html');
+        assert.equal(Pairing.companionURL('', 'file:///Users/me/index.html'), null, 'no sibling on file:');
+        assert.equal(Pairing.companionURL('https://pair.example.org/c.html#x', 'file:///Users/me/index.html'), 'https://pair.example.org/c.html');
+        assert.equal(Pairing.companionURL('phone.html', 'https://ft.example.org/sub/'), 'https://ft.example.org/sub/phone.html', 'relative to the page');
+        assert.equal(Pairing.deviceLabel('Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) Mobile/15E148'), 'iPhone');
+        assert.equal(Pairing.deviceLabel('Mozilla/5.0 (Linux; Android 14; Pixel 8) Mobile Safari/537.36'), 'Android phone');
+        assert.equal(Pairing.deviceLabel(''), 'Browser');
+    });
+
+    test('offer and answer blobs', () => {
+        assert.deepStrictEqual(Pairing.readOffer(Pairing.offerBlob('v=0', 'iPhone')), { sdp: 'v=0', label: 'iPhone' });
+        assert.deepStrictEqual(Pairing.readOffer({ v: 2, sdp: 'v=0' }), { error: 'version' });
+        assert.deepStrictEqual(Pairing.readOffer({ v: 1 }), { error: 'invalid' });
+        assert.deepStrictEqual(Pairing.readOffer('v=0'), { error: 'invalid' });
+        assert.deepStrictEqual(Pairing.readAnswer(Pairing.answerBlob('v=0')), { sdp: 'v=0' });
+        assert.deepStrictEqual(Pairing.readAnswer(Pairing.refusalBlob('full')), { refused: 'full' });
+        assert.deepStrictEqual(Pairing.readAnswer({ v: 1, refused: 'something new' }), { refused: 'closed' });
+        assert.deepStrictEqual(Pairing.readAnswer({ v: 2, sdp: 'v=0' }), { refused: 'version' });
+        assert.equal(Pairing.readAnswer(null), null);
+    });
+
+    test('messages: what each side may send', () => {
+        const valid = {
+            host: [
+                { type: 'welcome', v: 1, canControl: true, resume: 'r', label: 'Lecture' },
+                { type: 'state', hypervideo: '3', playing: true, time: 12.5, rate: 1, waiting: false, seq: 4 },
+                { type: 'control', canControl: false },
+                { type: 'view', mode: 'overview' },
+                { type: 'pong', id: 7 },
+                { type: 'bye', reason: 'stopped' }
+            ],
+            guest: [
+                { type: 'hello', v: 1, guest: 'g', label: 'iPhone' },
+                { type: 'hello', v: 1, guest: 'g', resume: 'r', label: 'iPhone' },
+                { type: 'request', action: 'play' },
+                { type: 'request', action: 'seek', time: 3 },
+                { type: 'ready', id: 'b' },
+                { type: 'ping', id: 1 },
+                { type: 'bye' }
+            ]
+        };
+        for (const from of ['host', 'guest']) {
+            for (const message of valid[from]) {
+                assert.equal(Pairing.validateMessage(message, from), null, JSON.stringify(message));
+                assert.deepStrictEqual(Pairing.decode(Pairing.encode(message), from), message);
+            }
+        }
+        assert.equal(Pairing.decode(Pairing.encode(valid.host[1]), 'guest'), null, 'a guest cannot send state');
+        assert.equal(Pairing.decode(Pairing.encode({ type: 'request', action: 'play' }), 'host'), null, 'nor the host requests');
+        assert.equal(Pairing.decode('{"type":', 'guest'), null);
+        assert.equal(Pairing.validateMessage({ type: 'request', action: 'seek' }, 'guest'), 'a seek needs a time');
+        assert.equal(Pairing.validateMessage({ type: 'request', action: 'stop' }, 'guest'), 'action must be one of play, pause, seek');
+        assert.equal(Pairing.validateMessage({ type: 'state', hypervideo: '3', playing: true, time: NaN, rate: 1, waiting: false, seq: 1 }, 'host'), 'time must be a number');
+        assert.equal(Pairing.validateMessage({ type: 'toString' }, 'guest'), 'unknown message type "toString"');
+        assert.equal(Pairing.validateMessage([], 'guest'), 'not a message');
+    });
+
+    test('chunks: a bundle in pieces and together again', () => {
+        const text = JSON.stringify({ name: 'Ünïcödé 😀 '.repeat(5000), quote: '"'.repeat(3000) });
+        const messages = Pairing.bundleMessages('b1', text, 1000);
+        assert.equal(messages[0].type, 'bundle-start');
+        assert.equal(messages[messages.length - 1].type, 'bundle-end');
+        assert.ok(messages.slice(1, -1).every((m) => m.data.length <= 1000));
+        for (const part of Pairing.split(text, 1000)) {
+            const last = part.charCodeAt(part.length - 1);
+            assert.ok(!(last >= 0xD800 && last <= 0xDBFF), 'no piece ends inside a surrogate pair');
+        }
+        assert.ok(messages.every((m) => Pairing.validateMessage(m, 'host') === null));
+        const assembler = Pairing.createAssembler();
+        let result = null;
+        for (const message of messages) { result = assembler.accept(message) || result; }
+        assert.deepStrictEqual(result, { id: 'b1', text });
+        assert.deepStrictEqual(Pairing.bundleMessages('e', ''), [{ type: 'bundle-start', id: 'e', size: 0, parts: 0 }, { type: 'bundle-end', id: 'e' }]);
+        assert.deepStrictEqual(assembler.accept({ type: 'bundle-start', id: 'e', size: 0, parts: 0 }) || assembler.accept({ type: 'bundle-end', id: 'e' }), { id: 'e', text: '' });
+
+        const broken = Pairing.createAssembler();
+        assert.throws(() => broken.accept({ type: 'bundle-part', id: 'x', i: 0, data: 'a' }), { code: 'invalid' }, 'not started');
+        broken.accept({ type: 'bundle-start', id: 'x', size: 2, parts: 2 });
+        broken.accept({ type: 'bundle-part', id: 'x', i: 0, data: 'a' });
+        assert.throws(() => broken.accept({ type: 'bundle-part', id: 'x', i: 0, data: 'a' }), { code: 'invalid' }, 'twice');
+        assert.throws(() => broken.accept({ type: 'bundle-end', id: 'x' }), { code: 'invalid' }, 'a piece missing');
+        broken.accept({ type: 'bundle-start', id: 'y', size: 1, parts: 1 });
+        assert.throws(() => broken.accept({ type: 'bundle-part', id: 'x', i: 1, data: 'b' }), { code: 'invalid' }, 'a new start drops the unfinished bundle');
+        assert.equal(broken.pending, 'y');
+    });
+
+    test('the guest\'s clock', () => {
+        const clock = Pairing.createClock();
+        assert.equal(clock.time(0), null);
+        const state = (time, playing, extra) => Object.assign({ type: 'state', hypervideo: '1', time, playing, rate: 1, waiting: false, seq: 1 }, extra);
+        assert.equal(clock.update(state(10, true), 1000, 40), true);
+        assert.equal(clock.time(1000), 10.02, 'half the round trip on top');
+        assert.equal(clock.time(3000), 12.02, 'runs while the host plays');
+        assert.equal(clock.update(state(12.1, true), 3000, 40), false, 'within the threshold: no jump');
+        assert.equal(clock.time(3000), 12.02);
+        assert.equal(clock.update(state(12.5, true), 3000, 40), true, 'beyond it: jumps');
+        assert.equal(clock.time(3000), 12.52);
+        assert.equal(clock.update(state(12.6, false), 3100, 40), true, 'a pause always moves the clock');
+        assert.equal(clock.time(9000), 12.6, 'and holds it');
+        assert.equal(clock.update(state(12.65, false), 9000, 40), true, 'paused, every state is exact');
+        clock.update(state(20, true, { rate: 2 }), 10000, 0);
+        assert.equal(clock.time(11000), 22, 'rate');
+        assert.equal(clock.update(state(22, true, { rate: 2, waiting: true }), 11000, 0), true);
+        assert.equal(clock.time(15000), 22, 'stands while the host waits for data');
+        assert.ok(!clock.running);
+    });
+
+    test('waiting for ICE gathering', async () => {
+        const fakePC = (state) => {
+            const pc = new EventTarget();
+            pc.iceGatheringState = state;
+            return pc;
+        };
+        assert.equal(await Pairing.gatherComplete(fakePC('complete'), 10), true);
+        const gathering = fakePC('gathering'),
+              done = Pairing.gatherComplete(gathering, 1000);
+        gathering.iceGatheringState = 'complete';
+        gathering.dispatchEvent(new Event('icegatheringstatechange'));
+        assert.equal(await done, true);
+        const lastCandidate = fakePC('gathering'),
+              done2 = Pairing.gatherComplete(lastCandidate, 1000),
+              event = new Event('icecandidate');
+        event.candidate = null;
+        lastCandidate.dispatchEvent(event);
+        assert.equal(await done2, true, 'the null candidate ends gathering');
+        assert.equal(await Pairing.gatherComplete(fakePC('gathering'), 20), false, 'the timeout');
+    });
+
+    test('the path a connection takes', () => {
+        const stats = new Map([
+            ['T', { id: 'T', type: 'transport', selectedCandidatePairId: 'P2' }],
+            ['P1', { id: 'P1', type: 'candidate-pair', localCandidateId: 'L1', remoteCandidateId: 'R1', nominated: true, state: 'succeeded' }],
+            ['P2', { id: 'P2', type: 'candidate-pair', localCandidateId: 'L2', remoteCandidateId: 'R1' }],
+            ['L1', { id: 'L1', type: 'local-candidate', candidateType: 'host', protocol: 'udp', address: '192.168.1.2' }],
+            ['L2', { id: 'L2', type: 'local-candidate', candidateType: 'relay', protocol: 'udp', address: '203.0.113.5' }],
+            ['R1', { id: 'R1', type: 'remote-candidate', candidateType: 'srflx' }]
+        ]);
+        assert.deepStrictEqual(Pairing.selectedPath(stats), { local: 'relay', remote: 'srflx', protocol: 'udp', relayed: true, address: '203.0.113.5' });
+        stats.delete('T');
+        assert.deepStrictEqual(Pairing.selectedPath(stats), { local: 'host', remote: 'srflx', protocol: 'udp', relayed: false, address: '192.168.1.2' }, 'without a transport report: the nominated pair');
+        assert.equal(Pairing.selectedPath(new Map()), null);
+    });
+
+    test('what a phone gets has no code', () => {
+        const bundle = {
+            bundle: 'hypervideo', id: '1',
+            hypervideo: {
+                meta: { name: 'Talk' }, clips: [],
+                config: { layoutArea: { areaRight: [{ type: 'TimedContent', onClickContentItem: 'alert(1)' }], areaCompanion: [{ type: 'CustomHTML', html: '<b>x</b>', onClickContentItem: 'alert(2)' }] } },
+                contents: [{ type: 'Annotation' }],
+                globalEvents: { onReady: 'alert(3)' },
+                customCSS: '.x { color: red }'
+            },
+            annotations: { files: { 1: [] } }
+        };
+        const phone = Pairing.companionBundle(bundle);
+        assert.deepStrictEqual(phone.hypervideo.contents, []);
+        assert.deepStrictEqual(phone.hypervideo.globalEvents, {});
+        assert.equal(phone.hypervideo.config.layoutArea.areaRight[0].onClickContentItem, undefined);
+        assert.equal(phone.hypervideo.config.layoutArea.areaCompanion[0].onClickContentItem, undefined);
+        assert.equal(phone.hypervideo.config.layoutArea.areaCompanion[0].html, '<b>x</b>', 'authored HTML stays (the page\'s CSP keeps it from running anything)');
+        assert.equal(phone.hypervideo.customCSS, '.x { color: red }');
+        assert.equal(bundle.hypervideo.contents.length, 1, 'the bundle given is not changed');
+    });
+
+});
+
+
+describe('pairing broker (contract v1, scripts/pairing-broker.mjs)', () => {
+
+    // A broker on a free port, with a clock the test moves.
+    async function withBroker(options, run) {
+        let now = 1000000;
+        const broker = createBroker(Object.assign({ now: () => now, log: null }, options)),
+              server = http.createServer(broker.handle);
+        await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+        const base = 'http://127.0.0.1:' + server.address().port + '/';
+        try {
+            await run({ base, client: Pairing.brokerClient(base), advance: (ms) => { now += ms; }, broker });
+        } finally {
+            await new Promise((resolve) => server.close(resolve));
+        }
+    }
+
+    const room = Pairing.randomId(), hostKey = Pairing.randomId(), guest = Pairing.randomId();
+
+    test('a handshake: room, offer, answer', () => withBroker({}, async ({ client }) => {
+        await client.openRoom(room, hostKey);
+        await client.openRoom(room, hostKey);
+        assert.deepStrictEqual(await client.listOffers(room, hostKey, 0), { offers: [], cursor: 0 });
+        const offer = Pairing.offerBlob('v=0 offer', 'iPhone');
+        await client.postOffer(room, guest, offer);
+        const listed = await client.listOffers(room, hostKey, 0);
+        assert.deepStrictEqual(listed, { offers: [{ guest, cursor: 1, blob: offer }], cursor: 1 });
+        assert.deepStrictEqual(await client.listOffers(room, hostKey, listed.cursor), { offers: [], cursor: 1 }, 'after the cursor: nothing new');
+        assert.equal(await client.getAnswer(room, guest), null, 'no answer yet');
+        await client.putAnswer(room, guest, hostKey, Pairing.answerBlob('v=0 answer'));
+        assert.deepStrictEqual(await client.getAnswer(room, guest), { v: 1, sdp: 'v=0 answer' });
+        await client.closeRoom(room, hostKey);
+        await assert.rejects(client.postOffer(room, guest, offer), { code: 'noRoom' });
+        await assert.rejects(client.listOffers(room, hostKey, 0), { code: 'noRoom' });
+    }));
+
+    test('only the host of a room acts as its host', () => withBroker({}, async ({ base, client }) => {
+        await client.openRoom(room, hostKey);
+        const other = Pairing.randomId();
+        await assert.rejects(client.openRoom(room, other), { code: 'forbidden' });
+        await assert.rejects(client.listOffers(room, other, 0), { code: 'forbidden' });
+        await assert.rejects(client.putAnswer(room, guest, other, Pairing.answerBlob('x')), { code: 'forbidden' });
+        await assert.rejects(client.closeRoom(room, other), { code: 'forbidden' });
+        const anonymous = await fetch(base + 'rooms/' + room + '/offers?after=0');
+        assert.equal(anonymous.status, 401);
+    }));
+
+    test('limits: blob size, ids, rate', () => withBroker({ rateLimit: 30 }, async ({ base, client }) => {
+        await client.openRoom(room, hostKey);
+        await assert.rejects(client.postOffer(room, guest, { v: 1, sdp: 'x'.repeat(Pairing.MAX_BLOB) }), { code: 'tooLarge' });
+        assert.equal((await fetch(base + 'rooms/short/offers/' + guest, { method: 'POST', body: '{}' })).status, 404, 'not an id: not part of the contract');
+        let limited = null;
+        for (let i = 0; i < 40 && !limited; i++) {
+            const response = await fetch(base + 'rooms/' + room + '/answers/' + guest);
+            if (response.status === 429) { limited = response; }
+        }
+        assert.ok(limited, 'rate limited');
+        assert.ok(parseInt(limited.headers.get('retry-after'), 10) > 0);
+    }));
+
+    test('rooms and blobs expire', () => withBroker({}, async ({ client, advance }) => {
+        await client.openRoom(room, hostKey);
+        advance(100000);
+        await client.listOffers(room, hostKey, 0);
+        advance(100000);
+        await client.postOffer(room, guest, Pairing.offerBlob('v=0'));
+        assert.equal((await client.listOffers(room, hostKey, 0)).offers.length, 1, 'every call of the host renews the room');
+        advance(61000);
+        assert.deepStrictEqual((await client.listOffers(room, hostKey, 0)).offers, [], 'an offer lives 60 s');
+        await client.putAnswer(room, guest, hostKey, Pairing.answerBlob('v=0'));
+        advance(61000);
+        assert.equal(await client.getAnswer(room, guest), null, 'so does an answer');
+        advance(60000);
+        await assert.rejects(client.postOffer(room, guest, Pairing.offerBlob('v=0')), { code: 'noRoom' }, 'a room lives 120 s after the host\'s last call');
+    }));
+
+    test('CORS: any origin, preflight answered', () => withBroker({}, async ({ base }) => {
+        const response = await fetch(base + 'rooms/' + room, { method: 'OPTIONS' });
+        assert.equal(response.status, 204);
+        assert.equal(response.headers.get('access-control-allow-origin'), '*');
+        assert.match(response.headers.get('access-control-allow-headers'), /Authorization/);
+        assert.match(response.headers.get('access-control-allow-methods'), /DELETE/);
+    }));
+
+    test('GET /ice: none (LAN only), STUN, TURN with coturn REST credentials', async () => {
+        await withBroker({}, async ({ client }) => {
+            assert.deepStrictEqual(await client.ice(), []);
+        });
+        await withBroker({ stun: ['stun:stun.example.org:3478'], turn: ['turn:turn.example.org:3478'], turnSecret: 's3cret', turnTTL: 600 }, async ({ client }) => {
+            const servers = await client.ice();
+            assert.deepStrictEqual(servers[0], { urls: ['stun:stun.example.org:3478'] });
+            assert.deepStrictEqual(servers[1].urls, ['turn:turn.example.org:3478']);
+            const [expiry] = servers[1].username.split(':');
+            assert.equal(parseInt(expiry, 10), 1000 + 600, 'expiry: now + ttl, in seconds');
+            assert.equal(servers[1].credential, crypto.createHmac('sha1', 's3cret').update(servers[1].username).digest('base64'));
+        });
+    });
+
+    test('pollAnswer waits for the answer, or gives up', () => withBroker({}, async ({ client }) => {
+        await client.openRoom(room, hostKey);
+        setTimeout(() => { client.putAnswer(room, guest, hostKey, Pairing.answerBlob('late')); }, 60);
+        assert.deepStrictEqual(await Pairing.pollAnswer(client, room, guest, { interval: 20, timeout: 2000 }), { v: 1, sdp: 'late' });
+        await assert.rejects(Pairing.pollAnswer(client, room, Pairing.randomId(), { interval: 10, timeout: 50 }), { code: 'timeout' });
+        const controller = new AbortController();
+        setTimeout(() => controller.abort(), 30);
+        await assert.rejects(Pairing.pollAnswer(client, room, Pairing.randomId(), { interval: 10, timeout: 5000, signal: controller.signal }), { code: 'aborted' });
+    }));
+
+    test('no broker there', async () => {
+        await assert.rejects(Pairing.brokerClient('http://127.0.0.1:9/').ice(), { code: 'network' });
     });
 
 });

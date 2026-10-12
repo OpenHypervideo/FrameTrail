@@ -1,0 +1,27 @@
+/* The QR code stays dark on white in every theme, so phones can read it. */
+
+.pairingDialog .pairingCode svg,
+.pairingDialog .pairingCode .pairingCodePlaceholder {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    border-radius: 4px;
+}
+
+.pairingDialog .pairingCode .pairingCodePlaceholder {
+    background: var(--semi-transparent-fg-color, rgba(255, 255, 255, .1));
+}
+
+.pairingDialog .pairingLink {
+    width: 100%;
+    font-size: 12px;
+}
+
+.pairingDialog .pairingPath {
+    opacity: .7;
+}
+
+.playerControl.pairingButton.active {
+    color: var(--secondary-fg-color);
+}

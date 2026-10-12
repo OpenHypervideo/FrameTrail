@@ -267,6 +267,22 @@
                 }
             }
         },
+        "pairingBrokerURL": {
+            "description": "Base URL of the pairing broker through which phones pair with the player by scanning a QR code, and then show its content views in step with its playback (docs/PAIRING.md). The broker only passes the WebRTC handshake on; it must answer from the page's origin (CORS) and be https on an https page (except on localhost). Empty switches pairing off.",
+            "type": "string",
+            "pattern": "^(https?://.+)?$",
+            "default": ""
+        },
+        "pairingButtonVisible": {
+            "description": "Show the pairing button in the player controls, while a hypervideo is open and pairingBrokerURL is set. Never on phones and tablets. Only true (the boolean) shows it.",
+            "type": "boolean",
+            "default": false
+        },
+        "pairingCompanionURL": {
+            "description": "The page a paired phone opens: a FrameTrail companion page, absolute or relative to the player page. Empty means companion.html beside the player page, which exists only where the page is served over http(s); a player opened from a local folder or file needs this set.",
+            "type": "string",
+            "default": ""
+        },
         "lastchanged": {
             "description": "Compare-and-swap token: when the file was last saved through FrameTrail, in milliseconds since 1970.",
             "type": "number"

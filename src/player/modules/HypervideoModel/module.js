@@ -136,8 +136,22 @@
         //   unset   → auto-probe {videoBasename}_scrub.jpg (same-origin only)
         scrubSprite = ('scrubSprite' in videoData) ? videoData.scrubSprite : undefined;
 
+        var companion = FrameTrail.getState('companion');
+
         // Set video source and type or NullVideo
-        if (videoData.src && videoData.src.length > 3) {
+        if (companion) {
+
+            // A paired phone (docs/PAIRING.md) plays no video: its clock follows the
+            // desktop's, over the time span the desktop sent (clips[0].duration is
+            // often 0, the desktop knows the real one from its video).
+            videoType     = 'canvas';
+            sourcePath    = '';
+            offsetIn      = companion.offsetIn || 0;
+            duration      = companion.duration || 0;
+            offsetOut     = offsetIn + duration;
+            durationFull  = offsetOut;
+
+        } else if (videoData.src && videoData.src.length > 3) {
 
             sourcePath  = videoData.src;
 
@@ -2050,6 +2064,11 @@
 
                             if (FrameTrail.module('Extensions')) {
                                 FrameTrail.module('Extensions').hypervideoChanged(newHypervideoID);
+                            }
+
+                            // The switch cleared the pairing's timers too; a paired phone gets the new hypervideo.
+                            if (FrameTrail.module('PairingHost')) {
+                                FrameTrail.module('PairingHost').hypervideoChanged(newHypervideoID);
                             }
 
                             window.setTimeout(function() {

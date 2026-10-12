@@ -31,8 +31,8 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
     var NEW_CUE_LENGTH = 2,     // seconds
         MIN_CUE_LENGTH = 0.1,   // seconds
         LANGUAGE_CODE  = /^[A-Za-z0-9_-]{1,32}$/,
-        AREA_LABELS    = { areaTop: 'LayoutAreaTop', areaBottom: 'LayoutAreaBottom', areaLeft: 'LayoutAreaLeft', areaRight: 'LayoutAreaRight' },
-        AREA_NAMES     = { areaTop: 'top', areaBottom: 'bottom', areaLeft: 'left', areaRight: 'right' };
+        AREA_LABELS    = { areaTop: 'LayoutAreaTop', areaBottom: 'LayoutAreaBottom', areaLeft: 'LayoutAreaLeft', areaRight: 'LayoutAreaRight', areaCompanion: 'LayoutAreaCompanion' },
+        AREA_NAMES     = { areaTop: 'top', areaBottom: 'bottom', areaLeft: 'left', areaRight: 'right', areaCompanion: 'companion' };
 
     var lang           = null,      // the language shown
         doc            = null,      // its FrameTrailWebVTT document

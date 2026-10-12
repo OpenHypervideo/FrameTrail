@@ -101,7 +101,9 @@ CSS_FILES=(
     "player/modules/HypervideoSettingsDialog/style.css"
     "player/modules/AdminSettingsDialog/style.css"
     "player/modules/Extensions/style.css"
+    "player/modules/PairingDialog/style.css"
     "resourcemanager/modules/ResourceManagerLauncher/style.css"
+    "companion/modules/CompanionLauncher/style.css"
 )
 
 # ──────────────────────────────────────────────
@@ -123,6 +125,7 @@ JS_FILES=(
     "_lib/collisiondetection/collisiondetection.js"
     "_lib/codemirror6/cm6.bundle.js"
     "_lib/codemirror6/cm6linters.js"
+    "_lib/qrcodegen/qrcodegen.js"
 
     # FrameTrail Core (must come before any defineModule/defineType calls)
     "_shared/frametrail-core/frametrail-core.js"
@@ -137,6 +140,9 @@ JS_FILES=(
     # Validation against schemas/ (pure; the schemas are bundled by scripts/bundle-schemas.mjs)
     "_shared/frametrail-core/schema/FrameTrailSchema.js"
     "_shared/frametrail-core/schema/FrameTrailSchemas.js"
+
+    # Pairing with a phone (pure: ids, broker client, protocol messages; docs/PAIRING.md)
+    "_shared/frametrail-core/pairing/FrameTrailPairing.js"
 
     # Localization (bundled into JS — must come before modules that use labels)
     "_shared/modules/Localization/locale/en.js"
@@ -243,9 +249,14 @@ JS_FILES=(
     "player/modules/BundleExport/module.js"
     "player/modules/ImportDialog/module.js"
     "player/modules/Extensions/module.js"
+    "player/modules/PairingHost/module.js"
+    "player/modules/PairingDialog/module.js"
 
     # Resource manager module
     "resourcemanager/modules/ResourceManagerLauncher/module.js"
+
+    # The phone's side of pairing (starts itself on companion.html only)
+    "companion/modules/CompanionLauncher/module.js"
 )
 
 # ──────────────────────────────────────────────
@@ -451,6 +462,27 @@ cat > "$BUILD_DIR/resources.html" << 'RESOURCES_HTML'
 <body></body>
 </html>
 RESOURCES_HTML
+
+# The page a paired phone opens (docs/PAIRING.md). No inline script: its
+# Content Security Policy allows only this origin's scripts, and the bundle
+# starts CompanionLauncher on pages marked data-frametrail-companion.
+cat > "$BUILD_DIR/companion.html" << 'COMPANION_HTML'
+<!DOCTYPE html>
+<html lang="en" data-frametrail-companion>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'">
+    <meta name="referrer" content="no-referrer">
+    <meta name="robots" content="noindex">
+    <title>FrameTrail</title>
+    <link rel="shortcut icon" href="favico.png">
+    <link rel="stylesheet" href="frametrail.min.css">
+    <script src="frametrail.min.js"></script>
+</head>
+<body></body>
+</html>
+COMPANION_HTML
 
 # Copy setup.html from source, replacing dev CSS links with the minified bundle
 awk '/<!-- BUILD:CSS -->/{print "    <link rel=\"stylesheet\" href=\"frametrail.min.css\">"; skip=1; next} /<!-- \/BUILD:CSS -->/{skip=0; next} !skip{print}' \

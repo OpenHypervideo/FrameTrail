@@ -32,13 +32,14 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
 
     // ViewLayout's names of the layout areas, by their own and by their names in config.layoutArea.
     var AREAS = {
-        'top':    'top',    'areaTop':    'top',
-        'bottom': 'bottom', 'areaBottom': 'bottom',
-        'left':   'left',   'areaLeft':   'left',
-        'right':  'right',  'areaRight':  'right'
+        'top':       'top',       'areaTop':       'top',
+        'bottom':    'bottom',    'areaBottom':    'bottom',
+        'left':      'left',      'areaLeft':      'left',
+        'right':     'right',     'areaRight':     'right',
+        'companion': 'companion', 'areaCompanion': 'companion'
     };
 
-    var AREA_KEYS = { 'top': 'areaTop', 'bottom': 'areaBottom', 'left': 'areaLeft', 'right': 'areaRight' };
+    var AREA_KEYS = { 'top': 'areaTop', 'bottom': 'areaBottom', 'left': 'areaLeft', 'right': 'areaRight', 'companion': 'areaCompanion' };
 
     var validator        = null,
         viewRefreshTimer = null,
@@ -442,7 +443,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     }
 
     function contentViewsOf(whichArea) {
-        return clone(FrameTrail.module('ViewLayout').getLayoutAreaData()[AREA_KEYS[whichArea]]);
+        return clone(FrameTrail.module('ViewLayout').getLayoutAreaData()[AREA_KEYS[whichArea]] || []);
     }
 
     // config without layoutArea, which belongs to the content views.
@@ -491,7 +492,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     }
 
     /**
-     * I return all things of a kind: 'overlays', 'codeSnippets', 'annotations' (everyone's, as W3C items), 'chapters' (`{ start, title }`), 'contentViews' (of all layout areas, top, bottom, left, right; `{ area }` picks one) or 'subtitles' (`{ src, srclang }`).
+     * I return all things of a kind: 'overlays', 'codeSnippets', 'annotations' (everyone's, as W3C items), 'chapters' (`{ start, title }`), 'contentViews' (of all layout areas, top, bottom, left, right and companion — a paired phone's; `{ area }` picks one) or 'subtitles' (`{ src, srclang }`).
      *
      * @method list
      * @param {String} kind
@@ -527,10 +528,10 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
 
         } else if (kind === 'contentViews') {
 
-            var areas = (isObject(filter) && filter.area !== undefined) ? [AREAS[filter.area]] : ['top', 'bottom', 'left', 'right'];
+            var areas = (isObject(filter) && filter.area !== undefined) ? [AREAS[filter.area]] : ['top', 'bottom', 'left', 'right', 'companion'];
 
             if (!areas[0]) {
-                throw editError('invalid', 'Unknown layout area "' + filter.area + '"; one of top, bottom, left, right');
+                throw editError('invalid', 'Unknown layout area "' + filter.area + '"; one of top, bottom, left, right, companion');
             }
 
             result = [];
@@ -1132,7 +1133,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     /* ------------------------------------------------------------------ */
 
     /**
-     * I replace the content views of a layout area ('top', 'bottom', 'left', 'right', or 'areaTop', …) and return them as stored.
+     * I replace the content views of a layout area ('top', 'bottom', 'left', 'right', 'companion', or 'areaTop', …) and return them as stored.
      *
      * @method setLayout
      * @param {String} area
@@ -1146,7 +1147,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
         var whichArea = AREAS[area];
 
         if (!whichArea) {
-            throw editError('invalid', 'Unknown layout area "' + area + '"; one of top, bottom, left, right');
+            throw editError('invalid', 'Unknown layout area "' + area + '"; one of top, bottom, left, right, companion');
         }
 
         if (!Array.isArray(contentViews)) {

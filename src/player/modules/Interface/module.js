@@ -72,6 +72,9 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
         }
         FrameTrail.changeState('embed', iFrame);
 
+        // A paired phone (docs/PAIRING.md): the views, play/pause, the time; no video, no editing.
+        document.querySelector(FrameTrail.getState('target')).classList.toggle('companionMode', !!FrameTrail.getState('companion'));
+
         FrameTrail.module('Titlebar').create();
         FrameTrail.module('Sidebar').create();
 

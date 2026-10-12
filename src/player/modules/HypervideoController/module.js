@@ -63,6 +63,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         highPriorityUpdater    = null,
         lowPriorityUpdater     = null,
 
+        // On a paired phone: the link to the desktop whose playback I follow (docs/PAIRING.md).
+        companion              = FrameTrail.getState('companion'),
+        stopFollowing          = null,
+
         videoElement           = ViewVideo.Video;
 
     /**
@@ -701,17 +705,19 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                     }
                 }
 
-                if (RouteNavigation.hashTime) {
+                FrameTrail.changeState('viewSize', FrameTrail.getState('viewSize'));
+                FrameTrail.changeState('videoWorking', false);
+
+                if (companion) {
+                    followCompanion();
+                } else if (RouteNavigation.hashTime) {
                     setCurrentTime(RouteNavigation.hashTime);
                 } else {
                     setCurrentTime(HypervideoModel.offsetIn);
                 }
 
-                FrameTrail.changeState('viewSize', FrameTrail.getState('viewSize'));
-                FrameTrail.changeState('videoWorking', false);
-
                 callback.call();
-            }, 1100);
+            }, companion ? 0 : 1100);
 
         }
 
@@ -1404,6 +1410,12 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
      */
     function nullVideoUpdater() {
 
+        // A paired phone's clock is the desktop's, extrapolated; the desktop decides when it ends.
+        if (companion) {
+            currentTime = Math.min(Math.max(companion.time(), HypervideoModel.offsetIn), HypervideoModel.offsetIn + HypervideoModel.duration);
+            return;
+        }
+
         currentTime = (Date.now() - nullVideoStartDate) / 1000;
 
         if (currentTime >= HypervideoModel.offsetIn+HypervideoModel.duration) {
@@ -1429,6 +1441,12 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
      * @method play
      */
     function play() {
+
+        // A paired phone asks the desktop, which plays and tells it so.
+        if (companion) {
+            companion.request('play');
+            return;
+        }
 
         FrameTrail.changeState('videoWorking', false);
 
@@ -1510,6 +1528,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
      * @method pause
      */
     function pause() {
+
+        if (companion) {
+            companion.request('pause');
+            return;
+        }
 
         if (HypervideoModel.videoType == 'native') {
 
@@ -1758,6 +1781,27 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
      */
     function setCurrentTime(aNumber) {
 
+        // A paired phone asks the desktop to seek; the new time comes back with its state.
+        if (companion) {
+            if (!isNaN(parseFloat(aNumber))) { companion.request('seek', parseFloat(aNumber)); }
+            return;
+        }
+
+        return seekTo(aNumber);
+
+    };
+
+
+    /**
+     * I move the playhead here, as setCurrentTime does where there is no desktop to ask.
+     *
+     * @method seekTo
+     * @param {Number} aNumber
+     * @return Number
+     * @private
+     */
+    function seekTo(aNumber) {
+
         var aNumberAsFloat = parseFloat(aNumber);
 
         if ( isNaN(aNumberAsFloat) ) {
@@ -1817,6 +1861,66 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         OverlayAnimator.syncAll();
         
         return aNumberAsFloat;
+
+    };
+
+
+    /**
+     * On a paired phone (the companion state, docs/PAIRING.md) I play nothing myself: I follow the desktop.
+     * Its states move my clock (nullVideoUpdater reads it); what the person does here — play, pause, a seek —
+     * goes to the desktop as a request (see play, pause, setCurrentTime) and comes back as its new state.
+     *
+     * @method followCompanion
+     * @private
+     */
+    function followCompanion() {
+
+        if (stopFollowing) { stopFollowing(); }
+
+        stopFollowing = companion.subscribe(function(event) {
+            if (event.type === 'state') {
+                applyCompanionState(event.moved);
+            } else if (event.type === 'control') {
+                showCompanionControl();
+            }
+        });
+
+        showCompanionControl();
+        applyCompanionState(true);
+
+    };
+
+    // The desktop's state: playing or not, and the playhead when it moved (a seek, a start, a stop).
+    function applyCompanionState(moved) {
+
+        var state = companion.state;
+
+        if (!state) { return; }
+
+        FrameTrail.changeState('videoWorking', !!(state.playing && state.waiting));
+
+        if (state.playing && !isPlaying) {
+            _play();
+            onPlaySuccess();
+        } else if (!state.playing && isPlaying) {
+            _pause();
+            FrameTrail.triggerEvent('pause', {});
+        }
+
+        if (moved) {
+            seekTo(Math.min(Math.max(companion.time(), HypervideoModel.offsetIn), HypervideoModel.offsetIn + HypervideoModel.duration));
+        }
+
+    };
+
+    // A phone that may not control the desktop shows its playback, but offers no controls.
+    function showCompanionControl() {
+
+        var target = document.querySelector(FrameTrail.getState('target'));
+
+        if (target) {
+            target.classList.toggle('companionNoControl', !companion.canControl);
+        }
 
     };
 

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<!--
+    The page a phone opens to pair with a FrameTrail player (docs/PAIRING.md).
+    It is reached through the QR code the player shows; the fragment of that
+    link holds the pairing room, the broker and the player's fingerprint.
+    No script of its own: CompanionLauncher starts itself on pages marked with
+    data-frametrail-companion, and the Content Security Policy allows only
+    this origin's scripts, so nothing an author wrote can run here.
+-->
+<html lang="en" data-frametrail-companion>
+    <head>
+
+        <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+        <meta http-equiv="Content-Security-Policy" content="script-src 'self'; object-src 'none'; base-uri 'none'">
+        <meta name="referrer" content="no-referrer">
+        <meta name="robots" content="noindex">
+
+        <title>FrameTrail</title>
+
+        <!-- Library Code -->
+
+        <link rel="stylesheet" type="text/css" href="_lib/quill/quill.snow.css">
+        <link rel="stylesheet" type="text/css" href="_lib/leaflet/leaflet.css">
+
+        <link rel="shortcut icon" href="favico.png">
+
+        <script type="text/javascript" src="_lib/hlsjs/hls.min.js"></script>
+        <script type="text/javascript" src="_lib/parsers/vtt.min.js"></script>
+
+        <script type="text/javascript" src="_lib/interactjs/interact.min.js"></script>
+        <script type="text/javascript" src="_lib/quill/quill.min.js"></script>
+        <script type="text/javascript" src="_lib/leaflet/leaflet.js"></script>
+        <script type="text/javascript" src="_lib/collisiondetection/collisiondetection.js"></script>
+        <script type="text/javascript" src="_lib/sortablejs/Sortable.min.js"></script>
+        <script type="text/javascript" src="_lib/fflate/fflate.min.js"></script>
+        <script type="text/javascript" src="_lib/codemirror6/cm6.bundle.js"></script>
+        <script type="text/javascript" src="_lib/codemirror6/cm6linters.js"></script>
+        <script type="text/javascript" src="_lib/qrcodegen/qrcodegen.js"></script>
+
+
+        <script type="text/javascript" src="_shared/frametrail-core/frametrail-core.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/serialization/FrameTrailKeyframes.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/serialization/FrameTrailSerializer.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/serialization/FrameTrailLint.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/serialization/FrameTrailWebVTT.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/schema/FrameTrailSchema.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/schema/FrameTrailSchemas.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/pairing/FrameTrailPairing.js"></script>
+
+       <!-- Application Code -->
+
+        <link rel="stylesheet" type="text/css" id="FrameTrailCSSVariables" href="_shared/styles/variables.css">
+        <link rel="stylesheet" type="text/css" href="_shared/styles/frametrail-icons.css">
+        <link rel="stylesheet" type="text/css" href="_shared/styles/generic.css">
+        <link rel="stylesheet" type="text/css" href="_lib/dialog/dialog.css">
+        <link rel="stylesheet" type="text/css" href="_shared/modules/AnimationLibrary/presets.css">
+
+        <link rel="stylesheet" type="text/css" href="player/types/Annotation/style.css">
+        <link rel="stylesheet" type="text/css" href="player/types/Hypervideo/style.css">
+        <link rel="stylesheet" type="text/css" href="player/types/Overlay/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/Resource/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceImage/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceLocation/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourcePDF/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceAudio/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceVideo/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceVimeo/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceWebpage/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceWikipedia/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceYoutube/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceText/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceHtml/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceQuiz/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceHotspot/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceEntity/style.css">
+
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceWistia/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceSoundcloud/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceTwitch/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceCodepen/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceFigma/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceLoom/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceUrlPreview/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceMastodon/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceSpotify/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceCursor/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceCounter/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/types/ResourceChart/style.css">
+        <link rel="stylesheet" type="text/css" href="player/types/Subtitle/style.css">
+        <link rel="stylesheet" type="text/css" href="player/types/CodeSnippet/style.css">
+        <link rel="stylesheet" type="text/css" href="player/types/ContentView/style.css">
+
+        <link rel="stylesheet" type="text/css" href="_shared/modules/ResourceManager/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/modules/UserManagement/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/modules/ViewResources/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/modules/ManageUsersDialog/style.css">
+        <link rel="stylesheet" type="text/css" href="_shared/modules/ManageTagsDialog/style.css">
+
+        <link rel="stylesheet" type="text/css" href="player/modules/Interface/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/InterfaceModal/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/Sidebar/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/Titlebar/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/ViewOverview/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/ViewOverviewMap/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/ViewVideo/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/FreeformShapeEditor/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/ChaptersController/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/TranscriptsEditor/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/ViewLayout/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/HypervideoSettingsDialog/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/AdminSettingsDialog/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/Extensions/style.css">
+        <link rel="stylesheet" type="text/css" href="player/modules/PairingDialog/style.css">
+
+        <link rel="stylesheet" type="text/css" href="resourcemanager/modules/ResourceManagerLauncher/style.css">
+
+        <script type="text/javascript" src="_shared/modules/Localization/locale/en.js"></script>
+        <script type="text/javascript" src="_shared/modules/Localization/locale/de.js"></script>
+        <script type="text/javascript" src="_shared/modules/Localization/locale/fr.js"></script>
+        <script type="text/javascript" src="_shared/modules/Localization/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/Tooltip/module.js"></script>
+
+        <script type="text/javascript" src="player/types/Annotation/type.js"></script>
+        <script type="text/javascript" src="player/types/Hypervideo/type.js"></script>
+        <script type="text/javascript" src="player/types/Overlay/type.js"></script>
+        <script type="text/javascript" src="_shared/types/Resource/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceImage/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceLocation/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourcePDF/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceAudio/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceVideo/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceVimeo/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceWebpage/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceWikipedia/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceYoutube/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceText/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceHtml/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceQuiz/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceHotspot/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceEntity/type.js"></script>
+
+        <script type="text/javascript" src="_shared/types/ResourceWistia/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceSoundcloud/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceTwitch/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceCodepen/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceFigma/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceLoom/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceUrlPreview/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceMastodon/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceSpotify/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceCursor/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceCounter/type.js"></script>
+        <script type="text/javascript" src="_shared/types/ResourceChart/type.js"></script>
+        <script type="text/javascript" src="player/types/Subtitle/type.js"></script>
+        <script type="text/javascript" src="player/types/CodeSnippet/type.js"></script>
+        <script type="text/javascript" src="player/types/Chapter/type.js"></script>
+        <script type="text/javascript" src="player/types/ContentView/type.js"></script>
+
+        <script type="text/javascript" src="_lib/dialog/dialog.js"></script>
+        <script type="text/javascript" src="_lib/tabsjs/tabs.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/storage/StorageAdapter.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/storage/StorageAdapterServer.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/storage/StorageAdapterLocal.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/storage/StorageAdapterDownload.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/storage/StorageAdapterStatic.js"></script>
+        <script type="text/javascript" src="_shared/frametrail-core/storage/StorageAdapterHTMLFile.js"></script>
+        <script type="text/javascript" src="_shared/modules/StorageManager/module.js"></script>
+
+        <script type="text/javascript" src="_shared/modules/Database/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/TagModel/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/ResourceManager/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/UserManagement/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/ViewResources/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/ManageUsersDialog/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/ManageTagsDialog/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/RouteNavigation/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/HypervideoPicker/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/HypervideoFormBuilder/module.js"></script>
+
+        <script type="text/javascript" src="_shared/modules/UserTraces/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/UndoManager/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/Collaboration/module.js"></script>
+        <script type="text/javascript" src="_shared/modules/AnimationLibrary/module.js"></script>
+
+        <script type="text/javascript" src="player/modules/AnnotationsController/module.js"></script>
+        <script type="text/javascript" src="player/modules/PlayerLauncher/module.js"></script>
+        <script type="text/javascript" src="player/modules/HypervideoModel/module.js"></script>
+        <script type="text/javascript" src="player/modules/HypervideoController/module.js"></script>
+        <script type="text/javascript" src="player/modules/InteractionController/module.js"></script>
+        <script type="text/javascript" src="player/modules/Interface/module.js"></script>
+        <script type="text/javascript" src="player/modules/InterfaceModal/module.js"></script>
+        <script type="text/javascript" src="player/modules/SignInWall/module.js"></script>
+        <script type="text/javascript" src="player/modules/OverlaysController/module.js"></script>
+        <script type="text/javascript" src="player/modules/OverlayAnimator/module.js"></script>
+        <script type="text/javascript" src="player/modules/OverlayAnimationEditor/module.js"></script>
+        <script type="text/javascript" src="player/modules/FreeformShapeEditor/module.js"></script>
+        <script type="text/javascript" src="player/modules/Sidebar/module.js"></script>
+        <script type="text/javascript" src="player/modules/SubtitlesController/module.js"></script>
+        <script type="text/javascript" src="player/modules/Titlebar/module.js"></script>
+        <script type="text/javascript" src="player/modules/CodeSnippetsController/module.js"></script>
+        <script type="text/javascript" src="player/modules/ChaptersController/module.js"></script>
+        <script type="text/javascript" src="player/modules/TranscriptsEditor/module.js"></script>
+        <script type="text/javascript" src="player/modules/TimelineController/module.js"></script>
+        <script type="text/javascript" src="player/modules/ViewOverview/module.js"></script>
+        <script type="text/javascript" src="player/modules/ViewOverviewMap/module.js"></script>
+        <script type="text/javascript" src="player/modules/ViewVideo/module.js"></script>
+        <script type="text/javascript" src="player/modules/ViewLayout/module.js"></script>
+        <script type="text/javascript" src="player/modules/HypervideoSettingsDialog/module.js"></script>
+        <script type="text/javascript" src="player/modules/AdminSettingsDialog/module.js"></script>
+        <script type="text/javascript" src="player/modules/OverviewMapSettingsDialog/module.js"></script>
+        <script type="text/javascript" src="player/modules/EditAPI/module.js"></script>
+        <script type="text/javascript" src="player/modules/BundleExport/module.js"></script>
+        <script type="text/javascript" src="player/modules/ImportDialog/module.js"></script>
+        <script type="text/javascript" src="player/modules/Extensions/module.js"></script>
+        <script type="text/javascript" src="player/modules/PairingHost/module.js"></script>
+        <script type="text/javascript" src="player/modules/PairingDialog/module.js"></script>
+        
+        <script type="text/javascript" src="resourcemanager/modules/ResourceManagerLauncher/module.js"></script>
+
+        <link rel="stylesheet" type="text/css" href="companion/modules/CompanionLauncher/style.css">
+        <script type="text/javascript" src="companion/modules/CompanionLauncher/module.js"></script>
+
+    </head>
+    <body>
+    </body>
+</html>

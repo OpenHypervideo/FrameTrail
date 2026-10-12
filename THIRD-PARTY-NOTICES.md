@@ -19,6 +19,7 @@ FrameTrail is licensed under MIT (see [LICENSE.md](LICENSE.md)). It includes the
 | hls.js | Apache-2.0 | Copyright (c) 2017 Dailymotion; parts Copyright (c) 2013-2015 Brightcove |
 | interact.js | MIT | Copyright (c) 2012-present Taye Adeyemi <dev@taye.me> |
 | Leaflet | BSD-2-Clause | Copyright (c) 2010-2023, Volodymyr Agafonkin; Copyright (c) 2010-2011, CloudMade |
+| QR Code generator library (qrcodegen) | MIT | Copyright (c) Project Nayuki |
 | Quill | BSD-3-Clause | Copyright (c) 2017-2024, Slab; Copyright (c) 2014, Jason Chen; Copyright (c) 2013, salesforce.com |
 | SortableJS | MIT | Copyright (c) 2019 All contributors to Sortable |
 | vtt.js | Apache-2.0 | Copyright 2013 vtt.js Contributors |
@@ -44,7 +45,7 @@ FrameTrail is licensed under MIT (see [LICENSE.md](LICENSE.md)). It includes the
 
 ### MIT License
 
-Applies to CodeMirror 6, CollisionDetection, fflate, interact.js, SortableJS and the Bootstrap Icons in the FrameTrail icon font, with the copyright lines given above.
+Applies to CodeMirror 6, CollisionDetection, fflate, interact.js, qrcodegen, SortableJS and the Bootstrap Icons in the FrameTrail icon font, with the copyright lines given above.
 
 ```
 Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:

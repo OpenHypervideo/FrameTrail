@@ -147,12 +147,17 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
         }
 
+        function escapeAttribute(value) {
+            return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+        }
+
         var _cuw = document.createElement('div');
         // Two groups, not one run of four equal columns: everything on the left
         // is a plain instance option, while user action capture is a feature of
         // its own with settings that only mean anything once it is switched on.
         // The empty column in between is the separation — it keeps the capture
-        // block visibly apart without a divider or a second form.
+        // block visibly apart without a divider or a second form. Pairing with
+        // phones, a feature of its own as well, sits under the capture block.
         //
         // Explanations follow their control as .fieldHint, except the note about
         // where traces are kept: that is a caveat about the data rather than a
@@ -215,6 +220,22 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             +   '                    </select>'
                             +   '                </div>'
                             +   '                <div class="fieldHint">'+ labels['MessageUserTracesEndAction'] +'</div>'
+                            +   '            </div>'
+                            +   '        </div>'
+                            // Pairing with phones (docs/PAIRING.md): a group of its own, under user action capture.
+                            +   '        <div class="layoutRow mt-1">'
+                            +   '            <div class="column-12"><label>'+ labels['SettingsPairing'] +'</label></div>'
+                            +   '            <div class="column-6">'
+                            +   '                <label for="pairingBrokerURL">'+ labels['SettingsPairingBrokerURL'] +'</label>'
+                            +   '                <input type="text" name="pairingBrokerURL" id="pairingBrokerURL" placeholder="https://" value="'+ escapeAttribute(configData.pairingBrokerURL) +'">'
+                            +   '                <div class="fieldHint">'+ labels['MessagePairingBrokerURL'] +'</div>'
+                            +   '                <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="pairingButtonVisible" id="pairingButtonVisible" '+ ((configData.pairingButtonVisible === true) ? 'checked' : '') +'><span class="slider round"></span></label><label for="pairingButtonVisible">'+ labels['SettingsPairingButtonVisible'] +'</label></div>'
+                            +   '                <div class="fieldHint">'+ labels['MessagePairingButtonVisible'] +'</div>'
+                            +   '            </div>'
+                            +   '            <div class="column-6">'
+                            +   '                <label for="pairingCompanionURL">'+ labels['SettingsPairingCompanionURL'] +'</label>'
+                            +   '                <input type="text" name="pairingCompanionURL" id="pairingCompanionURL" placeholder="companion.html" value="'+ escapeAttribute(configData.pairingCompanionURL) +'">'
+                            +   '                <div class="fieldHint">'+ labels['MessagePairingCompanionURL'] +'</div>'
                             +   '            </div>'
                             +   '        </div>'
                             +   '    </div>'
@@ -1139,6 +1160,9 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                         window.location.reload();
                                         return;
                                     }
+                                    // Who reads the config while the application runs
+                                    // (the title bar, the pairing button) hears of it.
+                                    FrameTrail.changeState('config', database.config);
                                     if (videoFitChanged) {
                                         var viewVideo = FrameTrail.module('ViewVideo');
                                         // Absent in the overview, where there is
