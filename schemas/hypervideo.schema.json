@@ -539,7 +539,7 @@
                             "default": []
                         },
                         "areaCompanion": {
-                            "description": "Views shown full screen on a phone paired with the player (docs/PAIRING.md), laid out like the right area; not shown in the player itself. Empty or missing: one TimedContent view of all annotations, size large. Kept whether or not the instance has pairing set up.",
+                            "description": "Views shown on a phone paired with the player (docs/PAIRING.md), and nowhere in the player itself. Medium views are laid out like the right area's; a large collection (TimedContent) shows the annotations at full size in a row that follows the playback and can be swiped through. A phone has no small size: a small view is shown, and saved, as medium. Empty or missing: the phone shows no views. Kept whether or not the instance has pairing set up.",
                             "type": "array",
                             "items": { "$ref": "#/$defs/contentView" },
                             "default": []

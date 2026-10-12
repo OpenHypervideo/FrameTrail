@@ -1913,7 +1913,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
     };
 
-    // A phone that may not control the desktop shows its playback, but offers no controls.
+    // A phone that may not control the desktop shows its playback, but offers no controls (also in the dialogs, which live in <body>).
     function showCompanionControl() {
 
         var target = document.querySelector(FrameTrail.getState('target'));
@@ -1921,6 +1921,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         if (target) {
             target.classList.toggle('companionNoControl', !companion.canControl);
         }
+        document.body.classList.toggle('companionNoControl', !companion.canControl);
 
     };
 

@@ -159,7 +159,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     // The layout areas: my name of each (a content view's whichArea), its key in config.layoutArea and its part of
     // ViewVideo's element names (Area<cap>Container). The companion area holds the views shown on a phone paired
     // with the player (see PairingHost); in the player its container stays hidden, the layout editor shows it as
-    // a phone. On the phone (the companion state) its views go into the right area, and the others stay empty.
+    // a phone. On the phone (the companion state) it is the only area with views, and its container is the right
+    // area's (ViewVideo.AreaCompanionContainer), so its views are laid out like the right area's.
     var AREAS = [
         { name: 'top',       key: 'areaTop',       cap: 'Top'       },
         { name: 'bottom',    key: 'areaBottom',    cap: 'Bottom'    },
@@ -191,33 +192,15 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         return AREAS.reduce(function(list, area) { return list.concat(contentViews[area.name]); }, []);
     }
 
-    /**
-     * The views a paired phone shows: the companion area's, or — while it has none — one large collection of all annotations.
-     *
-     * @method companionViewsData
-     * @return {Array}
-     */
-    function companionViewsData() {
-        var views = (configLayoutArea && Array.isArray(configLayoutArea.areaCompanion)) ? configLayoutArea.areaCompanion : [];
-        if (views.length) { return views; }
-        return [{
-            type: 'TimedContent', name: '', description: '', cssClass: '', html: '',
-            collectionFilter: { tags: [], types: [], text: '', users: [] },
-            transcriptSource: '', mode: 'slide', axis: 'y', contentSize: 'large', autoSync: false
-        }];
-    }
-
-
     function create() {
 
         configLayoutArea = FrameTrail.module('Database').hypervideo.config.layoutArea;
 
         var companion = !!FrameTrail.getState('companion');
 
+        // A phone shows the companion area's views and nothing else; with none, nothing (what a phone shows is set on purpose).
         AREAS.forEach(function(area) {
-            var views = companion
-                      ? ((area.name === 'right') ? companionViewsData() : [])
-                      : (configLayoutArea[area.key] || []);
+            var views = (companion && area.name !== 'companion') ? [] : (configLayoutArea[area.key] || []);
             for (var i = 0; i < views.length; i++) {
                 contentViews[area.name].push(new FrameTrail.newObject('ContentView', views[i], area.name));
             }
@@ -237,7 +220,9 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         FrameTrail.changeState('hv_config_areaTopVisible', (contentViews.top.length != 0));
         FrameTrail.changeState('hv_config_areaBottomVisible', (contentViews.bottom.length != 0));
         FrameTrail.changeState('hv_config_areaLeftVisible', (contentViews.left.length != 0));
-        FrameTrail.changeState('hv_config_areaRightVisible', (contentViews.right.length != 0));
+        // On the phone the right area's container holds the companion area's views.
+        FrameTrail.changeState('hv_config_areaRightVisible', (contentViews.right.length != 0)
+            || (!!FrameTrail.getState('companion') && contentViews.companion.length != 0));
 
     }
 

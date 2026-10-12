@@ -51,7 +51,7 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
     }
 
     var targetElement = document.querySelector(FrameTrail.getState('target')),
-        header, title, chip, stage, screen;
+        header, title, chip, stage, screen, emptyNote;
 
     var join        = null,
         guestID     = null,
@@ -171,6 +171,12 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         screen = document.createElement('div');
         screen.className = 'companionScreen';
 
+        emptyNote = document.createElement('div');
+        emptyNote.className = 'companionEmpty';
+        emptyNote.textContent = labels['CompanionNoViews'];
+        emptyNote.style.display = 'none';
+
+        stage.appendChild(emptyNote);
         stage.appendChild(screen);
         targetElement.appendChild(header);
         targetElement.appendChild(stage);
@@ -538,6 +544,10 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         document.title = meta.name || 'FrameTrail';
         targetElement.setAttribute('data-frametrail-theme', theme);
 
+        // What a phone shows is set on purpose (views for phones, in the layout editor): without any, it shows none, and says so.
+        var layoutArea = (data.bundle.hypervideo.config && data.bundle.hypervideo.config.layoutArea) || {};
+        emptyNote.style.display = (Array.isArray(layoutArea.areaCompanion) && layoutArea.areaCompanion.length) ? 'none' : '';
+
         var element = document.createElement('div');
         element.className = 'companionPlayer';
         element.id = 'ftCompanionPlayer' + (++playerCount);
@@ -567,6 +577,7 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
     }
 
     function stopPlayer() {
+        emptyNote.style.display = 'none';
         if (!player) { return; }
         subscribers = [];
         var old = player;

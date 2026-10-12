@@ -153,3 +153,92 @@
 .companionMode.companionNoControl .playButton {
     opacity: .4;
 }
+
+/* A phone's large collection (ContentView.isSlideshow): the annotations at full size in a row that follows
+   the playback and is swiped through, like the bottom area's large view. Its overlay (initSwipeOverlay)
+   turns swipes over embedded players and maps into the next or previous annotation. */
+
+.companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .contentViewScroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    overscroll-behavior-x: contain;
+    container-type: inline-size;
+}
+
+.companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .contentViewContents {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    width: max-content;
+    min-width: 100%;
+    height: 100%;
+    padding: 0;
+}
+
+.companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .collectionElement,
+.companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .collectionElement.active {
+    display: block;
+    position: relative;
+    top: 0;
+    left: 0;
+    float: none;
+    flex: 0 0 auto;
+    width: 100cqw;
+    height: 100%;
+    margin: 0;
+    border: none;
+    opacity: 1;
+    overflow-y: auto;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+}
+
+.companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .contentViewScrollbar {
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: auto;
+    height: 4px;
+}
+
+.companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .contentViewScrollbarThumb {
+    top: 0;
+    height: 100%;
+}
+
+.companionMode .areaRightContainer .contentViewContainer > .swipeOverlay {
+    position: absolute;
+    inset: 0;
+    z-index: 3;
+    touch-action: none;
+}
+
+/* "Play from here" in the large collection sends the player to the annotation (a seek request) —
+   except from a phone that may not control the player, where it is gone everywhere, the preview
+   dialog of a medium view included (the class is on <body> too, which holds the dialogs). */
+
+.companionMode .areaRightContainer .contentViewContainer[data-type="TimedContent"][data-size="large"] .resourceDetail .resourceButtons .resourcePlayFromHereButton {
+    display: flex;
+}
+
+body.companionNoControl .resourcePlayFromHereButton {
+    display: none !important;
+}
+
+/* A hypervideo without views for phones. */
+
+.companionPage .companionEmpty {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 35%;
+    z-index: 5;
+    padding: 0 24px;
+    text-align: center;
+    font-size: 16px;
+    color: var(--primary-fg-color);
+    opacity: .7;
+    pointer-events: none;
+}

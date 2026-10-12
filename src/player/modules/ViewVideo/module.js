@@ -155,7 +155,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         AreaRightContainer          = domElement.querySelector('.areaRightContainer'),
 
-        AreaCompanionContainer      = domElement.querySelector('.areaCompanionContainer'),
+        // On a phone (the companion state) the companion area's views are all there is, laid out in the right area's place.
+        AreaCompanionContainer      = FrameTrail.getState('companion') ? AreaRightContainer : domElement.querySelector('.areaCompanionContainer'),
 
         AnnotationTimeline          = domElement.querySelector('.annotationTimeline'),
 
@@ -270,6 +271,11 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             el.style.webkitTransitionDuration = '';
             el.style.OTransitionDuration = '';
         });
+    }
+
+    // The hidden home of the companion area's views is not needed where they are shown (see AreaCompanionContainer).
+    if (FrameTrail.getState('companion')) {
+        domElement.querySelector('.areaCompanionContainer').remove();
     }
 
     // Sharing Widget: hide when running from file:// or with multiple instances
@@ -2194,7 +2200,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         get AreaRightContainer()     { return AreaRightContainer     },
 
         /**
-         * I contain the AreaCompanionContainer element: the hidden home of the companion area's views.
+         * I contain the AreaCompanionContainer element: the hidden home of the companion area's views (on a phone, the right area's container).
          * @attribute AreaCompanionContainer
          * @type HTMLElement
          */

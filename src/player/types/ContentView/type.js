@@ -17,6 +17,10 @@ FrameTrail.defineType(
 
     function (FrameTrail) {
 
+        // On a touch device there is no pointer "over" a view: after a touch or a scroll, a view stops following
+        // the playback for this long, so somebody who swiped can look at what they swiped to.
+        var TOUCH_FOLLOW_PAUSE = 6000;
+
         /**
          * I delegate to the single schematic generator owned by the ViewLayout
          * module, so the Layout Manager palette and these previews can never
@@ -52,7 +56,11 @@ FrameTrail.defineType(
                     contentViewData.collectionFilter.users = contentViewData.collectionFilter.users || [];
                 contentViewData.transcriptSource       = contentViewData.transcriptSource || "";
                 contentViewData.showTranscriptSearch   = contentViewData.showTranscriptSearch || false;
-                contentViewData.contentSize            = contentViewData.contentSize || "small";
+                // A phone has no room for the narrow strip that "small" is: its views are medium at the least.
+                contentViewData.contentSize            = contentViewData.contentSize || (whichArea == 'companion' ? "medium" : "small");
+                if (whichArea == 'companion' && contentViewData.contentSize == 'small') {
+                    contentViewData.contentSize = 'medium';
+                }
                 contentViewData.onClickContentItem     = contentViewData.onClickContentItem || "";
                 contentViewData.initClosed             = contentViewData.initClosed || false;
                 contentViewData.filterAspect           = contentViewData.filterAspect || "creatorId";
@@ -84,13 +92,57 @@ FrameTrail.defineType(
 
 
                 /**
-                 * Whether my area is a vertical strip: left, right, or the companion area (the phone's views, which are laid out like the right area).
+                 * Whether my area is a vertical strip: left, right, or the companion area (the phone's views, laid out like the right area), except a phone's large collection, which runs horizontally (see isSlideshow).
                  *
                  * @method isVerticalArea
                  * @return {Boolean}
                  */
                 isVerticalArea: function() {
-                    return this.whichArea == 'left' || this.whichArea == 'right' || this.whichArea == 'companion';
+                    return (this.whichArea == 'left' || this.whichArea == 'right' || this.whichArea == 'companion') && !this.isSlideshow();
+                },
+
+
+                /**
+                 * Whether I am a phone's large collection: the companion area's annotations at full size, one after another in a row that follows the playback and can be swiped through, like the bottom area's large view. A size and a type can be asked about instead of mine.
+                 *
+                 * @method isSlideshow
+                 * @param {String} [size]
+                 * @param {String} [type]
+                 * @return {Boolean}
+                 */
+                isSlideshow: function(size, type) {
+                    return this.whichArea == 'companion'
+                        && (size || this.contentViewData.contentSize) == 'large'
+                        && (type || this.contentViewData.type) == 'TimedContent';
+                },
+
+
+                /**
+                 * Whether my collection runs horizontally: in the top and bottom areas, and as a phone's large collection.
+                 *
+                 * @method isHorizontalArea
+                 * @param {String} [size]
+                 * @param {String} [type]
+                 * @return {Boolean}
+                 */
+                isHorizontalArea: function(size, type) {
+                    return this.whichArea == 'top' || this.whichArea == 'bottom' || this.isSlideshow(size, type);
+                },
+
+
+                /**
+                 * I move a phone's large collection by one annotation (step 1: the next, -1: the previous).
+                 *
+                 * @method slideBy
+                 * @param {Number} step
+                 */
+                slideBy: function(step) {
+                    var scrollContainer = this.contentViewContainer && this.contentViewContainer.querySelector('.contentViewScroll');
+                    if (!scrollContainer || !scrollContainer.clientWidth) { return; }
+                    var width = scrollContainer.clientWidth,
+                        last  = Math.max(0, Math.round((scrollContainer.scrollWidth - width) / width)),
+                        index = Math.max(0, Math.min(last, Math.round(scrollContainer.scrollLeft / width) + step));
+                    scrollContainer.scrollTo({ left: index * width, behavior: 'smooth' });
                 },
 
 
@@ -709,16 +761,38 @@ FrameTrail.defineType(
                         contentViewContainer = this.renderContentViewContainer(),
                         areaContainer = this.getLayoutAreaContainer();
 
-                    var self = this;
-                    contentViewContainer.addEventListener('mouseenter', function() {
+                    var self            = this,
+                        touchFirst      = FrameTrail.isTouchPrimary(),
+                        scrollContainer = contentViewContainer.querySelector('.contentViewScroll'),
+                        followTimeout;
+
+                    // While somebody looks around in me, I do not follow the playback (isMouseOver): with a
+                    // mouse, while it is over me and for 2 s after a scroll; on a touch device, where a tap
+                    // leaves the browser thinking the pointer is still there, for a while after every touch.
+                    function pauseFollowing(ms, whileHovered) {
                         self.isMouseOver = true;
-                    });
-                    contentViewContainer.addEventListener('mouseleave', function() {
-                        self.isMouseOver = false;
-                    });
+                        clearTimeout(followTimeout);
+                        followTimeout = setTimeout(function() {
+                            if (!whileHovered || !scrollContainer || !scrollContainer.matches(':hover')) {
+                                self.isMouseOver = false;
+                            }
+                        }, ms);
+                    }
+
+                    if (touchFirst) {
+                        contentViewContainer.addEventListener('touchstart', function() {
+                            pauseFollowing(TOUCH_FOLLOW_PAUSE);
+                        }, { capture: true, passive: true });
+                    } else {
+                        contentViewContainer.addEventListener('mouseenter', function() {
+                            self.isMouseOver = true;
+                        });
+                        contentViewContainer.addEventListener('mouseleave', function() {
+                            self.isMouseOver = false;
+                        });
+                    }
 
                     // Suppress programmatic scrolling during user-initiated scroll/touch
-                    var scrollContainer = contentViewContainer.querySelector('.contentViewScroll');
                     if (scrollContainer) {
 
                         // Keep the custom scrollbar and --scrollbar-size in sync: the observer
@@ -733,17 +807,26 @@ FrameTrail.defineType(
 
                         this.initScrollbar(contentViewContainer);
 
-                        var userScrollTimeout;
                         scrollContainer.addEventListener('scroll', function() {
                             if (self._isProgrammaticScroll) return;
-                            self.isMouseOver = true;
-                            clearTimeout(userScrollTimeout);
-                            userScrollTimeout = setTimeout(function() {
-                                if (!scrollContainer.matches(':hover')) {
-                                    self.isMouseOver = false;
-                                }
-                            }, 2000);
+                            if (touchFirst) {
+                                pauseFollowing(TOUCH_FOLLOW_PAUSE);
+                            } else {
+                                pauseFollowing(2000, true);
+                            }
                         }, { passive: true });
+                    }
+
+                    // A phone's large collection is swiped through as the bottom area's details are: an overlay
+                    // over embedded players and maps turns a horizontal swipe into the next or previous
+                    // annotation and lets taps through to the content.
+                    if (FrameTrail.getState('companion') && this.isSlideshow()) {
+                        var slideshowOverlay = document.createElement('div');
+                        slideshowOverlay.className = 'swipeOverlay';
+                        contentViewContainer.appendChild(slideshowOverlay);
+                        this.initSwipeOverlay(contentViewContainer, function(step) {
+                            self.slideBy(step);
+                        });
                     }
 
                     this.contentViewTab = contentViewTab;
@@ -931,7 +1014,7 @@ FrameTrail.defineType(
                         return;
                     }
 
-                    var scrollbarSize = (this.whichArea == 'top' || this.whichArea == 'bottom')
+                    var scrollbarSize = this.isHorizontalArea()
                                         ? scrollContainer.offsetHeight - scrollContainer.clientHeight
                                         : scrollContainer.offsetWidth - scrollContainer.clientWidth;
 
@@ -964,7 +1047,7 @@ FrameTrail.defineType(
                     }
 
                     var thumb      = scrollbar.querySelector('.contentViewScrollbarThumb'),
-                        horizontal = (this.whichArea == 'top' || this.whichArea == 'bottom'),
+                        horizontal = this.isHorizontalArea(),
                         viewport   = horizontal ? scrollContainer.clientWidth : scrollContainer.clientHeight,
                         total      = horizontal ? scrollContainer.scrollWidth : scrollContainer.scrollHeight;
 
@@ -999,10 +1082,16 @@ FrameTrail.defineType(
                         scrollContainer = contentViewContainer.querySelector('.contentViewScroll'),
                         scrollbar       = contentViewContainer.querySelector('.contentViewScrollbar'),
                         thumb           = scrollbar.querySelector('.contentViewScrollbarThumb'),
-                        horizontal      = (self.whichArea == 'top' || self.whichArea == 'bottom'),
-                        scrollProperty  = horizontal ? 'scrollLeft' : 'scrollTop',
                         dragStart       = null,
-                        fadeTimeout;
+                        fadeTimeout,
+                        horizontal,
+                        scrollProperty;
+
+                    // The direction is read when it is used: a view can change its size, and with it its direction.
+                    function readDirection() {
+                        horizontal     = self.isHorizontalArea();
+                        scrollProperty = horizontal ? 'scrollLeft' : 'scrollTop';
+                    }
 
                     scrollContainer.addEventListener('scroll', function() {
 
@@ -1017,6 +1106,8 @@ FrameTrail.defineType(
                     }, { passive: true });
 
                     thumb.addEventListener('pointerdown', function(evt) {
+
+                        readDirection();
 
                         var viewport  = horizontal ? scrollContainer.clientWidth : scrollContainer.clientHeight,
                             total     = horizontal ? scrollContainer.scrollWidth : scrollContainer.scrollHeight,
@@ -1058,6 +1149,8 @@ FrameTrail.defineType(
                         if (evt.target == thumb) {
                             return;
                         }
+
+                        readDirection();
 
                         var scrollbarRect = scrollbar.getBoundingClientRect(),
                             viewport      = horizontal ? scrollContainer.clientWidth : scrollContainer.clientHeight,
@@ -1325,144 +1418,162 @@ FrameTrail.defineType(
                         }
                     });
 
-                    // Swipe overlay: a transparent element on top of the content
-                    // that intercepts touch/pointer events for horizontal swipe
-                    // navigation. Cross-origin iframes and <video controls> don't
-                    // propagate events to ancestors, so we need an overlay that
-                    // sits above them in the parent document.
-                    //
-                    // Behavior:
-                    //   Horizontal swipe → navigate to prev/next collection element
-                    //   Tap / click       → dismiss overlay + forward click to content
-                    //   Vertical gesture  → dismiss overlay so user can scroll content
-                    //
-                    // The overlay reactivates when navigation occurs (swipe,
-                    // slideButton, keyboard) or after 8 s of inactivity.
-                    (function() {
-                        var swipeOverlay = detailsContainerElement.querySelector('.swipeOverlay');
-
-                        // The overlay only makes sense on touch-primary devices,
-                        // where it catches horizontal swipes over cross-origin
-                        // iframes / <video controls>. On devices with a mouse it
-                        // would just sit on top of the content and block
-                        // hover/mouseover and scrolling (desktop users navigate
-                        // via the visible slideButtons or the arrow keys instead).
-                        // So on non-touch-primary devices we make it transparent
-                        // to input and skip wiring up any handlers.
-                        var isTouchPrimary = FrameTrail.isTouchPrimary();
-                        if (!isTouchPrimary) {
-                            swipeOverlay.style.pointerEvents = 'none';
-                            return;
+                    // Swiping through the details on touch devices (see initSwipeOverlay).
+                    var swipe = self.initSwipeOverlay(detailsContainerElement, function(step) {
+                        var activeElement = self.contentViewContainer.querySelector('.collectionElement.open');
+                        if (!activeElement) { return; }
+                        var sibling = (step > 0) ? activeElement.nextElementSibling : activeElement.previousElementSibling;
+                        while (sibling && !sibling.classList.contains('collectionElement')) {
+                            sibling = (step > 0) ? sibling.nextElementSibling : sibling.previousElementSibling;
                         }
+                        if (sibling) { sibling.click(); }
+                    });
 
-                        var startX = 0, startY = 0, startTime = 0;
-                        var swiping = false, decided = false;
-                        var THRESHOLD = 40;
-                        var ANGLE_LIMIT = 30;
-                        var TAP_THRESHOLD = 10;
-                        var TAP_TIMEOUT = 300;
-                        var REACTIVATE_DELAY = 8000;
-                        var reactivateTimer = null;
+                    // Re-activate overlay on any navigation (transition of
+                    // the detail contents slider signals a new element opened).
+                    if (swipe) {
+                        detailsContainerElement.querySelector('.contentViewDetailsContents')
+                            .addEventListener('transitionend', swipe.reactivate);
+                    }
 
-                        function reactivateOverlay() {
-                            clearTimeout(reactivateTimer);
-                            swipeOverlay.style.pointerEvents = '';
-                        }
+                    return detailsContainerElement;
 
-                        function dismissOverlay() {
-                            swipeOverlay.style.pointerEvents = 'none';
+                },
+
+
+                /**
+                 * I make the swipe overlay (.swipeOverlay, a child of the container) work: the bottom and top
+                 * areas' details use it, and so does a phone's large collection.
+                 *
+                 * A swipe overlay: a transparent element on top of the content
+                 * that intercepts touch/pointer events for horizontal swipe
+                 * navigation. Cross-origin iframes and <video controls> don't
+                 * propagate events to ancestors, so we need an overlay that
+                 * sits above them in the parent document.
+                 *
+                 * Behavior:
+                 *   Horizontal swipe → navigate to prev/next collection element
+                 *   Tap / click       → dismiss overlay + forward click to content
+                 *   Vertical gesture  → dismiss overlay so user can scroll content
+                 *
+                 * The overlay reactivates when navigation occurs (swipe,
+                 * slideButton, keyboard) or after 8 s of inactivity.
+                 *
+                 * @method initSwipeOverlay
+                 * @param {HTMLElement} container  holds the overlay and the content under it
+                 * @param {Function} step          called with 1 (the next element) or -1 (the previous one)
+                 * @return {Object|null} { reactivate } on touch-primary devices, else null (the overlay lets everything through)
+                 */
+                initSwipeOverlay: function(container, step) {
+
+                    var swipeOverlay = container.querySelector(':scope > .swipeOverlay');
+
+                    // The overlay only makes sense on touch-primary devices,
+                    // where it catches horizontal swipes over cross-origin
+                    // iframes / <video controls>. On devices with a mouse it
+                    // would just sit on top of the content and block
+                    // hover/mouseover and scrolling (desktop users navigate
+                    // via the visible slideButtons or the arrow keys instead).
+                    // So on non-touch-primary devices we make it transparent
+                    // to input and skip wiring up any handlers.
+                    var isTouchPrimary = FrameTrail.isTouchPrimary();
+                    if (!isTouchPrimary) {
+                        swipeOverlay.style.pointerEvents = 'none';
+                        return null;
+                    }
+
+                    var startX = 0, startY = 0, startTime = 0;
+                    var swiping = false, decided = false;
+                    var THRESHOLD = 40;
+                    var ANGLE_LIMIT = 30;
+                    var TAP_THRESHOLD = 10;
+                    var TAP_TIMEOUT = 300;
+                    var REACTIVATE_DELAY = 8000;
+                    var reactivateTimer = null;
+
+                    function reactivateOverlay() {
+                        clearTimeout(reactivateTimer);
+                        swipeOverlay.style.pointerEvents = '';
+                    }
+
+                    function dismissOverlay() {
+                        swipeOverlay.style.pointerEvents = 'none';
+                        clearTimeout(reactivateTimer);
+                        reactivateTimer = setTimeout(reactivateOverlay, REACTIVATE_DELAY);
+                    }
+
+                    function navigate(dx) {
+                        step(dx < 0 ? 1 : -1);
+                        reactivateOverlay();
+                    }
+
+                    // While overlay is dismissed, extend the timer on new
+                    // touches so it doesn't reactivate mid-interaction.
+                    container.addEventListener('touchstart', function() {
+                        if (swipeOverlay.style.pointerEvents === 'none') {
                             clearTimeout(reactivateTimer);
                             reactivateTimer = setTimeout(reactivateOverlay, REACTIVATE_DELAY);
                         }
+                    }, true);
 
-                        function navigate(dx) {
-                            var activeElement = self.contentViewContainer.querySelector('.collectionElement.open');
-                            if (!activeElement) return;
-                            if (dx < 0) {
-                                var next = activeElement.nextElementSibling;
-                                while (next && !next.classList.contains('collectionElement')) { next = next.nextElementSibling; }
-                                if (next) next.click();
-                            } else {
-                                var prev = activeElement.previousElementSibling;
-                                while (prev && !prev.classList.contains('collectionElement')) { prev = prev.previousElementSibling; }
-                                if (prev) prev.click();
-                            }
-                            reactivateOverlay();
+                    // --- Touch events (mobile / touch screens) ---
+
+                    swipeOverlay.addEventListener('touchstart', function(e) {
+                        if (e.touches.length !== 1) return;
+                        startX = e.touches[0].clientX;
+                        startY = e.touches[0].clientY;
+                        startTime = Date.now();
+                        swiping = true;
+                        decided = false;
+                    });
+
+                    swipeOverlay.addEventListener('touchmove', function(e) {
+                        if (!swiping || decided) return;
+                        var dx = e.touches[0].clientX - startX;
+                        var dy = e.touches[0].clientY - startY;
+                        var dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist < THRESHOLD) return;
+
+                        decided = true;
+                        var angle = Math.abs(Math.atan2(dy, dx) * 180 / Math.PI);
+                        if (angle > ANGLE_LIMIT && angle < (180 - ANGLE_LIMIT)) {
+                            // Vertical gesture — dismiss overlay for content interaction
+                            swiping = false;
+                            dismissOverlay();
+                            return;
                         }
 
-                        // Re-activate overlay on any navigation (transition of
-                        // the detail contents slider signals a new element opened).
-                        detailsContainerElement.querySelector('.contentViewDetailsContents')
-                            .addEventListener('transitionend', reactivateOverlay);
+                        // Horizontal swipe — navigate
+                        swiping = false;
+                        if (e.cancelable) { e.preventDefault(); }
+                        navigate(dx);
+                    }, { passive: false });
 
-                        // While overlay is dismissed, extend the timer on new
-                        // touches so it doesn't reactivate mid-interaction.
-                        detailsContainerElement.addEventListener('touchstart', function() {
-                            if (swipeOverlay.style.pointerEvents === 'none') {
-                                clearTimeout(reactivateTimer);
-                                reactivateTimer = setTimeout(reactivateOverlay, REACTIVATE_DELAY);
-                            }
-                        }, true);
-
-                        // --- Touch events (mobile / touch screens) ---
-
-                        swipeOverlay.addEventListener('touchstart', function(e) {
-                            if (e.touches.length !== 1) return;
-                            startX = e.touches[0].clientX;
-                            startY = e.touches[0].clientY;
-                            startTime = Date.now();
-                            swiping = true;
-                            decided = false;
-                        });
-
-                        swipeOverlay.addEventListener('touchmove', function(e) {
-                            if (!swiping || decided) return;
-                            var dx = e.touches[0].clientX - startX;
-                            var dy = e.touches[0].clientY - startY;
-                            var dist = Math.sqrt(dx * dx + dy * dy);
-                            if (dist < THRESHOLD) return;
-
-                            decided = true;
-                            var angle = Math.abs(Math.atan2(dy, dx) * 180 / Math.PI);
-                            if (angle > ANGLE_LIMIT && angle < (180 - ANGLE_LIMIT)) {
-                                // Vertical gesture — dismiss overlay for content interaction
-                                swiping = false;
+                    swipeOverlay.addEventListener('touchend', function(e) {
+                        if (swiping && !decided) {
+                            // Minimal movement — treat as tap
+                            var touch = e.changedTouches[0];
+                            var dx = touch.clientX - startX;
+                            var dy = touch.clientY - startY;
+                            if (Math.sqrt(dx * dx + dy * dy) < TAP_THRESHOLD
+                                && (Date.now() - startTime) < TAP_TIMEOUT) {
+                                // Dismiss overlay and forward the click
+                                var cx = touch.clientX, cy = touch.clientY;
                                 dismissOverlay();
-                                return;
+                                var target = document.elementFromPoint(cx, cy);
+                                if (target) target.click();
                             }
+                        }
+                        swiping = false;
+                        decided = false;
+                    });
 
-                            // Horizontal swipe — navigate
-                            swiping = false;
-                            e.preventDefault();
-                            navigate(dx);
-                        }, { passive: false });
+                    swipeOverlay.addEventListener('touchcancel', function() {
+                        swiping = false;
+                        decided = false;
+                    });
 
-                        swipeOverlay.addEventListener('touchend', function(e) {
-                            if (swiping && !decided) {
-                                // Minimal movement — treat as tap
-                                var touch = e.changedTouches[0];
-                                var dx = touch.clientX - startX;
-                                var dy = touch.clientY - startY;
-                                if (Math.sqrt(dx * dx + dy * dy) < TAP_THRESHOLD
-                                    && (Date.now() - startTime) < TAP_TIMEOUT) {
-                                    // Dismiss overlay and forward the click
-                                    var cx = touch.clientX, cy = touch.clientY;
-                                    dismissOverlay();
-                                    var target = document.elementFromPoint(cx, cy);
-                                    if (target) target.click();
-                                }
-                            }
-                            swiping = false;
-                            decided = false;
-                        });
-
-                        swipeOverlay.addEventListener('touchcancel', function() {
-                            swiping = false;
-                            decided = false;
-                        });
-                    })();
-
-                    return detailsContainerElement;
+                    return { reactivate: reactivateOverlay };
 
                 },
 
@@ -1474,7 +1585,7 @@ FrameTrail.defineType(
                  * @return {HTMLElement} previewElement
                  */
                 generateSchematicPreview: function() {
-                    var axis = (this.whichArea === 'top' || this.whichArea === 'bottom') ? 'x' : 'y';
+                    var axis = this.isHorizontalArea() ? 'x' : 'y';
                     return _generateSchematic(this.contentViewData.type, this.contentViewData.contentSize, axis);
                 },
 
@@ -2046,7 +2157,7 @@ FrameTrail.defineType(
                 updateCollectionSlider: function(details) {
 
                     var self = this,
-                        slideAxis    = (self.whichArea == 'top' || self.whichArea == 'bottom') ? 'x' : 'y',
+                        slideAxis    = self.isHorizontalArea() ? 'x' : 'y',
                         sliderParent = (details) ? self.contentViewDetailsContainer : self.contentViewContainer;
 
                     if ( self.contentCollection.length == 0
@@ -2132,7 +2243,7 @@ FrameTrail.defineType(
                 _scrollRangeIntoCenter: function(firstEl, lastEl) {
 
                     var self = this,
-                        slideAxis = (self.whichArea == 'top' || self.whichArea == 'bottom') ? 'x' : 'y',
+                        slideAxis = self.isHorizontalArea() ? 'x' : 'y',
                         scrollContainer = self.contentViewContainer.querySelector('.contentViewScroll');
 
                     if (!scrollContainer || !firstEl || !lastEl) { return; }
@@ -2393,7 +2504,8 @@ FrameTrail.defineType(
                                     +'        <div class="generic column-6">'
                                     +'            <div class="contentViewData optionCards" data-property="contentSize" data-value="'+ contentViewData.contentSize +'">'
                                     +'                <label>'+ self.labels['SettingsContentViewSize'] +':</label>'
-                                    +'                <div '+ (contentViewData.contentSize == 'small' ? 'class="active"' : '') +' data-value="small">'+ self.labels['SettingsContentViewSmall'] +'</div>'
+                                    // A phone has no "small" (see the constructor).
+                                    + ((self.whichArea == 'companion') ? '' : '                <div '+ (contentViewData.contentSize == 'small' ? 'class="active"' : '') +' data-value="small">'+ self.labels['SettingsContentViewSmall'] +'</div>')
                                     +'                <div '+ (contentViewData.contentSize == 'medium' ? 'class="active"' : '') +' data-value="medium">'+ self.labels['SettingsContentViewMedium'] +'</div>'
                                     +'                <div '+ (contentViewData.contentSize == 'large' ? 'class="active"' : '') +' data-value="large">'+ self.labels['SettingsContentViewLarge'] +'</div>'
                                     +'            </div>'
@@ -2517,11 +2629,11 @@ FrameTrail.defineType(
                             var existingThumb = optionEl.querySelector('.contentViewOptionThumb');
                             if (existingThumb) {
                                 existingThumb.innerHTML = '';
-                                existingThumb.appendChild(_generateSchematic(type, thatSize, thumbAxis, true));
+                                existingThumb.appendChild(_generateSchematic(type, thatSize, self.isHorizontalArea(thatSize, type) ? 'x' : 'y', true));
                             } else {
                                 var thumbWrapper = document.createElement('div');
                                 thumbWrapper.className = 'contentViewOptionThumb optionCardThumb';
-                                thumbWrapper.appendChild(_generateSchematic(type, thatSize, thumbAxis, true));
+                                thumbWrapper.appendChild(_generateSchematic(type, thatSize, self.isHorizontalArea(thatSize, type) ? 'x' : 'y', true));
                                 var labelSpan = document.createElement('span');
                                 labelSpan.textContent = optionEl.textContent;
                                 optionEl.innerHTML = '';
