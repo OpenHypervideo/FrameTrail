@@ -57,7 +57,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '                <button class="editMode" data-editmode="overlays"><span class="icon-object-ungroup"></span><span class="editModeLabel">'+ labels['SidebarOverlays'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="codesnippets"><span class="icon-code"></span><span class="editModeLabel">'+ labels['SidebarCustomCode'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="chapters"><span class="icon-list-bullet"></span><span class="editModeLabel">'+ labels['SidebarChapters'] +'</span></button>'
-                   + '                <button class="editMode" data-editmode="transcripts"><span class="icon-captions-on"></span><span class="editModeLabel">'+ labels['SidebarTranscripts'] +'</span></button>'
+                   + '                <button class="editMode" data-editmode="transcripts"><span class="icon-doc-text"></span><span class="editModeLabel">'+ labels['SidebarTranscripts'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="annotations"><span class="icon-annotations"></span><span class="editModeLabel">'+ labels['SidebarMyAnnotations'] +'<span class="icon-user"></span></button>'
                    + '                <div class="collaborationInfo"></div>'
                    + '            </div>'

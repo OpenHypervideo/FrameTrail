@@ -70,6 +70,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '            </div>'
                         + '            <div class="codeSnippetTimeline timeline"></div>'
                         + '            <div class="chapterTimeline timeline"></div>'
+                        + '            <div class="transcriptTimeline timeline"></div>'
                         + '            <div class="overlayTimeline timeline"></div>'
                         + '            <div class="playerProgress" role="slider" aria-valuemin="0" aria-valuenow="0">'
                         + '                <div class="ui-slider-range"></div>'
@@ -156,6 +157,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         CodeSnippetTimeline         = domElement.querySelector('.codeSnippetTimeline'),
 
         ChapterTimeline             = domElement.querySelector('.chapterTimeline'),
+
+        TranscriptTimeline          = domElement.querySelector('.transcriptTimeline'),
 
         Controls                    = domElement.querySelector('.controls'),
         SharingWidget               = domElement.querySelector('.sharingWidget'),
@@ -1273,12 +1276,13 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
     }
 
     /**
-     * I am called when the app enters the editMode "transcripts". The TranscriptsEditor fills the panel; there is no
-     * timeline to edit.
+     * I am called when the app enters the editMode "transcripts". The TranscriptsEditor fills the panel and the
+     * transcript timeline (the cues of the language it shows).
      * @method enterTranscriptMode
      */
     function enterTranscriptMode() {
         initEditMode();
+        TranscriptTimeline.classList.add('editable');
 
         EditPropertiesContainer.setAttribute('data-editmode', 'transcripts');
     }
@@ -2101,6 +2105,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
          */
         get CodeSnippetTimeline()  { return CodeSnippetTimeline  },
         get ChapterTimeline()      { return ChapterTimeline      },
+        get TranscriptTimeline()   { return TranscriptTimeline   },
 
         /**
          * I contain the AreaTopDetails element.

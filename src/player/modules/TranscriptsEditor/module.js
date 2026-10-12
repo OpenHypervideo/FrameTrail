@@ -6,8 +6,9 @@
 /**
  * I am the TranscriptsEditor: the edit mode "transcripts". In the panel on the right I show the
  * transcripts of the open hypervideo — its subtitles, one WebVTT file per language — as a list of
- * cues with their times, and let the user write, change, upload and delete them, and have them
- * made by an extension that provides a transcriber (slots.transcriber).
+ * cues with their times, and on the transcript timeline as blocks that can be moved and resized.
+ * I let the user write, change, upload and delete them, and have them made by an extension that
+ * provides a transcriber (slots.transcriber).
  *
  * Where transcripts appear is decided elsewhere: in Transcript views (the layout editor) and as
  * captions (the CC button in the player). The panel says so and links to the layout editor; only
@@ -30,7 +31,8 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
     var NEW_CUE_LENGTH = 2,     // seconds
         MIN_CUE_LENGTH = 0.1,   // seconds
         LANGUAGE_CODE  = /^[A-Za-z0-9_-]{1,32}$/,
-        AREA_LABELS    = { areaTop: 'LayoutAreaTop', areaBottom: 'LayoutAreaBottom', areaLeft: 'LayoutAreaLeft', areaRight: 'LayoutAreaRight' };
+        AREA_LABELS    = { areaTop: 'LayoutAreaTop', areaBottom: 'LayoutAreaBottom', areaLeft: 'LayoutAreaLeft', areaRight: 'LayoutAreaRight' },
+        AREA_NAMES     = { areaTop: 'top', areaBottom: 'bottom', areaLeft: 'left', areaRight: 'right' };
 
     var lang           = null,      // the language shown
         doc            = null,      // its FrameTrailWebVTT document
@@ -47,7 +49,13 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
         focusedField   = null,      // the field of the list last focused (it may be gone from the page)
         generation     = null,      // { controller, language, confirmed, progress }
         menu           = null,
+        selectedCue    = null,      // the cue selected (timeline block or row)
+        blocks         = [],        // the timeline's blocks: [{ cue, element }]
+        gesture        = null,      // a block being moved or resized
         idPrefix       = 'transcripts' + Math.random().toString(36).slice(2, 8);
+
+    var SNAP_PX       = 5,          // how near (px) an edge snaps to its neighbour's
+        TOUCH_SECONDS = 0.0005;     // cues this near touch: their shared edge moves for both
 
 
     function VTT() {
@@ -144,9 +152,10 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
         var text = lang ? storedText(lang) : null;
 
         doc       = lang ? (text !== null ? VTT().parse(text) : VTT().create()) : null;
-        cues      = doc ? VTT().cuesOf(doc) : [];
-        activeCue = null;
-        lastCaret = null;
+        cues        = doc ? VTT().cuesOf(doc) : [];
+        activeCue   = null;
+        lastCaret   = null;
+        selectedCue = null;
 
         if (doc) {
             VTT().sort(doc);
@@ -204,15 +213,18 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
         }
     }
 
-    function registerUndo(code, before, after, description) {
-
-        FrameTrail.module('UndoManager').register({
+    // position: where the language was in the list before the change, so undoing a deletion puts it back there.
+    function subtitlesCommand(code, before, after, description, position) {
+        return {
             category:    'subtitles',
             description: description,
-            undo:        function() { FrameTrail.module('HypervideoModel').setSubtitles(code, before); },
+            undo:        function() { FrameTrail.module('HypervideoModel').setSubtitles(code, before, position); },
             redo:        function() { FrameTrail.module('HypervideoModel').setSubtitles(code, after); }
-        });
+        };
+    }
 
+    function registerUndo(code, before, after, description, position) {
+        FrameTrail.module('UndoManager').register(subtitlesCommand(code, before, after, description, position));
     }
 
     function describe(actionKey) {
@@ -254,12 +266,13 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
      */
     function setLanguageText(code, text, description) {
 
-        var before = storedText(code);
+        var before   = storedText(code),
+            position = languages().indexOf(code);
 
         if (before === text) { return; }
 
         applyText(code, text);
-        registerUndo(code, before, text, description);
+        registerUndo(code, before, text, description, position);
 
         if (isActive()) {
             if (text === null) {
@@ -668,6 +681,8 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
 
         list.addEventListener('focusin', function(evt) {
             focusedField = evt.target;
+            var focused = cueOfField(evt.target);
+            if (focused && focused !== selectedCue) { selectCue(focused, true); }
             if (lastCaret && evt.target.classList.contains('transcriptCueText') && cueOfField(evt.target) !== lastCaret.cue) {
                 lastCaret = null;
             }
@@ -759,6 +774,11 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
         if (message) { message.className = 'message transcriptsMessage'; message.textContent = ''; }
     }
 
+    // Whether a content view shows a language; one that names none (or one that is gone) shows the first.
+    function showsLanguage(view, code) {
+        return view.type === 'Transcript' && FrameTrail.module('HypervideoModel').transcriptLanguage(view.transcriptSource) === code;
+    }
+
     // The Transcript views that show a language: [{ name, area }].
     function viewsShowing(code) {
 
@@ -768,7 +788,7 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
 
         Object.keys(AREA_LABELS).forEach(function(area) {
             (data[area] || []).forEach(function(view) {
-                if (view.type === 'Transcript' && view.transcriptSource === code) {
+                if (showsLanguage(view, code)) {
                     found.push({ name: view.name || labels['GenericTextTranscript'], area: area });
                 }
             });
@@ -806,7 +826,7 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
         editor = el('<div class="transcriptsEditor"></div>');
         editor.setAttribute('data-lang', lang || '');
 
-        var hint = el('<div class="message active transcriptsHint"><span class="icon-captions-on"></span> ' + esc(labels['MessageTranscriptsHint'])
+        var hint = el('<div class="message active transcriptsHint"><span class="icon-doc-text"></span> ' + esc(labels['MessageTranscriptsHint'])
             + ' <button type="button" class="transcriptsLayoutLink">' + esc(labels['TranscriptsOpenLayout']) + '</button></div>');
         hint.querySelector('.transcriptsLayoutLink').addEventListener('click', openLayout);
         editor.appendChild(hint);
@@ -833,6 +853,8 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
 
         EditingOptions.innerHTML = '';
         EditingOptions.appendChild(editor);
+
+        if (!cueList) { renderTimeline(); }
 
         if (cueList) {
             renderCues();
@@ -1080,8 +1102,12 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
 
         cueList.querySelectorAll('textarea').forEach(autosize);
 
+        if (selectedCue && cues.indexOf(selectedCue) === -1) { selectedCue = null; }
+        if (selectedCue) { rowOf(selectedCue).classList.add('selected'); }
+
         updateRowStates();
         renderSpeakers();
+        renderTimeline();
         updateActiveCue(FrameTrail.module('HypervideoController').currentTime);
 
         if (focus && focus.cue) {
@@ -1157,6 +1183,8 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
 
         activeCue = found;
 
+        updateBlockStates();
+
         if (!found) { return; }
 
         var row = cueList.querySelector('.transcriptCue[data-index="' + cues.indexOf(found) + '"]');
@@ -1168,6 +1196,365 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
             }
         }
 
+    }
+
+
+    /* ------------------------------------------------------------------ */
+    /*  Timeline                                                          */
+    /* ------------------------------------------------------------------ */
+
+    function rowOf(cue) {
+        return cueList ? cueList.querySelector('.transcriptCue[data-index="' + cues.indexOf(cue) + '"]') : null;
+    }
+
+    /**
+     * I give the spans of the cues shown on the timeline (absolute times), for its minimap.
+     * @method cueRanges
+     * @return {Array} [{ start, end }]
+     */
+    function cueRanges() {
+        return blocks.map(function(block) { return { start: block.cue.start, end: block.cue.end }; });
+    }
+
+    /**
+     * I select a cue (or none): its row is marked and kept in view, its block on the timeline is highlighted. Selecting
+     * never moves the playhead.
+     *
+     * @method selectCue
+     * @param {Object|null} cue
+     * @param {Boolean} [fromList] the row has the focus already (it is in view)
+     */
+    function selectCue(cue, fromList) {
+
+        selectedCue = (cue && cues.indexOf(cue) !== -1) ? cue : null;
+
+        if (cueList) {
+            cueList.querySelectorAll('.transcriptCue.selected').forEach(function(row) { row.classList.remove('selected'); });
+            var row = selectedCue && rowOf(selectedCue);
+            if (row) {
+                row.classList.add('selected');
+                if (!fromList) { row.scrollIntoView({ block: 'nearest' }); }
+            }
+        }
+
+        updateBlockStates();
+
+    }
+
+    function timelineElement() {
+        var ViewVideo = FrameTrail.module('ViewVideo');
+        return ViewVideo ? ViewVideo.TranscriptTimeline : null;
+    }
+
+    function timelineHost() {
+        var timeline = timelineElement();
+        return timeline ? (timeline.querySelector('.timelineScroller') || timeline) : null;
+    }
+
+    function blockLabel(cue) {
+        var voice = VTT().speakerOf(cue.text),
+            text  = VTT().toPlain(voice.text).replace(/\s+/g, ' ').trim();
+        return voice.speaker ? voice.speaker + ': ' + text : text;
+    }
+
+    // A block's place: its share of the video, cut to the video (a cue outside it is not drawn).
+    function placeBlock(element, start, end) {
+
+        var HypervideoModel = FrameTrail.module('HypervideoModel'),
+            from            = HypervideoModel.offsetIn || 0,
+            duration        = HypervideoModel.duration,
+            left            = Math.max(0, (start - from) / duration * 100),
+            right           = Math.min(100, (end - from) / duration * 100);
+
+        element.style.display = (right <= left) ? 'none' : '';
+        element.style.left    = left + '%';
+        element.style.width   = Math.max(0, right - left) + '%';
+
+    }
+
+    function updateBlockStates() {
+
+        var HypervideoModel = FrameTrail.module('HypervideoModel'),
+            from            = HypervideoModel.offsetIn || 0,
+            to              = HypervideoModel.duration ? from + HypervideoModel.duration : Infinity;
+
+        blocks.forEach(function(block) {
+            var cue   = block.cue,
+                index = cues.indexOf(cue);
+            block.element.classList.toggle('overlap', index > 0 && cue.start < cues[index - 1].end);
+            block.element.classList.toggle('outside', cue.end <= from || cue.start >= to);
+            block.element.classList.toggle('active', cue === activeCue);
+            block.element.classList.toggle('highlighted', cue === selectedCue);
+        });
+
+    }
+
+    function clearTimeline() {
+
+        blocks.forEach(function(block) {
+            try { interact(block.element).unset(); } catch (e) {}
+            block.element.remove();
+        });
+
+        blocks  = [];
+        gesture = null;
+
+    }
+
+    /**
+     * I draw the cues of the language shown as blocks on the transcript timeline (only in this edit mode), and its minimap.
+     * @method renderTimeline
+     * @private
+     */
+    function renderTimeline() {
+
+        var host     = timelineHost(),
+            duration = FrameTrail.module('HypervideoModel').duration;
+
+        clearTimeline();
+
+        if (!host) { return; }
+
+        if (isActive() && cueList && duration) {
+
+            cues.forEach(function(cue) {
+
+                var element = el('<div class="timelineElement transcriptCueBlock ui-draggable ui-resizable">'
+                    + '<div class="timelineElementLabel"></div>'
+                    + '<div class="ui-resizable-handle ui-resizable-w"></div>'
+                    + '<div class="ui-resizable-handle ui-resizable-e"></div>'
+                    + '</div>');
+
+                element.querySelector('.timelineElementLabel').textContent = blockLabel(cue);
+                element.title = VTT().formatTime(cue.start) + ' → ' + VTT().formatTime(cue.end);
+
+                placeBlock(element, cue.start, cue.end);
+                host.appendChild(element);
+                blocks.push({ cue: cue, element: element });
+                bindBlock(element, cue);
+
+            });
+
+            updateBlockStates();
+
+        }
+
+        var TimelineController = FrameTrail.module('TimelineController');
+        if (TimelineController && TimelineController.initialized) { TimelineController.refreshMinimap(); }
+
+    }
+
+    function bindBlock(element, cue) {
+
+        element.addEventListener('click', function() { selectCue(cue); });
+
+        element.addEventListener('dblclick', function(evt) {
+            if (evt.target.closest('.ui-resizable-handle')) { return; }
+            selectCue(cue);
+            FrameTrail.module('HypervideoController').currentTime = cue.start + 0.05;
+        });
+
+        interact(element)
+            .draggable({
+                ignoreFrom: '.ui-resizable-handle',
+                listeners: {
+                    start: function() { beginGesture(cue, 'move'); },
+                    move:  function(e) { moveGesture(e.dx); },
+                    end:   endGesture
+                }
+            })
+            .resizable({
+                edges: { left: '.ui-resizable-w', right: '.ui-resizable-e' },
+                listeners: {
+                    start: function(e) { beginGesture(cue, e.edges.left ? 'start' : 'end'); },
+                    move:  function(e) { moveGesture(e.edges.left ? e.deltaRect.left : e.deltaRect.right); },
+                    end:   endGesture
+                }
+            });
+
+    }
+
+    /**
+     * I start moving a cue's block ('move') or one of its edges ('start', 'end'). An edge that touches the neighbour's
+     * moves the neighbour's too.
+     *
+     * @method beginGesture
+     * @private
+     */
+    function beginGesture(cue, kind) {
+
+        var host            = timelineHost(),
+            HypervideoModel = FrameTrail.module('HypervideoModel'),
+            index           = cues.indexOf(cue),
+            prev            = cues[index - 1] || null,
+            next            = cues[index + 1] || null;
+
+        // What is being written goes in first: the list is drawn again at the end.
+        flush();
+
+        selectCue(cue);
+
+        gesture = {
+            cue:           cue,
+            kind:          kind,
+            prev:          prev,
+            next:          next,
+            linkPrev:      kind === 'start' && !!prev && Math.abs(prev.end - cue.start) < TOUCH_SECONDS,
+            linkNext:      kind === 'end' && !!next && Math.abs(next.start - cue.end) < TOUCH_SECONDS,
+            from:          HypervideoModel.offsetIn || 0,
+            to:            (HypervideoModel.offsetIn || 0) + HypervideoModel.duration,
+            width:         host.offsetWidth,
+            secondsPerPx:  HypervideoModel.duration / (host.offsetWidth || 1),
+            px:            0
+        };
+
+        var block = blockOf(cue);
+        if (block) { block.classList.add('ui-draggable-dragging'); }
+
+    }
+
+    function blockOf(cue) {
+        var found = blocks.filter(function(block) { return block.cue === cue; })[0];
+        return found ? found.element : null;
+    }
+
+    // value within [lo, hi]; when there is no room, where it was.
+    function limit(value, lo, hi, was) {
+        return (hi < lo) ? was : Math.max(lo, Math.min(hi, value));
+    }
+
+    /**
+     * I give the times a gesture makes of the pointer moved by some seconds: the cue's, and the edge of the neighbour it
+     * drags along. Cues do not pass their neighbours, get no shorter than MIN_CUE_LENGTH and stay within the video
+     * (unless they were outside it already).
+     *
+     * @method gestureTimes
+     * @private
+     */
+    function gestureTimes(delta) {
+
+        var g         = gesture,
+            cue       = g.cue,
+            start     = cue.start,
+            end       = cue.end,
+            lowest    = g.prev ? Math.min(g.prev.end, cue.start) : Math.min(g.from, cue.start),
+            highest   = g.next ? Math.max(g.next.start, cue.end) : Math.max(g.to, cue.end);
+
+        if (g.kind === 'move') {
+            delta = limit(delta, lowest - cue.start, highest - cue.end, 0);
+            start = cue.start + delta;
+            end   = cue.end + delta;
+        } else if (g.kind === 'start') {
+            start = limit(cue.start + delta, g.linkPrev ? g.prev.start + MIN_CUE_LENGTH : lowest, cue.end - MIN_CUE_LENGTH, cue.start);
+        } else {
+            end = limit(cue.end + delta, cue.start + MIN_CUE_LENGTH, g.linkNext ? g.next.end - MIN_CUE_LENGTH : highest, cue.end);
+        }
+
+        return { start: round(start), end: round(end) };
+
+    }
+
+    // The neighbour's edge the moving edge would snap to (closing a gap), as a change of the delta, or null.
+    function snapOf(times) {
+
+        var g         = gesture,
+            tolerance = SNAP_PX * g.secondsPerPx,
+            best      = null;
+
+        function consider(edge, target) {
+            var distance = target - edge;
+            if (Math.abs(distance) <= tolerance && (best === null || Math.abs(distance) < Math.abs(best.delta))) {
+                best = { delta: distance, at: target };
+            }
+        }
+
+        if (g.kind !== 'end' && g.prev && !g.linkPrev)   { consider(times.start, g.prev.end); }
+        if (g.kind !== 'start' && g.next && !g.linkNext) { consider(times.end, g.next.start); }
+
+        return best;
+
+    }
+
+    // The gesture's times as shown: the blocks, the rows' fields, the playhead.
+    function showGesture(times) {
+
+        var g    = gesture,
+            cue  = g.cue,
+            row  = rowOf(cue),
+            prev = g.linkPrev ? blockOf(g.prev) : null,
+            next = g.linkNext ? blockOf(g.next) : null;
+
+        placeBlock(blockOf(cue), times.start, times.end);
+        if (prev) { placeBlock(prev, g.prev.start, times.start); }
+        if (next) { placeBlock(next, times.end, g.next.end); }
+
+        if (row) {
+            row.querySelector('.transcriptCueStart').value = VTT().formatTime(times.start);
+            row.querySelector('.transcriptCueEnd').value   = VTT().formatTime(times.end);
+        }
+        if (g.linkPrev && rowOf(g.prev)) { rowOf(g.prev).querySelector('.transcriptCueEnd').value = VTT().formatTime(times.start); }
+        if (g.linkNext && rowOf(g.next)) { rowOf(g.next).querySelector('.transcriptCueStart').value = VTT().formatTime(times.end); }
+
+        FrameTrail.module('HypervideoController').currentTime = (g.kind === 'end') ? times.end : times.start;
+
+    }
+
+    function moveGesture(px) {
+
+        if (!gesture) { return; }
+
+        gesture.px += px;
+
+        var times     = gestureTimes(gesture.px * gesture.secondsPerPx),
+            snap      = snapOf(times),
+            ViewVideo = FrameTrail.module('ViewVideo');
+
+        if (snap) {
+            ViewVideo.showTimelineSnapIndicator(timelineHost(), (snap.at - gesture.from) / (gesture.to - gesture.from) * gesture.width);
+        } else {
+            ViewVideo.hideTimelineSnapIndicator();
+        }
+
+        showGesture(times);
+
+    }
+
+    /**
+     * I end a gesture: the cue (and the neighbour whose edge it moved) gets its new times, as one undo step.
+     * @method endGesture
+     * @private
+     */
+    function endGesture() {
+
+        var ViewVideo = FrameTrail.module('ViewVideo');
+
+        // The click ending the gesture must not change the selection.
+        ViewVideo.swallowNextClick();
+        ViewVideo.hideTimelineSnapIndicator();
+
+        if (!gesture) { return; }
+
+        var g     = gesture,
+            delta = g.px * g.secondsPerPx,
+            snap  = snapOf(gestureTimes(delta)),
+            times = gestureTimes(snap ? delta + snap.delta : delta);
+
+        gesture = null;
+
+        g.cue.start = times.start;
+        g.cue.end   = times.end;
+        if (g.linkPrev) { g.prev.end   = times.start; }
+        if (g.linkNext) { g.next.start = times.end; }
+
+        commit(describe('GenericChange'));
+
+        // Drawn again once interact.js is done with the gesture's element.
+        window.setTimeout(function() { renderCues(); }, 0);
+
+    }
+
+    function onTimelineClick(evt) {
+        if (isActive() && !evt.target.closest('.timelineElement')) { selectCue(null); }
     }
 
 
@@ -1227,21 +1614,121 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
 
     }
 
+    /**
+     * I ask before deleting the shown transcript. When Transcript views show it, the user decides what becomes of them:
+     * they show the next transcript (or, when it is the last one, stay and show the next one made), or they go too.
+     *
+     * @method confirmDelete
+     * @private
+     */
     function confirmDelete() {
 
-        var views   = viewsShowing(lang),
-            code    = lang,
-            text    = labels['TranscriptsDeleteConfirm'].replace('%s', function() { return languageLabel(code); })
-                    + (views.length ? ' ' + labels['TranscriptsDeleteConfirmUsed'].replace('%s', function() { return viewsText(views); }) : '');
+        var code  = lang,
+            views = viewsShowing(code),
+            text  = labels['TranscriptsDeleteConfirm'].replace('%s', function() { return languageLabel(code); });
 
-        ConfirmDialog({
-            title:        labels['GenericConfirmDelete'],
-            icon:         'icon-trash',
-            message:      text,
-            confirmLabel: labels['GenericDelete'],
-            cancelLabel:  labels['GenericCancel'],
-            onConfirm:    function() { setLanguageText(code, null, describe('GenericDelete')); }
+        if (!views.length) {
+            ConfirmDialog({
+                title:        labels['GenericConfirmDelete'],
+                icon:         'icon-trash',
+                message:      text,
+                confirmLabel: labels['GenericDelete'],
+                cancelLabel:  labels['GenericCancel'],
+                onConfirm:    function() { setLanguageText(code, null, describe('GenericDelete')); }
+            });
+            return;
+        }
+
+        var langs   = languages(),
+            at      = langs.indexOf(code),
+            next    = langs[at + 1] || langs[at - 1] || null,
+            content = document.createElement('p'),
+            dialog;
+
+        content.textContent = text + ' ' + labels['TranscriptsDeleteViewsQuestion'].replace('%s', function() { return viewsText(views); });
+
+        function choose(choice) {
+            return function() {
+                dialog.destroy();
+                deleteTranscript(code, choice, next);
+            };
+        }
+
+        dialog = Dialog({
+            title:   labels['GenericConfirmDelete'],
+            icon:    'icon-trash',
+            content: content,
+            modal:   true,
+            width:   460,
+            buttons: [
+                next
+                    ? { text: labels['TranscriptsDeleteSwitchViews'].replace('%s', function() { return languageLabel(next); }), click: choose('switch') }
+                    : { text: labels['TranscriptsDeleteKeepViews'], click: choose('keep') },
+                { text: labels['TranscriptsDeleteWithViews'], click: choose('remove') },
+                { text: labels['GenericCancel'], click: function() { dialog.destroy(); } }
+            ],
+            close: function() { dialog.destroy(); }
         });
+
+    }
+
+    /**
+     * I delete a transcript and change the Transcript views that show it, as one undo step: 'switch' makes them show the
+     * next transcript, 'keep' makes them name none (they show the next one made), 'remove' deletes them.
+     *
+     * @method deleteTranscript
+     * @param {String} code
+     * @param {String} choice - 'switch', 'keep' or 'remove'
+     * @param {String|null} next - the language the views show after 'switch'
+     * @private
+     */
+    function deleteTranscript(code, choice, next) {
+
+        var ViewLayout = FrameTrail.module('ViewLayout'),
+            data       = ViewLayout.getLayoutAreaData(),
+            changes    = [],
+            before     = storedText(code),
+            commands   = [subtitlesCommand(code, before, null, undefined, languages().indexOf(code))];
+
+        // Which views show the transcript is read before it is gone: a view naming none shows the first one.
+        Object.keys(AREA_NAMES).forEach(function(area) {
+
+            var changed = false,
+                views   = [];
+
+            (data[area] || []).forEach(function(view) {
+                var copy = JSON.parse(JSON.stringify(view));
+                if (showsLanguage(view, code)) {
+                    if (choice === 'remove') { changed = true; return; }
+                    copy.transcriptSource = (choice === 'switch') ? next : '';
+                    changed = changed || copy.transcriptSource !== view.transcriptSource;
+                }
+                views.push(copy);
+            });
+
+            if (changed) { changes.push({ area: AREA_NAMES[area], views: views }); }
+
+        });
+
+        // The transcript first, so the views made again show what they will show.
+        applyText(code, null);
+
+        changes.forEach(function(change) {
+            var previous = ViewLayout.setContentViews(change.area, change.views);
+            commands.push({
+                category: 'layout',
+                undo:     function() { FrameTrail.module('ViewLayout').setContentViews(change.area, previous); },
+                redo:     function() { FrameTrail.module('ViewLayout').setContentViews(change.area, change.views); }
+            });
+        });
+
+        FrameTrail.module('UndoManager').registerGroup(describe('GenericDelete'), commands);
+
+        if (isActive()) {
+            lang = null;
+            doc  = null;
+            render();
+        }
 
     }
 
@@ -1254,7 +1741,7 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
 
         ConfirmDialog({
             title:        labels['TranscriptsReplace'],
-            icon:         'icon-captions-on',
+            icon:         'icon-doc-text',
             message:      labels['TranscriptsReplaceConfirm'].replace('%s', function() { return languageLabel(code); }),
             confirmLabel: labels['TranscriptsReplace'],
             cancelLabel:  labels['GenericCancel'],
@@ -1611,10 +2098,16 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
             render();
             showCaptionsOf(lang);
 
+            if (timelineElement()) { timelineElement().addEventListener('click', onTimelineClick); }
+
         } else if (oldEditMode === 'transcripts' && editMode !== 'transcripts') {
 
             flush();
             closeMenu();
+            clearTimeline();
+
+            if (timelineElement()) { timelineElement().removeEventListener('click', onTimelineClick); }
+            selectedCue = null;
 
             editor    = null;
             cueList   = null;
@@ -1643,9 +2136,11 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
      */
     function reset() {
         stopGeneration();
-        lang = null;
-        doc  = null;
-        cues = [];
+        clearTimeline();
+        lang        = null;
+        doc         = null;
+        cues        = [];
+        selectedCue = null;
     }
 
 
@@ -1657,6 +2152,8 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
 
         subtitlesChanged: subtitlesChanged,
         updateActiveCue:  updateActiveCue,
+        cueRanges:        cueRanges,
+        selectCue:        selectCue,
         flush:            flush,
         reset:            reset
 

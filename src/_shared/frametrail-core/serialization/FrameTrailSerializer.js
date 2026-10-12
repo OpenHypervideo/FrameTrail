@@ -953,7 +953,9 @@
     /**
      * I turn Transcript content views into CustomHTML holding the transcript
      * text, so a hypervideo shown without its subtitle files (an export)
-     * still has it. Views whose subtitles are not given stay as they are.
+     * still has it. A view naming no language, or one not given, shows the
+     * first subtitles given, as in the player. Views stay as they are when no
+     * subtitles are given.
      * @method transcriptsToHTML
      * @param {Object} layoutArea
      * @param {Object} subtitles parsed subtitles: { <srclang>: { cues: [{ startTime, endTime, text }] } }
@@ -968,8 +970,8 @@
         Object.keys(layoutArea).forEach(function(area) {
             var views = layoutArea[area];
             result[area] = !Array.isArray(views) ? views : views.map(function(view) {
-                var subs = (isObject(view) && view.type === 'Transcript' && view.transcriptSource)
-                    ? subtitles[view.transcriptSource]
+                var subs = (isObject(view) && view.type === 'Transcript')
+                    ? (subtitles[view.transcriptSource] || subtitles[Object.keys(subtitles)[0]])
                     : null;
                 if (!subs || !subs.cues) { return view; }
                 var html = '';

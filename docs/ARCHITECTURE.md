@@ -130,7 +130,7 @@ FrameTrail.defineModule('ModuleName', function(FrameTrail) {
 | `OverlayAnimator` | Runs overlay animations (CSS, video-synced): transitions, emphasis, text reveals, content animations, box motion |
 | `OverlayAnimationEditor` | Animation tab of the overlay properties panel, keyframe easing menu |
 | `SubtitlesController` | Captions on the video and the CC button's languages (native text tracks where the player cannot go fullscreen itself) |
-| `TranscriptsEditor` | The "transcripts" edit mode: the cues of a language with their times, editing, uploading (WebVTT, SubRip), deleting, generating through an extension's `transcriber` |
+| `TranscriptsEditor` | The "transcripts" edit mode: the cues of a language as a list and as blocks on the transcript timeline (moved and resized there), editing, uploading (WebVTT, SubRip), deleting (asking what becomes of the Transcript views showing it), generating through an extension's `transcriber` |
 | `CodeSnippetsController` | Code snippet execution at timestamps |
 | `InteractionController` | Drag/drop, resize for editing |
 | `TimelineController` | Timeline UI and scrubbing |

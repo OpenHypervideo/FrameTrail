@@ -396,7 +396,8 @@ FrameTrail.defineType(
                                 });
                             }
 
-                            var subtitles = FrameTrail.module('Database').subtitles[self.contentViewData.transcriptSource];
+                            // A view that names no transcript (or one that is gone) shows the first one.
+                            var subtitles = FrameTrail.module('Database').subtitles[FrameTrail.module('HypervideoModel').transcriptLanguage(self.contentViewData.transcriptSource)];
                             if ( subtitles ) {
                                 // Cue text without its markup; a new speaker (a voice tag) starts a new paragraph, named.
                                 var lastSpeaker = '';
@@ -2445,9 +2446,8 @@ FrameTrail.defineType(
                                     +'    </div>'
                                     +'    <div class="typeSpecific '+ (contentViewData.type == 'Transcript' ? 'active' : '') +'" data-type="Transcript">'
                                     +'        <label>'+ self.labels['SettingsTranscriptSource'] +':</label>'
-                                    +'        <div class="message active transcriptsHintMessage"><span class="transcriptsHintText"></span> <button type="button" class="transcriptsEditButton"><span class="icon-captions-on"></span> '+ self.labels['TranscriptsEdit'] +'</button></div>'
-                                    +'        <div class="existingTranscripts"></div>'
-                                    +'        <input type="hidden" class="contentViewData" data-property="transcriptSource" data-value="'+ contentViewData.transcriptSource +'" value="'+ contentViewData.transcriptSource +'">'
+                                    +'        <div class="message active transcriptsHintMessage"><span class="transcriptsHintText"></span> <button type="button" class="transcriptsEditButton"><span class="icon-doc-text"></span> '+ self.labels['TranscriptsEdit'] +'</button></div>'
+                                    +'        <div class="custom-select"><select class="contentViewData" data-property="transcriptSource" aria-label="'+ self.labels['SettingsTranscriptSource'] +'"></select></div>'
                                     +'        <div class="checkboxRow">'
                                     +'            <label class="switch" style="display: inline-block;">'
                                     +'                <input type="checkbox" id="showTranscriptSearch" class="contentViewData" data-property="showTranscriptSearch" autocomplete="off" '+ (contentViewData.showTranscriptSearch ? 'checked' : '') +'>'
@@ -2570,37 +2570,32 @@ FrameTrail.defineType(
                         });
                     })();
 
-                    function updateExistingTranscripts() {
-                        editingUI.querySelector('.existingTranscripts').innerHTML = '';
+                    // One of the hypervideo's transcripts is always chosen: the view's own, else the first one.
+                    // Without any there is nothing to choose; the view then shows the first one that is made.
+                    (function() {
+                        var select       = editingUI.querySelector('.contentViewData[data-property="transcriptSource"]'),
+                            Localization = FrameTrail.module('Localization'),
+                            shown        = FrameTrail.module('HypervideoModel').transcriptLanguage(contentViewData.transcriptSource),
+                            languages    = (FrameTrail.module('Database').hypervideo.subtitles || []).map(function(file) { return file.srclang; });
 
-                        var database = FrameTrail.module('Database');
-
-                        if ( database.hypervideo.subtitles ) {
-
-                            for (var i=0; i < database.hypervideo.subtitles.length; i++) {
-                                var currentSubtitles = database.hypervideo.subtitles[i],
-                                    existingSubtitlesItem = document.createElement('div'),
-                                    languageName = document.createElement('span');
-                                existingSubtitlesItem.className = 'existingSubtitlesItem';
-                                existingSubtitlesItem.setAttribute('data-srclang', currentSubtitles.srclang);
-                                languageName.textContent = FrameTrail.module('Localization').languageName(currentSubtitles.srclang);
-                                existingSubtitlesItem.appendChild(languageName);
-
-                                if ( editingUI.querySelector('.contentViewData[data-property="transcriptSource"]').value == currentSubtitles.srclang ) {
-                                    existingSubtitlesItem.classList.add('active');
-                                }
-                                existingSubtitlesItem.addEventListener('click', function(evt) {
-                                    var thisSourceLang = this.getAttribute('data-srclang');
-                                    editingUI.querySelector('.contentViewData[data-property="transcriptSource"]').value = thisSourceLang;
-                                    updateExistingTranscripts();
-                                });
-
-                                editingUI.querySelector('.existingTranscripts').appendChild(existingSubtitlesItem);
-                            }
+                        if (!languages.length) {
+                            var none = document.createElement('option');
+                            none.value = '';
+                            none.textContent = self.labels['SettingsTranscriptSourceNone'];
+                            select.appendChild(none);
+                            select.disabled = true;
+                            return;
                         }
-                    }
 
-                    updateExistingTranscripts();
+                        languages.forEach(function(code) {
+                            var option  = document.createElement('option'),
+                                name    = Localization.languageName(code);
+                            option.value       = code;
+                            option.textContent = (name === code) ? code : name + ' (' + code + ')';
+                            option.selected    = (code === shown);
+                            select.appendChild(option);
+                        });
+                    })();
 
                     // Content Collection Filters
 
@@ -2843,7 +2838,7 @@ FrameTrail.defineType(
                         var newValue;
                         if ( el.tagName === 'INPUT' && el.type === 'checkbox' ) {
                             newValue = el.checked;
-                        } else if ( el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ) {
+                        } else if ( el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' ) {
                             newValue = el.value;
                             if ( el.getAttribute('data-property').indexOf('collectionFilter') != -1 && el.getAttribute('data-property') != 'collectionFilter-text' ) {
                                 if ( el.value.length != 0 ) {
@@ -2874,6 +2869,11 @@ FrameTrail.defineType(
                             newDataObject[el.getAttribute('data-property')] = newValue;
                         }
                     });
+
+                    // The transcript chooser always has a language selected; only a Transcript view takes it.
+                    if ( newDataObject.type !== 'Transcript' ) {
+                        newDataObject.transcriptSource = this.contentViewData.transcriptSource || '';
+                    }
 
                     return newDataObject;
 

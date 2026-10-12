@@ -551,6 +551,36 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     }
 
 
+    /**
+     * I re-render only the ContentViews of type "Transcript", after the subtitles of a language changed
+     * (HypervideoModel.setSubtitles()). A view that names no transcript shows the first one, so a change of
+     * any language can change what it shows.
+     *
+     * @method updateTranscriptContentViews
+     */
+    function updateTranscriptContentViews() {
+        var contentViewAreas = [
+            contentViewsTop, contentViewsBottom, contentViewsLeft, contentViewsRight
+        ];
+
+        var found = false;
+
+        for (var a in contentViewAreas) {
+            for (var i in contentViewAreas[a]) {
+                var contentView = contentViewAreas[a][i];
+                if (contentView.contentViewData.type === 'Transcript') {
+                    contentView.updateContent(true);
+                    found = true;
+                }
+            }
+        }
+
+        if (!found) { return; }
+
+        updateTimedStateOfContentViews(FrameTrail.module('HypervideoController').currentTime);
+    }
+
+
     function updateTimedStateOfContentViews(currentTime) {
 
         var self = this;
@@ -641,13 +671,12 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             '        </div>' +
             '        <div class="contentViewTemplate" data-type="Timelines" data-size="large">' +
             '            <div class="contentViewOptionThumb"></div>' +
-            '            <div class="contentViewTemplateLabel"><span class="icon-doc-text">'+ labels['GenericTimelines'] +'</span></div>' +
+            '            <div class="contentViewTemplateLabel"><span class="icon-tasks">'+ labels['GenericTimelines'] +'</span></div>' +
             '        </div>' +
             '        <div class="contentViewTemplate" data-type="Chapters" data-size="small">' +
             '            <div class="contentViewOptionThumb"></div>' +
             '            <div class="contentViewTemplateLabel"><span class="icon-list-bullet">'+ labels['SettingsChapters'] +'</span></div>' +
             '        </div>' +
-            '        <button type="button" class="layoutManagerTranscriptsLink" title="'+ labels['MessageHintTranscriptsEditor'].replace(/"/g, '&quot;') +'"><span class="icon-captions-on"></span> '+ labels['TranscriptsEdit'] +'</button>' +
             '    </div>' +
             '    <div class="layoutManagerBody">' +
             '        <div class="layoutManagerMain">' +
@@ -1089,11 +1118,6 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         HypervideoLayoutContainer.append(domElement);
 
-        // Transcript views show the transcripts, which are made in their own edit mode.
-        LayoutManagerOptions.querySelector('.layoutManagerTranscriptsLink').addEventListener('click', function() {
-            FrameTrail.changeState('editMode', 'transcripts');
-        });
-
         // Populate template preview thumbnails
         LayoutManagerOptions.querySelectorAll('.contentViewTemplate').forEach(function(tmpl) {
             var thumb = tmpl.querySelector('.contentViewOptionThumb');
@@ -1163,7 +1187,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                                 'text': '',
                                 'users': []
                             },
-                            'transcriptSource': '',
+                            // A new Transcript view shows the first transcript (none yet: the first one made).
+                            'transcriptSource': (orig.dataset.type === 'Transcript') ? FrameTrail.module('HypervideoModel').transcriptLanguage('') : '',
                             'mode': 'slide',
                             'axis': contentAxis,
                             'contentSize': orig.dataset.size || '',
@@ -1682,6 +1707,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         updateContentInContentViews: updateContentInContentViews,
         updateChaptersContentViews: updateChaptersContentViews,
+        updateTranscriptContentViews: updateTranscriptContentViews,
         adjustContentViewLayout: adjustContentViewLayout,
 
         generateSchematic: generateSchematic,

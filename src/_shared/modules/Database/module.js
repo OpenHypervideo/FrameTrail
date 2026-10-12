@@ -1387,13 +1387,14 @@
 
 
     /**
-     * I set the subtitles of one language of the open hypervideo, or remove them (text null): the parsed cues, the text, and the entry in the hypervideo's list of subtitle files. Writing the file is left to saveHypervideo().
+     * I set the subtitles of one language of the open hypervideo, or remove them (text null): the parsed cues, the text, and the entry in the hypervideo's list of subtitle files. A new language goes to the end of the list, or to the position given (undoing a deletion puts it back where it was: a Transcript view naming none shows the first). Writing the file is left to saveHypervideo().
      *
      * @method setSubtitleData
      * @param {String} lang
      * @param {String|null} text WebVTT
+     * @param {Number} [position] where a new language goes in the list
      */
-    function setSubtitleData(lang, text) {
+    function setSubtitleData(lang, text, position) {
 
         if (!Array.isArray(hypervideo.subtitles)) {
             hypervideo.subtitles = [];
@@ -1416,6 +1417,8 @@
         // The file is always written as <lang>.vtt, on the server too.
         if (index >= 0) {
             list[index] = entry;
+        } else if (typeof position === 'number' && position >= 0 && position < list.length) {
+            list.splice(position, 0, entry);
         } else {
             list.push(entry);
         }

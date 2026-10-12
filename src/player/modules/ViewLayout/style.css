@@ -260,19 +260,6 @@
     margin-right: 8px;
 }
 
-.layoutManagerContainer .layoutManagerOptions .layoutManagerTranscriptsLink {
-    flex: 0 0 auto;
-    white-space: nowrap;
-    background: var(--primary-bg-color);
-    color: var(--primary-fg-color);
-    border: 1px solid #999;
-}
-
-.layoutManagerContainer .layoutManagerOptions .layoutManagerTranscriptsLink:hover {
-    background: var(--primary-fg-color);
-    color: var(--primary-bg-color);
-}
-
 .layoutManagerContainer .layoutManagerOptions .message:after {
     position: absolute;
     content: "";

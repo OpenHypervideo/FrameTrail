@@ -1178,8 +1178,8 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
 
     }
 
-    function setSubtitlesNow(lang, vttText) {
-        FrameTrail.module('HypervideoModel').setSubtitles(lang, vttText);
+    function setSubtitlesNow(lang, vttText, position) {
+        FrameTrail.module('HypervideoModel').setSubtitles(lang, vttText, position);
         refreshContentViews();
     }
 
@@ -1216,15 +1216,17 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
         }
 
         var loaded   = FrameTrail.module('Database').subtitles[lang],
-            previous = loaded ? loaded.vtt : null;
+            previous = loaded ? loaded.vtt : null,
+            position = list('subtitles').map(function(file) { return file.srclang; }).indexOf(lang);
 
         if (previous !== vttText) {
 
             setSubtitlesNow(lang, vttText);
 
+            // Undoing a deletion puts the language back where it was in the list.
             record(tx, {
                 category: 'subtitles',
-                undo: function() { setSubtitlesNow(lang, previous); },
+                undo: function() { setSubtitlesNow(lang, previous, position); },
                 redo: function() { setSubtitlesNow(lang, vttText); }
             }, 'GenericSubtitles', 'GenericChange');
 

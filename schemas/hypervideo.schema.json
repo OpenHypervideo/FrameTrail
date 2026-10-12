@@ -212,7 +212,7 @@
                             "type": "string"
                         },
                         "transcriptSource": {
-                            "description": "Language code of the subtitles to show.",
+                            "description": "Language code of the subtitles to show. Empty, or a language the hypervideo has no subtitles in: the first subtitles in subtitles.",
                             "type": "string",
                             "default": ""
                         },

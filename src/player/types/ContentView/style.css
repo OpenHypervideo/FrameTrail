@@ -690,20 +690,6 @@
     border-radius: 0 var(--input-border-radius) var(--input-border-radius) 0;
 }
 
-.contentViewEditingUI .existingSubtitlesItem {
-    display: inline-block;
-    margin-right: 8px;
-    margin-bottom: 6px;
-    padding: 3px 8px;
-    background: var(--secondary-bg-color);
-    color: var(--primary-fg-color);
-    cursor: pointer;
-}
-
-.contentViewEditingUI .existingSubtitlesItem.active {
-    background: var(--primary-bg-color);
-}
-
 
 /*******************
 * Chapters ContentView

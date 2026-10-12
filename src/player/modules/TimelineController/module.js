@@ -103,6 +103,7 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
         registerTimeline(ViewVideo.AnnotationTimeline);
         registerTimeline(ViewVideo.CodeSnippetTimeline);
         registerTimeline(ViewVideo.ChapterTimeline);
+        registerTimeline(ViewVideo.TranscriptTimeline);
 
         // Create shared controls container
         controlsContainer = document.createElement('div');
@@ -995,8 +996,8 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
             case 'chapters':
                 return HypervideoModel.chapters || [];
             default:
-                // Non-edit mode: only overlays are visible (timelines are hidden)
-                return HypervideoModel.overlays || [];
+                // Another edit mode (an extension's): it has no timeline of its own
+                return [];
         }
     }
 
@@ -1015,6 +1016,15 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
      * @return {Array} array of { start, end } with end possibly null
      */
     function getMinimapRanges() {
+
+        // Cues are not items: the transcripts editor hands over their spans (absolute times).
+        if (FrameTrail.getState('editMode') === 'transcripts') {
+
+            return FrameTrail.module('TranscriptsEditor').cueRanges().map(function(range) {
+                return { start: toRelative(range.start), end: toRelative(range.end) };
+            });
+
+        }
 
         if (FrameTrail.getState('editMode') === 'chapters') {
 

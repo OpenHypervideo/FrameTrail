@@ -770,6 +770,17 @@ describe('FrameTrailSerializer', () => {
         assert.equal(model.layout.areaRight[0].type, 'Transcript', 'the model is not changed by an export');
     });
 
+    test('an export fills a Transcript view naming no transcript, or a missing one, from the first subtitles', () => {
+        const subtitles = { en: { cues: [{ startTime: 1, endTime: 2, text: 'Hello' }] }, de: { cues: [{ startTime: 1, endTime: 2, text: 'Hallo' }] } };
+        ['', 'fr'].forEach((source) => {
+            const stored = hypervideo([]);
+            stored.config.layoutArea.areaRight[0].transcriptSource = source;
+            const view = Serializer.serializeHypervideo(Serializer.parseHypervideo(stored), { now: 1, purpose: 'export', subtitles }).config.layoutArea.areaRight[0];
+            assert.equal(view.type, 'CustomHTML');
+            assert.equal(view.html, '<span class="timebased" data-start="1" data-end="2">Hello </span>');
+        });
+    });
+
     test('removing the rotation and adding keyframes rewrite the selector', () => {
         const stored = hypervideo([overlayItem('2026-10-06T09:36:45.127Z')]);
         stored.contents[0].target.selector['frametrail:rotation'] = 30;

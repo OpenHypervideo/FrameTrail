@@ -760,12 +760,13 @@
      * @method setSubtitles
      * @param {String} lang
      * @param {String|null} text
+     * @param {Number} [position] where a language that is new goes in the list (undoing a deletion), else at the end
      */
-    function setSubtitles(lang, text) {
+    function setSubtitles(lang, text, position) {
 
         var database = FrameTrail.module('Database');
 
-        database.setSubtitleData(lang, text);
+        database.setSubtitleData(lang, text, position);
 
         subtitleFiles = database.hypervideo.subtitles;
         initModelOfSubtitles(database, lang);
@@ -781,7 +782,30 @@
             FrameTrail.module('TranscriptsEditor').subtitlesChanged(lang);
         }
 
+        // Transcript views show the change, also those showing the first transcript because they name none.
+        if (FrameTrail.module('ViewLayout')) {
+            FrameTrail.module('ViewLayout').updateTranscriptContentViews();
+        }
+
         newUnsavedChange('subtitles');
+
+    };
+
+
+    /**
+     * I tell which transcript a Transcript view shows: the language it names (transcriptSource) when the hypervideo has
+     * subtitles in it, otherwise the first language of the hypervideo's subtitles, or '' when it has none.
+     *
+     * @method transcriptLanguage
+     * @param {String} code - the view's transcriptSource
+     * @return {String}
+     */
+    function transcriptLanguage(code) {
+
+        var files = FrameTrail.module('Database').hypervideo.subtitles,
+            langs = Array.isArray(files) ? files.map(function(file) { return file.srclang; }) : [];
+
+        return (code && langs.indexOf(code) !== -1) ? code : (langs[0] || '');
 
     };
 
@@ -2326,6 +2350,7 @@
         initModelOfSubtitles:   initModelOfSubtitles,
 
         setSubtitles:           setSubtitles,
+        transcriptLanguage:     transcriptLanguage,
         takePendingSubtitles:   takePendingSubtitles,
         returnPendingSubtitles: returnPendingSubtitles,
         setConfig:              setConfig,

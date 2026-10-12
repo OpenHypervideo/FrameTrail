@@ -100,6 +100,11 @@
     border-color: #cd0a0a;
 }
 
+.editingOptions .transcriptsEditor .transcriptCue.selected {
+    outline: 1px solid var(--primary-fg-color);
+    outline-offset: -1px;
+}
+
 .editingOptions .transcriptsEditor .transcriptCueHead {
     display: flex;
     align-items: center;
@@ -155,4 +160,87 @@
 .contextSelectList.transcriptsMenu div.disabled {
     opacity: 0.5;
     pointer-events: none;
+}
+
+/* The transcript timeline (editMode "transcripts"): the cues of the language shown */
+
+.playerContainer .transcriptTimeline {
+    position: relative;
+    width: 100%;
+    height: 0px;
+    z-index: 2;
+    pointer-events: none;
+    overflow: hidden;
+    display: none;
+}
+
+.playerContainer .transcriptTimeline.editable {
+    display: block;
+    min-height: 50px;
+    height: 50px;
+    padding: 10px 0;
+    background-color: transparent;
+    box-shadow: 0 0 3px 2px #303030 inset;
+    background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.3) -1px, rgba(255,255,255,0.3) 1px, transparent 1px, transparent 3px);
+    pointer-events: auto;
+    overflow-x: auto;
+    overflow-y: hidden;
+}
+
+.playerContainer .transcriptTimeline.editable .timelineElement.transcriptCueBlock {
+    position: absolute;
+    top: 10px;
+    bottom: 10px;
+    height: auto;
+    margin: 0;
+    padding: 0 4px;
+    background-color: var(--secondary-fg-color);
+    border-left: 1px solid var(--primary-bg-color);
+    border-radius: 2px;
+    color: var(--primary-bg-color);
+    pointer-events: auto;
+    cursor: move;
+}
+
+.playerContainer .transcriptTimeline.editable .transcriptCueBlock .timelineElementLabel {
+    max-width: 100%;
+    padding: 0;
+    pointer-events: none;
+}
+
+.playerContainer .transcriptTimeline.editable .transcriptCueBlock.active {
+    box-shadow: inset 0 -3px 0 var(--primary-bg-color);
+}
+
+.playerContainer .transcriptTimeline.editable .transcriptCueBlock.highlighted {
+    background-color: var(--primary-fg-color);
+    z-index: 2;
+}
+
+.playerContainer .transcriptTimeline.editable .transcriptCueBlock.overlap {
+    border-left: 2px solid #cd0a0a;
+}
+
+.playerContainer .transcriptTimeline.editable .transcriptCueBlock.outside {
+    opacity: 0.5;
+}
+
+.playerContainer .transcriptTimeline.editable .transcriptCueBlock .ui-resizable-handle {
+    top: 0;
+    bottom: 0;
+    width: 7px;
+    cursor: ew-resize;
+    z-index: 3;
+}
+
+.playerContainer .transcriptTimeline.editable .transcriptCueBlock .ui-resizable-handle:hover {
+    background-color: var(--primary-bg-color);
+}
+
+.playerContainer .transcriptTimeline.editable .transcriptCueBlock .ui-resizable-w {
+    left: -4px;
+}
+
+.playerContainer .transcriptTimeline.editable .transcriptCueBlock .ui-resizable-e {
+    right: -4px;
 }
