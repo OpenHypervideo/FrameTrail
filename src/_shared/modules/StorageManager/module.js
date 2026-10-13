@@ -438,9 +438,11 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
      * @return {String}
      */
     function embedSwitchHTML(name) {
+        // The text is a label of its own, so it names the input to toggle it.
+        var id = name + '-' + Math.random().toString(36).slice(2, 10);
         return '<div class="checkboxRow" style="display: flex; gap: 8px; align-items: flex-start;">'
-             + '<label class="switch" style="flex: none;"><input type="checkbox" name="' + name + '"><span class="slider round"></span></label>'
-             + '<label>' + labels['EmbedFrameTrail'] + '<br><small>(' + labels['EmbedFrameTrailHint'] + ')</small></label>'
+             + '<label class="switch" style="flex: none;"><input type="checkbox" name="' + name + '" id="' + id + '"><span class="slider round"></span></label>'
+             + '<label for="' + id + '">' + labels['EmbedFrameTrail'] + '<br><small>(' + labels['EmbedFrameTrailHint'] + ')</small></label>'
              + '</div>';
     }
 

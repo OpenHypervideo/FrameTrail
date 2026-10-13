@@ -137,10 +137,10 @@ The `StorageAdapterDownload` holds all data in memory. Hypervideo data is passed
 
 ### Export
 
-The Export dialog (sidebar, in edit mode; in the overview too; Ctrl+S where nothing can be saved) never moves the work: the page goes on where it is. On top it asks what to export:
+The Export dialog (sidebar, in edit mode; in the overview too; Ctrl+S where nothing can be saved) never moves the work: the page goes on where it is. On top it asks what to export, as two cards — the hypervideo shown by its thumbnail and name, the project by its title (when one is set), the number of its hypervideos and their thumbnails — with the switches that apply beside them:
 
-- **Export this hypervideo** — offered only when the dialog is opened from within a hypervideo. It takes no resource library;
-- **Export the whole project** — every hypervideo, the overview map, the tag definitions, the playback settings and the global CSS. **Include resource library** (on by default) takes the library too: the uploaded files and links to choose from when editing. Hypervideos play without it, since their clips and items keep their own copy of what they show; without it, the export lists no resources and nothing in it points back at one;
+- **This hypervideo** — offered only when the dialog is opened from within a hypervideo. It takes no resource library;
+- **Whole project** — every hypervideo, the overview map, the tag definitions, the playback settings and the global CSS. **Include resource library** (on by default) takes the library too: the uploaded files and links to choose from when editing. Hypervideos play without it, since their clips and items keep their own copy of what they show; without it, the export lists no resources and nothing in it points back at one;
 - **Rewrite user annotations to their authors' names** (offered when annotations were made with accounts, on by default) — without a server, an annotation belongs to whoever edits under a name (a guest's id is made from the name). The export gives every account's annotations to the account's name (the current user's under the name they have now), so their authors can still edit them in a local folder, a project file or a page in memory by logging in with that name. Turn it off for an export meant for another server.
 
 Then where it goes:

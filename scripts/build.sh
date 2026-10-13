@@ -101,6 +101,7 @@ CSS_FILES=(
     "player/modules/HypervideoSettingsDialog/style.css"
     "player/modules/AdminSettingsDialog/style.css"
     "player/modules/Extensions/style.css"
+    "player/modules/ExportDialog/style.css"
     "player/modules/PairingDialog/style.css"
     "resourcemanager/modules/ResourceManagerLauncher/style.css"
     "companion/modules/CompanionLauncher/style.css"

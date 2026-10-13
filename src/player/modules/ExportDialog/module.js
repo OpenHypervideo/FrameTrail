@@ -6,13 +6,15 @@
 /**
  * I am the ExportDialog: Export, the place where work leaves this tab.
  *
- * On top, what is exported: the hypervideo the dialog was opened in (offered
- * only from within one), or the whole project — with or without its
- * resource library — and, when annotations were made with accounts, whether
- * they are rewritten to their authors' names, so they can be edited without
- * a server. Below, where it goes: into a local folder (a _data folder with
- * its media files) or as a download (an HTML file, which is also a project
- * file, JSON data, or the _data folder as a ZIP archive).
+ * On top, what is exported, as option cards: the hypervideo the dialog was
+ * opened in (offered only from within one), previewed by its thumbnail and
+ * name, or the whole project, by its title, the number of its hypervideos and
+ * their thumbnails. Beside them, the switches that apply: whether the project
+ * takes its resource library, and, when annotations were made with accounts,
+ * whether they are rewritten to their authors' names, so they can be edited
+ * without a server. Below, where it goes: into a local folder (a _data folder
+ * with its media files) or as a download (an HTML file, which is also a
+ * project file, JSON data, or the _data folder as a ZIP archive).
  *
  * An export never moves the tab: the work stays where it is. Only a page
  * that runs in memory, whose changes are lost on reload, is offered to go on
@@ -34,10 +36,59 @@ FrameTrail.defineModule('ExportDialog', function(FrameTrail){
     }
 
     function switchRow(name, label, hint, checked) {
+        // The text is a label of its own, so it names the input to toggle it.
+        var id = name + '-' + Math.random().toString(36).slice(2, 10);
         return '<div class="checkboxRow" style="display: flex; gap: 8px; align-items: flex-start;">'
-             + '<label class="switch" style="flex: none;"><input type="checkbox" name="' + name + '"' + (checked ? ' checked' : '') + '><span class="slider round"></span></label>'
-             + '<label>' + label + (hint ? '<br><small class="' + name + 'Hint">' + hint + '</small>' : '') + '</label>'
+             + '<label class="switch" style="flex: none;"><input type="checkbox" name="' + name + '" id="' + id + '"' + (checked ? ' checked' : '') + '><span class="slider round"></span></label>'
+             + '<label for="' + id + '">' + label + (hint ? '<br><small class="' + name + 'Hint">' + hint + '</small>' : '') + '</label>'
              + '</div>';
+    }
+
+    // A hypervideo on a scope card: its thumbnail, as the overview shows it,
+    // or its icon when it has none.
+    function previewTile(id) {
+        var thumb = (FrameTrail.module('Database').hypervideos[id] || {}).thumb,
+            tile  = document.createElement('div');
+        tile.className = 'exportPreviewTile';
+        if (thumb) {
+            tile.style.backgroundImage = 'url("' + FrameTrail.module('RouteNavigation').getResourceURL(thumb).replace(/"/g, '%22') + '")';
+        } else {
+            tile.innerHTML = '<span class="icon-hypervideo"></span>';
+        }
+        return tile;
+    }
+
+    // An option card for a scope: the tiles of its hypervideos (one fills the
+    // preview, more make a mosaic whose last tile fills its row), a title and
+    // a detail line beneath them.
+    function scopeCard(scope, label, ids, title, detail) {
+        var card = document.createElement('div');
+        card.setAttribute('data-value', scope);
+        card.setAttribute('role', 'radio');
+        card.tabIndex = 0;
+        card.innerHTML = '<div class="optionCardThumb exportPreview">'
+                       + '<div class="exportPreviewTiles' + (ids.length > 1 ? ' mosaic' : '') + '"></div>'
+                       + '<div class="exportPreviewTitle">'
+                       + (title ? '<strong>' + escapeHTML(title) + '</strong>' : '')
+                       + (detail ? '<small>' + escapeHTML(detail) + '</small>' : '')
+                       + '</div>'
+                       + '</div>'
+                       + '<span>' + label + '</span>';
+        var tiles   = card.querySelector('.exportPreviewTiles'),
+            columns = Math.ceil(Math.sqrt(ids.length)),
+            rows    = Math.ceil(ids.length / columns);
+        tiles.style.gridTemplateColumns = 'repeat(' + columns + ', 1fr)';
+        tiles.style.gridTemplateRows    = 'repeat(' + rows + ', 1fr)';
+        ids.forEach(function(id) { tiles.appendChild(previewTile(id)); });
+        if (tiles.lastElementChild) {
+            tiles.lastElementChild.style.gridColumn = 'span ' + (columns * rows - ids.length + 1);
+        }
+        return card;
+    }
+
+    // A button of the download format row.
+    function formatButton(format, icon, label) {
+        return '<button type="button" role="radio" data-format="' + format + '"><span class="' + icon + '"></span>' + label + '</button>';
     }
 
     // The hypervideo the dialog is opened in: the video view, with one loaded.
@@ -89,22 +140,23 @@ FrameTrail.defineModule('ExportDialog', function(FrameTrail){
             inMemory       = ['download', 'static'].indexOf(FrameTrail.getState('storageMode')) >= 0,
             onServer       = FrameTrail.getState('storageMode') === 'server',
             folderOK       = typeof StorageAdapterLocal !== 'undefined' && StorageAdapterLocal.isSupported(),
-            startProject   = !currentID || (options && options.scope === 'project'),
+            scope          = (!currentID || (options && options.scope === 'project')) ? 'project' : 'hypervideo',
             busy           = false,
             controller     = null,
+            format         = 'html',
             dialogCtrl, buttonPane, messageEl, continueButton;
 
         var wrapper = document.createElement('div');
         wrapper.innerHTML = '<div class="exportDialog">'
 
-            // What
-            + (currentID
-                ? '<div><label><input type="radio" name="exportScope" value="hypervideo"' + (startProject ? '' : ' checked') + '> '
-                  + labels['ExportThisHypervideo'] + ' <strong>' + escapeHTML(Database.hypervideos[currentID].name || currentID) + '</strong></label></div>'
-                  + '<div><label><input type="radio" name="exportScope" value="project"' + (startProject ? ' checked' : '') + '> ' + labels['ExportWholeProject'] + '</label></div>'
-                : '<div><input type="radio" name="exportScope" value="project" checked hidden><strong>' + labels['ExportWholeProject'] + '</strong></div>')
-            + '<div class="exportLibraryRow" style="margin-top: 8px;">' + switchRow('exportLibrary', labels['ExportIncludeLibrary'], labels['ExportIncludeLibraryHint'], true) + '</div>'
-            + '<div class="exportAuthorsRow" style="margin-top: 8px;">' + switchRow('exportAuthors', labels['ExportLocalAuthors'], labels['ExportLocalAuthorsHint'], true) + '</div>'
+            // What: a column per card, the switches in the next one
+            + '<div class="layoutRow">'
+            + '<div class="' + (currentID ? 'column-12 column-md-8' : 'column-6 column-md-4') + '"><div class="optionCards exportScopeCards" role="radiogroup"></div></div>'
+            + '<div class="column-12 column-md-4 exportSwitches">'
+            + '<div class="exportLibraryRow">' + switchRow('exportLibrary', labels['ExportIncludeLibrary'], labels['ExportIncludeLibraryHint'], true) + '</div>'
+            + '<div class="exportAuthorsRow">' + switchRow('exportAuthors', labels['ExportLocalAuthors'], labels['ExportLocalAuthorsHint'], true) + '</div>'
+            + '</div>'
+            + '</div>'
             + '<hr>'
 
             // Where
@@ -119,10 +171,10 @@ FrameTrail.defineModule('ExportDialog', function(FrameTrail){
 
             + '<div class="column-12 column-md-6 downloadColumn">'
             + '<label><strong>' + labels['DownloadFiles'] + '</strong></label>'
-            + '<div style="display: flex; gap: 12px; margin-bottom: 6px;">'
-            + '<label><input type="radio" name="downloadFormat" value="html" checked> ' + labels['DownloadFormatHTML'] + '</label>'
-            + '<label><input type="radio" name="downloadFormat" value="json"> ' + labels['DownloadFormatJSON'] + '</label>'
-            + '<label><input type="radio" name="downloadFormat" value="zip"> ' + labels['DownloadFormatZIP'] + '</label>'
+            + '<div class="downloadFormats" role="radiogroup">'
+            + formatButton('html', 'icon-file-code', labels['DownloadFormatHTML'])
+            + formatButton('json', 'icon-data-structured', labels['DownloadFormatJSON'])
+            + formatButton('zip', 'icon-file-archive', labels['DownloadFormatZIP'])
             + '</div>'
             + '<div class="downloadHTMLOptions">'
             + StorageManager.embedSwitchHTML('downloadEmbed')
@@ -138,22 +190,51 @@ FrameTrail.defineModule('ExportDialog', function(FrameTrail){
             + '</div>';
 
         var content        = wrapper.firstElementChild,
+            scopeCards     = content.querySelector('.exportScopeCards'),
             libraryRow     = content.querySelector('.exportLibraryRow'),
             libraryInput   = content.querySelector('[name="exportLibrary"]'),
             authorsRow     = content.querySelector('.exportAuthorsRow'),
             authorsInput   = content.querySelector('[name="exportAuthors"]'),
             folderButton   = content.querySelector('.exportFolderButton'),
             downloadButton = content.querySelector('.downloadButton'),
-            mediaInput     = content.querySelector('[name="downloadMedia"]');
+            mediaInput     = content.querySelector('[name="downloadMedia"]'),
+            formatButtons  = content.querySelectorAll('.downloadFormats > button');
 
-        function checked(name) {
-            var input = content.querySelector('[name="' + name + '"]:checked');
-            return input ? input.value : null;
+        // The project by its title, when one is set, and its size.
+        var projectTitle = ((Database.config || {}).overviewTitle || '').trim(),
+            projectSize  = (allIDs.length === 1) ? labels['ExportHypervideoCountOne'] : labels['ExportHypervideoCountMany'].replace('%s', allIDs.length);
+
+        if (currentID) {
+            scopeCards.appendChild(scopeCard('hypervideo', labels['ExportThisHypervideo'], [currentID], Database.hypervideos[currentID].name || currentID, ''));
         }
+        scopeCards.appendChild(scopeCard('project', labels['ExportWholeProject'], allIDs.slice(0, 6), projectTitle, projectSize));
+
+        scopeCards.querySelectorAll('[data-value]').forEach(function(card) {
+            card.addEventListener('click', function() {
+                if (busy || scope === card.getAttribute('data-value')) { return; }
+                scope = card.getAttribute('data-value');
+                hideMessage();
+                update();
+            });
+            card.addEventListener('keydown', function(evt) {
+                if (evt.key === 'Enter' || evt.key === ' ') {
+                    evt.preventDefault();
+                    card.click();
+                }
+            });
+        });
+
+        formatButtons.forEach(function(button) {
+            button.addEventListener('click', function() {
+                if (format === button.getAttribute('data-format')) { return; }
+                format = button.getAttribute('data-format');
+                hideMessage();
+                update();
+            });
+        });
 
         // What is chosen, as BundleExport's options.
         function selection() {
-            var scope = checked('exportScope');
             return {
                 scope:        scope,
                 hypervideoID: currentID,
@@ -177,8 +258,21 @@ FrameTrail.defineModule('ExportDialog', function(FrameTrail){
         // What applies to the choice.
         function update() {
 
-            var chosen = selection(),
-                format = checked('downloadFormat');
+            var chosen = selection();
+
+            scopeCards.querySelectorAll('[data-value]').forEach(function(card) {
+                var active = card.getAttribute('data-value') === scope;
+                card.classList.toggle('active', active);
+                card.setAttribute('aria-checked', String(active));
+            });
+            scopeCards.setAttribute('aria-disabled', String(busy));
+
+            formatButtons.forEach(function(button) {
+                var active = button.getAttribute('data-format') === format;
+                button.classList.toggle('active', active);
+                button.setAttribute('aria-checked', String(active));
+                button.disabled = busy;
+            });
 
             libraryRow.style.display = (chosen.scope === 'project') ? '' : 'none';
             authorsRow.style.display = BundleExport.hasAccountAuthors(chosen.ids) ? '' : 'none';
@@ -206,8 +300,7 @@ FrameTrail.defineModule('ExportDialog', function(FrameTrail){
 
         downloadButton.addEventListener('click', function() {
 
-            var chosen = selection(),
-                format = checked('downloadFormat');
+            var chosen = selection();
 
             hideMessage();
             setBusy(true);

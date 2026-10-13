@@ -1,0 +1,123 @@
+/* The scope cards (.optionCards / .optionCardThumb from generic.css) split their columns with the grid's own gap, so the cards and the switches beside them are equal columns: two cards in eight of the twelve, a card alone in four. */
+
+.exportDialog .exportScopeCards {
+    display: grid;
+    grid-auto-flow: column;
+    grid-auto-columns: 1fr;
+    gap: 15px;
+}
+
+.exportDialog .exportScopeCards > div[data-value] {
+    min-width: 0;
+    width: auto;
+    margin: 6px 0 0 0;
+}
+
+.exportDialog .exportScopeCards[aria-disabled="true"] {
+    opacity: .6;
+    pointer-events: none;
+}
+
+/* The preview grows with the card, so both cards are as tall as the taller title. */
+.exportDialog .exportPreview {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    height: auto;
+}
+
+.exportDialog .exportPreviewTiles {
+    display: grid;
+    aspect-ratio: 16 / 9;
+}
+
+.exportDialog .exportPreviewTiles.mosaic {
+    gap: 3px;
+    padding: 5px 5px 0 5px;
+}
+
+.exportDialog .exportPreviewTile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 0;
+    background: rgba(127, 127, 127, 0.18) center / cover no-repeat;
+    color: var(--primary-fg-color);
+}
+
+.exportDialog .exportPreviewTile > span {
+    font-size: 28px;
+    opacity: .5;
+}
+
+.exportDialog .exportPreviewTiles.mosaic .exportPreviewTile > span {
+    font-size: 14px;
+}
+
+/* Like the title of a hypervideo in the overview. */
+.exportDialog .exportPreviewTitle {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 5px 6px;
+    text-align: center;
+    font-size: 12px;
+    line-height: 1.35;
+    color: var(--primary-fg-color);
+}
+
+.exportDialog .exportPreviewTitle > strong,
+.exportDialog .exportPreviewTitle > small {
+    display: block;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.exportDialog .exportPreviewTitle > small {
+    font-size: 11px;
+    opacity: .75;
+}
+
+.exportDialog .exportSwitches {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+/* The download formats: one row of three joined buttons, the chosen one .active. */
+.exportDialog .downloadFormats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    margin: 4px 0 8px 0;
+}
+
+.exportDialog .downloadFormats > button {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+    padding: 6px 4px 4px 4px;
+    text-align: center;
+    border-radius: 0;
+}
+
+.exportDialog .downloadFormats > button + button {
+    margin-left: calc(-1 * var(--input-border-width));
+}
+
+.exportDialog .downloadFormats > button:first-child {
+    border-radius: var(--input-border-radius) 0 0 var(--input-border-radius);
+}
+
+.exportDialog .downloadFormats > button:last-child {
+    border-radius: 0 var(--input-border-radius) var(--input-border-radius) 0;
+}
+
+.exportDialog .downloadFormats > button > span {
+    font-size: 18px;
+    line-height: 1;
+}
