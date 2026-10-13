@@ -348,19 +348,29 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
 
 
     /**
-     * Switch to server storage.
-     * Requires PHP server to be available and user to be logged in.
+     * Go on in a folder the project was just exported to (Export, from a
+     * page that runs in memory): its adapter becomes the local folder this
+     * tab reads and writes, and the folder FrameTrail opens again the next
+     * time it starts without a server. The caller reloads the data from it.
      *
-     * @method switchToServer
-     * @return {Promise<StorageAdapterServer>}
+     * @method adoptFolder
+     * @param {StorageAdapterLocal} adapter  open on the folder
+     * @return {Promise<StorageAdapterLocal>}
      */
-    function switchToServer() {
-        if (!FrameTrail.module('RouteNavigation').hasServer()) {
-            return Promise.reject(new Error('No server available'));
+    function adoptFolder(adapter) {
+        // Who is editing (a guest's name, see UserManagement.loginAsGuest) goes along.
+        if (_currentAdapter && _currentAdapter !== adapter && _currentAdapter.userInfo && _currentAdapter.userInfo.id) {
+            adapter.setUserInfo(_currentAdapter.userInfo);
         }
-        _currentAdapter = _serverAdapter;
-        FrameTrail.changeState('storageMode', 'server');
-        return Promise.resolve(_serverAdapter);
+        return adapter.persistHandle().then(function() {
+            return StorageAdapter.setStored('mode', 'local');
+        }).then(function() {
+            _remembered     = null;
+            _localAdapter   = adapter;
+            _currentAdapter = adapter;
+            FrameTrail.changeState('storageMode', 'local');
+            return adapter;
+        });
     }
 
 
@@ -420,6 +430,21 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
     }
 
     /**
+     * The switch that puts FrameTrail into a page (Export, a new project
+     * file): checked means 'inline', else the page loads it from the web.
+     *
+     * @method embedSwitchHTML
+     * @param {String} name  the checkbox's name
+     * @return {String}
+     */
+    function embedSwitchHTML(name) {
+        return '<div class="checkboxRow" style="display: flex; gap: 8px; align-items: flex-start;">'
+             + '<label class="switch" style="flex: none;"><input type="checkbox" name="' + name + '"><span class="slider round"></span></label>'
+             + '<label>' + labels['EmbedFrameTrail'] + '<br><small>(' + labels['EmbedFrameTrailHint'] + ')</small></label>'
+             + '</div>';
+    }
+
+    /**
      * Ask where FrameTrail comes from in a new page: 'cdn' (loaded from the
      * web) or 'inline' (inside the file). Resolves in the click of the
      * dialog's button, so a picker may follow.
@@ -430,12 +455,7 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
             var content = document.createElement('div'),
                 done    = false,
                 ctrl;
-            content.innerHTML = '<p>' + labels['NewPageLibraryDescription'] + '</p>'
-                + '<small>' + labels['DownloadLibrary'] + '</small>'
-                + '<div style="display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px;">'
-                + '<label><input type="radio" name="newPageLibrary" value="cdn" checked> ' + labels['DownloadLibraryCDN'] + '</label>'
-                + '<label><input type="radio" name="newPageLibrary" value="inline"> ' + labels['DownloadLibraryInline'] + '</label>'
-                + '</div>';
+            content.innerHTML = '<p>' + labels['NewPageLibraryDescription'] + '</p>' + embedSwitchHTML('newPageLibrary');
             ctrl = Dialog({
                 title:   labels['ProjectFile'],
                 icon:    'icon-doc',
@@ -445,7 +465,7 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
                 buttons: [
                     { text: buttonText || labels['GenericContinue'], click: function() {
                         done = true;
-                        var scripts = content.querySelector('[name="newPageLibrary"]:checked').value;
+                        var scripts = content.querySelector('[name="newPageLibrary"]').checked ? 'inline' : 'cdn';
                         ctrl.close();
                         resolve(scripts);
                     } },
@@ -752,17 +772,6 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
 
 
     /**
-     * Whether the project can be saved into a project file (saveToFile): the
-     * File System Access API is there and the instance has no server.
-     * @method canSaveToFile
-     * @return {Boolean}
-     */
-    function canSaveToFile() {
-        return !!_fileAdapter && !FrameTrail.module('RouteNavigation').hasServer();
-    }
-
-
-    /**
      * Whether this page, a page in the portable HTML format opened from disk
      * and running in memory, can be saved into its own file (saveToFile).
      * @method canSaveToPageFile
@@ -921,7 +930,7 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
         getDownloadAdapter: getDownloadAdapter,
         getFileAdapter:     getFileAdapter,
         switchToLocal:      switchToLocal,
-        switchToServer:     switchToServer,
+        adoptFolder:        adoptFolder,
         openProjectFile:    openProjectFile,
         newProjectFile:     newProjectFile,
         saveToFile:         saveToFile,
@@ -932,11 +941,11 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
         canSave:            canSave,
         canSaveToServer:    canSaveToServer,
         canSaveToLocal:     canSaveToLocal,
-        canSaveToFile:      canSaveToFile,
         canSaveToPageFile:  canSaveToPageFile,
         getCurrentUserInfo: getCurrentUserInfo,
         getFolderName:      getFolderName,
-        getFileName:        getFileName
+        getFileName:        getFileName,
+        embedSwitchHTML:    embedSwitchHTML
     };
 
 });

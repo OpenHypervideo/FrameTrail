@@ -1402,6 +1402,326 @@
 
 
     /* ------------------------------------------------------------------ */
+    /*  Folders for export                                                */
+    /* ------------------------------------------------------------------ */
+
+    // Resource types whose src is a file in resources/ when it is not a URL.
+    var FILE_TYPES = ['image', 'video', 'audio', 'pdf'];
+
+    // A path relative to resources/: not a URL, not absolute, not empty.
+    function isRelativePath(value) {
+        return typeof value === 'string' && value !== '' && !/^([a-z][a-z0-9+.-]*:|\/)/i.test(value);
+    }
+
+    // The annotation folders of a folder map: [{ dir, index, entries }], one
+    // per hypervideo that has annotation files. The entries are those of the
+    // index (parseAnnotationIndex); without an index (a hypervideo bundle
+    // made in memory), every file there, with no fields.
+    function annotationDirs(files) {
+        var dirs = {};
+        Object.keys(files).forEach(function(path) {
+            var match = /^(hypervideos\/.+\/annotations\/)([^\/]+)\.json$/.exec(path);
+            if (!match) { return; }
+            var dir = dirs[match[1]] || (dirs[match[1]] = { dir: match[1], files: [] });
+            if (match[2] !== '_index') { dir.files.push(match[2]); }
+        });
+        return Object.keys(dirs).map(function(dir) {
+            var index   = folderFile(files, dir + '_index.json'),
+                entries = {};
+            if (index !== undefined) {
+                entries = parseAnnotationIndex(index).annotationfiles;
+            } else {
+                dirs[dir].files.forEach(function(fileID) { entries[fileID] = {}; });
+            }
+            return { dir: dir, index: index, entries: entries };
+        });
+    }
+
+    function itemsOf(content) {
+        if (Array.isArray(content)) { return content; }
+        return isObject(content) ? Object.keys(content).map(function(key) { return content[key]; }) : [];
+    }
+
+    /**
+     * I cut the folder map of a project down to some of its hypervideos: the
+     * hypervideos index and the overview map's markers list only those, and
+     * the files of the others are left out. The resource library stays as it
+     * is (see withoutLibrary). The map given is not changed.
+     *
+     * @method selectFolder
+     * @param {Object} files  a project's folder map
+     * @param {Array} [ids]  the hypervideos to keep; default all
+     * @return {Object} a new folder map
+     */
+    function selectFolder(files, ids) {
+
+        var index = folderFile(files, 'hypervideos/_index.json');
+
+        if (!isObject(index)) { throw new Error('Missing hypervideos/_index.json'); }
+
+        var all    = isObject(index.hypervideos) ? Object.keys(index.hypervideos) : [],
+            keep   = ids ? all.filter(function(id) { return ids.map(String).indexOf(id) >= 0; }) : all,
+            result = {};
+
+        var dropped = all.filter(function(id) { return keep.indexOf(id) < 0; }).map(function(id) { return folderDir(index, id); });
+
+        Object.keys(files).forEach(function(path) {
+            if (dropped.some(function(dir) { return path.indexOf(dir) === 0; })) { return; }
+            result[path] = files[path];
+        });
+
+        var folders = index.hypervideos;
+        index.hypervideos = {};
+        keep.forEach(function(id) { index.hypervideos[id] = folders[id]; });
+        if (isObject(index.overviewMap) && isObject(index.overviewMap.markers)) {
+            Object.keys(index.overviewMap.markers).forEach(function(id) {
+                if (keep.indexOf(id) < 0) { delete index.overviewMap.markers[id]; }
+            });
+        }
+        result['hypervideos/_index.json'] = index;
+
+        return result;
+
+    }
+
+    /**
+     * I take the resource library out of a folder map: resources/_index.json
+     * lists nothing (its increment stays, so later ids do not repeat old
+     * ones). Hypervideos play without it: their clips and items keep their
+     * own copy of what they show. What pointed back at the library goes: a
+     * clip that names its video only by its resource gets the resource's src,
+     * clips and items lose their resourceId. The map given is not changed.
+     *
+     * @method withoutLibrary
+     * @param {Object} files  a folder map
+     * @return {Object} a new folder map
+     */
+    function withoutLibrary(files) {
+
+        var resources = folderFile(files, 'resources/_index.json'),
+            library   = (isObject(resources) && isObject(resources.resources)) ? resources.resources : {},
+            result    = {};
+
+        Object.keys(files).forEach(function(path) { result[path] = files[path]; });
+
+        function unlink(item) {
+            if (isObject(item) && isObject(item.body) && has(item.body, 'frametrail:resourceId')) {
+                delete item.body['frametrail:resourceId'];
+            }
+        }
+
+        if (resources !== undefined) {
+            result['resources/_index.json'] = Object.assign(isObject(resources) ? resources : {}, { "resources": {} });
+        }
+
+        Object.keys(files).forEach(function(path) {
+            if (/^hypervideos\/.+\/hypervideo\.json$/.test(path)) {
+                var hypervideo = folderFile(files, path);
+                if (!isObject(hypervideo)) { return; }
+                (Array.isArray(hypervideo.clips) ? hypervideo.clips : []).forEach(function(clip) {
+                    if (!isObject(clip) || clip.resourceId == null || clip.resourceId === '') { return; }
+                    var resource = library[String(clip.resourceId)];
+                    if (!(typeof clip.src === 'string' && clip.src.length > 3) && isObject(resource) && resource.src) { clip.src = resource.src; }
+                    clip.resourceId = null;
+                });
+                (Array.isArray(hypervideo.contents) ? hypervideo.contents : []).forEach(unlink);
+                result[path] = hypervideo;
+            } else if (/^hypervideos\/.+\/annotations\/[^\/]+\.json$/.test(path) && !/\/_index\.json$/.test(path)) {
+                var content = folderFile(files, path);
+                itemsOf(content).forEach(unlink);
+                result[path] = content;
+            }
+        });
+
+        return result;
+
+    }
+
+    /**
+     * I list the media files a folder map refers to: the paths relative to
+     * resources/ in the resource library (src of files, thumbnails), the
+     * overview map's background, the hypervideos' thumbnails and clips, and
+     * the items of the hypervideos and annotation files (src of files,
+     * thumbnails, the video they are on). URLs are not files; paths that
+     * leave resources/ are left out.
+     *
+     * @method mediaPaths
+     * @param {Object} files  a folder map
+     * @return {Array} the paths, sorted
+     */
+    function mediaPaths(files) {
+
+        var paths = [];
+
+        function add(value) {
+            if (!isRelativePath(value) || value.indexOf('\\') >= 0 || value.split('/').indexOf('..') >= 0) { return; }
+            if (paths.indexOf(value) < 0) { paths.push(value); }
+        }
+
+        function addItem(item) {
+            if (!isObject(item)) { return; }
+            var body = item.body;
+            if (isObject(body)) {
+                if (FILE_TYPES.indexOf(body['frametrail:type']) >= 0) { add(body[RESOURCE_TYPES[body['frametrail:type']].src]); }
+                add(body['frametrail:thumb']);
+            }
+            if (isObject(item.target)) { add(item.target.source); }
+        }
+
+        var hypervideosIndex = folderFile(files, 'hypervideos/_index.json'),
+            resources        = folderFile(files, 'resources/_index.json');
+
+        if (isObject(hypervideosIndex) && isObject(hypervideosIndex.overviewMap)) { add(hypervideosIndex.overviewMap.background); }
+
+        if (isObject(resources) && isObject(resources.resources)) {
+            Object.keys(resources.resources).forEach(function(id) {
+                var resource = resources.resources[id];
+                if (!isObject(resource)) { return; }
+                if (FILE_TYPES.indexOf(resource.type) >= 0) { add(resource.src); }
+                add(resource.thumb);
+            });
+        }
+
+        Object.keys(files).forEach(function(path) {
+            if (/^hypervideos\/.+\/hypervideo\.json$/.test(path)) {
+                var hypervideo = folderFile(files, path);
+                if (!isObject(hypervideo)) { return; }
+                if (isObject(hypervideo.meta)) { add(hypervideo.meta.thumb); }
+                (Array.isArray(hypervideo.clips) ? hypervideo.clips : []).forEach(function(clip) { if (isObject(clip)) { add(clip.src); } });
+                (Array.isArray(hypervideo.contents) ? hypervideo.contents : []).forEach(addItem);
+            } else if (/^hypervideos\/.+\/annotations\/[^\/]+\.json$/.test(path) && !/\/_index\.json$/.test(path)) {
+                itemsOf(folderFile(files, path)).forEach(addItem);
+            }
+        });
+
+        return paths.sort();
+
+    }
+
+    /**
+     * I give annotations made with accounts to their authors' names, so
+     * they can be edited where people have no accounts (a local folder, a
+     * project file, a page in memory): there, an annotation belongs to the
+     * guest whose guestUserID(name) is its creator's id. Every user id that
+     * is not a guest's becomes the guest id of the user's name, in the
+     * creator of the items, in the names of the annotation files and in
+     * their index entries (ownerId, owner, mainAnnotation). Files that end up
+     * with the same id (two accounts with the same name) are merged.
+     *
+     * The name of a user is options.names[id], else the owner (or name) of
+     * the user's index entry, else the nickname the user's items carry; a
+     * user without any keeps their id. The map given is not changed.
+     *
+     * @method localAuthors
+     * @param {Object} files  a folder map
+     * @param {Object} [options] { names: { userId: name } }
+     * @return {Object} { files: a new folder map, ids: { old id: new id } }
+     */
+    function localAuthors(files, options) {
+
+        var names  = (options && isObject(options.names)) ? options.names : {},
+            found  = {},
+            ids    = {},
+            result = {},
+            dirs   = annotationDirs(files);
+
+        function isAccount(id) {
+            return id != null && id !== '' && String(id).indexOf('guest_') !== 0;
+        }
+
+        function note(id, name) {
+            id = String(id);
+            if (isAccount(id) && typeof name === 'string' && name.trim() !== '' && !has(found, id)) { found[id] = name; }
+        }
+
+        // The names: given, then the index entries, then the items.
+        Object.keys(names).forEach(function(id) { note(id, names[id]); });
+        dirs.forEach(function(entry) {
+            Object.keys(entry.entries).forEach(function(fileID) {
+                var fields = entry.entries[fileID] || {};
+                note(fileID, fields.owner || fields.name);
+            });
+        });
+        dirs.forEach(function(entry) {
+            Object.keys(entry.entries).forEach(function(fileID) {
+                itemsOf(folderFile(files, entry.dir + fileID + '.json')).forEach(function(item) {
+                    if (isObject(item) && isObject(item.creator)) { note(item.creator.id, item.creator.nickname); }
+                });
+            });
+        });
+
+        Object.keys(found).forEach(function(id) { ids[id] = guestUserID(found[id]); });
+
+        Object.keys(files).forEach(function(path) { result[path] = files[path]; });
+
+        dirs.forEach(function(entry) {
+
+            var fileIDs = Object.keys(entry.entries);
+            if (!fileIDs.some(function(fileID) { return has(ids, fileID); })
+                    && !fileIDs.some(function(fileID) {
+                        return itemsOf(folderFile(files, entry.dir + fileID + '.json')).some(function(item) {
+                            return isObject(item) && isObject(item.creator) && has(ids, String(item.creator.id));
+                        });
+                    })) { return; }
+
+            var index    = isObject(entry.index) ? clone(entry.index) : {},
+                newFiles = {},
+                newIndex = {};
+
+            fileIDs.forEach(function(fileID) {
+
+                var path   = entry.dir + fileID + '.json',
+                    target = has(ids, fileID) ? ids[fileID] : fileID,
+                    items  = clone(itemsOf(folderFile(files, path)));
+
+                items.forEach(function(item) {
+                    if (isObject(item) && isObject(item.creator) && has(ids, String(item.creator.id))) {
+                        item.creator.id = ids[String(item.creator.id)];
+                    }
+                });
+
+                // A file the index lists but the folder lacks stays missing.
+                if (Object.prototype.hasOwnProperty.call(files, path)) {
+                    delete result[path];
+                    newFiles[target] = (newFiles[target] || []).concat(items);
+                }
+
+                var fields = clone(entry.entries[fileID]) || {};
+                if (target !== fileID) {
+                    fields.ownerId = target;
+                    fields.owner   = found[fileID];
+                }
+                if (!has(newIndex, target)) {
+                    newIndex[target] = fields;
+                } else {
+                    // Merged: the earliest creation, the latest change.
+                    var kept = newIndex[target];
+                    if (typeof fields.created === 'number' && !(kept.created <= fields.created)) { kept.created = fields.created; }
+                    if (typeof fields.lastchanged === 'number' && !(kept.lastchanged >= fields.lastchanged)) { kept.lastchanged = fields.lastchanged; }
+                }
+
+                // A legacy entry at the top level of the index is moved under annotationfiles.
+                if (ANNOTATION_INDEX_KEYS.indexOf(fileID) < 0 && isObject(index[fileID])) { delete index[fileID]; }
+
+            });
+
+            if (entry.index !== undefined) {
+                index.annotationfiles = newIndex;
+                if (index.mainAnnotation != null && has(ids, String(index.mainAnnotation))) {
+                    index.mainAnnotation = ids[String(index.mainAnnotation)];
+                }
+                result[entry.dir + '_index.json'] = index;
+            }
+            Object.keys(newFiles).forEach(function(fileID) { result[entry.dir + fileID + '.json'] = newFiles[fileID]; });
+
+        });
+
+        return { files: result, ids: ids };
+
+    }
+
+
+    /* ------------------------------------------------------------------ */
 
     return {
 
@@ -1434,7 +1754,12 @@
         schemaOfFile:            schemaOfFile,
         registerBundleFormat:    registerBundleFormat,
         readBundle:              readBundle,
-        writeBundle:             writeBundle
+        writeBundle:             writeBundle,
+
+        selectFolder:            selectFolder,
+        withoutLibrary:          withoutLibrary,
+        mediaPaths:              mediaPaths,
+        localAuthors:            localAuthors
 
     };
 

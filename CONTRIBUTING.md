@@ -57,7 +57,7 @@ FrameTrail/
 │   │   ├── collisiondetection/    # Overlay collision detection
 │   │   ├── interactjs/            # Drag/drop and resize (overlay editing)
 │   │   ├── sortablejs/            # Sortable lists
-│   │   ├── fflate/                # ZIP file creation (Save As / All Data export)
+│   │   ├── fflate/                # ZIP file creation (Export: ZIP Archive)
 │   │   ├── dialog/                # Lightweight native <dialog> wrapper
 │   │   ├── leaflet/               # Leaflet (maps)
 │   │   ├── codemirror6/           # CodeMirror 6 (JS/CSS/HTML + linting)
@@ -127,7 +127,7 @@ FrameTrail uses a custom module system — no ES6 modules, no bundler. All code 
 - **Modules** (`FrameTrail.defineModule`) — Encapsulate business logic and UI. Private state in closures, public interface returned.
 - **Types** (`FrameTrail.defineType`) — Define data structures with inheritance (e.g., `ResourceYoutube` extends `Resource`).
 - **State** (`FrameTrail.changeState` / `getState`) — Centralized reactive state. Modules declare `onChange` handlers that fire automatically.
-- **Storage modes** — `server` (PHP/AJAX), `local` (File System Access API), `needsFolder` (waiting for folder selection), `download` (in-memory + Save As export), `static` (CDN read + in-memory writes).
+- **Storage modes** — `server` (PHP/AJAX), `local` (File System Access API), `needsFolder` (waiting for folder selection), `download` (in-memory + Export), `static` (CDN read + in-memory writes).
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full architecture documentation.
 

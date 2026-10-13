@@ -358,6 +358,48 @@ class StorageAdapterLocal extends StorageAdapter {
     }
 
     /**
+     * Read a file of the local folder as it is on the disk (a File, which is
+     * not read into memory until it is used: copying a large video is fine).
+     * @param {String} path - Relative path (e.g. 'resources/myfile.mp4')
+     * @return {Promise<File>}
+     */
+    async readFile(path) {
+        var handle = await this._getFileHandle(path, false);
+        return handle.getFile();
+    }
+
+    /**
+     * Write a stream (e.g. a fetch response's body) to a file, without
+     * holding it in memory. A failed stream leaves no file behind.
+     * @param {String} path - Relative path
+     * @param {ReadableStream} stream
+     * @return {Promise<void>}
+     */
+    async writeStream(path, stream) {
+        var handle = await this._getFileHandle(path, true);
+        var writable = await handle.createWritable();
+        try {
+            await stream.pipeTo(writable);
+        } catch (error) {
+            await this.deleteFile(path).catch(function() {});
+            throw error;
+        }
+        await this._noteWrite(path, handle);
+    }
+
+    /**
+     * Whether a folder holds nothing but hidden files (.DS_Store and the like).
+     * @param {FileSystemDirectoryHandle} handle
+     * @return {Promise<Boolean>}
+     */
+    static async isEmptyFolder(handle) {
+        for await (var entry of handle.values()) {
+            if (entry.name.charAt(0) !== '.') { return false; }
+        }
+        return true;
+    }
+
+    /**
      * Write a base64 data URL as a binary file.
      * @param {String} path - Relative path
      * @param {String} dataUrl - Data URL (e.g. 'data:image/png;base64,...')
@@ -391,14 +433,26 @@ class StorageAdapterLocal extends StorageAdapter {
     }
 
     /**
-     * Pre-load blob URLs for all local resource files (src and thumb).
+     * Pre-load blob URLs for the files in resources/ and for the library's
+     * local files (src and thumb, also in subfolders).
      * Call this after loading the resource index so that getResourceURL()
      * can return blob URLs synchronously.
      * @param {Object} resources - The resources map from _index.json
      * @return {Promise<void>}
      */
     async preloadResourceURLs(resources) {
-        var tasks = [];
+        var tasks = [],
+            self  = this;
+        // Every file in resources/, not only the library's: items keep their
+        // own copy of what they show, so they may show a file the library
+        // does not list (an export without the library, a resource removed
+        // from it).
+        var names = await this.listDirectory('resources').catch(function() { return []; });
+        names.forEach(function(name) {
+            if (name !== '_index.json' && name.charAt(0) !== '.') {
+                tasks.push(self.getFileAsURL('resources/' + name));
+            }
+        });
         for (var id in resources) {
             if (!resources.hasOwnProperty(id)) continue;
             var res = resources[id];

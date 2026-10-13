@@ -223,9 +223,10 @@
     // Set up the edit API (instance.edit), before the extensions that use it
     FrameTrail.initModule('EditAPI');
 
-    // Set up export (Save As, instance.export) and import
+    // Set up export (the Export dialog, instance.export) and import
     FrameTrail.initModule('BundleExport');
     FrameTrail.initModule('ImportDialog');
+    FrameTrail.initModule('ExportDialog');
 
     // Set up the loader of extensions (they are loaded once the config is known)
     FrameTrail.initModule('Extensions');

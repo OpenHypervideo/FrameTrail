@@ -4,11 +4,12 @@
 
 
 /**
- * I am the BundleExport. I export a hypervideo or the whole project as a
- * bundle (see schemas/hypervideo-bundle.schema.json and
+ * I am the BundleExport. I export a hypervideo, the project or some of its
+ * hypervideos as a bundle (see schemas/hypervideo-bundle.schema.json and
  * project-bundle.schema.json): as a page in the portable HTML format
- * (FrameTrailHTMLFormat, docs/HTML-FORMAT.md), as the bundle's JSON, or as a
- * zip of the _data folder. Save As and instance.export() use me.
+ * (FrameTrailHTMLFormat, docs/HTML-FORMAT.md), as the bundle's JSON, as a
+ * zip of the _data folder, or into a local folder with its media files.
+ * Export (ExportDialog) and instance.export() use me.
  *
  * A bundle is made from a folder map (the _data layout as paths → contents,
  * the serializer's "folder" format), which I fill from what is stored, read
@@ -158,20 +159,71 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
     }
 
 
+    // A user id of an account, not of a guest (see FrameTrailSerializer.guestUserID).
+    function isAccount(id) {
+        return id != null && id !== '' && String(id).indexOf('guest_') !== 0;
+    }
+
+    /**
+     * Whether annotations of these hypervideos were made with accounts, so
+     * that nobody could edit them without a server unless they are given to
+     * their authors' names (the localAuthors option). Nothing is read: the
+     * annotation indexes as loaded, the open hypervideo's annotations, and
+     * in memory the annotations the page was given.
+     *
+     * @method hasAccountAuthors
+     * @param {Array} ids  hypervideo ids
+     * @return {Boolean}
+     */
+    function hasAccountAuthors(ids) {
+
+        var Database = FrameTrail.module('Database');
+
+        function creatorsAccount(list) {
+            return (list || []).some(function(item) { return isObject(item) && isObject(item.creator) && isAccount(item.creator.id); });
+        }
+
+        return ids.some(function(id) {
+            var entry = Database.hypervideos[id] || {};
+            if (isOpen(id) && creatorsAccount(Database.getAnnotationsW3C())) { return true; }
+            if (isObject(entry.annotationfiles)) { return Object.keys(entry.annotationfiles).some(isAccount); }
+            var given = startBundle(id);
+            if (given && given.annotations && isObject(given.annotations.files)) {
+                return Object.keys(given.annotations.files).some(function(fileID) {
+                    return isAccount(fileID) || creatorsAccount(given.annotations.files[fileID]);
+                });
+            }
+            return creatorsAccount((Database.contentsEntry(id) || {}).annotations);
+        });
+
+    }
+
     /**
      * I collect a folder map (paths in _data → contents) for one hypervideo
-     * (scope "hypervideo") or for everything (scope "project"; also the zip).
+     * (scope "hypervideo") or for the project (scope "project"; also the zip).
      * The open hypervideo is taken as it is in the editor now.
+     *
+     * options (both scopes): localAuthors gives annotations made with
+     * accounts to their authors' names (FrameTrailSerializer.localAuthors;
+     * the current user's under the name they have now); library: false
+     * leaves the resource library out (FrameTrailSerializer.withoutLibrary).
+     * Project only: ids, the hypervideos to take (default all,
+     * FrameTrailSerializer.selectFolder).
      *
      * @method collectFolder
      * @param {String} scope  "hypervideo" or "project"
      * @param {String} [hypervideoID]
+     * @param {Object} [options] { ids, library, localAuthors }
      * @return {Promise} the folder map
      */
-    function collectFolder(scope, hypervideoID) {
+    function collectFolder(scope, hypervideoID, options) {
+
+        options = options || {};
 
         var Database = FrameTrail.module('Database'),
-            ids      = (scope === 'project') ? Object.keys(Database.hypervideos) : [String(hypervideoID)],
+            ids      = (scope === 'project')
+                     ? (options.ids || Object.keys(Database.hypervideos)).map(String).filter(function(id) { return !!Database.hypervideos[id]; })
+                     : [String(hypervideoID)],
             files    = {},
             highest  = 0;
 
@@ -217,7 +269,26 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
             }));
         }
 
-        return Promise.all(tasks).then(function() { return files; });
+        return Promise.all(tasks).then(function() {
+
+            if (options.localAuthors) {
+                var names  = {},
+                    userID = FrameTrail.module('UserManagement').userID;
+                if (isAccount(userID) && FrameTrail.getState('username')) { names[userID] = FrameTrail.getState('username'); }
+                files = Serializer.localAuthors(files, { names: names }).files;
+            }
+
+            if (scope === 'project') {
+                files = Serializer.selectFolder(files, ids);
+            }
+
+            if (options.library === false) {
+                files = Serializer.withoutLibrary(files);
+            }
+
+            return files;
+
+        });
 
     }
 
@@ -228,9 +299,10 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
      * @method bundle
      * @param {String} scope  "hypervideo" or "project"
      * @param {String} [hypervideoID]  default: the open one
+     * @param {Object} [options] see collectFolder
      * @return {Promise} the bundle
      */
-    function bundle(scope, hypervideoID) {
+    function bundle(scope, hypervideoID, options) {
 
         hypervideoID = hypervideoID || FrameTrail.module('RouteNavigation').hypervideoID;
 
@@ -238,10 +310,13 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
             return Promise.reject(new Error(labels['ErrorExportNoHypervideo']));
         }
 
-        return collectFolder(scope, hypervideoID).then(function(files) {
-            return (scope === 'project')
-                ? Serializer.readBundle(files, 'folder', { bundle: 'project' })
-                : Serializer.readBundle(files, 'folder', { bundle: 'hypervideo', id: String(hypervideoID) });
+        return collectFolder(scope, hypervideoID, options).then(function(files) {
+            if (scope === 'project') {
+                return Serializer.readBundle(files, 'folder', { bundle: 'project' });
+            }
+            var theBundle = Serializer.readBundle(files, 'folder', { bundle: 'hypervideo', id: String(hypervideoID) });
+            if (isObject(theBundle.resources) && !Object.keys(theBundle.resources).length) { delete theBundle.resources; }
+            return theBundle;
         });
 
     }
@@ -323,11 +398,13 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
         return result;
     }
 
-    function fileName(scope, theBundle, extension) {
-        var name = (scope === 'project')
-                 ? (FrameTrail.module('Database').config.overviewTitle || 'frametrail-project')
-                 : ((theBundle.hypervideo && theBundle.hypervideo.meta && theBundle.hypervideo.meta.name) || 'hypervideo');
-        return String(name).replace(/[^a-z0-9]/gi, '_').substring(0, 50) + '.' + extension;
+    // The name of what is exported, as a file or folder name.
+    function baseName(scope, hypervideoID) {
+        var Database = FrameTrail.module('Database'),
+            name     = (scope === 'project')
+                     ? ((Database.config || {}).overviewTitle || 'frametrail-project')
+                     : ((Database.hypervideos[hypervideoID] || {}).name || 'hypervideo');
+        return String(name).replace(/[^a-z0-9]/gi, '_').substring(0, 50);
     }
 
 
@@ -345,25 +422,37 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
     }
 
     /**
-     * Only the PHP endpoint can bundle the uploaded media files. On a private
-     * instance (config.alwaysForceLogin) it answers 403 unless a valid session
-     * cookie is sent, hence the explicit status check — an <a download> click
-     * would silently save the error body as a .zip.
+     * A zip with media files: the server puts a folder map made here (with
+     * what the export chose: unsaved changes, annotations given to their
+     * authors' names, without the library) into a zip, with the media files
+     * it refers to from its _data/resources/ (action exportZip). Resolves
+     * { blob, missing: [media paths it does not have] }. On a private
+     * instance (config.alwaysForceLogin) it answers 403 unless a valid
+     * session cookie is sent, hence the explicit status check — an
+     * <a download> click would silently save the error body as a .zip.
      */
-    function serverZip() {
+    function serverZip(files) {
 
         var serverUrl = FrameTrail.getState('server') || '_server/',
             adapter   = FrameTrail.module('StorageManager').getAdapter(),
-            dpParam   = (adapter && adapter.dataPathAbsolute) ? '&dataPath=' + encodeURIComponent(adapter.dataPathAbsolute) : '';
+            body      = new URLSearchParams({ a: 'exportZip', files: JSON.stringify(files), media: JSON.stringify(Serializer.mediaPaths(files)) });
 
-        return fetch(serverUrl + 'ajaxServer.php?a=dataExport' + dpParam, { credentials: 'same-origin' }).then(function(response) {
+        if (adapter && adapter.dataPathAbsolute) { body.append('dataPath', adapter.dataPathAbsolute); }
+
+        return fetch(serverUrl + 'ajaxServer.php', { method: 'POST', body: body, credentials: 'same-origin' }).then(function(response) {
             if (response.status === 403) {
                 throw new Error('Data export denied: this instance is private (config.alwaysForceLogin) and requires a logged-in session');
             }
-            if (!response.ok) {
-                throw new Error('Data export failed with status ' + response.status);
+            if (!response.ok || !/zip/.test(response.headers.get('Content-Type') || '')) {
+                return response.text().then(function(text) {
+                    var answer = null;
+                    try { answer = JSON.parse(text); } catch (e) { /* not JSON */ }
+                    throw new Error((answer && answer.string) || ('Data export failed with status ' + response.status));
+                });
             }
-            return response.blob();
+            var missing = [];
+            try { missing = JSON.parse(response.headers.get('X-FrameTrail-Missing') || '[]'); } catch (e) { /* none */ }
+            return response.blob().then(function(blob) { return { blob: blob, missing: missing }; });
         });
 
     }
@@ -383,16 +472,58 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
 
 
     /**
+     * What an export takes, from its options: { scope, hypervideoID, ids,
+     * library }. A zip or a folder is always a _data folder: of the one
+     * hypervideo when the scope is one. The resource library goes only with
+     * the project (unless options.library is false), never with a hypervideo.
+     * @private
+     */
+    function selectionOf(options) {
+
+        var Database     = FrameTrail.module('Database'),
+            scope        = (options.scope === 'project') ? 'project' : 'hypervideo',
+            hypervideoID = String(options.hypervideoID || FrameTrail.module('RouteNavigation').hypervideoID || ''),
+            all          = Object.keys(Database.hypervideos || {}),
+            ids          = (scope === 'project')
+                         ? (Array.isArray(options.hypervideoIDs) ? options.hypervideoIDs.map(String) : all)
+                         : [hypervideoID],
+            library      = (scope === 'project') && options.library !== false;
+
+        return {
+            scope:        scope,
+            hypervideoID: hypervideoID,
+            ids:          ids,
+            library:      library,
+            missing:      (scope === 'hypervideo') ? !Database.hypervideos[hypervideoID] : !ids.length
+        };
+
+    }
+
+    function abortError() {
+        var error = new Error('Aborted');
+        error.name = 'AbortError';
+        return error;
+    }
+
+    /**
      * I export, and download the result unless options.download is false.
      *
      * options:
      *
      * * format: "html" (default), "json" (the bundle) or "zip" (the _data folder);
-     * * scope: "hypervideo" (default) or "project"; a zip is always everything;
+     * * scope: "hypervideo" (default) or "project";
      * * hypervideoID: default the open hypervideo;
+     * * hypervideoIDs: for the project, the hypervideos to take (default all);
+     * * library: for the project, false to leave the resource library out
+     *   (default true); a hypervideo never takes it;
+     * * localAuthors: give annotations made with accounts to their authors'
+     *   names, so they can be edited without a server (hasAccountAuthors);
      * * scripts: "cdn" (default) or "inline", where an HTML page gets FrameTrail from;
-     * * includeMedia: a zip with the uploaded media files (server mode, signed in);
-     * * download: false to resolve with { filename, type, data } instead.
+     * * includeMedia: a zip with the media files it refers to (server mode:
+     *   the server adds them);
+     * * download: false to resolve with { filename, type, data, missing }
+     *   instead; otherwise it resolves with { filename, missing }, missing
+     *   being the media files the server did not have.
      *
      * @method exportData
      * @param {Object} [options]
@@ -402,36 +533,42 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
 
         options = options || {};
 
-        var format = options.format || 'html',
-            scope  = (options.scope === 'project') ? 'project' : 'hypervideo',
+        var format    = options.format || 'html',
+            selection = selectionOf(options),
+            scope     = selection.scope,
+            folder    = { ids: selection.ids, library: selection.library, localAuthors: !!options.localAuthors },
             result;
+
+        if (selection.missing) {
+            return Promise.reject(new Error(labels['ErrorExportNoHypervideo']));
+        }
 
         if (format === 'zip') {
 
-            if (options.includeMedia) {
-                if (!FrameTrail.module('StorageManager').canSaveToServer()) {
-                    return Promise.reject(new Error('Media files can only be exported in server mode by a logged-in user'));
-                }
-                result = serverZip().then(function(blob) {
-                    return { filename: 'frametrail-data-export.zip', type: 'application/zip', data: blob };
-                });
-            } else {
-                result = collectFolder('project').then(function(files) {
-                    return { filename: 'frametrail-export.zip', type: 'application/zip', data: zipFolder(files) };
-                });
+            if (options.includeMedia && storageMode() !== 'server') {
+                return Promise.reject(new Error(labels['ErrorExportMediaZip']));
             }
+            result = collectFolder('project', null, folder).then(function(files) {
+                var filename = baseName(scope, selection.hypervideoID) + '.zip';
+                if (!options.includeMedia) {
+                    return { filename: filename, type: 'application/zip', data: zipFolder(files), missing: [] };
+                }
+                return serverZip(files).then(function(zip) {
+                    return { filename: filename, type: 'application/zip', data: zip.blob, missing: zip.missing };
+                });
+            });
 
         } else if (format === 'json') {
 
-            result = bundle(scope, options.hypervideoID).then(function(theBundle) {
-                return { filename: fileName(scope, theBundle, 'json'), type: 'application/json', data: JSON.stringify(theBundle, null, 4) };
+            result = bundle(scope, selection.hypervideoID, folder).then(function(theBundle) {
+                return { filename: baseName(scope, selection.hypervideoID) + '.json', type: 'application/json', data: JSON.stringify(theBundle, null, 4) };
             });
 
         } else if (format === 'html') {
 
-            result = Promise.all([bundle(scope, options.hypervideoID), library(options.scripts)]).then(function(parts) {
+            result = Promise.all([bundle(scope, selection.hypervideoID, folder), library(options.scripts)]).then(function(parts) {
                 return {
-                    filename: fileName(scope, parts[0], 'html'),
+                    filename: baseName(scope, selection.hypervideoID) + '.html',
                     type:     'text/html',
                     data:     HTMLFormat.write(parts[0], { library: parts[1], datapath: pageDatapath(), config: pageConfig(scope) })
                 };
@@ -444,16 +581,130 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
         return result.then(function(file) {
             if (options.download === false) { return file; }
             triggerDownload(file.data, file.filename, file.type);
+            return { filename: file.filename, missing: file.missing || [] };
+        });
+
+    }
+
+
+    /* ------------------------------------------------------------------ */
+    /*  Folders                                                           */
+    /* ------------------------------------------------------------------ */
+
+    // A media file of the export into the folder: from the local folder this
+    // tab works in, else from where the page plays it (the server, a CDN, a
+    // project file's datapath). Streamed, so large videos are fine.
+    function copyMedia(target, path, signal) {
+
+        var dest = 'resources/' + path;
+
+        if (storageMode() === 'local') {
+            return FrameTrail.module('StorageManager').getAdapter().readFile(dest).then(function(file) {
+                return target.writeFile(dest, file);
+            });
+        }
+
+        var url = FrameTrail.module('RouteNavigation').getResourceURL(path);
+        if (!/^(https?|blob):/i.test(url)) { return Promise.reject(new Error('Not reachable: ' + url)); }
+
+        return fetch(url, { credentials: 'same-origin', signal: signal }).then(function(response) {
+            if (!response.ok || !response.body) { throw new Error('HTTP ' + response.status); }
+            return target.writeStream(dest, response.body);
+        });
+
+    }
+
+    /**
+     * I export into a local folder the user chooses, which must be empty: a
+     * _data folder (FrameTrail opens it without a server, Select Folder) with
+     * the media files the export refers to. Call me from a click: the folder
+     * picker needs it. The data is written first, then the media files, so a
+     * folder whose copying was stopped still opens.
+     *
+     * options: scope, hypervideoID, hypervideoIDs, library, localAuthors (as
+     * exportData), onProgress({ done, total }), signal (an AbortSignal).
+     *
+     * @method exportToFolder
+     * @param {Object} [options]
+     * @return {Promise} { folderName, missing: [media paths not copied], adapter }
+     */
+    function exportToFolder(options) {
+
+        options = options || {};
+
+        var selection = selectionOf(options),
+            missing   = [],
+            handle, target;
+
+        if (typeof StorageAdapterLocal === 'undefined' || !StorageAdapterLocal.isSupported()) {
+            return Promise.reject(new Error(labels['ExportFolderUnsupported']));
+        }
+        if (selection.missing) {
+            return Promise.reject(new Error(labels['ErrorExportNoHypervideo']));
+        }
+
+        function check() {
+            if (options.signal && options.signal.aborted) { throw abortError(); }
+        }
+
+        function progress(done, total) {
+            if (options.onProgress) { options.onProgress({ done: done, total: total }); }
+        }
+
+        return window.showDirectoryPicker({ mode: 'readwrite' }).then(function(chosen) {
+            handle = chosen;
+            return StorageAdapterLocal.isEmptyFolder(handle);
+        }).then(function(empty) {
+            if (!empty) { throw new Error(labels['ExportFolderNotEmpty'].replace('%s', handle.name)); }
+            target = new StorageAdapterLocal();
+            return target.init(handle);
+        }).then(function() {
+            return collectFolder('project', null, { ids: selection.ids, library: selection.library, localAuthors: !!options.localAuthors });
+        }).then(function(files) {
+
+            var written = Object.keys(files).reduce(function(chain, path) {
+                return chain.then(function() {
+                    check();
+                    return (typeof files[path] === 'string') ? target.writeText(path, files[path]) : target.writeJSON(path, files[path]);
+                });
+            }, Promise.resolve());
+
+            return written.then(function() {
+                // What an empty folder gets when it is chosen in FrameTrail.
+                return target.exists('users.json');
+            }).then(function(hasUsers) {
+                return hasUsers ? null : target.writeJSON('users.json', { 'user-increment': 1, 'user': {} });
+            }).then(function() {
+                var media = Serializer.mediaPaths(files);
+                progress(0, media.length);
+                return media.reduce(function(chain, path, i) {
+                    return chain.then(function() {
+                        check();
+                        return copyMedia(target, path, options.signal).catch(function(error) {
+                            if (options.signal && options.signal.aborted) { throw abortError(); }
+                            console.log('FrameTrail: could not copy ' + path + ':', error);
+                            missing.push(path);
+                        }).then(function() {
+                            progress(i + 1, media.length);
+                        });
+                    });
+                }, Promise.resolve());
+            });
+
+        }).then(function() {
+            return { folderName: handle.name, missing: missing, adapter: target };
         });
 
     }
 
 
     return {
-        collectFolder: collectFolder,
-        bundle:        bundle,
-        library:       library,
-        exportData:    exportData,
+        collectFolder:     collectFolder,
+        bundle:            bundle,
+        library:           library,
+        exportData:        exportData,
+        exportToFolder:    exportToFolder,
+        hasAccountAuthors: hasAccountAuthors,
         // What a page of a bundle needs besides it; PairingHost sends both to a paired phone.
         pageDatapath:  pageDatapath,
         pageConfig:    pageConfig

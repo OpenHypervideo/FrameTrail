@@ -9,7 +9,7 @@
  * * a page in the portable HTML format (FrameTrailHTMLFormat), or a page
  *   FrameTrail exported before that format — read, never run;
  * * a bundle as JSON, or a hypervideo.json exported before bundles;
- * * a zip of a _data folder (Save As "All Data", or the server's export with
+ * * a zip of a _data folder (Export's ZIP Archive, or the server's backup with
  *   media files).
  *
  * Every hypervideo gets a new id and belongs to the importing user. Resource
@@ -137,8 +137,8 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
 
     }
 
-    // A zip of a _data folder: Save As "All Data" has it at the top, the
-    // server's export below _data/. Never users.json, nothing in dot folders.
+    // A zip of a _data folder: Export's ZIP Archive has it at the top, the
+    // server's backup (dataExport) below _data/. Never users.json, nothing in dot folders.
     function readZip(buffer) {
 
         var entries = fflate.unzipSync(new Uint8Array(buffer)),

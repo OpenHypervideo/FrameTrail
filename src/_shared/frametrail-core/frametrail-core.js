@@ -390,9 +390,10 @@
                 FrameTrail.module('HypervideoModel').leaveEditMode();
             },
 
+            // Opens the Export dialog (once called Save As, hence the name).
             saveAs: function(){
-                if (FrameTrail.module('HypervideoModel')) {
-                    FrameTrail.module('HypervideoModel').saveAs();
+                if (FrameTrail.module('ExportDialog')) {
+                    FrameTrail.module('ExportDialog').open();
                 }
             },
 

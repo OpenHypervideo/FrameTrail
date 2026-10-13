@@ -1215,6 +1215,161 @@ describe('FrameTrailLint', () => {
 
 });
 
+describe('FrameTrailSerializer: folders for export', () => {
+
+    const allTypesFolder = () => readDataFolder(path.join(FIXTURES, 'data', 'all-types'));
+
+    // Every JSON file follows its schema, and the files agree with each other.
+    function assertConsistent(files) {
+        for (const file of Object.keys(files).filter((name) => name.endsWith('.json'))) {
+            const errors = validator.validate(Serializer.schemaOfFile(file), files[file]);
+            if (errors.length) { assert.fail(file + '\n' + formatErrors(errors)); }
+        }
+        assert.deepStrictEqual(Lint.checkFolder(files), []);
+    }
+
+    // all-types with a copy of its hypervideo as "2", an overview map with a
+    // marker for each, and a resource nobody uses.
+    function twoHypervideos() {
+        const files = allTypesFolder();
+        for (const file of Object.keys(files).filter((name) => name.startsWith('hypervideos/1/'))) {
+            files[file.replace('hypervideos/1/', 'hypervideos/2/')] = clone(files[file]);
+        }
+        const index = files['hypervideos/_index.json'];
+        index['hypervideo-increment'] = 2;
+        index.hypervideos['2'] = './2';
+        index.overviewMap = { background: 'map.svg', fit: 'contain', markers: { 1: { x: 0.2, y: 0.3, size: 5 }, 2: { x: 0.6, y: 0.4, size: 5 } } };
+        files['resources/_index.json'].resources['20'] = Object.assign(clone(files['resources/_index.json'].resources['2']), {
+            name: 'Unused', src: '1_1790001000_unused.png', thumb: '1_1790001000_thumb_unused.png'
+        });
+        return files;
+    }
+
+    test('selectFolder: the chosen hypervideos and their markers; the library stays', () => {
+        const files    = twoHypervideos(),
+              before   = clone(files),
+              selected = Serializer.selectFolder(files, ['2']);
+        assert.deepStrictEqual(files, before, 'the map given is not changed');
+        assert.deepStrictEqual(selected['hypervideos/_index.json'].hypervideos, { 2: './2' });
+        assert.deepStrictEqual(Object.keys(selected['hypervideos/_index.json'].overviewMap.markers), ['2']);
+        assert.deepStrictEqual(Object.keys(selected).filter((name) => name.startsWith('hypervideos/1/')), []);
+        assert.ok(selected['hypervideos/2/hypervideo.json'] && selected['hypervideos/2/annotations/_index.json'] && selected['hypervideos/2/subtitles/en.vtt']);
+        assert.deepStrictEqual(selected['resources/_index.json'], files['resources/_index.json']);
+        assertConsistent(selected);
+        assert.deepStrictEqual(Object.keys(Serializer.readBundle(selected, 'folder').hypervideos), ['2']);
+        assert.deepStrictEqual(Object.keys(Serializer.selectFolder(files)['hypervideos/_index.json'].hypervideos), ['1', '2'], 'default: all');
+        assert.throws(() => Serializer.selectFolder({}, ['1']), /Missing hypervideos\/_index\.json/);
+    });
+
+    test('withoutLibrary: no resources listed, nothing points back at them, the hypervideos still have their media', () => {
+        const files  = twoHypervideos(),
+              before = clone(files),
+              hv     = 'hypervideos/1/';
+        files[hv + 'hypervideo.json'].clips[0].src = null;   // a clip that names its video only by its resource
+        const bare = Serializer.withoutLibrary(files);
+        assert.deepStrictEqual(Object.assign(clone(files), { [hv + 'hypervideo.json']: before[hv + 'hypervideo.json'] }), before, 'the map given is not changed');
+        assert.deepStrictEqual(bare['resources/_index.json'], { 'resources-increment': files['resources/_index.json']['resources-increment'], resources: {} });
+        assert.deepStrictEqual(bare[hv + 'hypervideo.json'].clips[0], Object.assign(clone(before[hv + 'hypervideo.json'].clips[0]), { resourceId: null }), 'the src comes from the resource');
+        const items = bare[hv + 'hypervideo.json'].contents.concat(bare[hv + 'annotations/1.json']);
+        assert.ok(items.every((item) => !('frametrail:resourceId' in item.body)));
+        assert.deepStrictEqual(Serializer.mediaPaths(bare).filter((file) => /unused/.test(file)), [], 'the library\'s other files are not referred to');
+        assert.ok(Serializer.mediaPaths(bare).includes('1_1790000000_fixture-lecture.mp4'), 'the video is');
+        assertConsistent(bare);
+        assert.deepStrictEqual(Lint.run(Lint.partsOf(Serializer.readBundle(bare, 'folder'), { hypervideoId: '1' })).findings.filter((finding) => finding.rule === 'unknown-resource'), []);
+    });
+
+    test('mediaPaths: the files in resources/ a folder refers to, not URLs, nothing outside', () => {
+        const files = twoHypervideos();
+        assert.deepStrictEqual(Serializer.mediaPaths(files), [
+            '1_1790000000_fixture-lecture.mp4',
+            '1_1790000000_thumb_fixture-lecture.png',
+            '1_1790000060_dna-double-helix.png',
+            '1_1790000060_thumb_dna-double-helix.png',
+            '1_1790000120_narration.mp3',
+            '1_1790000180_handout.pdf',
+            '1_1790000180_thumb_handout.png',
+            '1_1790000780_thumb_dna.png',
+            '1_1790001000_thumb_unused.png',
+            '1_1790001000_unused.png',
+            'map.svg'
+        ]);
+        // Only through the items: the library left out, the paths items carry are still there.
+        delete files['resources/_index.json'];
+        const hypervideo = files['hypervideos/1/hypervideo.json'];
+        hypervideo.meta.thumb = '../outside.png';
+        hypervideo.clips[0].src = '/absolute/video.mp4';
+        assert.deepStrictEqual(Serializer.mediaPaths(files).filter((file) => !/^1_/.test(file)), ['map.svg']);
+        assert.ok(Serializer.mediaPaths(files).includes('1_1790000180_handout.pdf'), 'from the PDF overlay');
+        assert.ok(!Serializer.mediaPaths(files).includes('1_1790001000_unused.png'));
+    });
+
+    test('localAuthors: account annotations become their authors\' guest annotations', () => {
+        const files  = allTypesFolder(),
+              before = clone(files),
+              dir    = 'hypervideos/1/annotations/',
+              demo   = Serializer.guestUserID('demo'),
+              local  = Serializer.localAuthors(files);
+        assert.deepStrictEqual(files, before, 'the map given is not changed');
+        assert.deepStrictEqual(local.ids, { 1: demo });
+        assert.equal(local.files[dir + '1.json'], undefined);
+        assert.equal(local.files[dir + demo + '.json'].length, files[dir + '1.json'].length);
+        assert.ok(local.files[dir + demo + '.json'].every((item) => item.creator.id === demo && item.creator.nickname === 'demo'));
+        assert.deepStrictEqual(local.files[dir + '_index.json'], {
+            mainAnnotation: demo,
+            annotationfiles: { [demo]: Object.assign({}, files[dir + '_index.json'].annotationfiles['1'], { ownerId: demo, owner: 'demo' }) }
+        });
+        assertConsistent(local.files);
+        assert.deepStrictEqual(Serializer.localAuthors(local.files), { files: local.files, ids: {} }, 'nothing left to do');
+
+        const joscha = Serializer.localAuthors(files, { names: { 1: 'Joscha' } });
+        assert.ok(joscha.files[dir + Serializer.guestUserID('Joscha') + '.json'], 'a given name comes first');
+        assert.equal(joscha.files[dir + '_index.json'].annotationfiles[Serializer.guestUserID('Joscha')].owner, 'Joscha');
+    });
+
+    test('localAuthors: two accounts with the same name share a file; guests and imported items of others', () => {
+        const files = allTypesFolder(),
+              dir   = 'hypervideos/1/annotations/',
+              anna  = Serializer.guestUserID('Anna');
+        const second = files[dir + '1.json'].slice(0, 2).map((item, i) => Object.assign(clone(item), {
+            creator: { nickname: 'DEMO', type: 'Person', id: '2' }, created: '2026-10-08T10:00:0' + i + '.000Z'
+        }));
+        files[dir + '2.json'] = second;
+        files[dir + '_index.json'].annotationfiles['2'] = { name: 'DEMO', description: '', created: 1791000000, lastchanged: 1791999999000, hidden: false, owner: ' DEMO ', ownerId: 2 };
+        // A guest's file, which also holds an item someone imported with its account creator.
+        const imported = Object.assign(clone(files[dir + '1.json'][0]), { creator: { nickname: 'Bert', type: 'Person', id: '7' }, created: '2026-10-08T11:00:00.000Z' });
+        const guestItem = Object.assign(clone(files[dir + '1.json'][1]), { creator: { nickname: 'Anna', type: 'Person', id: anna } });
+        files[dir + anna + '.json'] = [guestItem, imported];
+        files[dir + '_index.json'].annotationfiles[anna] = { name: 'Anna', description: '', created: 1791000000, lastchanged: 1791000000000, hidden: false, owner: 'Anna', ownerId: anna };
+
+        const local = Serializer.localAuthors(files),
+              demo  = Serializer.guestUserID('demo'),
+              entry = local.files[dir + '_index.json'].annotationfiles;
+        assert.deepStrictEqual(local.ids, { 1: demo, 2: demo, 7: Serializer.guestUserID('Bert') });
+        assert.deepStrictEqual(Object.keys(entry).sort(), [anna, demo].sort());
+        assert.equal(local.files[dir + demo + '.json'].length, files[dir + '1.json'].length + 2, 'merged');
+        assert.equal(entry[demo].created, 1791000000, 'the earliest creation');
+        assert.equal(entry[demo].lastchanged, 1791999999000, 'the latest change');
+        assert.deepStrictEqual(local.files[dir + anna + '.json'].map((item) => item.creator.id), [anna, Serializer.guestUserID('Bert')]);
+        assert.deepStrictEqual(entry[anna], files[dir + '_index.json'].annotationfiles[anna], 'a guest\'s entry stays');
+        assertConsistent(local.files);
+    });
+
+    test('localAuthors: a hypervideo made in memory, without indexes, and a listed file that is missing', () => {
+        const item  = { creator: { nickname: 'Joscha', type: 'Person', id: '3' }, created: '2026-10-08T10:00:00.000Z', body: {}, target: {} },
+              local = Serializer.localAuthors({ 'hypervideos/4/hypervideo.json': {}, 'hypervideos/4/annotations/3.json': [item] }, { names: { 3: 'Joscha J' } }),
+              id    = Serializer.guestUserID('Joscha J');
+        assert.deepStrictEqual(Object.keys(local.files), ['hypervideos/4/hypervideo.json', 'hypervideos/4/annotations/' + id + '.json'], 'no index is made');
+        assert.equal(local.files['hypervideos/4/annotations/' + id + '.json'][0].creator.id, id);
+
+        const files = allTypesFolder();
+        files['hypervideos/1/annotations/_index.json'].annotationfiles['5'] = { name: 'gone', owner: 'Gone' };
+        const missing = Serializer.localAuthors(files).files;
+        assert.ok(missing['hypervideos/1/annotations/_index.json'].annotationfiles[Serializer.guestUserID('Gone')], 'the entry is renamed');
+        assert.equal(missing['hypervideos/1/annotations/' + Serializer.guestUserID('Gone') + '.json'], undefined, 'no file is made up');
+    });
+
+});
+
 describe('FrameTrailKeyframes', () => {
 
     test('normalizeKeyframes sorts, drops broken keyframes and tiny rotations', () => {

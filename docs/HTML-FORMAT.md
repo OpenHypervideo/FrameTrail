@@ -6,7 +6,7 @@ A hypervideo, or a whole project, as **one HTML file**:
 - its data can be read back without running anything in it;
 - it can be imported into any FrameTrail instance.
 
-FrameTrail's Save As writes this format ("Download as Files" → HTML), and its import dialog reads it ([DEPLOYMENT.md](DEPLOYMENT.md#save-as--export)). This page describes the format itself, for anyone who writes or reads such files.
+FrameTrail's Export writes this format ("Download Files" → HTML File), and its import dialog reads it ([DEPLOYMENT.md](DEPLOYMENT.md#export)). This page describes the format itself, for anyone who writes or reads such files.
 
 ## A File
 
@@ -58,7 +58,7 @@ The bundle is the text of a `<script type="application/ld+json">` element with a
 
 **Escaping.** Every `<` in the JSON is written as `\u003c`. JSON reads it back as `<`, and no text in the content (`</script>`, `<!--`) can end the block or change how the browser parses it.
 
-**Media** is never embedded. Media paths are URLs, or paths in `_data/resources/` that resolve against `data-frametrail-datapath`. Save As in server and static mode writes the instance's own `_data/` URL there. The file then plays its uploaded media from that instance, as long as it is reachable; a private instance serves it only to a signed-in browser. An export from a local folder writes none, so its relative media are looked for in a `_data/` folder next to the file. YouTube and other embeds are URLs and need no base; some of them refuse to play in a page opened from the disk.
+**Media** is never embedded. Media paths are URLs, or paths in `_data/resources/` that resolve against `data-frametrail-datapath`. Export in server and static mode writes the instance's own `_data/` URL there. The file then plays its uploaded media from that instance, as long as it is reachable; a private instance serves it only to a signed-in browser. An export from a local folder writes none, so its relative media are looked for in a `_data/` folder next to the file. YouTube and other embeds are URLs and need no base; some of them refuse to play in a page opened from the disk.
 
 ## The Library
 
@@ -82,7 +82,7 @@ FrameTrail.init({
 }, 'PlayerLauncher');
 ```
 
-A hypervideo bundle starts in its hypervideo, under its own id. A project bundle starts in the overview (in map mode with its overview map) unless a `startID` or the page's hash names a hypervideo. Annotations, subtitles (also in Transcript views), tag definitions and the global CSS come from the bundle; nothing is fetched. The player runs in memory (`storageMode: 'download'`): it can be edited and exported again with Save As, and nothing is saved — except in a browser with the File System Access API (Chrome, Edge), where a page opened from the disk can be saved into its own file (see [Editing a Page in Place](#editing-a-page-in-place)).
+A hypervideo bundle starts in its hypervideo, under its own id. A project bundle starts in the overview (in map mode with its overview map) unless a `startID` or the page's hash names a hypervideo. Annotations, subtitles (also in Transcript views), tag definitions and the global CSS come from the bundle; nothing is fetched. The player runs in memory (`storageMode: 'download'`): it can be edited and exported again with Export, and nothing is saved — except in a browser with the File System Access API (Chrome, Edge), where a page opened from the disk can be saved into its own file (see [Editing a Page in Place](#editing-a-page-in-place)).
 
 ## Editing a Page in Place
 

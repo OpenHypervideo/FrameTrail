@@ -248,6 +248,7 @@ JS_FILES=(
     "player/modules/EditAPI/module.js"
     "player/modules/BundleExport/module.js"
     "player/modules/ImportDialog/module.js"
+    "player/modules/ExportDialog/module.js"
     "player/modules/Extensions/module.js"
     "player/modules/PairingHost/module.js"
     "player/modules/PairingDialog/module.js"

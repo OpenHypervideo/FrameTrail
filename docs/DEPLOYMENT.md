@@ -96,15 +96,15 @@ Other programs (scripts, a text editor, a second browser tab) may change the fol
 A whole project in one HTML file, edited and saved in place. The file is a page in the [portable HTML format](HTML-FORMAT.md): it plays wherever it is opened (also from the disk, in any browser), and in Chrome or Edge FrameTrail saves every change back into it.
 
 **Requirements:**
-- Chrome or Edge for saving in place (File System Access API). Other browsers play the file and edit it in memory; Save As downloads it again in the same format.
+- Chrome or Edge for saving in place (File System Access API). Other browsers play the file and edit it in memory; Export downloads it again in the same format.
 
 **Steps:**
 
 1. Open `index.html` of a FrameTrail without a server, as for a local folder
-2. In the dialog, choose **New Project File** (it asks whether the page loads FrameTrail from the web or carries it inside, then where to save the file) or **Open Project File** (a page Save As wrote, or one made here)
+2. In the dialog, choose **New Project File** (it asks whether to embed FrameTrail into the file, then where to save the file) or **Open Project File** (a page Export wrote, or one made here)
 3. Editing is available — every save writes the file
 
-A page in this format opened directly from the disk works too: it plays in memory, and in edit mode its Save button reads **Save to this file**. The first time it asks for the file (choose the same file), then remembers it: the next time the page is opened, it edits its own file. Without a server, Save As offers **Save to Project File** in every mode, which saves the project into a file and goes on editing there.
+A page in this format opened directly from the disk works too: it plays in memory, and in edit mode its Save button reads **Save to this file**. The first time it asks for the file (choose the same file), then remembers it: the next time the page is opened, it edits its own file. An HTML file Export downloads is such a file: opened from the disk, it is edited and saved in place the same way.
 
 **How it works:**
 
@@ -129,37 +129,48 @@ No server, no file system access required. FrameTrail automatically falls back t
 
 **How it works:**
 
-The `StorageAdapterDownload` holds all data in memory. Hypervideo data is passed via init options at startup (see [Inline on a Page](#inline-on-a-page-full-data-no-server) below). Viewing is always available. For editing, a login dialog prompts for a display name (guest mode — no account needed). The Save button is disabled (no persistent target); use **Save As** to export your work.
+The `StorageAdapterDownload` holds all data in memory. Hypervideo data is passed via init options at startup (see [Inline on a Page](#inline-on-a-page-full-data-no-server) below). Viewing is always available. For editing, a login dialog prompts for a display name (guest mode — no account needed). The Save button is disabled (no persistent target); use **Export** to take your work along.
 
 **Limitations:**
-- No persistence — changes are lost on page reload unless exported via Save As
+- No persistence — changes are lost on page reload unless exported
 - No resource management — adding or deleting resources is not available
 
-### Save As / Export
+### Export
 
-The Save As dialog (sidebar, in edit mode; in the overview too) offers, in every storage mode:
+The Export dialog (sidebar, in edit mode; in the overview too; Ctrl+S where nothing can be saved) never moves the work: the page goes on where it is. On top it asks what to export:
 
-- **Save to Server** / **Save to Local Folder** — save the open hypervideo there; without a server, **Save to Project File** instead of the first: the whole project into a [project file](#option-3-project-file-one-html-file), where editing goes on;
-- **Download as Files**, for one of three scopes:
-  - **Current Hypervideo** or **Whole Project**, as
-    - **HTML** — one page in the [portable HTML format](HTML-FORMAT.md) that plays anywhere, also opened from the disk, and can be imported again. FrameTrail is either **loaded from the web** (jsDelivr, pinned to the release that wrote the file; small, needs a network connection) or **inside the file** (about 3 MB, works offline; taken from the installation's own `frametrail.min.js`, else from jsDelivr);
-    - **JSON** — the same data as a bundle (`schemas/hypervideo-bundle.schema.json`, `schemas/project-bundle.schema.json`).
+- **Export this hypervideo** — offered only when the dialog is opened from within a hypervideo. It takes no resource library;
+- **Export the whole project** — every hypervideo, the overview map, the tag definitions, the playback settings and the global CSS. **Include resource library** (on by default) takes the library too: the uploaded files and links to choose from when editing. Hypervideos play without it, since their clips and items keep their own copy of what they show; without it, the export lists no resources and nothing in it points back at one;
+- **Rewrite user annotations to their authors' names** (offered when annotations were made with accounts, on by default) — without a server, an annotation belongs to whoever edits under a name (a guest's id is made from the name). The export gives every account's annotations to the account's name (the current user's under the name they have now), so their authors can still edit them in a local folder, a project file or a page in memory by logging in with that name. Turn it off for an export meant for another server.
 
-    The hypervideo comes with all users' annotations, its subtitles and the resource entries it uses; a project with the overview map, the resource library, the tag definitions, the playback settings and the global CSS. Media files are not included: uploaded files are linked to this instance's `_data/` (from a local folder: to a `_data/` folder next to the file; from a project file: where its own media paths point), so they play while the instance is reachable — on a private instance only for a signed-in browser.
-  - **All Data** — a zip of the `_data` folder: hypervideos with their annotations and subtitles, the resources index, tag definitions, `config.json` and `custom.css` (never `users.json`). **Include media files** (server mode, signed in) asks the server for the zip instead (`dataExport`), with every uploaded file and without the dot-folders.
+Then where it goes:
 
-Scripts get the same through the player instance:
+- **Export to Local Folder** (Chrome and Edge; elsewhere shown, but inactive) — a `_data` folder, written into an empty folder you choose, with the media files it refers to (copied from the server, the local folder, or where the page plays them; files that cannot be fetched are listed). FrameTrail opens it without a server (**Select Folder**). A page that runs in memory (static or in-memory mode) offers afterwards to **continue editing in the folder**, in this tab;
+- **Download Files**, as
+  - **HTML File** — one page in the [portable HTML format](HTML-FORMAT.md) that plays anywhere, also opened from the disk, and can be imported again; opened from the disk in Chrome or Edge, it is a [project file](#option-3-project-file-one-html-file) that saves in place. **Embed FrameTrail into the file** (off by default) puts the library inside (about 3 MB, works offline; taken from the installation's own `frametrail.min.js`, else from jsDelivr); otherwise the page loads it from jsDelivr, pinned to the release that wrote the file (small, needs a network connection);
+  - **JSON Data** — the same data as a bundle (`schemas/hypervideo-bundle.schema.json`, `schemas/project-bundle.schema.json`);
+  - **ZIP Archive** — the `_data` folder of the export as a zip (of the one hypervideo, or the whole project with the whole `config.json`; never `users.json`), for a server, to import, or to open as a local folder once unpacked. **Include media files** (server mode) has the server add the media files the export refers to (action `exportZip`): the way to move a hypervideo or a project with its uploads to another FrameTrail with Import.
+
+  HTML files and JSON data hold no media files: uploaded files are linked to this instance's `_data/` (from a local folder: to a `_data/` folder next to the file; from a project file: where its own media paths point), so they play while the instance is reachable — on a private instance only for a signed-in browser.
+
+Scripts get the downloads through the player instance:
 
 ```javascript
 FrameTrail.instances[0].export({
-    format:   'html',        // 'html' (default), 'json' (the bundle) or 'zip' (the _data folder)
-    scope:    'project',     // 'hypervideo' (default: the open one, or hypervideoID) or 'project'
-    scripts:  'inline',      // where an HTML page gets FrameTrail: 'cdn' (default) or 'inline'
-    download: false          // resolve with { filename, type, data } instead of downloading
+    format:        'html',        // 'html' (default), 'json' (the bundle) or 'zip' (the _data folder)
+    scope:         'project',     // 'hypervideo' (default: the open one, or hypervideoID) or 'project'
+    hypervideoIDs: ['1', '9'],    // project only: some of its hypervideos (default all)
+    library:       false,         // project only: leave the resource library out (default true)
+    localAuthors:  true,          // rewrite annotations made with accounts to their authors' names
+    includeMedia:  true,          // zip only, server mode: with the media files
+    scripts:       'inline',      // where an HTML page gets FrameTrail: 'cdn' (default) or 'inline'
+    download:      false          // resolve with { filename, type, data, missing } instead of downloading
 }).then(function(file) { … });
 ```
 
-Until a FrameTrail release that reads the portable HTML format is published on npm, pages that load FrameTrail from the web do not play; choose "inside the file" for those.
+`instance.saveAs()` opens the Export dialog. The server's own backup of the whole `_data` folder as stored, with every uploaded file, is the action `dataExport`.
+
+Until a FrameTrail release that reads the portable HTML format is published on npm, pages that load FrameTrail from the web do not play; embed FrameTrail into those.
 
 ### Import
 
@@ -167,7 +178,7 @@ The **Import** button next to "Create Hypervideo" (sidebar, edit mode; in server
 
 - a page in the portable HTML format, or an HTML export of an earlier FrameTrail (its data is read, never run);
 - a bundle (`.json`), or a `hypervideo.json` that Save As JSON wrote earlier;
-- a zip of a `_data` folder: Save As "All Data", or the server's export with its media files.
+- a zip of a `_data` folder: Export's ZIP Archive (with or without media files), or the server's backup (`dataExport`).
 
 The dialog lists the hypervideos, their annotations, subtitles and code, and imports them:
 
@@ -283,7 +294,7 @@ FrameTrail.init({
 
 ### Static CDN Hosting (read-only, no PHP)
 
-FrameTrail can serve hypervideo data from a static CDN without any PHP backend. Pass an explicit `dataPath` pointing to the CDN and leave `server` unset. StorageManager detects this combination (explicit `dataPath`, no `server`) and sets `storageMode` to `'static'`: data is read from the CDN, edits are stored in memory, and users can export their changes via Save As.
+FrameTrail can serve hypervideo data from a static CDN without any PHP backend. Pass an explicit `dataPath` pointing to the CDN and leave `server` unset. StorageManager detects this combination (explicit `dataPath`, no `server`) and sets `storageMode` to `'static'`: data is read from the CDN, edits are stored in memory, and users can export their changes with Export.
 
 ```javascript
 FrameTrail.init({
@@ -327,7 +338,7 @@ FrameTrail.init({
 }, 'PlayerLauncher');
 ```
 
-**Note:** When no PHP server and no local folder are available, FrameTrail falls back to `storageMode: 'download'` — the `StorageAdapterDownload` holds data in memory. Inline data init options work fully in this mode: viewing and editing are both functional, and changes can be exported via the Save As dialog. Nothing persists past a page reload unless exported.
+**Note:** When no PHP server and no local folder are available, FrameTrail falls back to `storageMode: 'download'` — the `StorageAdapterDownload` holds data in memory. Inline data init options work fully in this mode: viewing and editing are both functional, and changes can be exported with the Export dialog. Nothing persists past a page reload unless exported.
 
 See [docs/ARCHITECTURE.md](ARCHITECTURE.md) for the full initialization options reference.
 

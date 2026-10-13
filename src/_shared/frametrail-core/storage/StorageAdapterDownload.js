@@ -6,7 +6,7 @@
  * Storage adapter for the in-memory modes ('download', and 'static' through
  * StorageAdapterStatic): used when there is neither a server nor the File
  * System Access API (Firefox, Safari). Stores data in memory; work leaves the
- * page through Save As (see BundleExport).
+ * page through Export (see BundleExport).
  *
  * @class StorageAdapterDownload
  * @extends StorageAdapter
@@ -22,7 +22,7 @@ class StorageAdapterDownload extends StorageAdapter {
 
     get type() { return 'download'; }
     get displayName() { return 'Download'; }
-    get canSave() { return false; }  // In-memory only — no persistent save target; use Save As / download
+    get canSave() { return false; }  // In-memory only — no persistent save target; use Export
     get userInfo() { return this._userInfo; }
 
     /**

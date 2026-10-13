@@ -41,7 +41,7 @@ FrameTrail is an open source software that lets you experience, manage and edit 
 
 - All data stored as **JSON files** in a `_data` directory — no database
 - Copy the entire `_data` folder to move your instance between servers
-- Export a hypervideo or a whole project with the built-in **Save As** feature as one HTML file that plays anywhere, also offline and from the disk, and **import** it into any FrameTrail installation to continue editing
+- Export a hypervideo or a whole project with the built-in **Export** feature as one HTML file that plays anywhere, also offline and from the disk, and **import** it into any FrameTrail installation to continue editing
 - Annotations follow the **W3C Web Annotation** data model
 
 ### 3 Ways to Run
@@ -52,7 +52,7 @@ FrameTrail works in three modes with different capabilities.
 |---|---|---|---|
 | **Requirements** | PHP 7.4+ | Chrome or Edge | Any modern browser |
 | **Edit hypervideos** (overlays, annotations, code snippets, layout, theme) | ✓ | ✓ | ✓ |
-| **Persistent saves** | ✓ | ✓ | — (export via Save As) |
+| **Persistent saves** | ✓ | ✓ | — (Export) |
 | **Manage hypervideos** (add / delete) | ✓ | ✓ | — |
 | **Manage resources** (add / delete) | ✓ | ✓ | — |
 | **Thumbnail generation** | ✓ (server-side)| ✓ (client-side)| — |
@@ -108,7 +108,7 @@ A project page opened from the disk can also be saved into itself (**Save to thi
 2. **Create a hypervideo** — In the sidebar, click "New Hypervideo" and choose a video source
 3. **Add resources** — Click "Manage Resources" to upload or link media
 4. **Edit** — Drag resources onto the video timeline as overlays or annotations
-5. **Save** — In server, local folder and project file mode, Ctrl+S saves directly. As a guest, use Save As to download your work as an HTML file (or as JSON), which any FrameTrail installation can import.
+5. **Save** — In server, local folder and project file mode, Ctrl+S saves directly. As a guest, use Export to download your work as an HTML file (or as JSON), which any FrameTrail installation can import.
 6. **Share** — Copy the URL or export and share your hypervideo
 
 (see also the [FrameTrail-Examples](https://github.com/OpenHypervideo/FrameTrail-Examples) repository) 

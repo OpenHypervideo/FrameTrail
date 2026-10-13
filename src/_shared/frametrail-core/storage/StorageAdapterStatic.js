@@ -7,7 +7,7 @@
  *
  * Reads JSON files from a CDN base URL via plain HTTP GET. Extends StorageAdapterDownload
  * so that edits are stored in memory (the in-memory cache takes priority over the CDN
- * on re-reads). Users can export their changes via Save As, exactly as in download mode.
+ * on re-reads). Users can export their changes with Export, exactly as in download mode.
  *
  * Use this adapter when `dataPath` is provided but `server` is not — the data lives on
  * a static host with no PHP backend.
@@ -57,6 +57,6 @@ class StorageAdapterStatic extends StorageAdapterDownload {
     }
 
     // writeJSON, exists and createDirectory are inherited from
-    // StorageAdapterDownload (in-memory storage; Save As exports, see BundleExport).
+    // StorageAdapterDownload (in-memory storage; Export, see BundleExport).
 
 }

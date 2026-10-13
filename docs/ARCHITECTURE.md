@@ -144,8 +144,9 @@ FrameTrail.defineModule('ModuleName', function(FrameTrail) {
 | `HypervideoSettingsDialog` | Hypervideo configuration |
 | `AdminSettingsDialog` | Admin settings panel |
 | `EditAPI` | `instance.edit`: reads and changes the open hypervideo in the stored format, validated, undoable |
-| `BundleExport` | Save As downloads and `instance.export()`: a hypervideo or the project as a page in the portable HTML format, as a bundle (JSON), or the `_data` folder as a zip |
+| `BundleExport` | Exports for the Export dialog and `instance.export()`: a hypervideo, the project or some of its hypervideos as a page in the portable HTML format, as a bundle (JSON), as the `_data` folder in a zip (with media files: made by the server), or into a local folder with its media files |
 | `ImportDialog` | Imports a page, a bundle or a zip as new hypervideos, through the active storage |
+| `ExportDialog` | Export: what to export (this hypervideo or the whole project, the resource library, annotation authors) and where (a local folder, a download) |
 | `Extensions` | Loads extensions and places their slots (side panel, title bar button, edit mode) |
 
 #### Resource Manager Module (`src/resourcemanager/modules/`)
@@ -169,7 +170,7 @@ The `PlayerLauncher` module orchestrates initialization:
 8. ResourceManager
 9. HypervideoFormBuilder
 10. HypervideoModel
-11. UserTraces, UndoManager, Collaboration, EditAPI, BundleExport, ImportDialog, Extensions
+11. UserTraces, UndoManager, Collaboration, EditAPI, BundleExport, ImportDialog, ExportDialog, Extensions
     — Database.loadData(); then Extensions.load() loads the extensions named in
       config.json and the init option —
 12. Interface (initializes sub-modules; Interface.create() places extensions' slots)
@@ -198,7 +199,7 @@ While an async transaction is open the state `editBusy` is `{ description }`: `E
 
 ### Export and Import
 
-`BundleExport` (`src/player/modules/BundleExport/`) makes bundles from a folder map — the `_data` layout as paths → contents, the serializer's `folder` format — that it fills from what is stored, read through the storage adapter (in memory: from the bundle or contents the page was started with), and from what is open: the open hypervideo as `Database.convertToDatabaseFormat()` makes it now, the current user's annotations as `Database.ownAnnotationFile()` would save them, the subtitles as loaded. Then `FrameTrailSerializer.readBundle(folder, 'folder', …)`, and `FrameTrailHTMLFormat.write()` for a page. Exports keep Transcript views, since the subtitles travel along. `instance.export()` and the Save As dialog call `BundleExport.exportData(options)`. "Save to Project File" (`StorageManager.saveToFile()`) puts the same folder map into a project file and continues there in `'file'` mode.
+`BundleExport` (`src/player/modules/BundleExport/`) makes bundles from a folder map — the `_data` layout as paths → contents, the serializer's `folder` format — that it fills from what is stored, read through the storage adapter (in memory: from the bundle or contents the page was started with), and from what is open: the open hypervideo as `Database.convertToDatabaseFormat()` makes it now, the current user's annotations as `Database.ownAnnotationFile()` would save them, the subtitles as loaded. Then `FrameTrailSerializer.readBundle(folder, 'folder', …)`, and `FrameTrailHTMLFormat.write()` for a page. Exports keep Transcript views, since the subtitles travel along. For some of a project's hypervideos, `FrameTrailSerializer.selectFolder()` cuts the folder map down (index, map markers); `withoutLibrary()` takes the resource library out (a hypervideo's export always, the project's when asked: nothing listed, no back-references, a clip named only by its resource gets its src); `localAuthors()` gives annotations made with accounts to their authors' guest ids. `instance.export()` and the Export dialog (`ExportDialog`) call `BundleExport.exportData(options)`; a ZIP archive with media files is made by the server (action `exportZip`: the folder map posted as JSON, the media files `FrameTrailSerializer.mediaPaths()` lists added from `_data/resources/`, those it lacks reported in `X-FrameTrail-Missing`). The folder export, `BundleExport.exportToFolder()`, writes the folder map into an empty folder through a `StorageAdapterLocal` of its own and copies the media files `FrameTrailSerializer.mediaPaths()` lists (streamed: read from the local folder, else fetched where the page plays them). A page in memory may then go on there (`StorageManager.adoptFolder()`). "Save to this file" (`StorageManager.saveToFile()`) puts the same folder map into the page's own file and continues there in `'file'` mode.
 
 `ImportDialog` (`src/player/modules/ImportDialog/`) reads a file (`FrameTrailHTMLFormat.parse`/`parseLegacy`, a bundle, or a zip through `fflate` and the `folder` format), validates the bundle with `FrameTrailSchema`, and writes through the active storage: in server mode the actions `fileUpload`, `hypervideoAdd` (with the subtitle files), `hypervideoChange`, `annotationfileSave`, `tagSet`, `overviewMapChange` and `Database.saveConfig()` / `saveGlobalCSS()`; in local-folder and project-file mode the adapter (a project file gets no media files from a zip). Every source id is remapped or dropped (resources, hypervideo ids of jumps and map markers), relative media paths become URLs under the file's `data-frametrail-datapath` unless the zip carries the file, and code is left out unless the user asks for it.
 
@@ -343,8 +344,8 @@ FrameTrail uses a strategy pattern for data persistence. The `StorageManager` mo
 | Server | `StorageAdapterServer` | HTTP/HTTPS with PHP backend responding at `_server/ajaxServer.php` |
 | Local | `StorageAdapterLocal` | File System Access API available (Chrome/Edge) and folder selected |
 | Project file | `StorageAdapterHTMLFile` | File System Access API available and a project file opened: a page in the portable HTML format, read as a `_data` folder held in memory (`FrameTrailHTMLFormat.readProject`) and written back into its data block on every write (`writeProject`). Same interface as `StorageAdapterLocal`, except media files. |
-| Download | `StorageAdapterDownload` | No server and no File System Access API (Firefox/Safari, or `file://`), or data passed inline (`contents`, a `bundle`). Stores data in memory; `canSave` is `false`; work leaves through Save As (`BundleExport`). |
-| Static | `StorageAdapterStatic` | Explicit `dataPath` init option with no `server` option. Reads JSON from the CDN; inherits in-memory writes and Save As export from `StorageAdapterDownload`. |
+| Download | `StorageAdapterDownload` | No server and no File System Access API (Firefox/Safari, or `file://`), or data passed inline (`contents`, a `bundle`). Stores data in memory; `canSave` is `false`; work leaves through Export (`BundleExport`). |
+| Static | `StorageAdapterStatic` | Explicit `dataPath` init option with no `server` option. Reads JSON from the CDN; inherits in-memory writes and Export from `StorageAdapterDownload`. |
 
 All adapters implement the same interface, so the rest of the application doesn't need to know which storage backend is active.
 
@@ -354,7 +355,7 @@ All adapters implement the same interface, so the rest of the application doesn'
 
 1. **Shorthand API or inline contents** (`videoElement` / `videoSource` present, or `contents` is not null) → `'download'` (no server needed). Exception: a page in the portable HTML format opened from disk (`file://`, a `bundle`) whose own file was remembered by "Save to this file" (IndexedDB key `page:<path>`) → `'file'`, when the file may be written without asking and its data block is the one the page was loaded with
 2. **Explicit `server` option** → probe that URL; if PHP responds → `'server'`; if unreachable → fall through to local detection
-3. **Explicit `dataPath` + no `server`** → `'static'` (reads JSON from `dataPath`, in-memory writes, Save As export)
+3. **Explicit `dataPath` + no `server`** → `'static'` (reads JSON from `dataPath`, in-memory writes, Export)
 4. **Auto-detect on HTTP/HTTPS** (neither option set) → probe `_server/ajaxServer.php`
    - PHP responds → set `server` + `dataPath` state to defaults, use `'server'`
    - PHP unreachable → fall through to local detection
@@ -364,7 +365,7 @@ All adapters implement the same interface, so the rest of the application doesn'
      - Nothing remembered, or permission must be asked (that needs a click) → `'needsFolder'`: the storage dialog (`StorageManager.openStorageDialog()`) offers Reopen, Select Folder, Open Project File and New Project File
    - File System Access API not supported (Firefox/Safari) → `'download'`
 
-In `'download'` and `'static'` modes data is stored in memory and users can export their work via Save As (without a server, Save As also offers "Save to Project File", which continues in `'file'` mode). Once a folder or project file is chosen in `'needsFolder'` mode, the state transitions to `'local'` or `'file'`. `StorageManager.isLocal()` is true for both: the data is read and written through the adapter. Code that needs real files beside the data (uploads, blob URLs of media) checks for `'local'`.
+In `'download'` and `'static'` modes data is stored in memory and users can export their work with Export (a folder export offers to continue in that folder, `'local'` mode; a page opened from the disk saves into its own file, `'file'` mode). Once a folder or project file is chosen in `'needsFolder'` mode, the state transitions to `'local'` or `'file'`. `StorageManager.isLocal()` is true for both: the data is read and written through the adapter. Code that needs real files beside the data (uploads, blob URLs of media) checks for `'local'`.
 
 ### Changes Made Outside the Editor
 
@@ -685,7 +686,7 @@ FrameTrail.init({
 }, 'PlayerLauncher');
 
 // Static / CDN hosting — explicit dataPath + no server → storageMode 'static'
-// Data is read from the CDN; edits are stored in memory; export via Save As.
+// Data is read from the CDN; edits are stored in memory; export with Export.
 FrameTrail.init({
     dataPath: 'https://cdn.example.com/project/_data/',
     // no server option → StorageManager uses static mode (dataPath present, no PHP probe)

@@ -687,6 +687,73 @@ switch($_REQUEST["a"]) {
         unlink($tmpFile);
         exit;
 
+    case "exportZip":
+        // Export → ZIP Archive with media files. The browser makes the folder
+        // (files: { path: JSON value or text }) with what the export chose —
+        // unsaved changes, annotations given to their authors' names, with or
+        // without the resource library — and names the media files it refers
+        // to (media: file names in resources/), which only the server has.
+        // Read access as for dataExport: public unless the instance is private.
+        if (ftInstanceIsPrivate()) {
+            include_once("user.php");
+            if ($err = requireLogin()) {
+                http_response_code(403);
+                echo json_encode($err, $conf["settings"]["json_flags"]);
+                exit;
+            }
+        }
+        // Objects stay objects ({} is not written back as []).
+        $exportFiles = isset($_POST["files"]) ? json_decode($_POST["files"]) : null;
+        $exportMedia = isset($_POST["media"]) ? json_decode($_POST["media"], true) : array();
+        if (!is_object($exportFiles) || !is_array($exportMedia)) {
+            $return["status"] = "fail";
+            $return["code"]   = 400;
+            $return["string"] = "Nothing to export, or more than this server takes in one request (post_max_size).";
+            break;
+        }
+        if (!class_exists('ZipArchive')) {
+            $return["status"] = "error";
+            $return["code"]   = 500;
+            $return["string"] = "ZipArchive not available on this server";
+            break;
+        }
+        $tmpFile = tempnam(sys_get_temp_dir(), "ft_export_");
+        $zip = new ZipArchive();
+        $zip->open($tmpFile, ZipArchive::CREATE | ZipArchive::OVERWRITE);
+        foreach ($exportFiles as $exportPath => $exportContent) {
+            // Paths inside the folder only: nothing absolute, no "..", nothing hidden.
+            $exportPath = (string)$exportPath;
+            $exportBad  = ($exportPath === "" || strpos($exportPath, "\\") !== false);
+            foreach (explode("/", $exportPath) as $exportPart) {
+                if ($exportPart === "" || $exportPart[0] === ".") { $exportBad = true; }
+            }
+            if ($exportBad) { continue; }
+            $zip->addFromString($exportPath, is_string($exportContent) ? $exportContent : json_encode($exportContent, $conf["settings"]["json_flags"]));
+        }
+        $exportMissing = array();
+        foreach ($exportMedia as $exportName) {
+            $exportSource = ftResourceFilePath($exportName);
+            if ($exportSource === null) {
+                $exportMissing[] = (string)$exportName;
+                continue;
+            }
+            $zip->addFile($exportSource, "resources/" . $exportName);
+            // Media files are compressed already; storing them is much faster.
+            if (method_exists($zip, "setCompressionName")) {
+                $zip->setCompressionName("resources/" . $exportName, ZipArchive::CM_STORE);
+            }
+        }
+        $zip->close();
+        header("Content-Type: application/zip");
+        header("Content-Disposition: attachment; filename=\"frametrail-export.zip\"");
+        header("Content-Length: " . filesize($tmpFile));
+        header("Cache-Control: no-cache");
+        // The media files it does not have (ASCII: json_encode escapes the rest).
+        header("X-FrameTrail-Missing: " . json_encode(array_slice($exportMissing, 0, 50), JSON_UNESCAPED_SLASHES));
+        readfile($tmpFile);
+        unlink($tmpFile);
+        exit;
+
     default:
         // An action FrameTrail does not know may belong to a server extension
         // (_server/extensions/<name>/, switched on in config.json → extensions).

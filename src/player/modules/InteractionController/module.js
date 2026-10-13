@@ -100,7 +100,7 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
                     // A page opened from disk: into its own file, as the Save button does.
                     FrameTrail.module('HypervideoModel').saveToFile();
                 } else {
-                    FrameTrail.module('HypervideoModel').saveAs();
+                    FrameTrail.module('ExportDialog').open();
                 }
                 evt.preventDefault();
                 return false;

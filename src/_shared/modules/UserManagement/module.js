@@ -1431,7 +1431,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         if (hadUnsavedWork) {
             buttons[labels['GenericExport']] = function() {
                 dialogCtrl.close();
-                FrameTrail.module('HypervideoModel').saveAs();
+                FrameTrail.module('ExportDialog').open();
             };
         }
 
@@ -1492,7 +1492,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         if (hadUnsavedWork) {
             buttons[labels['GenericExport']] = function() {
                 dialogCtrl.close();
-                FrameTrail.module('HypervideoModel').saveAs();
+                FrameTrail.module('ExportDialog').open();
             };
         }
 
