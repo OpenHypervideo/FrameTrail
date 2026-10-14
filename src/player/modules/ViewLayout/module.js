@@ -206,6 +206,11 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             }
         });
 
+        // A phone opens on its first view. Each view activates itself as it is appended, which leaves the last one shown.
+        if (contentViews.companion.length) {
+            contentViews.companion[0].activateContentView();
+        }
+
         updateLayoutAreaVisibility();
 
         updateHiddenTabs();
@@ -1171,6 +1176,11 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         AREAS.forEach(function(area) {
             initLayoutAreaPreview(contentViews[area.name]);
         });
+
+        // The phone in the layout editor opens on its first view too, as the phone itself does (see create()).
+        if (contentViews.companion.length) {
+            contentViews.companion[0].activateContentViewPreview();
+        }
 
         updateHiddenTabs();
 
