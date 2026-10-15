@@ -28,7 +28,7 @@ The hand-off is a **navigation endpoint**, `_server/sso.php` — not an `ajaxSer
 | `sso.php?a=callback&code=…&state=…` | The OIDC callback |
 | `sso.php?a=logout[&then=login]` | Ends the FrameTrail session, then hands the browser to the platform's logout |
 
-Every request into the instance — `ajaxServer.php`, `serve.php`, `sso.php` alike — passes through `ftExternalSessionEnforce()`, called from `config.php` before anything reads the session. That is where session bounds and logout propagation are enforced, so no individual action has to remember them.
+Every request into the instance that uses a session — `ajaxServer.php`, `serve.php`, `sso.php` alike — passes through `ftExternalSessionEnforce()`, called from `ftSessionBegin()` in `config.php` before anything reads the session. (The one request without a session is a paired phone reading the media of a private instance with a pairing grant, [PAIRING.md](PAIRING.md#private-instances).) That is where session bounds and logout propagation are enforced, so no individual action has to remember them.
 
 **Two modes**, set by `externalAuth.mode`:
 
@@ -361,7 +361,7 @@ The keys the dialog used to write, with what FrameTrail does when a key is missi
 | `defaultLanguage` | `"en"`, `"de"`, `"fr"` | `en` | on reload |
 | `videoFit` | `"contain"`, `"cover"` | `contain` | at once |
 | `allowUploads` | boolean | **allowed** | at once |
-| `alwaysForceLogin` | boolean | public | at once, once `_data/.htaccess` routes `_data/**` through `serve.php` — the platform writes that rule too, see [Private instances](DEPLOYMENT.md#private-instances-alwaysforcelogin) |
+| `alwaysForceLogin` | boolean | public | at once, once `_data/.htaccess` routes `_data/**` through `serve.php` — the platform writes that rule too, see [Private instances](DEPLOYMENT.md#private-instances-alwaysforcelogin). Phones paired with a player then load the media with pairing grants, which need nothing from the platform ([PAIRING.md](PAIRING.md#private-instances)) |
 | `captureUserTraces` | boolean | off | on reload |
 | `userTracesStartAction`, `userTracesEndAction` | a user action, e.g. `"UserLogin"`, `"UserLogout"` | **no trace ever starts** | on reload |
 | `userNeedsConfirmation` | boolean | off | has no effect under external authentication |

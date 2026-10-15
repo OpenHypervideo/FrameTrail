@@ -22,6 +22,11 @@
  * the screen awake while it is (Wake Lock), and come back after a dropped
  * connection with the resume token, for two minutes.
  *
+ * A private instance serves its media to me only with the pairing grant the
+ * player gives me and renews: I keep it as a cookie for the instance's
+ * resources (FrameTrailPairing.grantCookie), which its media requests then
+ * carry. That helps only where this page is on the instance's own origin.
+ *
  * The page's Content Security Policy allows only its own scripts, and the
  * bundle comes without code: nothing an author wrote runs on the phone.
  *
@@ -77,6 +82,7 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         playerCount = 0,
         playerReady = false,
         overview    = false,
+        grant       = null,      // the pairing grant the player gave last, to remove its cookie when pairing ends
         wakeLock    = null,
         pendingSeek = null,
         timers      = {};
@@ -464,6 +470,10 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
                 if (playerReady) { show('overview'); }
                 break;
 
+            case 'grant':
+                keepGrant(message);
+                break;
+
             case 'pong':
                 if (pings[message.id]) {
                     var sample = Date.now() - pings[message.id];
@@ -476,12 +486,30 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
                 ended = true;
                 closeConnection();
                 stopPlayer();
+                dropGrant();
                 show(message.reason === 'version' ? 'version' : 'ended');
                 try { window.sessionStorage.removeItem(STORE); } catch (e) { /* private mode */ }
                 break;
 
         }
 
+    }
+
+    function keepGrant(message) {
+        var cookie = Pairing.grantCookie(message, window.location.protocol === 'https:');
+        if (!cookie) {
+            console.warn('FrameTrail companion: a pairing grant that is not one.');
+            return;
+        }
+        document.cookie = cookie;
+        grant = message;
+    }
+
+    function dropGrant() {
+        if (!grant) { return; }
+        var cookie = Pairing.grantCookie(Object.assign({}, grant, { ttl: 0 }), window.location.protocol === 'https:');
+        if (cookie) { document.cookie = cookie; }
+        grant = null;
     }
 
     function startPings() {

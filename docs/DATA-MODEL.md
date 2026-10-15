@@ -82,7 +82,7 @@ _data/
 │       │   └── <userId>.json    # one user's annotations
 │       └── subtitles/
 │           └── <lang>.vtt       # WebVTT, one file per language
-├── .auth/                       # secrets and external-auth state — never served, never exported
+├── .auth/                       # secrets and external-auth state (also the pairing grant secret, pairing_grant.php) — never served, never exported
 ├── .collab/                     # presence and locks — ephemeral, never exported
 ├── .extensions/<name>/          # server extensions' own state — never served, never exported
 └── .htaccess                    # privacy gate of a private instance (Apache), written by FrameTrail

@@ -16,7 +16,14 @@
  * Robustness: if the rewrite is stale (still present although the instance was
  * switched back to public), the file is served without requiring a session so
  * a now-public instance never fails closed. users.json is never served.
+ *
+ * A phone paired with the player (docs/PAIRING.md) has no session; it reads the
+ * files in _data/resources/, and only those, with a pairing grant instead
+ * (pairing.incl.php). That is why the session is started here, and only when a
+ * request needs it: a phone's requests start none.
  */
+
+define('FT_DEFER_SESSION', true);
 
 require_once("./config.php");
 require_once("./user.php");
@@ -41,19 +48,34 @@ if (file_exists($configFile)) {
     $isPrivate = isset($cfg["alwaysForceLogin"]) && $cfg["alwaysForceLogin"] === true;
 }
 
-// When private, require a valid session. (When public, this endpoint may still
-// be reached via a stale rewrite — serve normally so we never fail closed.)
-if ($isPrivate) {
-    $login = userCheckLogin();
-    if ($login["code"] != 1) {
-        serveError(403, "Forbidden");
-    }
-}
-
-// Resolve the requested path safely within the data directory.
 $requested = isset($_GET["file"]) ? (string) $_GET["file"] : "";
 $requested = str_replace("\0", "", $requested); // strip null bytes
 
+// When private, require a valid session, or a pairing grant for a file in
+// resources/. (When public, this endpoint may still be reached via a stale
+// rewrite — serve normally so we never fail closed.) Decided on the path as
+// requested, before anything is looked up, so that nobody without either learns
+// which files exist; the resolved path is checked again below.
+$granted = false;
+if ($isPrivate) {
+    $granted = strpos(ltrim(str_replace("\\", "/", $requested), "/"), "resources/") === 0
+            && ftPairingRequestGranted();
+    if (!$granted) {
+        ftSessionBegin();
+        $login = userCheckLogin();
+        if ($login["code"] != 1) {
+            serveError(403, "Forbidden");
+        }
+    }
+}
+
+// Nothing below reads or writes the session: let this session's next request
+// in while this one streams (a player seeks with several range requests).
+if (session_status() === PHP_SESSION_ACTIVE) {
+    session_write_close();
+}
+
+// Resolve the requested path safely within the data directory.
 if ($requested === "" || strpos($requested, "..") !== false) {
     serveError(404, "Not Found");
 }
@@ -69,6 +91,11 @@ if ($dataRoot === false
 
 if (!is_file($target)) {
     serveError(404, "Not Found");
+}
+
+// A grant opens resources/ and nothing else, wherever a link in it points.
+if ($granted && strpos($target, $dataRoot . DIRECTORY_SEPARATOR . "resources" . DIRECTORY_SEPARATOR) !== 0) {
+    serveError(403, "Forbidden");
 }
 
 $basename = basename($target);

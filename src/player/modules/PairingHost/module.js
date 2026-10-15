@@ -30,6 +30,12 @@
  * bundle, made once, and the same states. A phone that drops may come back
  * with its resume token within two minutes and keeps its control right.
  *
+ * A phone has no session, so a private instance would refuse it the media of
+ * the hypervideo. There I fetch a pairing grant from the server when pairing
+ * opens, and a new one at half its lifetime, and give each phone the current
+ * one before its bundle; the phone keeps it as a cookie, which the instance
+ * reads in place of a session for _data/resources/ (_server/pairing.incl.php).
+ *
  * HypervideoModel.updateHypervideo() clears every timer of the page, so
  * hypervideoChanged() starts mine again.
  *
@@ -49,7 +55,8 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         SAMPLE_INTERVAL   = 100,      // ms between looks at the playback
         HEARTBEAT_PLAYING = 1000,     // ms between states while playing …
         HEARTBEAT_PAUSED  = 5000,     // … and while not
-        SEEK_THRESHOLD    = 0.2;      // s the playhead may be off its course before it counts as a seek
+        SEEK_THRESHOLD    = 0.2,      // s the playhead may be off its course before it counts as a seek
+        GRANT_RETRY       = 30000;    // ms before another try when the server gave no grant
 
     var session      = null,       // the open room: { room, hostKey, broker, certificate, iceServers, link, cursor, polling }
         opening      = null,       // the promise of open() while it runs
@@ -64,6 +71,9 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         seq          = 0,
         shared       = null,       // the bundle every phone gets: { key, id, texts: Promise }
         revision     = 0,          // counts the changes that make the bundle out of date
+        grant        = null,       // on a private instance, the pairing grant the phones get: { token, cookie, path, expires (ms) }
+        grantDue     = 0,          // when to fetch the next grant (ms)
+        granting     = null,       // the promise of fetchGrant() while it runs
         timers       = { poll: null, sample: null, resume: null };
 
 
@@ -198,6 +208,9 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         var mine = generation;
 
         opening = checkCompanion(companion).then(function() {
+            // Before the room opens, so that the first phone gets it with its bundle.
+            return fetchGrant();
+        }).then(function() {
             return RTCPeerConnection.generateCertificate({ name: 'ECDSA', namedCurve: 'P-256' });
         }).then(function(certificate) {
             room.certificate = certificate;
@@ -240,6 +253,67 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         }, function() {
             throw failure('companionUnreachable');
         });
+    }
+
+    /**
+     * A pairing grant for the phones (_server/pairing.incl.php), on a private
+     * instance only: a public one serves its media to everyone. Resolves with
+     * the grant or null, and never rejects: without one the phones pair all the
+     * same, only without the instance's media.
+     */
+    function fetchGrant() {
+
+        var users   = FrameTrail.module('UserManagement'),
+            storage = FrameTrail.module('StorageManager');
+
+        if (!users || !storage || !users.isForceLogin()) {
+            grant    = null;
+            grantDue = Date.now() + GRANT_RETRY;
+            return Promise.resolve(null);
+        }
+        if (granting) { return granting; }
+
+        var mine = generation,
+            body = new FormData();
+
+        body.append('a', 'pairingGrant');
+        grantDue = Date.now() + GRANT_RETRY;
+
+        granting = storage.serverPost(body).then(function(answer) {
+            var response = answer && answer.status === 'success' && answer.response,
+                fresh    = response && response.cookie && {
+                    token:   response.token,
+                    cookie:  response.cookie.name,
+                    path:    response.cookie.path,
+                    ttl:     response.ttl
+                };
+            if (!fresh || !Pairing.grantCookie(fresh, false)) {
+                throw new Error((answer && answer.string) || 'not a grant');
+            }
+            if (mine !== generation) { return null; }
+            grant = { token: fresh.token, cookie: fresh.cookie, path: fresh.path, expires: Date.now() + fresh.ttl * 1000 };
+            grantDue = Date.now() + fresh.ttl * 500;
+            return grant;
+        }).catch(function(error) {
+            console.warn('FrameTrail pairing: no grant for the phones, which cannot load the media of this private instance.', error);
+            return null;
+        }).then(function(result) {
+            if (mine === generation) { granting = null; }
+            return result;
+        });
+
+        return granting;
+
+    }
+
+    // The current grant, for a phone that has not had it yet; what is left of its lifetime, as the phone's clock may differ from mine.
+    function giveGrant(g) {
+        if (!grant || g.grant === grant.token) { return; }
+        var left = Math.floor((grant.expires - Date.now()) / 1000);
+        if (left <= 0) { return; }
+        if (send(g, { type: 'grant', token: grant.token, ttl: left, cookie: grant.cookie, path: grant.path })) {
+            g.grant = grant.token;
+        }
     }
 
     // The room takes phones until pairing ends: I look for offers every second (which also keeps it alive).
@@ -548,6 +622,13 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
 
         if (!phones.length) { return; }
 
+        // The grant before anything else, so that a phone has it before its bundle; a new one at half the lifetime.
+        // While the one a phone needs is still on its way, it gets no bundle: the media it asked for would be
+        // refused, and not asked for again.
+        if (session && !granting && Date.now() >= grantDue) { fetchGrant(); }
+        phones.forEach(giveGrant);
+        var holdBundles = !!granting && !(grant && grant.expires > Date.now());
+
         if (FrameTrail.getState('viewMode') !== 'video') {
             phones.forEach(function(g) {
                 if (g.view !== 'overview') {
@@ -583,7 +664,7 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
                 g.fresh = true;
             }
             if (g.bundleFor !== id) {
-                sendBundle(g);
+                if (!holdBundles) { sendBundle(g); }
                 return;
             }
             if (!due && !g.fresh) { return; }
@@ -764,6 +845,9 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         session   = null;
         problem   = null;
         shared    = null;
+        grant     = null;
+        grantDue  = 0;
+        granting  = null;
         joined    = 0;
         returning.clear();
         setStatus('off');

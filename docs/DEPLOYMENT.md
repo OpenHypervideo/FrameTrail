@@ -484,6 +484,7 @@ Runtime config is in `_data/config.json`:
 When `alwaysForceLogin` is `true`, FrameTrail turns the instance into a real access-controlled deployment (server mode only):
 
 - Every file under `_data/**` is served through a session gate (`_server/serve.php`) instead of statically, so unauthenticated requests get `403`. Authenticated media requests keep full HTTP `Range` support for seeking. Uploaded media, JSON, subtitles, etc. are all covered; `users.json` is never served.
+- One exception, for phones paired with a player ([PAIRING.md](PAIRING.md#private-instances)): a request with a valid pairing grant cookie may read a file in `_data/resources/`, and nothing else, without a session. The signed-in player asks for grants and passes them to its phones; each holds ten minutes. The grants are signed with `_data/.auth/pairing_grant.php`, which the first grant creates; delete it to end every grant at once. The same `serve.php` reads them behind an nginx rule, so nothing changes there.
 - The guest ("Edit as Guest") bypass is disabled — a real account is required to view or edit.
 - The `dataExport` ZIP endpoint requires a valid session, and so do the two actions that read `_data` on the server's side: `userGet` (on a public instance it answers anonymous callers with each user's name, colour and avatar, so annotation authors can be drawn) and `fileGetByFilter` (the resource index).
 - The client authenticates first, then loads data.
@@ -556,7 +557,7 @@ Which keys the browser may see is a whitelist (`ftExternalAuthPublic()` in [`src
 - **Register `redirectUri` explicitly** with your provider and set it in the config. The Host-header fallback is a convenience, not a configuration.
 - **HTTPS throughout.** Behind a reverse proxy, `X-Forwarded-Proto` must be set, or the session cookie ships without its `Secure` flag.
 - **`_data/` must stay writable.** The replay store under `_data/.auth/jti/` is fail-closed: a full or read-only disk makes logins fail rather than letting tokens become replayable.
-- **Backups now contain secrets.** The `dataExport` ZIP endpoint skips `.auth/`, but a filesystem `cp -r _data/` does not. Treat those backups accordingly, and check any external export tooling excludes `.auth/` as well.
+- **Backups now contain secrets** (with the pairing grant secret, `.auth/pairing_grant.php`, on a private instance that has paired phones). The `dataExport` ZIP endpoint skips `.auth/`, but a filesystem `cp -r _data/` does not. Treat those backups accordingly, and check any external export tooling excludes `.auth/` as well.
 - **Preserve the keys on external writes.** Anything that rewrites `config.json` wholesale must carry `externalAuth`, `externalSettings` and `userAvatars` through, or the instance silently reverts to local passwords. FrameTrail's own `configChange` does this for the first two whatever the request carries: they are copied from the file on disk, and dropped if the disk has none.
 
 #### External settings (`externalSettings`)

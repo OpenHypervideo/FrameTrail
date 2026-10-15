@@ -22,7 +22,7 @@ What the phone shows is authored per hypervideo: the layout editor shows a phone
 
 | Player | Can pair | Companion page (default) | Relative media on the phone |
 |---|---|---|---|
-| server | yes | `companion.html` beside the page | from the instance's `_data/`; **not** on a private instance (`alwaysForceLogin`): the phone has no session |
+| server | yes | `companion.html` beside the page | from the instance's `_data/`; on a private instance (`alwaysForceLogin`) with a pairing grant (see *Private instances*), and only on the default companion page |
 | static (`dataPath`, no server) | yes | beside the page, if deployed | from `dataPath` |
 | local folder | yes | none: set `pairingCompanionURL` | none (the files have no URL); absolute URLs work |
 | project file | yes | beside the file, if it is served over http(s) | from the file's datapath, if http(s) |
@@ -34,6 +34,15 @@ What the phone shows is authored per hypervideo: the layout editor shows a phone
 The QR code stays on the screen until pairing is stopped, so it can be projected while a class joins. The player takes up to 50 phones at once; more are told it is full. The first phone to pair (usually the presenter's) may play, pause and seek; every phone that joins it only watches, until the switch beside it in the pairing dialog is turned on. The dialog lists the phones in the order they paired, numbered, with how each is connected, and can let one go. The player sends the hypervideo to every phone itself — prepared once, the hypervideo's data without its media, which the phones load from their own URLs — and after that only the playback state, a few hundred bytes a second per phone.
 
 The network matters more than the player. School and guest WiFi often keeps devices apart (client isolation): then the phones cannot reach the player directly and need a TURN relay (below), which carries every phone's traffic. And a class reaches the broker from one public address: each phone makes a handful of requests while it pairs, so a broker for classrooms must allow that per address (the stub allows 600 requests a minute per address and 64 waiting offers per room).
+
+### Private instances
+
+A phone has no session, so a private instance (`alwaysForceLogin`, its `_data/` behind `_server/serve.php`) would refuse it the hypervideo's media: the pictures, sounds and documents in `_data/resources/`. The text reaches the phone anyway, inside the bundle. So on a private instance the player gets a **pairing grant** from its server when pairing opens (`ajaxServer.php?a=pairingGrant`, for a signed-in user only) and a new one at half its lifetime, ten minutes, for as long as pairing is on. It gives the current grant to each phone over the channel, before the bundle (`grant`, see Protocol). The phone keeps it as a cookie for the path of `_data/resources/`, so the media requests of its player carry it, and `serve.php` lets a request with a valid grant read a file in `_data/resources/` without a session, and nothing else.
+
+- **What a grant is:** `<expiry>.<signature>`, the expiry in Unix seconds and an HMAC-SHA256 with a secret of the data directory's own, `_data/.auth/pairing_grant.php`, which the first grant creates. It names no one; whoever holds it reads `_data/resources/` until it expires. Deleting the secret file ends every grant at once.
+- **Where it helps:** only where the phone's page is on the instance's own origin, the default `companion.html` beside the player: a cookie is set for the page's own origin. A companion page elsewhere (`pairingCompanionURL`) shows the text but no media of a private instance.
+- **Who sees what:** everyone who scans the code sees what the phones show, on a private instance too. That was so before for the text; the grant extends it to the media, for the time pairing is on and ten minutes after.
+- **Not for:** `config.json`, the hypervideos' own files, `users.json` and everything else in `_data/`; requests other than reads (`serve.php` only reads); personal API tokens (`pairingGrant` is refused to them).
 
 ## The Stub Broker
 
@@ -126,6 +135,7 @@ JSON messages over the channel, `{ type, … }`; `FrameTrailPairing.decode(text,
 | player | `state { hypervideo, playing, time, rate, waiting, seq }` | The playback, on every change (play, pause, seek, rate, stall) and as a heartbeat (1 s playing, 5 s paused). `time` is absolute (includes the clip's in point) |
 | player | `control { canControl }` | Whether the phone may control playback |
 | player | `view { mode: 'overview' }` | The player shows its overview |
+| player | `grant { token, ttl, cookie, path }` | On a private instance: the pairing grant, the cookie's name and path to keep it under, and the seconds it has left (see *Private instances*). Before the first bundle, then again at half its lifetime |
 | player | `pong { id }`, `bye { reason }` | Round trip; the end of pairing (`stopped`, `version`) |
 | phone | `hello { v, guest, resume?, label }` | First message on an open channel |
 | phone | `ready { id }` | The bundle `id` is shown |
@@ -142,7 +152,7 @@ The bundle payload is `{ bundle, datapath, config, offsetIn, duration }`: the hy
 - **Spectators cannot take over**: the room's host key keeps everyone else from answering phones, phones that join while another is paired only watch, the player takes at most 50 at once, and it can take any phone's control right away or let the phone go. A projected QR code stays valid until Stop.
 - **Nothing an author wrote runs on the phone.** The phone may be outside the local network, so this is a must: the bundle comes without code, the companion page's Content Security Policy (`script-src 'self'; object-src 'none'; base-uri 'none'`) refuses inline scripts, inline event handlers and `eval`, and the page has no script of its own (CompanionLauncher starts itself on pages marked `data-frametrail-companion`). Third-party embeds that need inline scripts fall back to what they show without.
 - **What the broker learns**: when a room exists, how many offers it gets, and the IP addresses inside the SDPs (local addresses are hidden behind mDNS names by default). Not the hypervideo, the playback, or who is who.
-- **Private instances**: the phone gets the hypervideo from the player, but loads its relative media from the instance itself, which refuses it without a session. Pair such hypervideos only where the media are public URLs.
+- **Private instances**: the phone gets the hypervideo from the player and loads its relative media from the instance itself with a pairing grant (see *Private instances*): only `_data/resources/`, only for reading, for ten minutes at a time, renewed by the signed-in player while pairing is on. A grant travels only over the encrypted channel, never in the QR code or through the broker; a phone checks its cookie name, path and token before it keeps it (`FrameTrailPairing.grantCookie`), so nothing in a grant can add an attribute to the cookie.
 
 ## Not in This Release
 

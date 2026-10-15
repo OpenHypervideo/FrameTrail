@@ -1566,6 +1566,7 @@ describe('FrameTrailPairing', () => {
                 { type: 'control', canControl: false },
                 { type: 'view', mode: 'overview' },
                 { type: 'pong', id: 7 },
+                { type: 'grant', token: '1760000600.' + 'a'.repeat(43), ttl: 600, cookie: 'FTPAIR0123abcd', path: '/_data/resources/' },
                 { type: 'bye', reason: 'stopped' }
             ],
             guest: [
@@ -1592,6 +1593,26 @@ describe('FrameTrailPairing', () => {
         assert.equal(Pairing.validateMessage({ type: 'state', hypervideo: '3', playing: true, time: NaN, rate: 1, waiting: false, seq: 1 }, 'host'), 'time must be a number');
         assert.equal(Pairing.validateMessage({ type: 'toString' }, 'guest'), 'unknown message type "toString"');
         assert.equal(Pairing.validateMessage([], 'guest'), 'not a message');
+        assert.equal(Pairing.decode(Pairing.encode(valid.host[5]), 'guest'), null, 'a guest cannot hand out grants');
+        assert.equal(Pairing.validateMessage({ type: 'grant', token: 't', ttl: '600', cookie: 'c', path: '/' }, 'host'), 'ttl must be a number');
+    });
+
+    test('grants: the cookie a phone keeps a private instance\'s grant in', () => {
+        const grant = { type: 'grant', token: '1760000600.' + 'Ab_-'.repeat(10) + 'xyz', ttl: 598.7, cookie: 'FTPAIR0123abcd', path: '/_data/resources/' };
+        assert.equal(Pairing.grantCookie(grant, true), 'FTPAIR0123abcd=' + grant.token + '; Path=/_data/resources/; Max-Age=598; SameSite=Strict; Secure');
+        assert.equal(Pairing.grantCookie(grant, false), 'FTPAIR0123abcd=' + grant.token + '; Path=/_data/resources/; Max-Age=598; SameSite=Strict', 'Secure only on https');
+        assert.match(Pairing.grantCookie(Object.assign({}, grant, { ttl: 0 }), true), /; Max-Age=0;/, 'the cookie that removes it');
+        assert.match(Pairing.grantCookie(Object.assign({}, grant, { ttl: 86400 }), true), /; Max-Age=600;/, 'never longer than a grant lives');
+        assert.match(Pairing.grantCookie(Object.assign({}, grant, { path: '/FrameTrail/src/_data/resources/' }), true), /; Path=\/FrameTrail\/src\/_data\/resources\/;/);
+        for (const wrong of [
+            { cookie: 'FTSESS0123abcd' }, { cookie: 'FTPAIR0123abcd; Domain=example.org' }, { cookie: 'FTPAIR' },
+            { path: '_data/resources/' }, { path: '/_data/resources' }, { path: '/; Domain=example.org/' }, { path: '/a b/' },
+            { token: 'x' }, { token: grant.token + '; Domain=example.org' }, { token: '1760000600.' + 'a'.repeat(42) },
+            { ttl: NaN }, { ttl: '600' }
+        ]) {
+            assert.equal(Pairing.grantCookie(Object.assign({}, grant, wrong), true), null, JSON.stringify(wrong));
+        }
+        assert.equal(Pairing.grantCookie(null, true), null);
     });
 
     test('chunks: a bundle in pieces and together again', () => {

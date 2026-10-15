@@ -527,7 +527,9 @@ function ftBearerRefusesAction($action) {
     $accountActions = array(
         "userLogin", "userLogout", "userRegister", "userChange", "userDelete",
         "userTokenCreate", "userTokenList", "userTokenRevoke",
-        "setupCheckDetailed", "setupInit"
+        "setupCheckDetailed", "setupInit",
+        // A pairing grant is for the phones paired with a player in a browser.
+        "pairingGrant"
     );
 
     if (!ftIsBearerRequest() || !in_array($action, $accountActions, true)) {

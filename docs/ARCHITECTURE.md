@@ -314,7 +314,7 @@ FrameTrail.changeState('editMode', true);
 | `extensions` | Array\|null | The `extensions` init option: extension names or `{ name, script, style, settings }` entries (see [EXTENDING.md](EXTENDING.md#writing-an-extension)). |
 | `fullPage` | Boolean | Is this instance the whole page, and may it therefore set `document.title`? Always a boolean — resolved once at init from the `fullPage` option or, when that is omitted, by auto-detection. |
 | `companion` | Object\|null | The player of a paired phone (`companion.html`): the link to the desktop player it follows — no video, its clock, requests instead of playback ([PAIRING.md](PAIRING.md)). |
-| `pairing` | Object | `PairingHost`'s status on the desktop: `{ status, link, guest, problem }`, status `off`, `opening`, `waiting`, `connecting`, `connected` or `reconnecting`. |
+| `pairing` | Object | `PairingHost`'s status on the desktop: `{ status, link, phones, connected, max, problem }`, status `off`, `opening` or `open`; `phones` lists `{ id, number, label, status, canControl, path }`, a phone's status `connecting`, `connected` or `reconnecting`. |
 
 ### Reactive Updates
 
@@ -516,6 +516,7 @@ All AJAX requests go through `src/_server/ajaxServer.php`:
 | `userDelete` | Remove a user account (admin only; keeps their authored content) |
 | `userCheckLogin` | Session heartbeat: the user, `forceLogin`, `externalAuth`, `externalSettings`, `apiTokens`; for admins `serverExtensions` |
 | `userTokenList` / `userTokenCreate` / `userTokenRevoke` | The signed-in user's personal API tokens (only with `config.apiTokens`, never under `externalAuth`) |
+| `pairingGrant` | A pairing grant for the phones paired with this player, on a private instance only (signed in; refused to API tokens): `{ token, ttl, cookie: { name, path } }` ([PAIRING.md](PAIRING.md#private-instances), `src/_server/pairing.incl.php`) |
 | `collabSync` | Presence heartbeat + collaboration state for a scope |
 | `collabLock` | Claim / release / take over the soft edit lock |
 | `hypervideoAdd` | Create hypervideo |
@@ -535,7 +536,9 @@ An action the switch does not know goes to the server extensions switched on in 
 
 PHP sessions are used for authentication. Session data is stored in `$_SESSION['ohv']`.
 
-Every entry point (`ajaxServer.php`, `extension.php`, `serve.php`, `sso.php`) starts with `config.php`, which resolves the data directory and then either starts the session or, for a request with `Authorization: Bearer ft_…`, authenticates a personal API token (`src/_server/tokens.php`). A token request starts no session: `$_SESSION['ohv']` is filled for that request only, in the same shape, so everything downstream works unchanged. See [DEPLOYMENT.md](DEPLOYMENT.md#personal-api-tokens-apitokens).
+Every entry point (`ajaxServer.php`, `extension.php`, `serve.php`, `sso.php`) starts with `config.php`, which resolves the data directory and then either starts the session or, for a request with `Authorization: Bearer ft_…`, authenticates a personal API token (`src/_server/tokens.php`), both in `ftSessionBegin()`. A token request starts no session: `$_SESSION['ohv']` is filled for that request only, in the same shape, so everything downstream works unchanged. See [DEPLOYMENT.md](DEPLOYMENT.md#personal-api-tokens-apitokens).
+
+`serve.php` defines `FT_DEFER_SESSION` and calls `ftSessionBegin()` itself, only for a request that needs it: on a private instance, a paired phone reads `_data/resources/` with a pairing grant instead (`src/_server/pairing.incl.php`, [PAIRING.md](PAIRING.md#private-instances)) and starts no session. Once the request is let in, `serve.php` closes the session before it streams, so a player's parallel range requests do not wait for each other.
 
 ## Initialization Options
 

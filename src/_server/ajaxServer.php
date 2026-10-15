@@ -96,6 +96,13 @@ switch($_REQUEST["a"]) {
         $return = userTokenRevoke(isset($_REQUEST["tokenID"]) ? $_REQUEST["tokenID"] : "");
         break;
 
+    // A grant for the phones paired with this player, so they can load the
+    // media of a private instance (pairing.incl.php, docs/PAIRING.md).
+    case "pairingGrant":
+        include_once("user.php");
+        $return = pairingGrant();
+        break;
+
 
     /*#########################################
      ############ File Handling

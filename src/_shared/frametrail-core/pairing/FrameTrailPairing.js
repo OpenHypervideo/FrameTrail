@@ -564,6 +564,7 @@
             'control':      { canControl: 'boolean' },
             'view':         { mode: ['overview'] },
             'pong':         { id: 'number' },
+            'grant':        { token: 'string', ttl: 'number', cookie: 'string', path: 'string' },
             'bye':          { reason: 'string' }
         },
         guest: {
@@ -605,6 +606,38 @@
 
     function encode(message) {
         return JSON.stringify(message);
+    }
+
+
+    /* ------------------------------------------------------------------ */
+    /*  Pairing grants                                                    */
+    /* ------------------------------------------------------------------ */
+
+    // A grant as a private instance makes it (_server/pairing.incl.php): its cookie's name and path, the token, and how long it holds.
+    var GRANT_COOKIE  = /^FTPAIR[0-9a-f]{8}$/,
+        GRANT_PATH    = /^\/[A-Za-z0-9._~%\/-]*\/$/,
+        GRANT_TOKEN   = /^[0-9]{1,12}\.[A-Za-z0-9_-]{43}$/,
+        MAX_GRANT_TTL = 600;
+
+    /**
+     * The cookie a phone keeps a pairing grant in, as document.cookie takes it, or null when the grant is not
+     * one. A private instance refuses a phone its media without a session; the player passes the phone a
+     * grant, and the instance reads it from this cookie in place of one, for _data/resources/ only
+     * (docs/PAIRING.md, "Private instances"). Name, path and token are checked here because they go into a
+     * cookie: nothing in them may end it early or add an attribute. With a ttl of 0: the cookie that removes it.
+     *
+     * @method grantCookie
+     * @param {Object} grant   { token, ttl, cookie, path } (the grant message)
+     * @param {Boolean} secure on an https page
+     * @return {String|null}
+     */
+    function grantCookie(grant, secure) {
+        if (!isObject(grant) || !GRANT_COOKIE.test(grant.cookie) || !GRANT_PATH.test(grant.path)
+            || !GRANT_TOKEN.test(grant.token) || typeof grant.ttl !== 'number' || !isFinite(grant.ttl)) {
+            return null;
+        }
+        var ttl = Math.max(0, Math.min(MAX_GRANT_TTL, Math.floor(grant.ttl)));
+        return grant.cookie + '=' + grant.token + '; Path=' + grant.path + '; Max-Age=' + ttl + '; SameSite=Strict' + (secure ? '; Secure' : '');
     }
 
     /**
@@ -907,6 +940,8 @@
         validateMessage:  validateMessage,
         encode:           encode,
         decode:           decode,
+
+        grantCookie:      grantCookie,
 
         split:            split,
         bundleMessages:   bundleMessages,
