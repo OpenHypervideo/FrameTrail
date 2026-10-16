@@ -43,9 +43,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '        <div data-viewmode="video">'
                    + '            <div class="viewmodeControls">'
                    + '                <div class="viewModeActionButtonContainer">'
-                   + '                    <button class="newHypervideoButton" data-tooltip-bottom-left="'+ labels['HypervideoNew'] +'"><span class="icon-hypervideo-add"></span></button>'
-                   + '                    <button class="importButton" data-tooltip-bottom-left="'+ labels['GenericImport'] +'"><span class="icon-upload"></span></button>'
-                   + '                    <button class="forkButton" data-tooltip-bottom-left="'+ labels['GenericForkHypervideo'] +'"><span class="icon-hypervideo-fork"></span></button>'
                    + '                    <button class="saveButton" data-tooltip-bottom-left="'+ labels['GenericSaveChanges'] +'"><span class="icon-floppy"></span></button>'
                    + '                    <button class="exportButton" data-tooltip-bottom-left="'+ labels['GenericExport'] +'"><span class="icon-export"></span></button>'
                    + '                    <button class="undoButton" disabled data-tooltip-bottom-left="'+ labels['GenericUndo'] +'"><span class="icon-ccw"></span></button>'
@@ -72,11 +69,10 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         videoContainer         = sidebarContainer.querySelector(':scope > [data-viewmode="video"]'),
         videoContainerControls = videoContainer.querySelector(':scope > .viewmodeControls'),
 
-        NewHypervideoButton    = domElement.querySelectorAll('.newHypervideoButton'),
+        NewHypervideoButton    = domElement.querySelector('.newHypervideoButton'),
         SaveButton             = domElement.querySelector('.saveButton'),
         ExportButton           = domElement.querySelector('.exportButton'),
-        ForkButton             = domElement.querySelector('.forkButton'),
-        ImportButton           = domElement.querySelectorAll('.importButton'),
+        ImportButton           = domElement.querySelector('.importButton'),
         ProjectExportButton    = domElement.querySelector('.projectExportButton'),
         UndoButton             = domElement.querySelector('.undoButton'),
         RedoButton             = domElement.querySelector('.redoButton'),
@@ -92,6 +88,37 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
     var _resourcesItemHandler = null;
 
+
+    /**
+     * I open a hypervideo that has just been added, once the library is
+     * reloaded. On a map the overview places it as the list is refreshed
+     * (ViewOverviewMap.applyAutoPlace), and opening it clears every timer and
+     * re-reads the index, so that placement is written first.
+     *
+     * @method openAddedHypervideo
+     * @param {String} newID
+     * @param {String|Boolean} wasEditMode
+     * @private
+     */
+    function openAddedHypervideo(newID, wasEditMode) {
+        var map = FrameTrail.module('ViewOverview').getMap();
+
+        FrameTrail.module('ViewOverview').refreshList();
+
+        function navigate() {
+            FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newID });
+            if (wasEditMode) {
+                FrameTrail.changeState('editMode', false);
+            }
+            FrameTrail.module('HypervideoModel').updateHypervideo(newID, wasEditMode, true);
+        }
+
+        if (map) {
+            map.flushMapSave(navigate);
+        } else {
+            navigate();
+        }
+    }
 
     /**
      * Add a hypervideo locally using the File System Access API adapter.
@@ -226,12 +253,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             newDialogCtrl.close();
             FrameTrail.module('Database').loadHypervideoData(
                 function() {
-                    FrameTrail.module('ViewOverview').refreshList();
-                    FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newID });
-                    if (wasEditMode) {
-                        FrameTrail.changeState('editMode', false);
-                    }
-                    FrameTrail.module('HypervideoModel').updateHypervideo(newID, wasEditMode, true);
+                    openAddedHypervideo(newID, wasEditMode);
                 },
                 function() {}
             );
@@ -240,87 +262,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         });
     }
 
-    /**
-     * Fork/clone a hypervideo locally.
-     * Copies the entire hypervideo directory and updates the index.
-     */
-    function forkHypervideoLocally(forkDialogCtrl, thisID) {
-        var adapter = FrameTrail.module('StorageManager').getAdapter();
-        var userInfo = adapter.userInfo;
-
-        var currentData = FrameTrail.module('Database').convertToDatabaseFormat(thisID);
-        currentData.meta.name = forkDialogCtrl.element.querySelector('input[name="name"]').value;
-        currentData.meta.creator = userInfo.name || 'Local User';
-        currentData.meta.creatorId = userInfo.id || 'local';
-        currentData.meta.created = Date.now();
-        currentData.meta.lastchanged = Date.now();
-
-        if (!currentData.meta.name || currentData.meta.name.length < 3) {
-            var _err = forkDialogCtrl.element.querySelector('.message.error'); _err.classList.add('active'); _err.innerHTML = labels['ErrorGeneric'];
-            return;
-        }
-
-        adapter.readJSON('hypervideos/_index.json').then(function(hvi) {
-            if (!hvi['hypervideo-increment']) { hvi['hypervideo-increment'] = 0; }
-            hvi['hypervideo-increment']++;
-            var newID = hvi['hypervideo-increment'];
-            var srcPath = 'hypervideos/' + hvi.hypervideos[thisID];
-            var destPath = 'hypervideos/' + newID;
-
-            hvi.hypervideos[newID] = './' + newID;
-
-            // Copy the directory, then overwrite hypervideo.json and annotations
-            return adapter.copyDirectory(srcPath, destPath).then(function() {
-                var time = Math.floor(Date.now() / 1000);
-                var annotationIndex = {
-                    "mainAnnotation": "1",
-                    "annotation-increment": 1,
-                    "annotationfiles": {
-                        "1": {
-                            "name": "main",
-                            "description": "",
-                            "created": time,
-                            "lastchanged": time,
-                            "hidden": false,
-                            "owner": userInfo.name || 'Local User',
-                            "ownerId": String(userInfo.id || 'local')
-                        }
-                    }
-                };
-
-                return Promise.all([
-                    adapter.writeJSON('hypervideos/_index.json', hvi),
-                    adapter.writeJSON(destPath + '/hypervideo.json', currentData),
-                    adapter.writeJSON(destPath + '/annotations/_index.json', annotationIndex),
-                    adapter.writeJSON(destPath + '/annotations/1.json', [])
-                ]).then(function() {
-                    return newID;
-                });
-            });
-        }).then(function(newID) {
-            var wasEditMode = FrameTrail.getState('editMode');
-            forkDialogCtrl.close();
-
-            FrameTrail.module('Database').loadHypervideoData(
-                function() {
-                    FrameTrail.module('ViewOverview').refreshList();
-
-                    FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newID });
-
-                    if (wasEditMode) {
-                        FrameTrail.changeState('editMode', false);
-                    }
-
-                    FrameTrail.module('HypervideoModel').updateHypervideo(newID, wasEditMode, true);
-                },
-                function() {}
-            );
-        }).catch(function(err) {
-            forkDialogCtrl.element.querySelector('.message.error').classList.add('active'); forkDialogCtrl.element.querySelector('.message.error').innerHTML = 'Local fork failed: ' + (err ? err.message : '');
-        });
-    }
-
-    NewHypervideoButton.forEach(function(btn) { btn.addEventListener('click', function(evt) {
+    NewHypervideoButton.addEventListener('click', function(evt) {
 
         var formBuilder = FrameTrail.module('HypervideoFormBuilder');
 
@@ -523,12 +465,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                         newDialogCtrl.close();
                         FrameTrail.module('Database').loadHypervideoData(
                             function(){
-                                FrameTrail.module('ViewOverview').refreshList();
-                                FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newID });
-                                if (wasEditMode) {
-                                    FrameTrail.changeState('editMode', false);
-                                }
-                                FrameTrail.module('HypervideoModel').updateHypervideo(newID, wasEditMode, true);
+                                openAddedHypervideo(newID, wasEditMode);
                             },
                             function(){}
                         );
@@ -618,7 +555,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         });
         newDialogCtrl.open();
 
-    }); });
+    });
 
     SaveButton.addEventListener('click', function(){
         var StorageManager = FrameTrail.module('StorageManager');
@@ -663,9 +600,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             isGuest       = FrameTrail.module('UserManagement').isGuestMode(),
             canImport     = canSave && ['server', 'local', 'file'].indexOf(FrameTrail.getState('storageMode')) !== -1;
         updateSaveButton(Collaboration && Collaboration.isLockedByOther());
-        NewHypervideoButton.forEach(function(btn) { btn.disabled = isGuest && !canSave; });
-        ForkButton.disabled = isGuest && !canSave;
-        ImportButton.forEach(function(btn) { btn.disabled = !canImport; });
+        NewHypervideoButton.disabled = isGuest && !canSave;
+        ImportButton.disabled = !canImport;
     }
 
     ExportButton.addEventListener('click', function(){
@@ -699,100 +635,9 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         }
     });
 
-    ForkButton.addEventListener('click', function(evt) {
-
-        evt.preventDefault();
-        evt.stopPropagation();
-
-        var thisID = FrameTrail.module('RouteNavigation').hypervideoID,
-            thisHypervideo = FrameTrail.module('Database').hypervideo;
-
-        var _fdw = document.createElement('div');
-        _fdw.innerHTML = '<div class="forkHypervideoDialog">'
-                         + '    <div class="message active">'+ labels['MessageForkHypervideo'] +'</div>'
-                         + '    <form method="POST" class="forkHypervideoForm">'
-                         + '        <input type="text" name="name" placeholder="" value="'+ thisHypervideo.name +'"><br>'
-                         + '        <div class="message error"></div>'
-                         + '    </form>'
-                         + '</div>';
-        var forkDialog = _fdw.firstElementChild;
-
-        var forkDialogCtrl;
-        forkDialog.querySelector('.forkHypervideoForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            var form = this;
-
-            var currentData = FrameTrail.module("Database").convertToDatabaseFormat(thisID);
-            currentData.meta.name = forkDialog.querySelector('input[name="name"]').value;
-            currentData.meta.creator = FrameTrail.module('Database').users[FrameTrail.module('UserManagement').userID].name;
-            currentData.meta.creatorId = FrameTrail.module('UserManagement').userID;
-
-            var formData = new FormData(form);
-            formData.set('a', 'hypervideoClone');
-            formData.set('hypervideoID', thisID);
-            formData.set('src', JSON.stringify(currentData, null, 4));
-
-            _serverPost(formData)
-            .then(function(response) {
-                switch(response['code']) {
-                    case 0:
-                        var wasEditMode = FrameTrail.getState('editMode');
-
-                        forkDialogCtrl.close();
-                        FrameTrail.module('Database').loadHypervideoData(
-                            function(){
-                                FrameTrail.module('ViewOverview').refreshList();
-
-                                var newHypervideoID = response['newHypervideoID'];
-
-                                FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newHypervideoID });
-
-                                if (wasEditMode) {
-                                    FrameTrail.changeState('editMode', false);
-                                }
-
-                                FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, wasEditMode, true);
-                            },
-                            function(){}
-                        );
-
-                        break;
-                    default:
-                        var _frkErr = forkDialog.querySelector('.message.error'); _frkErr.classList.add('active'); _frkErr.innerHTML = labels['ErrorGeneric'];
-                        break;
-                }
-            });
-        });
-
-        forkDialogCtrl = Dialog({
-            modal:   true,
-            content: forkDialog,
-            close: function() {
-                forkDialogCtrl.destroy();
-            },
-            buttons: [
-                { text: labels['GenericForkHypervideo'],
-                    click: function() {
-                        if (FrameTrail.module('StorageManager').isLocal()) {
-                            forkHypervideoLocally(forkDialogCtrl, thisID);
-                        } else {
-                            forkDialog.querySelector('.forkHypervideoForm').dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
-                        }
-                    }
-                },
-                { text: labels['GenericCancel'],
-                    click: function() {
-                        forkDialogCtrl.close();
-                    }
-                }
-            ]
-        });
-
-    });
-
-    ImportButton.forEach(function(btn) { btn.addEventListener('click', function(){
+    ImportButton.addEventListener('click', function(){
         FrameTrail.module('ImportDialog').open();
-    }); });
+    });
 
     ProjectExportButton.addEventListener('click', function(){
         FrameTrail.module('ExportDialog').open({ scope: 'project' });
@@ -822,12 +667,12 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
     // In map mode the "new hypervideo" flow navigates straight into the new
     // hypervideo, so without this the map would never learn about it and the
     // button would appear to do nothing (unplaced hypervideos are hidden).
-    NewHypervideoButton.forEach(function(btn) { btn.addEventListener('click', function() {
+    NewHypervideoButton.addEventListener('click', function() {
         var ViewOverview = FrameTrail.module('ViewOverview');
         if (!ViewOverview || !ViewOverview.isMapMode()) return;
         var map = ViewOverview.getMap();
         if (map) map.notePendingAutoPlace();
-    }); });
+    });
 
 
     /**
@@ -1451,11 +1296,10 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
                 var _canSave = FrameTrail.module('StorageManager').canSave();
                 var _isGuest = FrameTrail.module('UserManagement').isGuestMode();
-                NewHypervideoButton.forEach(function(btn) { btn.style.display = ''; btn.disabled = _isGuest && !_canSave; });
+                NewHypervideoButton.style.display = ''; NewHypervideoButton.disabled = _isGuest && !_canSave;
                 // Importing writes into the instance: only where saving goes somewhere.
                 var _canImport = _canSave && ['server', 'local', 'file'].indexOf(FrameTrail.getState('storageMode')) !== -1;
-                ImportButton.forEach(function(btn) { btn.style.display = ''; btn.disabled = !_canImport; });
-                ForkButton.style.display = ''; ForkButton.disabled = _isGuest && !_canSave;
+                ImportButton.style.display = ''; ImportButton.disabled = !_canImport;
                 SaveButton.style.display = ''; updateSaveButton(false);
                 ExportButton.style.display = '';
                 ProjectExportButton.style.display = '';
@@ -1479,14 +1323,13 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
             domElement.classList.remove('editActive');
 
-            NewHypervideoButton.forEach(function(btn) { btn.style.display = 'none'; });
-            ImportButton.forEach(function(btn) { btn.style.display = 'none'; });
+            NewHypervideoButton.style.display = 'none';
+            ImportButton.style.display = 'none';
             SaveButton.style.display = 'none';
             ExportButton.style.display = 'none';
             ProjectExportButton.style.display = 'none';
             UndoButton.style.display = 'none';
             RedoButton.style.display = 'none';
-            ForkButton.style.display = 'none';
 
             videoContainerControls.querySelectorAll('.editMode').forEach(function(el) { el.classList.remove('inEditMode'); });
 

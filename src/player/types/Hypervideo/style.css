@@ -116,10 +116,10 @@
  * Shown whenever they exist, not only on hover: there is no hover on a touch
  * screen, so a hover-gated control is simply unreachable there. Nothing is
  * given away by showing them, because they are only built at all for someone
- * who may edit this hypervideo — see ViewOverview.initList() and
- * ViewOverviewMap.openPopup(), both of which require admin-or-owner, edit mode
- * and a writable target. The map's resize handles are ungated for the same
- * reason.
+ * editing with a writable target — see ViewOverview.initList() and
+ * ViewOverviewMap.openPopup() — and only the fork button, whose copy is the
+ * user's own, is offered to anyone but the admin and the owner. The map's
+ * resize handles are ungated for the same reason.
  */
 .hypervideoThumb .hypervideoOptions {
     position: absolute;
@@ -130,7 +130,7 @@
 }
 
 /*
- * These edit, delete and un-place the hypervideo — they act on it rather than
+ * These edit, fork, delete and un-place the hypervideo — they act on it rather than
  * present it, so they wear the editing palette (see --editing-* in
  * variables.css) and not the theme's. Opaque, because they sit on top of an
  * arbitrary thumbnail image and a translucent button over one is barely

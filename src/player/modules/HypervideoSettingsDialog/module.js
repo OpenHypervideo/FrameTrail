@@ -1336,9 +1336,199 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         });
     }
 
+
+    /**
+     * Fork a hypervideo locally: copy its directory, then write the new
+     * hypervideo.json and an annotation index of the user's own.
+     *
+     * @method forkHypervideoLocally
+     * @param {Object} forkDialogCtrl
+     * @param {String} thisID
+     * @param {Function} done  called with the new hypervideo's id
+     * @private
+     */
+    function forkHypervideoLocally(forkDialogCtrl, thisID, done) {
+        var adapter = FrameTrail.module('StorageManager').getAdapter();
+        var userInfo = adapter.userInfo;
+
+        var currentData = FrameTrail.module('Database').convertToDatabaseFormat(thisID);
+        currentData.meta.name = forkDialogCtrl.element.querySelector('input[name="name"]').value;
+        currentData.meta.creator = userInfo.name || 'Local User';
+        currentData.meta.creatorId = userInfo.id || 'local';
+        currentData.meta.created = Date.now();
+        currentData.meta.lastchanged = Date.now();
+
+        if (!currentData.meta.name || currentData.meta.name.length < 3) {
+            var _err = forkDialogCtrl.element.querySelector('.message.error'); _err.classList.add('active'); _err.innerHTML = labels['ErrorGeneric'];
+            return;
+        }
+
+        adapter.readJSON('hypervideos/_index.json').then(function(hvi) {
+            if (!hvi['hypervideo-increment']) { hvi['hypervideo-increment'] = 0; }
+            hvi['hypervideo-increment']++;
+            var newID = hvi['hypervideo-increment'];
+            var srcPath = 'hypervideos/' + hvi.hypervideos[thisID];
+            var destPath = 'hypervideos/' + newID;
+
+            hvi.hypervideos[newID] = './' + newID;
+
+            // Copy the directory, then overwrite hypervideo.json and annotations
+            return adapter.copyDirectory(srcPath, destPath).then(function() {
+                var time = Math.floor(Date.now() / 1000);
+                var annotationIndex = {
+                    "mainAnnotation": "1",
+                    "annotation-increment": 1,
+                    "annotationfiles": {
+                        "1": {
+                            "name": "main",
+                            "description": "",
+                            "created": time,
+                            "lastchanged": time,
+                            "hidden": false,
+                            "owner": userInfo.name || 'Local User',
+                            "ownerId": String(userInfo.id || 'local')
+                        }
+                    }
+                };
+
+                return Promise.all([
+                    adapter.writeJSON('hypervideos/_index.json', hvi),
+                    adapter.writeJSON(destPath + '/hypervideo.json', currentData),
+                    adapter.writeJSON(destPath + '/annotations/_index.json', annotationIndex),
+                    adapter.writeJSON(destPath + '/annotations/1.json', [])
+                ]).then(function() {
+                    return newID;
+                });
+            });
+        }).then(done).catch(function(err) {
+            forkDialogCtrl.element.querySelector('.message.error').classList.add('active'); forkDialogCtrl.element.querySelector('.message.error').innerHTML = 'Local fork failed: ' + (err ? err.message : '');
+        });
+    }
+
+
+    /**
+     * Open a dialog that forks a hypervideo — any of them, not only the open
+     * one — into a copy owned by the user, and then opens the copy.
+     *
+     * The open hypervideo is forked with its unsaved changes (they go into the
+     * copy). Forking another one leaves the open one, so its unsaved changes
+     * would be lost: the dialog says so.
+     *
+     * @method openForkDialog
+     * @param {String} hypervideoID
+     */
+    function openForkDialog(hypervideoID) {
+        var thisID = hypervideoID,
+            isOpen = String(thisID) === String(FrameTrail.module('RouteNavigation').hypervideoID);
+
+        var _fdw = document.createElement('div');
+        _fdw.innerHTML = '<div class="forkHypervideoDialog">'
+                         + '    <div class="message active">'+ labels['MessageForkHypervideo'] +'</div>'
+                         + ((!isOpen && FrameTrail.getState('unsavedChanges'))
+                            ? '    <div class="message warning active">'+ labels['MessageSaveChanges'] +'</div>'
+                            : '')
+                         + '    <form method="POST" class="forkHypervideoForm">'
+                         + '        <input type="text" name="name" placeholder=""><br>'
+                         + '        <div class="message error"></div>'
+                         + '    </form>'
+                         + '</div>';
+        var forkDialog = _fdw.firstElementChild;
+        forkDialog.querySelector('input[name="name"]').value = FrameTrail.module('Database').hypervideos[thisID].name || '';
+
+        var forkDialogCtrl;
+
+        // Open the copy. On a map, a hypervideo that is not placed has no pin,
+        // so the copy is placed the way a new hypervideo is: known ids are
+        // noted before the reload that brings the copy in, the list refresh
+        // places it, and the placement is written before opening the copy
+        // clears every timer and re-reads the index.
+        function openFork(newHypervideoID) {
+            var wasEditMode = FrameTrail.getState('editMode'),
+                map = FrameTrail.module('ViewOverview').getMap();
+
+            if (map) map.notePendingAutoPlace();
+
+            forkDialogCtrl.close();
+
+            FrameTrail.module('Database').loadHypervideoData(
+                function() {
+                    FrameTrail.module('ViewOverview').refreshList();
+
+                    function navigate() {
+                        FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newHypervideoID });
+
+                        if (wasEditMode) {
+                            FrameTrail.changeState('editMode', false);
+                        }
+
+                        FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, wasEditMode, true);
+                    }
+
+                    if (map) {
+                        map.flushMapSave(navigate);
+                    } else {
+                        navigate();
+                    }
+                },
+                function() {}
+            );
+        }
+
+        forkDialog.querySelector('.forkHypervideoForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            var currentData = FrameTrail.module('Database').convertToDatabaseFormat(thisID);
+            currentData.meta.name = forkDialog.querySelector('input[name="name"]').value;
+            currentData.meta.creator = FrameTrail.module('Database').users[FrameTrail.module('UserManagement').userID].name;
+            currentData.meta.creatorId = FrameTrail.module('UserManagement').userID;
+
+            var formData = new FormData(this);
+            formData.set('a', 'hypervideoClone');
+            formData.set('hypervideoID', thisID);
+            formData.set('src', JSON.stringify(currentData, null, 4));
+
+            _serverPost(formData)
+            .then(function(response) {
+                switch(response['code']) {
+                    case 0:
+                        openFork(response['newHypervideoID']);
+                        break;
+                    default:
+                        var _frkErr = forkDialog.querySelector('.message.error'); _frkErr.classList.add('active'); _frkErr.innerHTML = labels['ErrorGeneric'];
+                        break;
+                }
+            });
+        });
+
+        forkDialogCtrl = Dialog({
+            modal:   true,
+            content: forkDialog,
+            close: function() {
+                forkDialogCtrl.destroy();
+            },
+            buttons: [
+                { text: labels['GenericForkHypervideo'],
+                    click: function() {
+                        if (FrameTrail.module('StorageManager').isLocal()) {
+                            forkHypervideoLocally(forkDialogCtrl, thisID, openFork);
+                        } else {
+                            forkDialog.querySelector('.forkHypervideoForm').dispatchEvent(new Event('submit', {bubbles: true, cancelable: true}));
+                        }
+                    }
+                },
+                { text: labels['GenericCancel'],
+                    click: function() {
+                        forkDialogCtrl.close();
+                    }
+                }
+            ]
+        });
+    }
+
     return {
         open: open,
         openDeleteDialog: openDeleteDialog,
+        openForkDialog: openForkDialog,
 
         onChange: {
             collabState: updateHypervideoPresence

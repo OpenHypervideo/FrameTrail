@@ -248,40 +248,70 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
             thumb = hypervideo.renderThumb();
 
 
-                if ( (admin || owner) && editMode && FrameTrail.module('StorageManager').canSave() ) {
+                // Forking is for everyone editing — the copy is theirs to edit —
+                // while settings and deletion belong to the admin and the owner.
+                var mayFork = editMode && FrameTrail.module('StorageManager').canSave(),
+                    mayEdit = mayFork && (admin || owner);
+
+                if ( mayFork ) {
 
                     var hypervideoOptions = document.createElement('div');
                     hypervideoOptions.className = 'hypervideoOptions';
 
-                    var editButton = document.createElement('button');
-                    editButton.className = 'hypervideoEditButton';
-                    editButton.setAttribute('data-tooltip-bottom-right', labels['SettingsHypervideoSettings']);
-                    editButton.innerHTML = '<span class="icon-pencil"></span>';
+                    if ( mayEdit ) {
 
-                    // Capture the hypervideoID in the closure to avoid referencing the last thumb
+                        var editButton = document.createElement('button');
+                        editButton.className = 'hypervideoEditButton';
+                        editButton.setAttribute('data-tooltip-bottom-right', labels['SettingsHypervideoSettings']);
+                        editButton.innerHTML = '<span class="icon-pencil"></span>';
+
+                        // Capture the hypervideoID in the closure to avoid referencing the last thumb
+                        (function(hypervideoID) {
+                            editButton.addEventListener('click', function(evt) {
+                                evt.preventDefault();
+                                evt.stopPropagation();
+                                FrameTrail.module('HypervideoSettingsDialog').open(hypervideoID);
+                            });
+                        })(id);
+
+                        hypervideoOptions.append(editButton);
+
+                    }
+
+                    var forkButton = document.createElement('button');
+                    forkButton.className = 'hypervideoForkButton';
+                    forkButton.setAttribute('data-tooltip-bottom-right', labels['GenericForkHypervideo']);
+                    forkButton.innerHTML = '<span class="icon-hypervideo-fork"></span>';
+
                     (function(hypervideoID) {
-                        editButton.addEventListener('click', function(evt) {
+                        forkButton.addEventListener('click', function(evt) {
                             evt.preventDefault();
                             evt.stopPropagation();
-                            FrameTrail.module('HypervideoSettingsDialog').open(hypervideoID);
+                            FrameTrail.module('HypervideoSettingsDialog').openForkDialog(hypervideoID);
                         });
                     })(id);
 
-                    var deleteButton = document.createElement('button');
-                    deleteButton.className = 'hypervideoDeleteButton';
-                    deleteButton.setAttribute('data-tooltip-bottom-right', labels['GenericDeleteHypervideo']);
-                    deleteButton.innerHTML = '<span class="icon-trash"></span>';
+                    hypervideoOptions.append(forkButton);
 
-                    (function(hypervideoID) {
-                        deleteButton.addEventListener('click', function(evt) {
-                            evt.preventDefault();
-                            evt.stopPropagation();
-                            FrameTrail.module('HypervideoSettingsDialog').openDeleteDialog(hypervideoID);
-                        });
-                    })(id);
+                    if ( mayEdit ) {
 
-                    hypervideoOptions.append(editButton);
-                    hypervideoOptions.append(deleteButton);
+                        var deleteButton = document.createElement('button');
+                        deleteButton.className = 'hypervideoDeleteButton';
+                        deleteButton.setAttribute('data-tooltip-bottom-right', labels['GenericDeleteHypervideo']);
+                        deleteButton.innerHTML = '<span class="icon-trash"></span>';
+
+                        (function(hypervideoID) {
+                            deleteButton.addEventListener('click', function(evt) {
+                                evt.preventDefault();
+                                evt.stopPropagation();
+                                FrameTrail.module('HypervideoSettingsDialog').openDeleteDialog(hypervideoID);
+                            });
+                        })(id);
+
+                        hypervideoOptions.append(deleteButton);
+
+                    }
+
                     thumb.append(hypervideoOptions);
 
                 }

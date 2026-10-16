@@ -837,12 +837,13 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
     /**
      * I place a hypervideo that was just created from the overview's own
-     * "new hypervideo" button.
+     * "new hypervideo" button, or forked from a card.
      *
-     * That flow navigates straight into the new hypervideo, so without this
-     * the button would look like it did nothing on a map where unplaced
-     * hypervideos are hidden. Only hypervideos created through that button
-     * are auto-placed; anything created elsewhere is left alone.
+     * Both flows navigate straight into the new hypervideo, so without this
+     * they would look like they did nothing on a map where unplaced
+     * hypervideos are hidden. Only hypervideos created through those two
+     * are auto-placed; anything created elsewhere is left alone. Both flush
+     * the save before they navigate (flushMapSave).
      *
      * @method applyAutoPlace
      */
@@ -982,8 +983,9 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             owner    = hypervideo.creatorId === FrameTrail.module('UserManagement').userID,
             editMode = FrameTrail.getState('editMode');
 
-        if ((admin || owner) && editMode && FrameTrail.module('StorageManager').canSave()) {
-            card.append(buildCardOptions(hypervideoID, admin));
+        // Forking is for everyone editing; the rest is for the admin and the owner.
+        if (editMode && FrameTrail.module('StorageManager').canSave()) {
+            card.append(buildCardOptions(hypervideoID, admin, admin || owner));
         }
 
         card.addEventListener('click', function(evt) {
@@ -1008,29 +1010,46 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
 
     /**
-     * I build the edit / delete / remove-from-map buttons for a card.
+     * I build the edit / fork / delete / remove-from-map buttons for a card.
      *
      * @method buildCardOptions
      * @param {String} hypervideoID
      * @param {Boolean} admin
+     * @param {Boolean} mayEdit  admin or owner: settings and deletion
      * @return {HTMLElement}
      */
-    function buildCardOptions(hypervideoID, admin) {
+    function buildCardOptions(hypervideoID, admin, mayEdit) {
 
         var options = document.createElement('div');
         options.className = 'hypervideoOptions';
 
-        var editButton = document.createElement('button');
-        editButton.className = 'hypervideoEditButton';
-        editButton.setAttribute('data-tooltip-bottom-right', labels['SettingsHypervideoSettings']);
-        editButton.innerHTML = '<span class="icon-pencil"></span>';
-        editButton.addEventListener('click', function(evt) {
+        if (mayEdit) {
+            var editButton = document.createElement('button');
+            editButton.className = 'hypervideoEditButton';
+            editButton.setAttribute('data-tooltip-bottom-right', labels['SettingsHypervideoSettings']);
+            editButton.innerHTML = '<span class="icon-pencil"></span>';
+            editButton.addEventListener('click', function(evt) {
+                evt.preventDefault();
+                evt.stopPropagation();
+                closePopup();
+                FrameTrail.module('HypervideoSettingsDialog').open(hypervideoID);
+            });
+            options.append(editButton);
+        }
+
+        var forkButton = document.createElement('button');
+        forkButton.className = 'hypervideoForkButton';
+        forkButton.setAttribute('data-tooltip-bottom-right', labels['GenericForkHypervideo']);
+        forkButton.innerHTML = '<span class="icon-hypervideo-fork"></span>';
+        forkButton.addEventListener('click', function(evt) {
             evt.preventDefault();
             evt.stopPropagation();
             closePopup();
-            FrameTrail.module('HypervideoSettingsDialog').open(hypervideoID);
+            FrameTrail.module('HypervideoSettingsDialog').openForkDialog(hypervideoID);
         });
-        options.append(editButton);
+        options.append(forkButton);
+
+        if (!mayEdit) return options;
 
         var deleteButton = document.createElement('button');
         deleteButton.className = 'hypervideoDeleteButton';
@@ -1378,17 +1397,23 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      * I write the map now, if a save is pending.
      *
      * Called when leaving map editing, so the last drag of a session is never
-     * left sitting in the debounce.
+     * left sitting in the debounce, and before opening a hypervideo that was
+     * just placed (see applyAutoPlace): opening one clears every timer on the
+     * page and re-reads the index, which would take the placement with it.
      *
      * @method flushMapSave
+     * @param {Function} [done]  called once the map is written, or at once if nothing is pending
      */
-    function flushMapSave() {
+    function flushMapSave(done) {
 
-        if (!saveTimer) return;
+        if (!saveTimer) {
+            if (done) done();
+            return;
+        }
 
         window.clearTimeout(saveTimer);
         saveTimer = null;
-        saveMap();
+        saveMap(done);
 
     }
 
@@ -1409,8 +1434,9 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
     /**
      * @method saveMap
+     * @param {Function} [done]  called when the write has succeeded or failed
      */
-    function saveMap() {
+    function saveMap(done) {
 
         var database = FrameTrail.module('Database'),
             mapData  = getMapData();
@@ -1446,6 +1472,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
                 if (Collaboration) {
                     Collaboration.acknowledgeVersion(result.version, 'library', 'global');
                 }
+                if (done) done();
                 return;
             }
 
@@ -1463,6 +1490,8 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             if (result && result.code === 7 && Collaboration) {
                 Collaboration.markStale('library', 'global');
             }
+
+            if (done) done();
 
         });
 
@@ -1659,6 +1688,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         reload:             reload,
         addHypervideo:      addHypervideo,
         notePendingAutoPlace: notePendingAutoPlace,
+        flushMapSave:       flushMapSave,
         isEmpty:            isEmpty,
 
         // Shared with OverviewMapSettingsDialog, so that the list it offers
