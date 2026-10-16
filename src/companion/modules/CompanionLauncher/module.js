@@ -45,6 +45,15 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         PING_INTERVAL      = 2000,
         SEEK_COALESCE      = 100;       // ms: a drag on the progress bar sends one seek per moment
 
+    // What lies behind a screen, for whoever looks into it (the console); the screens say it in plain words.
+    var REASONS = {
+        failed:      'no connection to the player came about. The phone and the player may not reach each other: a network that keeps its devices apart needs a TURN relay (docs/PAIRING.md).',
+        fingerprint: 'the answer did not come from the player whose code was scanned (its certificate has another fingerprint).',
+        version:     'this page and the player are different versions of FrameTrail.',
+        invalid:     'there is no pairing link in this address (#pair=…).',
+        noWebRTC:    'this browser has no WebRTC.'
+    };
+
     FrameTrail.initModule('Localization');
 
     var Localization = FrameTrail.module('Localization'),
@@ -206,7 +215,7 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         failed:       { label: 'CompanionFailed',       retry: true },
         fingerprint:  { label: 'CompanionFingerprint' },
         invalid:      { label: 'CompanionInvalid' },
-        noWebRTC:     { label: 'PairingErrorNoWebRTC' }
+        noWebRTC:     { label: 'CompanionNoWebRTC' }
     };
 
     function show(newPhase) {
@@ -273,6 +282,12 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         return error;
     }
 
+    function explain(code, cause) {
+        var text = 'FrameTrail companion: ' + (REASONS[code] || 'could not connect to the player (' + code + ').');
+        // My own failure() says no more than its code.
+        if (cause && cause.message !== code) { console.warn(text, cause); } else { console.warn(text); }
+    }
+
     /**
      * I offer a connection into the player's room and wait for its answer.
      */
@@ -332,6 +347,7 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
             ended = true;
             attempt++;
             closeConnection();
+            explain(code, error);
             show(code);
             return;
         }
@@ -353,6 +369,7 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         } else if (code === 'full') {
             show('full');
         } else {
+            explain(code, error);
             show('failed');
         }
 
@@ -432,6 +449,7 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
                 if (message.v !== Pairing.PROTOCOL_VERSION) {
                     ended = true;
                     closeConnection();
+                    explain('version', 'The player speaks pairing protocol version ' + message.v + ', this page ' + Pairing.PROTOCOL_VERSION + '.');
                     show('version');
                     return;
                 }
@@ -624,8 +642,10 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
     join = Pairing.parseJoin(window.location.hash) || (stored && stored.join) || null;
 
     if (!join) {
+        explain('invalid');
         show('invalid');
     } else if (typeof RTCPeerConnection === 'undefined') {
+        explain('noWebRTC');
         show('noWebRTC');
     } else {
         // The same room as before (a reload): the same phone, which may resume.

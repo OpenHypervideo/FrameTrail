@@ -58,6 +58,17 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         SEEK_THRESHOLD    = 0.2,      // s the playhead may be off its course before it counts as a seek
         GRANT_RETRY       = 30000;    // ms before another try when the server gave no grant
 
+    // What lies behind a problem, for whoever runs the instance (the console); the dialog says it in plain words.
+    var REASONS = {
+        brokerMissing:        'no pairing broker is set (pairingBrokerURL).',
+        brokerInvalid:        'the pairing broker URL (pairingBrokerURL) is not an http(s) URL.',
+        brokerInsecure:       'this page is served over https, so the pairing broker must be too.',
+        brokerUnreachable:    'the pairing broker cannot be reached.',
+        companionMissing:     'there is no page for phones: this player is not served over http(s), so pairingCompanionURL has to name one.',
+        companionUnreachable: 'the page for phones cannot be loaded. Is companion.html there, or pairingCompanionURL right?',
+        noWebRTC:             'this browser has no WebRTC.'
+    };
+
     var session      = null,       // the open room: { room, hostKey, broker, certificate, iceServers, link, cursor, polling }
         opening      = null,       // the promise of open() while it runs
         guests       = new Map(),  // the phones, by guest id: { id, number, label, pc, channel, status, canControl, resume, path, … }
@@ -81,10 +92,16 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
     function controller() { return FrameTrail.module('HypervideoController'); }
     function openID()     { var id = FrameTrail.module('RouteNavigation').hypervideoID; return id ? String(id) : null; }
 
-    function failure(code) {
+    function failure(code, cause) {
         var error = new Error(code);
         error.code = code;
+        if (cause) { error.cause = cause; }
         return error;
+    }
+
+    function explain(code, cause) {
+        var text = 'FrameTrail pairing: ' + (REASONS[code] || 'pairing could not start (' + code + ').');
+        if (cause) { console.warn(text, cause); } else { console.warn(text); }
     }
 
     // Is this still the phone of its id (not one that was let go, or replaced by its own retry)?
@@ -182,15 +199,19 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         problem = null;
 
         if (brokerProblem) {
-            return Promise.reject(failure('broker' + brokerProblem.charAt(0).toUpperCase() + brokerProblem.slice(1)));
+            brokerProblem = 'broker' + brokerProblem.charAt(0).toUpperCase() + brokerProblem.slice(1);
+            explain(brokerProblem);
+            return Promise.reject(failure(brokerProblem));
         }
         if (typeof RTCPeerConnection === 'undefined') {
+            explain('noWebRTC');
             return Promise.reject(failure('noWebRTC'));
         }
         if (!openID() || !database().hypervideo || FrameTrail.getState('viewMode') !== 'video') {
             return Promise.reject(failure('noHypervideo'));
         }
         if (!companion) {
+            explain('companionMissing');
             return Promise.reject(failure('companionMissing'));
         }
 
@@ -233,6 +254,7 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
             if (mine !== generation) { throw failure('stopped'); }
             opening = null;
             problem = (error && /^(companion|broker|no)/.test(error.code)) ? error.code : 'brokerUnreachable';
+            explain(problem, (error && error.cause) || error);
             setStatus('off');
             throw failure(problem);
         });
@@ -249,9 +271,9 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         var sameOrigin = false;
         try { sameOrigin = (new URL(url).origin === window.location.origin); } catch (e) { /* no URL */ }
         return fetch(url, { cache: 'no-store', credentials: 'omit', mode: sameOrigin ? 'same-origin' : 'no-cors' }).then(function(response) {
-            if (sameOrigin && !response.ok) { throw failure('companionUnreachable'); }
-        }, function() {
-            throw failure('companionUnreachable');
+            if (sameOrigin && !response.ok) { throw failure('companionUnreachable', url + ' answered ' + response.status); }
+        }, function(error) {
+            throw failure('companionUnreachable', error);
         });
     }
 
@@ -341,6 +363,8 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
                 // Expired while this page could not call (a sleeping laptop, a throttled tab): open it again.
                 room.broker.openRoom(room.room, room.hostKey).catch(function() {});
             } else {
+                // Once, not every second: until it answers again, no new phone can join (the paired ones go on).
+                if (problem !== 'brokerUnreachable') { explain('brokerUnreachable', error); }
                 problem = 'brokerUnreachable';
                 publish();
             }

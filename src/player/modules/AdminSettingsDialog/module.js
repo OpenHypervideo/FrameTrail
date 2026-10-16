@@ -222,9 +222,8 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             +   '                <div class="fieldHint">'+ labels['MessageUserTracesEndAction'] +'</div>'
                             +   '            </div>'
                             +   '        </div>'
-                            // Pairing with phones (docs/PAIRING.md): a group of its own, under user action capture.
+                            +   '        <hr>'
                             +   '        <div class="layoutRow mt-1">'
-                            +   '            <div class="column-12"><label>'+ labels['SettingsPairing'] +'</label></div>'
                             +   '            <div class="column-6">'
                             +   '                <label for="pairingBrokerURL">'+ labels['SettingsPairingBrokerURL'] +'</label>'
                             +   '                <input type="text" name="pairingBrokerURL" id="pairingBrokerURL" placeholder="https://" value="'+ escapeAttribute(configData.pairingBrokerURL) +'">'

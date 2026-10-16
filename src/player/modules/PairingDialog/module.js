@@ -139,14 +139,20 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
         Host.open().catch(function(error) {
             if (error.code === 'stopped') { return; }
             render(Host.status);
-            showProblem(error.code);
+            showProblem(error.code, Host.status.status);
         });
     }
 
-    function showProblem(code) {
+    // What went wrong, in words for whoever is at the player; the PairingHost tells the reason in the console.
+    function showProblem(code, status) {
         if (!elements) { return; }
-        var text = code ? labels['PairingError' + code.charAt(0).toUpperCase() + code.slice(1)] : '';
-        elements.message.textContent = text || '';
+        var text = !code                  ? ''
+                 : code === 'noHypervideo' ? labels['PairingErrorNoHypervideo']
+                 : code === 'noWebRTC'     ? labels['PairingErrorNoWebRTC']
+                 // While the room is open the paired phones go on, only new ones cannot join.
+                 : status === 'open'       ? labels['PairingErrorInterrupted']
+                 : labels['PairingErrorUnavailable'];
+        elements.message.textContent = text;
         elements.message.className = 'message' + (text ? ' active error' : '');
     }
 
@@ -200,13 +206,13 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
 
         elements.stop.style.display = (pairing.status === 'off') ? 'none' : '';
 
-        showProblem(pairing.problem);
+        showProblem(pairing.problem, pairing.status);
 
     }
 
     /**
-     * I list the phones: number and device, how each is connected, whether it
-     * may control playback (a switch) and a button that lets it go.
+     * I list the phones: number and device, whether each may control playback
+     * (a switch) and a button that lets it go.
      *
      * @method renderPhones
      * @param {Array} phones the snapshot's phones
@@ -246,11 +252,7 @@ FrameTrail.defineModule('PairingDialog', function(FrameTrail){
             if (phone.status === 'connecting') {
                 meta.push(labels['PairingPhoneConnecting']);
             } else {
-                if (phone.status === 'reconnecting') {
-                    meta.push(labels['PairingPhoneReconnecting']);
-                } else if (phone.path) {
-                    meta.push(labels['PairingPath' + phone.path.charAt(0).toUpperCase() + phone.path.slice(1)]);
-                }
+                if (phone.status === 'reconnecting') { meta.push(labels['PairingPhoneReconnecting']); }
                 meta.push(phone.canControl ? labels['PairingPhoneControls'] : labels['PairingPhoneWatches']);
             }
 
