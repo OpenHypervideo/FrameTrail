@@ -682,6 +682,33 @@
     }
 
 
-    return null;
+    /**
+     * The browser asks before the page is left with unsaved changes (the tab
+     * closed, a reload, a link away), in every storage mode. One listener per
+     * instance, here because I run once (HypervideoModel is made again with
+     * every hypervideo), and removed with the instance.
+     *
+     * Only preventDefault() and returnValue make the browser ask; what a
+     * listener returns is ignored, and the text is the browser's own.
+     *
+     * @method beforeUnload
+     * @param {BeforeUnloadEvent} evt
+     * @private
+     */
+    function beforeUnload(evt) {
+        if (FrameTrail.getState('unsavedChanges')) {
+            evt.preventDefault();
+            evt.returnValue = '';
+        }
+    }
+
+    window.addEventListener('beforeunload', beforeUnload);
+
+
+    return {
+        onUnload: function() {
+            window.removeEventListener('beforeunload', beforeUnload);
+        }
+    };
 
 });

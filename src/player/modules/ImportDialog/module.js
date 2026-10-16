@@ -401,9 +401,14 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
             var adapter = FrameTrail.module('StorageManager').getAdapter(),
                 user    = FrameTrail.module('UserManagement');
 
-            return adapter.readJSON('resources/_index.json').catch(function() {
-                return { 'resources-increment': 0, 'resources': {} };
-            }).then(function(index) {
+            var reusedBefore = ctx.report.resourcesReused, createdBefore = ctx.report.resourcesCreated;
+
+            // Read, changed and written in one step (updateJSON): taken again
+            // from the start when another tab wrote the index meanwhile.
+            return adapter.updateJSON('resources/_index.json', function(index) {
+                ctx.report.resourcesReused  = reusedBefore;
+                ctx.report.resourcesCreated = createdBefore;
+                index = index || { 'resources-increment': 0, 'resources': {} };
                 if (!isObject(index.resources) || Array.isArray(index.resources)) { index.resources = {}; }
                 index['resources-increment'] = parseInt(index['resources-increment'], 10) || 0;
                 ids.forEach(function(oldID) {
@@ -417,7 +422,7 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
                     ctx.resources[oldID] = { id: id, src: entry.src, thumb: entry.thumb };
                     ctx.report.resourcesCreated++;
                 });
-                return adapter.writeJSON('resources/_index.json', index);
+                return index;
             });
 
         }
@@ -485,17 +490,20 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
             var adapter = FrameTrail.module('StorageManager').getAdapter(),
                 time    = Math.floor(Date.now() / 1000);
 
-            return adapter.readJSON('hypervideos/_index.json').catch(function() {
-                return { 'hypervideo-increment': 0, 'hypervideos': {} };
-            }).then(function(index) {
+            var firstID = 0;
 
+            // The ids first, reserved in one step (updateJSON): the counter
+            // alone, so another tab adding a hypervideo meanwhile gets others.
+            return adapter.updateJSON('hypervideos/_index.json', function(index) {
+                index = index || { 'hypervideo-increment': 0, 'hypervideos': {} };
                 if (!isObject(index.hypervideos) || Array.isArray(index.hypervideos)) { index.hypervideos = {}; }
                 index['hypervideo-increment'] = parseInt(index['hypervideo-increment'], 10) || 0;
-                prepared.forEach(function(item) {
-                    var id = String(++index['hypervideo-increment']);
-                    index.hypervideos[id] = './' + id;
-                    ctx.ids[item.sourceID] = id;
-                });
+                firstID = index['hypervideo-increment'] + 1;
+                index['hypervideo-increment'] += prepared.length;
+                return index;
+            }).then(function() {
+
+                prepared.forEach(function(item, i) { ctx.ids[item.sourceID] = String(firstID + i); });
                 prepared.forEach(function(item) { remapJumps(item.hypervideo, ctx.ids); });
 
                 // As a new hypervideo is made here (Sidebar), then the index last:
@@ -518,7 +526,16 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
                         });
                     });
                 }, Promise.resolve()).then(function() {
-                    return adapter.writeJSON('hypervideos/_index.json', index);
+                    // Listed, in one step again (another tab's change of the index meanwhile is kept).
+                    return adapter.updateJSON('hypervideos/_index.json', function(index) {
+                        index = index || { 'hypervideo-increment': 0, 'hypervideos': {} };
+                        if (!isObject(index.hypervideos) || Array.isArray(index.hypervideos)) { index.hypervideos = {}; }
+                        prepared.forEach(function(item) {
+                            var id = ctx.ids[item.sourceID];
+                            index.hypervideos[id] = './' + id;
+                        });
+                        return index;
+                    });
                 });
 
             });
@@ -612,9 +629,10 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
 
         if (isLocal()) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
-            return adapter.readJSON('tagdefinitions.json').catch(function() { return {}; }).then(function(data) {
+            return adapter.updateJSON('tagdefinitions.json', function(data) {
+                data = data || {};
                 missing.forEach(function(tag) { data[tag] = clone(tagdefinitions[tag]); });
-                return adapter.writeJSON('tagdefinitions.json', data);
+                return data;
             });
         }
 
@@ -650,9 +668,10 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
                 map.lastchanged = Date.now();
                 if (isLocal()) {
                     var adapter = FrameTrail.module('StorageManager').getAdapter();
-                    return adapter.readJSON('hypervideos/_index.json').then(function(index) {
+                    return adapter.updateJSON('hypervideos/_index.json', function(index) {
+                        index = index || { 'hypervideo-increment': 0, 'hypervideos': {} };
                         index.overviewMap = map;
-                        return adapter.writeJSON('hypervideos/_index.json', index);
+                        return index;
                     });
                 }
                 var current = Database.overviewMap || {};

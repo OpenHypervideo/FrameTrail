@@ -38,6 +38,21 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         managedRecheckDone = false;
 
     /**
+     * I reload the page for a setting that needs it (language, grid or map) —
+     * once the user decided about unsaved changes of the open hypervideo.
+     * Kept, the setting is saved and takes effect at the next reload.
+     * @method reloadForSettings
+     * @private
+     */
+    function reloadForSettings() {
+        FrameTrail.module('HypervideoModel').confirmUnsaved({
+            proceed: function() {
+                window.location.reload();
+            }
+        });
+    }
+
+    /**
      * I open the admin settings dialog.
      * @method open
      */
@@ -1063,6 +1078,14 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             // platform took the settings over while this dialog
                             // was open. Not an error to retry — a reason to go.
                             var settingsManaged = false;
+                            // Set when either write came back as code 1: the
+                            // session ended while the dialog was open. The edits
+                            // are kept for an Apply after signing in.
+                            var sessionLost = false;
+                            // Which of the two writes went through: a failure of
+                            // the other puts back only its own part.
+                            var configSaved = false,
+                                cssSaved    = false;
                             // Highest post-write mtime across both files — the
                             // 'settings' version spans them, so whichever we
                             // wrote last is the one the poll will report.
@@ -1081,12 +1104,15 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                     saveClosed = true;
                                     FrameTrail.module('InterfaceModal').hideMessage(500);
                                     if (saveError) {
-                                        if (!settingsManaged) {
+                                        if (!settingsManaged && !sessionLost) {
                                             FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingSettings'] || 'Error saving settings');
                                         }
                                         console.error('Error saving admin settings:', saveError);
-                                        // Revert changes on error
-                                        if (configChanged) {
+                                        // Revert what was not written. A config.json that
+                                        // was written stays as written, with its new
+                                        // lastchanged: putting the old one back made every
+                                        // later Apply meet a conflict against this one.
+                                        if (configChanged && !configSaved) {
                                             database.replaceConfigContents(initialConfig);
                                             // Only revert theme on current view if hypervideo has no per-hypervideo theme
                                             var hvCfg = database.hypervideo && database.hypervideo.config;
@@ -1094,8 +1120,23 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                                 document.querySelector(FrameTrail.getState('target')).setAttribute('data-frametrail-theme', initialConfig.defaultTheme || 'classic');
                                             }
                                         }
-                                        if (globalCSSChanged) {
+                                        if (globalCSSChanged && !cssSaved) {
                                             setLiveGlobalCSS(initialCSS);
+                                        }
+                                        // Signed out meanwhile: nothing is lost. The dialog
+                                        // steps aside for the login box (it is in the top
+                                        // layer, the box is not) and comes back with the form
+                                        // as it was, for an Apply once signed in.
+                                        if (sessionLost && !settingsManaged) {
+                                            FrameTrail.module('InterfaceModal').showErrorMessage(labels['MessageSessionEnded']);
+                                            FrameTrail.module('InterfaceModal').hideMessage(4000);
+                                            adminDialogCtrl.widget().close();
+                                            FrameTrail.module('UserManagement').ensureAuthenticated(function() {
+                                                adminDialogCtrl.open();
+                                            }, function() {
+                                                adminDialogCtrl.open();
+                                            });
+                                            return;
                                         }
                                     } else if (configChanged) {
                                         // Re-read only when we actually wrote
@@ -1140,23 +1181,25 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                     if (!result.success) {
                                         saveError = result.error;
                                         if (result.code === 8) settingsManaged = true;
+                                        if (String(result.code) === '1') sessionLost = true;
                                         checkSaveComplete();
                                         return;
                                     }
+                                    configSaved = true;
                                     noteSavedVersion(result);
                                     // If language changed, reload after the save is confirmed complete on disk
                                     if (languageChanged) {
                                         FrameTrail.module('Localization').setLanguage(database.config.defaultLanguage);
                                         FrameTrail.module('InterfaceModal').hideMessage();
                                         adminDialogCtrl.close();
-                                        window.location.reload();
+                                        reloadForSettings();
                                         return;
                                     }
                                     // Same for a grid/map switch
                                     if (overviewModeChanged) {
                                         FrameTrail.module('InterfaceModal').hideMessage();
                                         adminDialogCtrl.close();
-                                        window.location.reload();
+                                        reloadForSettings();
                                         return;
                                     }
                                     // Who reads the config while the application runs
@@ -1180,7 +1223,9 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                     if (!result.success) {
                                         saveError = result.error;
                                         if (result.code === 8) settingsManaged = true;
+                                        if (String(result.code) === '1') sessionLost = true;
                                     } else {
+                                        cssSaved = true;
                                         noteSavedVersion(result);
                                     }
                                     checkSaveComplete();

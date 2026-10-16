@@ -87,8 +87,22 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
             if (given && given.annotations && given.annotations.index) {
                 // Every file the index names is there (grouping by creator leaves empty files out), or the folder would not load.
                 grouped.index = clone(given.annotations.index);
-                Object.keys(Serializer.parseAnnotationIndex(grouped.index).annotationfiles).forEach(function(fileID) {
+                var named = Serializer.parseAnnotationIndex(grouped.index).annotationfiles;
+                Object.keys(named).forEach(function(fileID) {
                     if (!grouped.files[fileID]) { grouped.files[fileID] = []; }
+                });
+                // And every file is in the index: a creator the page was not
+                // given (the user, annotating in this session) gets an entry,
+                // or the file would be one nobody knows of.
+                Object.keys(grouped.files).forEach(function(fileID) {
+                    if (named[fileID]) { return; }
+                    var first = grouped.files[fileID][0] || {},
+                        name  = (first.creator && first.creator.nickname) || FrameTrail.getState('username') || String(fileID),
+                        now   = Math.floor(Date.now() / 1000);
+                    grouped.index = Serializer.setAnnotationIndexEntry(grouped.index, fileID, {
+                        name: name, description: name + '\'s annotations', created: now, lastchanged: now,
+                        hidden: false, owner: name, ownerId: String(fileID)
+                    });
                 });
             }
             return Promise.resolve(grouped);
@@ -107,17 +121,21 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
                 });
             })).then(function() {
 
-                // The current user's file as it would be saved now.
-                var userID = FrameTrail.module('UserManagement').userID;
-                if (!isOpen(hypervideoID) || !userID || !FrameTrail.getState('loggedIn')) { return result; }
+                // The current user's file as it would be saved now — also after
+                // the session ended (the Export the session-ended dialog offers):
+                // the work is then the account's it was made with (workingAs).
+                var UserManagement = FrameTrail.module('UserManagement'),
+                    signedIn       = !!FrameTrail.getState('loggedIn') && !!UserManagement.userID,
+                    userID         = signedIn ? UserManagement.userID : UserManagement.workingAs();
+                if (!isOpen(hypervideoID) || !userID) { return result; }
 
-                var own = Database.ownAnnotationFile();
+                var own = Database.ownAnnotationFile(userID);
                 if (!own.length && !result.files[userID]) { return result; }
 
                 result.files[userID] = own;
                 if (!Serializer.parseAnnotationIndex(result.index || {}).annotationfiles[userID]) {
                     var now  = Math.floor(Date.now() / 1000),
-                        name = FrameTrail.getState('username');
+                        name = (signedIn ? FrameTrail.getState('username') : UserManagement.workingAsName()) || String(userID);
                     result.index = Serializer.setAnnotationIndexEntry(result.index || {}, userID, {
                         name: name, description: name + '\'s annotations', created: now, lastchanged: now,
                         hidden: false, owner: name, ownerId: String(userID)

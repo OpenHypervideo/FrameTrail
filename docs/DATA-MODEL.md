@@ -419,7 +419,8 @@ Timestamps are not all in the same unit:
 |-------|------|
 | items' `created` | ISO 8601 (older: `toString()` text) |
 | `hypervideo.json` → `meta.created`, `meta.lastchanged` | milliseconds since 1970 |
-| `config.json` → `lastchanged`, `overviewMap.lastchanged` | milliseconds since 1970 |
+| `config.json` → `lastchanged` | milliseconds since 1970 |
+| `hypervideos/_index.json` → `overviewMap.lastchanged` | milliseconds since 1970 |
 | `resources/_index.json` → `created` | seconds since 1970 |
 | `annotations/_index.json` → `created` | seconds since 1970 |
 | `annotations/_index.json` → `lastchanged` | milliseconds since 1970 (seconds in older files) |

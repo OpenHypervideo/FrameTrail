@@ -94,9 +94,13 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
 
             // Save when ctrl+s or command+s
             if ((evt.metaKey || evt.ctrlKey) && evt.keyCode == 83) {
-                if (FrameTrail.module('StorageManager').canSave()) {
-                    FrameTrail.module('HypervideoModel').save();
-                } else if (FrameTrail.module('StorageManager').canSaveToPageFile() && FrameTrail.getState('editMode')) {
+                var saveTarget = FrameTrail.module('StorageManager').saveTarget();
+                if (saveTarget === 'save') {
+                    // Nothing changed, nothing to say.
+                    if (FrameTrail.getState('unsavedChanges')) {
+                        FrameTrail.module('HypervideoModel').save();
+                    }
+                } else if (saveTarget === 'pageFile' && FrameTrail.getState('editMode')) {
                     // A page opened from disk: into its own file, as the Save button does.
                     FrameTrail.module('HypervideoModel').saveToFile();
                 } else {

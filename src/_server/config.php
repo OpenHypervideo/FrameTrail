@@ -12,16 +12,8 @@ session_set_cookie_params([
     'secure'   => $_isHttps,
 ]);
 
-// Scope the cookie's *name* to this host, not just its domain. A cookie set for
-// a parent domain is sent to every subdomain under it, and PHP takes the first
-// value it sees — so on a platform that gives each project its own subdomain,
-// one project could otherwise plant a session id that another one adopts. The
-// name is derived, not configured, so nothing has to be kept in sync.
-// Note: this invalidates sessions in flight at upgrade time; people are asked
-// to sign in once more, and nothing else changes.
-session_name('FTSESS' . substr(sha1(isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost'), 0, 8));
-
-// The session is started further down, once the data directory is known: a
+// The session cookie's name is decided below, once the data directory is known.
+// The session is started further down, too: a
 // request that sends a personal API token gets no session at all, and serve.php
 // starts it itself, only when a request needs one (FT_DEFER_SESSION).
 
@@ -49,6 +41,27 @@ if ($_dataPathInput !== null && $_serverRoot !== false) {
         $conf["dir"]["data"] = $_candidate;
     }
 }
+
+// Scope the session cookie's *name* to this host and this data directory, not
+// just to the cookie's domain.
+//
+// The host: a cookie set for a parent domain is sent to every subdomain under
+// it, and PHP takes the first value it sees — so on a platform that gives each
+// project its own subdomain, one project could otherwise plant a session id
+// that another one adopts.
+//
+// The data directory: several of them can be served from one host (dataPath),
+// each with its own users.json. One session for all of them would be the user
+// of one folder taken for the user with the same id in another — possibly an
+// admin there — and a folder that does not know the id would end the session
+// of all the others. A session belongs to the folder it was opened for.
+//
+// The name is derived, not configured, so nothing has to be kept in sync.
+// Note: a change of the name invalidates sessions in flight at upgrade time;
+// people are asked to sign in once more, and nothing else changes.
+$_sessionScope = (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost')
+               . '|' . ((realpath($conf["dir"]["data"]) !== false) ? realpath($conf["dir"]["data"]) : $conf["dir"]["data"]);
+session_name('FTSESS' . substr(sha1($_sessionScope), 0, 8));
 
 // JSON response flags
 $conf["settings"]["json_flags"] = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;

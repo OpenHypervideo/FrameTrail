@@ -31,7 +31,11 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
         // Set while we are reacting to a history entry, so that the state
         // changes we make in response are not written straight back into the
         // URL we are reading.
-        applyingRoute = false;
+        applyingRoute = false,
+
+        // The hypervideo a route asks to open while the user is asked about
+        // unsaved changes first (see routeHasChanged), or null.
+        askingToSwitchTo = null;
 
 
     // "#overview" is a request for the overview, and it outranks the startID
@@ -341,12 +345,37 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
 
         if ( hypervideoChange ) {
 
-            if ( FrameTrail.getState('editMode') ) {
-                FrameTrail.changeState('editMode', false);
-                FrameTrail.module('HypervideoModel').updateHypervideo(hypervideoID, true);
+            var HypervideoModel = FrameTrail.module('HypervideoModel'),
+                stayOn          = RouteNavigation.hypervideoID;
+
+            var switchHypervideo = function() {
+                if ( FrameTrail.getState('editMode') ) {
+                    FrameTrail.changeState('editMode', false);
+                    HypervideoModel.updateHypervideo(hypervideoID, true);
+                } else {
+                    HypervideoModel.updateHypervideo(hypervideoID);
+                }
+            };
+
+            // A link, a jumpToHypervideo action or Back/Forward must not take
+            // unsaved changes with them unasked.
+            if (HypervideoModel.confirmUnsaved && FrameTrail.getState('unsavedChanges')) {
+                // Writing location.hash fires popstate and hashchange: one question for both.
+                if (askingToSwitchTo === hypervideoID) { applyingRoute = false; return; }
+                askingToSwitchTo = hypervideoID;
+                HypervideoModel.confirmUnsaved({
+                    proceed: function() {
+                        askingToSwitchTo = null;
+                        switchHypervideo();
+                    },
+                    cancel: function() {
+                        askingToSwitchTo = null;
+                        // The address goes back to the hypervideo that stays open.
+                        setHashVariables({ overview: null, hypervideo: stayOn }, { replace: true });
+                    }
+                });
             } else {
-                //console.log('change');
-                FrameTrail.module('HypervideoModel').updateHypervideo(hypervideoID);
+                switchHypervideo();
             }
 
         } else if (RouteNavigation) {

@@ -26,6 +26,10 @@
     var hypervideoID = '',
         hypervideos  = {},
         hypervideo   = {},
+        // The hypervideo whose data the editor holds (Database.hypervideo), or
+        // null while none is loaded or one is being replaced. A library read
+        // again keeps its entry (see keepsEditorEntry).
+        editorHypervideoID = null,
         sequence     = {},
 
         overlays     = [],
@@ -284,6 +288,12 @@
             } else {
                 postData.dataPath = adapter.dataPathAbsolute;
             }
+        }
+        // Which page writes (see StorageManager.tabID).
+        if (isForm) {
+            postData.set('collabTab', FrameTrail.module('StorageManager').tabID);
+        } else {
+            postData.collabTab = FrameTrail.module('StorageManager').tabID;
         }
 
         fetch(url, { method: 'POST', cache: cachePolicy, body: isForm ? postData : new URLSearchParams(postData) })
@@ -728,6 +738,53 @@
 
 
     /**
+     * I change a JSON file of the adapter in one step where it can
+     * (updateJSON: read and changed again when another tab or program wrote
+     * it in between), else by reading and writing it.
+     *
+     * @method updateStoredJSON
+     * @param {StorageAdapter} adapter
+     * @param {String} path
+     * @param {Function} change  (data, or undefined when there is none) → the data to write
+     * @return {Promise}
+     * @private
+     */
+    function updateStoredJSON(adapter, path, change) {
+        if (typeof adapter.updateJSON === 'function') {
+            return adapter.updateJSON(path, change);
+        }
+        return adapter.readJSON(path).catch(function() { return undefined; }).then(function(data) {
+            return Promise.resolve(change(data)).then(function(next) {
+                return adapter.writeJSON(path, next).then(function() { return next; });
+            });
+        });
+    }
+
+
+    /**
+     * Whether a library read again keeps the entry it has for a hypervideo
+     * instead of the stored one: the hypervideo open in the editor. Its
+     * entry is where the editor's unsaved settings, chapters and subtitle
+     * list live (Database.hypervideo, the chapter objects), and its
+     * lastchanged and annotation index are what its next save is compared
+     * with — taking the stored ones would let that save overwrite, unseen,
+     * whatever changed meanwhile, and leave the unsaved edits out. The
+     * overview's refresh, a hypervideo added, copied, deleted or edited in
+     * the settings dialog read the library again; none of them may do that.
+     * The settings dialog, writing the open hypervideo, sets its new
+     * lastchanged itself, as a save does.
+     *
+     * @method keepsEditorEntry
+     * @param {String} id
+     * @return {Boolean}
+     * @private
+     */
+    function keepsEditorEntry(id) {
+        return editorHypervideoID !== null && String(id) === String(editorHypervideoID) && !!hypervideos[id];
+    }
+
+
+    /**
      * I load the hypervideo index data (_data/hypervideos/_index.json) according to the definitions in the init-options
      * and save the data in my attribute {{#crossLink "Database/hypervideos:attribute"}}Database/hypervideos{{/crossLink}}.
      * I call my success or fail callback respectively.
@@ -780,7 +837,9 @@
                         // hypervideos[i] = ...
 
                     } else {
-                        hypervideos[contentsID(i)] = indexEntry(initOptionsHypervideoData[i].hypervideo);
+                        if (!keepsEditorEntry(contentsID(i))) {
+                            hypervideos[contentsID(i)] = indexEntry(initOptionsHypervideoData[i].hypervideo);
+                        }
 
                         ready();
                     }
@@ -835,6 +894,14 @@
 
             for (var key in data.hypervideos) {
                 (function (hypervideoID) {
+
+                    if (keepsEditorEntry(hypervideoID)) {
+                        bufferedData[hypervideoID] = hypervideos[hypervideoID];
+                        if (!--countdown) {
+                            next();
+                        }
+                        return;
+                    }
 
                     _ajax({
                         url:      urlpath + data.hypervideos[hypervideoID] + '/hypervideo.json',
@@ -937,6 +1004,17 @@
 
             keys.forEach(function(hvID) {
                 var hvDir = 'hypervideos/' + data.hypervideos[hvID];
+
+                // Not read again either: reading its files would also move the
+                // versions a save in a local folder compares with.
+                if (keepsEditorEntry(hvID)) {
+                    bufferedData[hvID] = hypervideos[hvID];
+                    if (!--countdown) {
+                        hypervideos = bufferedData;
+                        success.call(this);
+                    }
+                    return;
+                }
 
                 adapter.readJSON(hvDir + '/hypervideo.json').then(function(hypervideoData) {
 
@@ -1490,6 +1568,7 @@
 
 
                         hypervideo = hypervideos[hypervideoID];
+                        editorHypervideoID = hypervideo ? hypervideoID : null;
 
                         if(!hypervideo){
 
@@ -1541,9 +1620,14 @@
 
         hypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
 
+        // The editor's hypervideo is being replaced (another one, or the same
+        // one again from what is stored): everything is read as stored.
+        editorHypervideoID = null;
+
         loadHypervideoData(function(){
 
             hypervideo = hypervideos[hypervideoID];
+            editorHypervideoID = hypervideo ? hypervideoID : null;
 
             if(!hypervideo){
 
@@ -1669,9 +1753,17 @@
 
         if (storageMode !== 'server') {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
-            adapter.writeJSON('config.json', config)
-                .then(function() { callback.call(window, { success: true }); })
-                .catch(function(error) { callback.call(window, { failed: 'config', error: error.message }); });
+            // In a local folder or project file another program or tab may have
+            // written it since it was read: refused (code 7), as on the server.
+            (adapter.isUnchanged ? adapter.isUnchanged('config.json') : Promise.resolve(true))
+                .then(function(unchanged) {
+                    if (!unchanged) {
+                        callback.call(window, { failed: 'config', error: 'Conflict', code: 7 });
+                        return;
+                    }
+                    return adapter.writeJSON('config.json', config).then(function() { callback.call(window, { success: true }); });
+                })
+                .catch(function(error) { callback.call(window, { failed: 'config', error: error.message, errorName: error && error.name }); });
             return;
         }
 
@@ -1760,23 +1852,26 @@
             // memory at all and throws, and writing a bare { overviewMap }
             // would leave a file that names no hypervideos — an index that
             // erases the library it is supposed to list.
-            adapter.readJSON('hypervideos/_index.json')
-                .catch(function() { return null; })
-                .then(function(index) {
+            //
+            // In one step where the adapter can (updateJSON): read again when
+            // another tab or program wrote the index in between.
+            var stamp = Date.now();
+            updateStoredJSON(adapter, 'hypervideos/_index.json', function(index) {
 
                     if (!index || typeof index !== 'object' || Array.isArray(index)) {
                         index = buildHypervideoIndex();
                     }
 
                     index.overviewMap = JSON.parse(JSON.stringify(map));
-                    index.overviewMap.lastchanged = Date.now();
+                    index.overviewMap.lastchanged = stamp;
 
-                    return adapter.writeJSON('hypervideos/_index.json', index).then(function() {
-                        map.lastchanged = index.overviewMap.lastchanged;
-                        written = true;
-                        done({ success: true, version: null });
-                    });
+                    return index;
 
+                })
+                .then(function() {
+                    map.lastchanged = stamp;
+                    written = true;
+                    done({ success: true, version: null });
                 })
                 .catch(function(error) {
                     // Only report a failure we have not already reported as a
@@ -1886,9 +1981,16 @@
         if (storageMode !== 'server') {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
             if (adapter.writeText) {
-                adapter.writeText('custom.css', styles || '')
-                    .then(function() { callback.call(window, { success: true }); })
-                    .catch(function(error) { callback.call(window, { failed: 'globalcss', error: error.message }); });
+                // As config.json: not over a change made elsewhere since it was read (code 7).
+                (adapter.isUnchanged ? adapter.isUnchanged('custom.css') : Promise.resolve(true))
+                    .then(function(unchanged) {
+                        if (!unchanged) {
+                            callback.call(window, { failed: 'globalcss', error: 'Conflict', code: 7 });
+                            return;
+                        }
+                        return adapter.writeText('custom.css', styles || '').then(function() { callback.call(window, { success: true }); });
+                    })
+                    .catch(function(error) { callback.call(window, { failed: 'globalcss', error: error.message, errorName: error && error.name }); });
             } else {
                 // Download adapter doesn't support text files
                 callback.call(window, { success: true });
@@ -1960,8 +2062,13 @@
             (adapter.isUnchanged ? adapter.isUnchanged(path) : Promise.resolve(true))
                 .then(function(unchanged) {
                     if (!unchanged) {
-                        callback.call(window, { failed: 'hypervideo', error: 'Conflict', code: 7, conflict: null });
-                        return;
+                        // Gone rather than changed: deleted by another program or tab
+                        // (code 4, as the server says of a hypervideo it no longer has).
+                        return adapter.exists(path).then(function(exists) {
+                            callback.call(window, exists
+                                ? { failed: 'hypervideo', error: 'Conflict', code: 7, conflict: null }
+                                : { failed: 'hypervideo', error: 'Deleted', code: 4 });
+                        });
                     }
                     // The subtitle files first, so whoever reads the new hypervideo.json finds them.
                     return Promise.all(subtitleLangs.map(function(lang) {
@@ -1975,7 +2082,7 @@
                             callback.call(window, { success: true });
                         });
                 })
-                .catch(function(error) { callback.call(window, { failed: 'hypervideo', error: error.message }); });
+                .catch(function(error) { callback.call(window, { failed: 'hypervideo', error: error.message, errorName: error && error.name }); });
             return;
         }
 
@@ -2090,18 +2197,49 @@
     }
 
     /**
+     * I take a hypervideo's annotation index as it is in the storage now,
+     * after the whole project was written somewhere new (a page saved into its
+     * own file): the user's annotation file there is then one this page wrote,
+     * not one that appeared since the hypervideo was loaded, and the next save
+     * compares with it.
+     *
+     * @method adoptAnnotationIndex
+     * @param {String} thisHypervideoID
+     * @return {Promise}
+     */
+    function adoptAnnotationIndex(thisHypervideoID) {
+
+        var adapter = FrameTrail.module('StorageManager').getAdapter(),
+            entry   = hypervideos[thisHypervideoID];
+
+        if (!entry || !adapter || typeof adapter.readJSON !== 'function') {
+            return Promise.resolve();
+        }
+
+        return adapter.readJSON('hypervideos/' + thisHypervideoID + '/annotations/_index.json').then(function(index) {
+            var parsed = Serializer.parseAnnotationIndex(index || {});
+            entry.annotationfiles = parsed.annotationfiles;
+            if (parsed.mainAnnotation !== undefined) {
+                entry.mainAnnotation = parsed.mainAnnotation;
+            }
+        }, function() { /* no index: nothing to take */ });
+
+    }
+
+    /**
      * The current user's annotations of the open hypervideo as their
      * annotation file: what saveAnnotations writes.
      *
      * @method ownAnnotationFile
+     * @param {String} [ofUserID] another author's (default: the current user's) — an export after the session ended takes the account's whose the work is
      * @return {Array}
      */
-    function ownAnnotationFile() {
+    function ownAnnotationFile(ofUserID) {
 
-        var userID = FrameTrail.module('UserManagement').userID;
+        var userID = (ofUserID !== undefined && ofUserID !== null && ofUserID !== '') ? String(ofUserID) : FrameTrail.module('UserManagement').userID;
 
         return Serializer.serializeAnnotationFile(annotations.filter(function(annotationItem) {
-            return annotationItem.source.frametrail && annotationItem.creatorId === userID;
+            return annotationItem.source.frametrail && String(annotationItem.creatorId) === String(userID);
         }), { sourcePath: sourcePathOf(hypervideoID) });
 
     }
@@ -2161,14 +2299,16 @@
                             return adapter.writeJSON(annPath, annotationsToSave);
                         })
                         .then(function() {
-                            return adapter.readJSON(indexPath).catch(function() { return {}; });
-                        })
-                        .then(function(index) {
-                            // Under annotationfiles, where the loaders look — the
-                            // top-level entry this used to write was never read back.
-                            var now      = Math.floor(Date.now() / 1000),
-                                existing = Serializer.parseAnnotationIndex(index).annotationfiles[userID] || {},
-                                fields   = {
+                            // The index in one step (updateJSON): another writer's
+                            // entry, added meanwhile, is kept.
+                            var fields;
+                            return updateStoredJSON(adapter, indexPath, function(index) {
+                                index = index || {};
+                                // Under annotationfiles, where the loaders look — the
+                                // top-level entry this used to write was never read back.
+                                var now      = Math.floor(Date.now() / 1000),
+                                    existing = Serializer.parseAnnotationIndex(index).annotationfiles[userID] || {};
+                                fields = {
                                     name:        name,
                                     description: description,
                                     created:     (existing.created != null) ? existing.created : now,
@@ -2178,7 +2318,8 @@
                                     owner:       name,
                                     ownerId:     String(userID)
                                 };
-                            return adapter.writeJSON(indexPath, Serializer.setAnnotationIndexEntry(index, userID, fields)).then(function() {
+                                return Serializer.setAnnotationIndexEntry(index, userID, fields);
+                            }).then(function() {
                                 noteWritten(fields);
                             });
                         })
@@ -2187,7 +2328,7 @@
                         });
                 })
                 .catch(function(error) {
-                    callback.call(window, { failed: 'annotations', error: error.message });
+                    callback.call(window, { failed: 'annotations', error: error.message, errorName: error && error.name });
                 });
             return;
         }
@@ -2412,6 +2553,7 @@
         updateHypervideoData:  updateHypervideoData,
         loadSequenceData:      loadSequenceData,
         loadSubtitleData:      loadSubtitleData,
+        loadAnnotationData:    loadAnnotationData,
         parseSubtitles:        parseSubtitles,
         setSubtitleData:       setSubtitleData,
 
@@ -2419,6 +2561,7 @@
         saveAnnotations:       saveAnnotations,
         getAnnotationsW3C:     getAnnotationsW3C,
         ownAnnotationFile:     ownAnnotationFile,
+        adoptAnnotationIndex:  adoptAnnotationIndex,
         contentsEntry:         contentsEntry,
         saveConfig:            saveConfig,
         saveGlobalCSS:         saveGlobalCSS,

@@ -90,6 +90,32 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
 
     /**
+     * I open a hypervideo just added, once the user has decided about the
+     * unsaved changes of the open one — before the library is read again, so
+     * that saving them still writes what the editor holds. Kept, the new
+     * hypervideo is in the overview and the open one stays.
+     *
+     * @method openAfterAdding
+     * @param {String} newID
+     * @param {String|Boolean} wasEditMode
+     * @private
+     */
+    function openAfterAdding(newID, wasEditMode) {
+        function reloadLibrary(then) {
+            FrameTrail.module('Database').loadHypervideoData(then, function() {});
+        }
+        FrameTrail.module('HypervideoModel').confirmUnsaved({
+            proceed: function() {
+                reloadLibrary(function() { openAddedHypervideo(newID, wasEditMode); });
+            },
+            cancel: function() {
+                reloadLibrary(function() { FrameTrail.module('ViewOverview').refreshList(); });
+            }
+        });
+    }
+
+
+    /**
      * I open a hypervideo that has just been added, once the library is
      * reloaded. On a map the overview places it as the list is refreshed
      * (ViewOverviewMap.applyAutoPlace), and opening it clears every timer and
@@ -205,14 +231,19 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
 
         var time = Math.floor(Date.now() / 1000);
 
-        // Read hypervideo index, increment, create folder structure
-        adapter.readJSON('hypervideos/_index.json').catch(function() {
-            return { 'hypervideo-increment': 0, 'hypervideos': {} };
-        }).then(function(hvi) {
+        // Take the next id in the hypervideo index — read, changed and written in
+        // one step (updateJSON), so another tab adding one at the same moment
+        // gets the next id, not the same — then create the folder structure.
+        var newID;
+        adapter.updateJSON('hypervideos/_index.json', function(hvi) {
+            hvi = hvi || { 'hypervideo-increment': 0, 'hypervideos': {} };
             if (!hvi['hypervideo-increment']) { hvi['hypervideo-increment'] = 0; }
+            if (!hvi['hypervideos'] || Array.isArray(hvi['hypervideos'])) { hvi['hypervideos'] = {}; }
             hvi['hypervideo-increment']++;
-            var newID = hvi['hypervideo-increment'];
+            newID = hvi['hypervideo-increment'];
             hvi['hypervideos'][newID] = './' + newID;
+            return hvi;
+        }).then(function() {
 
             var basePath = 'hypervideos/' + newID;
 
@@ -232,7 +263,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             };
 
             var tasks = [
-                adapter.writeJSON('hypervideos/_index.json', hvi),
                 adapter.createDirectory(basePath + '/annotations'),
                 adapter.createDirectory(basePath + '/subtitles')
             ];
@@ -251,14 +281,9 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         }).then(function(newID) {
             var wasEditMode = FrameTrail.getState('editMode');
             newDialogCtrl.close();
-            FrameTrail.module('Database').loadHypervideoData(
-                function() {
-                    openAddedHypervideo(newID, wasEditMode);
-                },
-                function() {}
-            );
+            openAfterAdding(newID, wasEditMode);
         }).catch(function(err) {
-            newDialogCtrl.widget().querySelector('.message.error').classList.add('active'); newDialogCtrl.widget().querySelector('.message.error').innerHTML = 'Local save failed: ' + err.message;
+            newDialogCtrl.widget().querySelector('.message.error').classList.add('active'); newDialogCtrl.widget().querySelector('.message.error').textContent = labels['ErrorSavingData'] + (err && err.message ? ' (' + err.message + ')' : '');
         });
     }
 
@@ -463,12 +488,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                         var newID = response['newHypervideoID'];
                         var wasEditMode = FrameTrail.getState('editMode');
                         newDialogCtrl.close();
-                        FrameTrail.module('Database').loadHypervideoData(
-                            function(){
-                                openAddedHypervideo(newID, wasEditMode);
-                            },
-                            function(){}
-                        );
+                        openAfterAdding(newID, wasEditMode);
                         break;
                     default:
                         newDialogCtrl.widget().querySelector('.message.error').classList.add('active'); newDialogCtrl.widget().querySelector('.message.error').innerHTML = response['string'];
@@ -558,10 +578,10 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
     });
 
     SaveButton.addEventListener('click', function(){
-        var StorageManager = FrameTrail.module('StorageManager');
-        if (StorageManager.canSave()) {
+        var target = FrameTrail.module('StorageManager').saveTarget();
+        if (target === 'save') {
             FrameTrail.module('HypervideoModel').save();
-        } else if (StorageManager.canSaveToPageFile()) {
+        } else if (target === 'pageFile') {
             FrameTrail.module('HypervideoModel').saveToFile();
         } else {
             FrameTrail.module('ExportDialog').open();
@@ -578,11 +598,9 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
      * @private
      */
     function updateSaveButton(blocked) {
-        var StorageManager = FrameTrail.module('StorageManager'),
-            canSave        = StorageManager.canSave(),
-            toPageFile     = !canSave && StorageManager.canSaveToPageFile();
-        SaveButton.disabled = !(canSave || toPageFile) || !!blocked;
-        SaveButton.setAttribute('data-tooltip-bottom-left', labels[toPageFile ? 'SaveToThisFile' : 'GenericSaveChanges']);
+        var target = FrameTrail.module('StorageManager').saveTarget();
+        SaveButton.disabled = (target === 'export') || !!blocked;
+        SaveButton.setAttribute('data-tooltip-bottom-left', labels[target === 'pageFile' ? 'SaveToThisFile' : 'GenericSaveChanges']);
     }
 
 
@@ -602,6 +620,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         updateSaveButton(Collaboration && Collaboration.isLockedByOther());
         NewHypervideoButton.disabled = isGuest && !canSave;
         ImportButton.disabled = !canImport;
+        // Where the unsaved changes go may have changed with it (Export → Save).
+        toogleUnsavedChanges(FrameTrail.getState('unsavedChanges'));
     }
 
     ExportButton.addEventListener('click', function(){
@@ -855,14 +875,12 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
      */
     function toogleUnsavedChanges(aBoolean) {
 
-        var noDirectSave = !FrameTrail.module('StorageManager').canSave();
+        // On the button that keeps them: Save (also "Save to this file"), or Export where nothing can be saved.
+        var exportOnly = FrameTrail.module('StorageManager').saveTarget() === 'export';
 
         if (aBoolean) {
-            if (noDirectSave) {
-                ExportButton.classList.add('unsavedChanges');
-            } else {
-                SaveButton.classList.add('unsavedChanges');
-            }
+            SaveButton.classList.toggle('unsavedChanges', !exportOnly);
+            ExportButton.classList.toggle('unsavedChanges', exportOnly);
         } else {
             domElement.querySelectorAll('button.editMode').forEach(function(el) { el.classList.remove('unsavedChanges'); });
             SaveButton.classList.remove('unsavedChanges');
@@ -1004,7 +1022,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             staleFile:  'MessageCollabAnnotationsChanged',
             lockedBy: null,
             takeover: false,
-            refresh:  refreshHypervideoFromServer,
+            refresh:  refreshAnnotationsFromStorage,
             visible:  function() { return true; }
         }
 
@@ -1018,6 +1036,21 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         }
 
         FrameTrail.module('HypervideoModel').refreshFromServer();
+
+    }
+
+
+    // The annotations notice: only they are read again (the hypervideo's own
+    // unsaved changes stay); asked first only when the user's own are unsaved.
+    function refreshAnnotationsFromStorage() {
+
+        var HypervideoModel = FrameTrail.module('HypervideoModel');
+
+        if (HypervideoModel.hasUnsavedAnnotations()) {
+            if (!window.confirm(labels['MessageCollabRefreshDiscard'])) return;
+        }
+
+        HypervideoModel.refreshAnnotations();
 
     }
 

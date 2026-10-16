@@ -178,7 +178,9 @@ class StorageAdapterLocal extends StorageAdapter {
 
     /**
      * Whether a file is still as this adapter last read or wrote it, i.e. nothing else has written it since.
-     * A file the adapter has not seen, or one that no longer exists, counts as unchanged.
+     * A file the adapter has not seen counts as unchanged. One it has seen that no longer exists does not:
+     * another program deleted it, and writing it would make it again as an orphan (a hypervideo deleted
+     * meanwhile, say). The adapter's own deletes forget what it had seen.
      * @param {String} path - Relative path
      * @return {Promise<Boolean>}
      */
@@ -186,7 +188,45 @@ class StorageAdapterLocal extends StorageAdapter {
         var seen = this.seenVersion(path);
         if (!seen) return true;
         var current = await this.fileVersion(path);
-        return current === null || current === seen;
+        return current === seen;
+    }
+
+    /**
+     * Ask for access to the folder again (it needs a click): the browser may
+     * have withdrawn it during the session.
+     * @return {Promise<Boolean>} whether it is granted
+     */
+    async requestAccess() {
+        if (!this._rootHandle) return false;
+        try {
+            return (await this._rootHandle.requestPermission({ mode: 'readwrite' })) === 'granted';
+        } catch (e) {
+            return false;
+        }
+    }
+
+    /**
+     * Change a JSON file in one step: read it as it is now, change it, write
+     * it — and when another program or tab wrote it in between, read and
+     * change it again (up to three times). The indexes are such files: two
+     * writers each adding a hypervideo would otherwise take the same id, or
+     * one would drop the other's entry.
+     *
+     * @param {String} path - Relative path
+     * @param {Function} change - (data, or undefined when there is no file) → the data to write (may return a promise)
+     * @return {Promise<Object>} what was written
+     */
+    async updateJSON(path, change) {
+        for (var attempt = 0; attempt < 3; attempt++) {
+            var data;
+            try { data = await this.readJSON(path); } catch (e) { data = undefined; }
+            var next = await change(data);
+            if (await this.isUnchanged(path)) {
+                await this.writeJSON(path, next);
+                return next;
+            }
+        }
+        throw Object.assign(new Error('The file kept changing while it was written: ' + path), { name: 'ConflictError' });
     }
 
     async exists(path) {
@@ -261,6 +301,14 @@ class StorageAdapterLocal extends StorageAdapter {
             parent = await parent.getDirectoryHandle(parts[i], { create: false });
         }
         await parent.removeEntry(dirName, { recursive: true });
+
+        // Gone by our own hand: what was seen beneath it is forgotten (see isUnchanged).
+        var prefix = StorageAdapterLocal._key(path) + '/', self = this;
+        [this._seenVersions, this._writtenVersions].forEach(function(versions) {
+            Object.keys(versions).forEach(function(key) {
+                if (key.indexOf(prefix) === 0) { delete versions[key]; }
+            });
+        });
     }
 
     /**

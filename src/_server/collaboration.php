@@ -373,10 +373,12 @@ function _collabResponse($state, $scope, $scopeId, $knownVersion) {
  * the holder is not the last writer, and a client that saves without ever
  * claiming the lock has no holder at all.
  *
- * Called from the write paths themselves (hypervideoChange, updateConfigFile),
- * so it must never fail the write it is annotating — every error is swallowed.
+ * Called from the write paths themselves (hypervideoChange, updateConfigFile,
+ * updateCSSFile, the library's writes, user changes), so it must never fail the
+ * write it is annotating — every error is swallowed. The page the request came
+ * from (collabTab) is recorded with it: a page suppresses only its own writes.
  *
- * @param string $scope   "hypervideo" | "settings"
+ * @param string $scope   "hypervideo" | "settings" | "library" | "users"
  * @param string $scopeId hypervideo ID, or "global"
  * @param string $userId
  * @param string $userName
@@ -398,13 +400,41 @@ function collabRecordWrite($scope, $scopeId, $userId, $userName) {
 
     _collabPrune($state, time());
 
+    // Which page wrote, when the client says (collabTab, sent with every
+    // request): its own writes are the ones a page does not report back to
+    // itself. The same person writing from another tab, another device or a
+    // script with a token is somebody else as far as that page is concerned.
+    $tab = (isset($_REQUEST["collabTab"]) && preg_match('/^[A-Za-z0-9]{8,64}$/', (string)$_REQUEST["collabTab"]))
+         ? (string)$_REQUEST["collabTab"] : null;
+
     $state["lastWriter"] = array(
         "id"   => (string)$userId,
         "name" => $userName,
+        "tab"  => $tab,
         "at"   => time()
     );
 
     $file->writeClose(json_encode($state, $conf["settings"]["json_flags"]));
+
+}
+
+
+/**
+ * I am who wrote a scope last ({ id, name, tab, at }), or null.
+ *
+ * @param string $scope
+ * @param string $scopeId
+ * @return array|null
+ */
+function collabLastWriter($scope, $scopeId) {
+
+    $path = _collabStatePath($scope, $scopeId);
+    if ($path === false || !file_exists($path)) {
+        return null;
+    }
+
+    $state = json_decode(@file_get_contents($path), true);
+    return (is_array($state) && isset($state["lastWriter"])) ? $state["lastWriter"] : null;
 
 }
 

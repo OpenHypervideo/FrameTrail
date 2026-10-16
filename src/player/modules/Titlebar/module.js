@@ -458,12 +458,17 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
             if (where && !FrameTrail.module('StorageManager').isPageFile()) {
                 folderIndicator.title = labels['StorageChange'];
                 folderIndicator.addEventListener('click', function() {
-                    FrameTrail.module('StorageManager').openStorageDialog({ closable: true }).then(function() {
-                        // Clear hash so we reload to overview, not a hypervideo ID from the old folder
-                        window.location.hash = '';
-                        window.location.reload();
-                    }).catch(function() {
-                        // Closed without choosing
+                    // Another folder or file replaces everything open: unsaved changes are decided about first.
+                    FrameTrail.module('HypervideoModel').confirmUnsaved({
+                        proceed: function() {
+                            FrameTrail.module('StorageManager').openStorageDialog({ closable: true }).then(function() {
+                                // Clear hash so we reload to overview, not a hypervideo ID from the old folder
+                                window.location.hash = '';
+                                window.location.reload();
+                            }).catch(function() {
+                                // Closed without choosing
+                            });
+                        }
                     });
                 });
             } else if (where) {

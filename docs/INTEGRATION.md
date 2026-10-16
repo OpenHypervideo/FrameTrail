@@ -33,7 +33,9 @@ Every request into the instance that uses a session — `ajaxServer.php`, `serve
 **Two modes**, set by `externalAuth.mode`:
 
 - `interactive` — FrameTrail shows a sign-in wall with a button that leads to the platform. Use this when visitors may arrive at FrameTrail directly.
-- `transparent` — identity is the platform's to give and there is nothing to ask. When a session ends, FrameTrail leaves for the platform on its own, except when unsaved work would be lost, in which case it asks first.
+- `transparent` — identity is the platform's to give and there is nothing to ask: signing in leaves for the platform, with no FrameTrail login box in between.
+
+**When a session ends** (in either mode), FrameTrail first asks the platform for a new one without moving the page (`renewUrl`); renewed, editing goes on where it was. Otherwise it tells the person: someone who was editing, or has unsaved changes, gets a dialog with **Export**, **Sign in again** (which leaves for the platform) and **Not now** — nothing navigates away from unsaved work by itself; on a private instance with nothing unsaved it goes to the platform's sign-in; anywhere else a short message says the session ended. A session that comes back as **somebody else** (another person signed in at the platform in this browser) is not taken while there is unsaved work or edit mode is open: the work belongs to the account it was made with, so FrameTrail signs that account out and offers Export (**Continue as the new account** reloads the page).
 
 ## Part 1 — You Already Have an Identity Provider (OIDC)
 
@@ -270,7 +272,7 @@ A session established by a platform is bounded from **when it was established**,
 - **`maxSessionAge`** (seconds, default `86400`) is the absolute bound. Values are clamped to between 300 and 2592000; an explicit `0` disables it. This key is enforced server-side and never sent to the browser.
 - **`sessionCookie`** names the platform's own session cookie. FrameTrail records its value at hand-off and compares it on every request: if the cookie is gone or different, the person has signed out, signed in as somebody else, or had their platform session expire — all of which end the FrameTrail session too. This is the whole of the propagation mechanism; there is no back channel. It requires the cookie to actually reach FrameTrail, so it is a same-site arrangement. Omit the key and only the absolute bound applies. Also never sent to the browser.
 
-The client puts its next heartbeat just past the known deadline rather than a full session lifetime after it, so an expiry is noticed within seconds.
+The client puts its next heartbeat just past the known deadline rather than a full session lifetime after it, so an expiry is noticed within seconds. A sign-out at the platform (`sessionCookie`) has no deadline to aim at: while someone is editing, the collaboration poll (every few seconds) meets the ended session and the client checks at once; otherwise the heartbeat notices it.
 
 ## Personal API Tokens
 

@@ -293,6 +293,30 @@ class StorageAdapterHTMLFile extends StorageAdapter {
         return (typeof value === 'string') ? value : JSON.stringify(value, null, 4);
     }
 
+    /**
+     * Change a JSON file in one step: read it as it is now, change it, write
+     * it — and when another program or tab wrote it in between, read and
+     * change it again (up to three times). The indexes are such files: two
+     * writers each adding a hypervideo would otherwise take the same id, or
+     * one would drop the other's entry.
+     *
+     * @param {String} path - Relative path
+     * @param {Function} change - (data, or undefined when there is no file) → the data to write (may return a promise)
+     * @return {Promise<Object>} what was written
+     */
+    async updateJSON(path, change) {
+        for (var attempt = 0; attempt < 3; attempt++) {
+            var data;
+            try { data = await this.readJSON(path); } catch (e) { data = undefined; }
+            var next = await change(data);
+            if (await this.isUnchanged(path)) {
+                await this.writeJSON(path, next);
+                return next;
+            }
+        }
+        throw Object.assign(new Error('The file kept changing while it was written: ' + path), { name: 'ConflictError' });
+    }
+
     async exists(path) {
         await this._sync();
         return this._has(StorageAdapterHTMLFile._key(path)) || this._keysUnder(path).length > 0;
@@ -421,7 +445,16 @@ class StorageAdapterHTMLFile extends StorageAdapter {
      * Write the file: the folder into the page's data block, or a new page.
      * @private
      */
-    async _flush() {
+    async _flush(attempt) {
+
+        attempt = attempt || 0;
+
+        if (this._flushing || !this._waiting.length) { return; }
+
+        // The whole page is written: what another tab or program wrote since it
+        // was last read is taken in first, under the writes waiting here, or
+        // this write would undo it.
+        try { await this._sync(); } catch (e) { /* the write below says what is wrong */ }
 
         if (this._flushing || !this._waiting.length) { return; }
 
@@ -433,6 +466,8 @@ class StorageAdapterHTMLFile extends StorageAdapter {
         this._pending  = {};
         this._flushing = true;
 
+        var retry = false;
+
         try {
 
             var text = FrameTrailHTMLFormat.writeProject(this._files, this._text, {
@@ -440,6 +475,17 @@ class StorageAdapterHTMLFile extends StorageAdapter {
                 library:  this._newPage && this._newPage.library,
                 title:    this._newPage && this._newPage.title
             });
+
+            // Written meanwhile after all (another tab saving at the same moment):
+            // take that in too, and build the page again.
+            if (attempt < 2 && this._handle && StorageAdapterHTMLFile._versionOf(await this._handle.getFile()) !== this._version) {
+                Object.keys(written).forEach(function(key) {
+                    if (!Object.prototype.hasOwnProperty.call(self._pending, key)) { self._pending[key] = written[key]; }
+                });
+                this._waiting = waiting.concat(this._waiting);
+                retry = true;
+                return;
+            }
 
             var writable = await this._handle.createWritable();
             try {
@@ -479,7 +525,8 @@ class StorageAdapterHTMLFile extends StorageAdapter {
         } finally {
 
             this._flushing = false;
-            if (this._waiting.length) { this._flush(); }
+            if (retry) { this._flush(attempt + 1); }
+            else if (this._waiting.length) { this._flush(); }
 
         }
 
@@ -528,7 +575,22 @@ class StorageAdapterHTMLFile extends StorageAdapter {
         var seen = this.seenVersion(path);
         if (!seen) return true;
         var current = await this.fileVersion(path);
-        return current === null || current === seen;
+        // Seen and gone: deleted by another tab or program (see StorageAdapterLocal.isUnchanged).
+        return current === seen;
+    }
+
+    /**
+     * Ask for access to the file again (it needs a click): the browser may
+     * have withdrawn it during the session.
+     * @return {Promise<Boolean>} whether it is granted
+     */
+    async requestAccess() {
+        if (!this._handle) return false;
+        try {
+            return (await this._handle.requestPermission({ mode: 'readwrite' })) === 'granted';
+        } catch (e) {
+            return false;
+        }
     }
 
 }

@@ -135,14 +135,26 @@
     }
 
 
+    // tagdefinitions.json changed in one step where the adapter can (updateJSON:
+    // read and changed again when another tab or program wrote it in between),
+    // else read and written (in memory, download and static mode).
+    function updateTags(adapter, change) {
+        if (typeof adapter.updateJSON === 'function') {
+            return adapter.updateJSON('tagdefinitions.json', function(data) { return change(data || {}); });
+        }
+        return adapter.readJSON('tagdefinitions.json').catch(function() { return {}; }).then(function(data) {
+            return adapter.writeJSON('tagdefinitions.json', change(data));
+        });
+    }
+
     function setTag (tagname, language, label, description, success, fail) {
 
         if (['local', 'file', 'download', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
-            adapter.readJSON('tagdefinitions.json').catch(function() { return {}; }).then(function(data) {
+            updateTags(adapter, function(data) {
                 if (!data[tagname]) { data[tagname] = {}; }
                 data[tagname][language] = { label: label, description: description };
-                return adapter.writeJSON('tagdefinitions.json', data);
+                return data;
             }).then(function() {
                 updateTagModel(success, fail);
             }).catch(fail);
@@ -159,12 +171,12 @@
 
         if (['local', 'file', 'download', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
-            adapter.readJSON('tagdefinitions.json').catch(function() { return {}; }).then(function(data) {
+            updateTags(adapter, function(data) {
                 if (data[tagname]) {
                     delete data[tagname][language];
                     if (Object.keys(data[tagname]).length === 0) { delete data[tagname]; }
                 }
-                return adapter.writeJSON('tagdefinitions.json', data);
+                return data;
             }).then(function() {
                 updateTagModel(success, fail);
             }).catch(fail);
@@ -181,9 +193,9 @@
 
         if (['local', 'file', 'download', 'static'].indexOf(FrameTrail.getState('storageMode')) !== -1) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
-            adapter.readJSON('tagdefinitions.json').catch(function() { return {}; }).then(function(data) {
+            updateTags(adapter, function(data) {
                 delete data[tagname];
-                return adapter.writeJSON('tagdefinitions.json', data);
+                return data;
             }).then(function() {
                 updateTagModel(function() {
                     success({ code: 0, string: 'Tag deleted' });

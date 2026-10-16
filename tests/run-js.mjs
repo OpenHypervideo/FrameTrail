@@ -3,8 +3,9 @@
  * in schemas/ (with FrameTrailSchema), through FrameTrailSerializer and
  * FrameTrailLint, plus unit tests of FrameTrailSchema, FrameTrailSerializer,
  * FrameTrailHTMLFormat, FrameTrailLint, FrameTrailKeyframes, FrameTrailWebVTT
- * and FrameTrailPairing, and the pairing broker contract against the stub in
- * scripts/pairing-broker.mjs.
+ * and FrameTrailPairing, the pairing broker contract against the stub in
+ * scripts/pairing-broker.mjs, and the storage adapters of a local folder and
+ * a project file against an in-memory File System Access API.
  * No dependencies, Node 20 or later:
  *
  *     node tests/run-js.mjs
@@ -20,6 +21,7 @@ import fs from 'node:fs';
 import http from 'node:http';
 import crypto from 'node:crypto';
 import path from 'node:path';
+import vm from 'node:vm';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { extractExamples, serialize, FIXTURES_DIR as EXAMPLE_FIXTURES } from './extract-examples.mjs';
@@ -1858,3 +1860,173 @@ describe('pairing broker (contract v1, scripts/pairing-broker.mjs)', () => {
     });
 
 });
+
+
+/* ---------------------------------------------------------------------- */
+/*  Storage adapters (local folder, project file)                         */
+/* ---------------------------------------------------------------------- */
+
+// The adapters are browser classes without a module wrapper: they run here in
+// a context of their own, against an in-memory stand-in for the File System
+// Access API whose clock moves on with every write (versions are
+// "lastModified:size").
+function loadStorageAdapters() {
+    const dir  = path.join(ROOT, 'src', '_shared', 'frametrail-core', 'storage');
+    const code = ['StorageAdapter.js', 'StorageAdapterLocal.js', 'StorageAdapterHTMLFile.js']
+        .map((name) => fs.readFileSync(path.join(dir, name), 'utf8')).join('\n;\n')
+        + '\n;this.StorageAdapterLocal = StorageAdapterLocal; this.StorageAdapterHTMLFile = StorageAdapterHTMLFile;';
+    const context = vm.createContext({ window: {}, console, File, Blob, TextDecoder, TextEncoder, URL, setTimeout, clearTimeout, FrameTrailHTMLFormat: HTMLFormat });
+    vm.runInContext(code, context);
+    return context;
+}
+
+let fakeClock = 1700000000000;
+const notFound = () => Object.assign(new Error('not found'), { name: 'NotFoundError' });
+
+class FakeFileHandle {
+    constructor(name, store) { this.kind = 'file'; this.name = name; this.store = store || { data: '', mtime: ++fakeClock }; }
+    async getFile() {
+        if (this.store.deleted) { throw notFound(); }
+        return new File([this.store.data], this.name, { lastModified: this.store.mtime });
+    }
+    async createWritable() {
+        const chunks = [], store = this.store;
+        return {
+            async write(data) { chunks.push(typeof data === 'string' ? data : await new Blob([data]).text()); },
+            async truncate() {}, async seek() {}, async abort() {},
+            async close() { store.data = chunks.join(''); store.mtime = ++fakeClock; store.deleted = false; }
+        };
+    }
+    async queryPermission() { return 'granted'; }
+    async requestPermission() { return 'granted'; }
+    async isSameEntry(other) { return other.store === this.store; }
+}
+
+class FakeDirectoryHandle {
+    constructor(name) { this.kind = 'directory'; this.name = name; this.children = new Map(); }
+    async getDirectoryHandle(name, options) {
+        let child = this.children.get(name);
+        if (!child || child.kind !== 'directory') {
+            if (!(options && options.create)) { throw notFound(); }
+            child = new FakeDirectoryHandle(name);
+            this.children.set(name, child);
+        }
+        return child;
+    }
+    async getFileHandle(name, options) {
+        let child = this.children.get(name);
+        if (!child || child.kind !== 'file') {
+            if (!(options && options.create)) { throw notFound(); }
+            child = new FakeFileHandle(name);
+            this.children.set(name, child);
+        }
+        return child;
+    }
+    async removeEntry(name) { if (!this.children.delete(name)) { throw notFound(); } }
+    async *entries() { for (const entry of this.children) { yield entry; } }
+    async *values() { for (const value of this.children.values()) { yield value; } }
+    async *keys() { for (const key of this.children.keys()) { yield key; } }
+    async queryPermission() { return 'granted'; }
+    async requestPermission() { return 'granted'; }
+}
+
+// Another program writing or deleting a file of the folder.
+async function writeOutside(root, rel, text) {
+    const parts = rel.split('/'), name = parts.pop();
+    let dir = root;
+    for (const part of parts) { dir = await dir.getDirectoryHandle(part, { create: true }); }
+    const writable = await (await dir.getFileHandle(name, { create: true })).createWritable();
+    await writable.write(text);
+    await writable.close();
+}
+async function removeOutside(root, rel) {
+    const parts = rel.split('/'), name = parts.pop();
+    let dir = root;
+    for (const part of parts) { dir = await dir.getDirectoryHandle(part); }
+    await dir.removeEntry(name, { recursive: true });
+}
+
+describe('storage adapters: changes made elsewhere', () => {
+
+    const { StorageAdapterLocal, StorageAdapterHTMLFile } = loadStorageAdapters();
+    const hypervideo = 'hypervideos/1/hypervideo.json';
+
+    async function localFolder() {
+        const root = new FakeDirectoryHandle('folder'), adapter = new StorageAdapterLocal();
+        await adapter.init(root);
+        await adapter.createDirectory('hypervideos/1');
+        await adapter.writeJSON(hypervideo, { meta: { name: 'One' } });
+        await adapter.readJSON(hypervideo);
+        return { root, adapter };
+    }
+
+    test('local folder: an own write is unchanged, another program\'s is not', async () => {
+        const { root, adapter } = await localFolder();
+        assert.equal(await adapter.isUnchanged(hypervideo), true);
+        await adapter.writeJSON(hypervideo, { meta: { name: 'Two' } });
+        assert.equal(await adapter.isUnchanged(hypervideo), true, 'own write');
+        await writeOutside(root, hypervideo, JSON.stringify({ meta: { name: 'Elsewhere' } }));
+        assert.equal(await adapter.isUnchanged(hypervideo), false, 'another program');
+    });
+
+    test('local folder: a file seen and then deleted elsewhere is not unchanged (no orphan is written)', async () => {
+        const { root, adapter } = await localFolder();
+        await removeOutside(root, 'hypervideos/1');
+        assert.equal(await adapter.isUnchanged(hypervideo), false);
+    });
+
+    test('local folder: the adapter\'s own deletes forget what it had seen', async () => {
+        const { adapter } = await localFolder();
+        await adapter.deleteFile(hypervideo);
+        assert.equal(await adapter.isUnchanged(hypervideo), true, 'deleteFile');
+        await adapter.writeJSON(hypervideo, { meta: { name: 'Again' } });
+        await adapter.deleteDirectory('hypervideos/1');
+        assert.equal(await adapter.isUnchanged(hypervideo), true, 'deleteDirectory');
+    });
+
+    async function projectFile() {
+        const handle = new FakeFileHandle('project.html');
+        const files  = HTMLFormat.emptyProject(),
+              entry  = (name) => ({ name, description: name + "'s annotations", created: 1, lastchanged: 1, hidden: false, owner: name, ownerId: name });
+        files['hypervideos/_index.json'] = { 'hypervideo-increment': 1, hypervideos: { 1: './1' } };
+        files[hypervideo] = readDataFolder(path.join(FIXTURES, 'data', 'all-types'))[hypervideo];
+        files['hypervideos/1/annotations/_index.json'] = { mainAnnotation: 'one', annotationfiles: { one: entry('one'), two: entry('two') } };
+        files['hypervideos/1/annotations/one.json'] = [];
+        files['hypervideos/1/annotations/two.json'] = [];
+        await new StorageAdapterHTMLFile().init(handle, { files, library: { css: '', js: '' }, datapath: './', title: 'Test' });
+        const open = async () => { const adapter = new StorageAdapterHTMLFile(); await adapter.init(handle); return adapter; };
+        return { handle, one: await open(), two: await open() };
+    }
+
+    test('project file: another tab writing another path is no conflict; the same path is', async () => {
+        const { one, two } = await projectFile();
+        await one.readJSON(hypervideo);
+        await one.readJSON('hypervideos/1/annotations/one.json');
+        await two.writeJSON('hypervideos/1/annotations/two.json', [{ by: 'two' }]);
+        assert.equal(await one.isUnchanged(hypervideo), true, 'another path');
+        const changed = clone(await two.readJSON(hypervideo));
+        changed.meta.name = 'Two';
+        await two.writeJSON(hypervideo, changed);
+        assert.equal(await one.isUnchanged(hypervideo), false, 'the same path');
+    });
+
+    test('project file: two tabs writing at the same moment both end up in the file', async () => {
+        const { handle, one, two } = await projectFile();
+        await Promise.all([
+            one.writeJSON('hypervideos/1/annotations/one.json', [{ by: 'one' }]),
+            two.writeJSON('hypervideos/1/annotations/two.json', [{ by: 'two' }])
+        ]);
+        const files = HTMLFormat.readProject(handle.store.data).files;
+        assert.deepStrictEqual(files['hypervideos/1/annotations/one.json'], [{ by: 'one' }]);
+        assert.deepStrictEqual(files['hypervideos/1/annotations/two.json'], [{ by: 'two' }]);
+    });
+
+    test('project file: a path seen and then deleted in another tab is not unchanged', async () => {
+        const { one, two } = await projectFile();
+        await one.readJSON('hypervideos/1/annotations/two.json');
+        await two.deleteFile('hypervideos/1/annotations/two.json');
+        assert.equal(await one.isUnchanged('hypervideos/1/annotations/two.json'), false);
+    });
+
+});
+

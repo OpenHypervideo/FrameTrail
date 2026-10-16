@@ -32,7 +32,17 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
 
         // The file of this page (a page in the portable HTML format opened
         // from disk), remembered by an earlier "Save to this file".
-        _pageHandle = null;
+        _pageHandle = null,
+
+        // This page among the others of the same person: sent with every
+        // request (collabTab), so that the server records which page wrote
+        // (collaboration.php), and a page tells its own writes from those made
+        // elsewhere — another tab, another device, a script.
+        _tabID = (function() {
+            var bytes = new Uint8Array(12);
+            (window.crypto || window.msCrypto).getRandomValues(bytes);
+            return Array.prototype.map.call(bytes, function(b) { return ('0' + b.toString(16)).slice(-2); }).join('');
+        })();
 
 
     /**
@@ -785,6 +795,23 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
 
 
     /**
+     * What saving means here, for every Save the user can reach (the Save
+     * button, Ctrl+S, the unsaved-changes prompt): 'save' (written where the
+     * data came from), 'pageFile' (a page opened from disk, saved into its
+     * own file) or 'export' (nothing to write to — download and static mode,
+     * a guest on a server, a server session that has ended: the changes leave
+     * through Export).
+     * @method saveTarget
+     * @return {String}
+     */
+    function saveTarget() {
+        if (canSave()) return 'save';
+        if (canSaveToPageFile()) return 'pageFile';
+        return 'export';
+    }
+
+
+    /**
      * Whether this page is a page in the portable HTML format opened from
      * disk (it may be saved into its own file, see saveToFile).
      * @method isPageFile
@@ -884,6 +911,7 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
 
         var adapter = getAdapter();
         if (adapter && adapter.dataPathAbsolute) body.append('dataPath', adapter.dataPathAbsolute);
+        body.append('collabTab', _tabID);
 
         return fetch(serverURL, {
             method: 'POST',
@@ -944,6 +972,8 @@ FrameTrail.defineModule('StorageManager', function(FrameTrail) {
         canSaveToServer:    canSaveToServer,
         canSaveToLocal:     canSaveToLocal,
         canSaveToPageFile:  canSaveToPageFile,
+        saveTarget:         saveTarget,
+        get tabID()         { return _tabID; },
         getCurrentUserInfo: getCurrentUserInfo,
         getFolderName:      getFolderName,
         getFileName:        getFileName,

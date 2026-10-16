@@ -397,78 +397,25 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
                     } else {
 
-                        if ( FrameTrail.getState('editMode') && FrameTrail.getState('unsavedChanges') ) {
+                        // Unsaved changes go with the hypervideo that is left: the user
+                        // decides first (save, discard, or export where nothing can be saved).
+                        FrameTrail.module('HypervideoModel').confirmUnsaved({
+                            proceed: function() {
 
-                            var confirmDialog = document.createElement('div');
-                            confirmDialog.className = 'confirmSaveChanges';
-                            confirmDialog.innerHTML = '<div class="message active">'+ labels['MessageSaveChanges'] +'</div>'
-                                                    + '<p>'+ labels['MessageSaveChangesQuestion'] +'</p>';
+                                setActiveHypervideo(newHypervideoID);
 
-                            var confirmDialogCtrl = Dialog({
-                              title:     labels['MessageSaveChangesQuestionShort'],
-                              content:   confirmDialog,
-                              resizable: false,
-                              modal:     true,
-                              close: function() {
-                                confirmDialogCtrl.destroy();
-                              },
-                              buttons: {
-                                'Yes': function() {
+                                FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newHypervideoID });
 
-                                    // TODO: Show saving indicator in dialog
-
-                                    FrameTrail.module('HypervideoModel').save(function(){
-
-                                        FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newHypervideoID });
-
-                                        FrameTrail.changeState('editMode', false);
-
-                                        confirmDialogCtrl.close();
-
-                                        setActiveHypervideo(newHypervideoID);
-
-                                        FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, true, update);
-
-                                    });
-
-                                },
-                                'No, discard': function() {
-
-                                    FrameTrail.changeState('unsavedChanges', false);
-
-                                    confirmDialogCtrl.close();
-
-                                    // TODO: Reload new hypervideo
-                                    window.location.reload();
-
-                                },
-                                Cancel: function() {
-                                  confirmDialogCtrl.close();
+                                // Editing goes on in the hypervideo opened next.
+                                var wasEditing = !!FrameTrail.getState('editMode');
+                                if (wasEditing) {
+                                    FrameTrail.changeState('editMode', false);
                                 }
-                              }
-                            });
 
-
-
-                        } else {
-
-                            setActiveHypervideo(newHypervideoID);
-
-                            FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newHypervideoID });
-
-                            if ( FrameTrail.getState('editMode') ) {
-
-                                FrameTrail.changeState('editMode', false);
-
-                                FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, true, update);
-
-                            } else {
-
-                                FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, false, update);
+                                FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, wasEditing, update);
 
                             }
-
-                        }
+                        });
 
 
 

@@ -52,17 +52,24 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
         resourceObj.creatorId = userInfo.id || 'local';
         resourceObj.created = Math.floor(Date.now() / 1000);
 
-        return adapter.readJSON('resources/_index.json').catch(function() {
-            return { 'resources-increment': 0, 'resources': {} };
-        }).then(function(indexData) {
+        // The next id in one step (updateJSON), so a resource added in another
+        // tab at the same moment gets another one, and neither entry is lost.
+        var newId;
+        return adapter.updateJSON('resources/_index.json', function(indexData) {
+            indexData = indexData || { 'resources-increment': 0, 'resources': {} };
+            if (!indexData['resources'] || Array.isArray(indexData['resources'])) {
+                indexData['resources'] = {};
+            }
             if (!indexData['resources-increment']) {
                 indexData['resources-increment'] = 0;
             }
             indexData['resources-increment']++;
-            var newId = indexData['resources-increment'];
+            newId = indexData['resources-increment'];
             indexData['resources'][newId] = resourceObj;
+            return indexData;
+        }).then(function() {
 
-            var tasks = [adapter.writeJSON('resources/_index.json', indexData)];
+            var tasks = [];
 
             // Store file if provided
             if (fileBlob && resourceObj.src && resourceObj.type !== 'url') {
@@ -1807,12 +1814,19 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
             var adapter = FrameTrail.module('StorageManager').getAdapter(),
                 // A project file's media files are not its own to delete.
                 ownsFiles = FrameTrail.getState('storageMode') === 'local';
-            adapter.readJSON('resources/_index.json').then(function(indexData) {
-                if (!indexData.resources[resourceID]) {
+            // Out of the index in one step (updateJSON: another tab's change of
+            // it meanwhile is kept), then its files.
+            var res = null;
+            adapter.updateJSON('resources/_index.json', function(indexData) {
+                indexData = indexData || { 'resources-increment': 0, 'resources': {} };
+                res = (indexData.resources || {})[resourceID] || null;
+                if (res) { delete indexData.resources[resourceID]; }
+                return indexData;
+            }).then(function() {
+                if (!res) {
                     cancelCallback({ code: 3, string: 'Resource not found' });
                     return;
                 }
-                var res = indexData.resources[resourceID];
                 var deleteTasks = [];
 
                 // Delete the source file if it's a local file (not an external URL)
@@ -1824,12 +1838,10 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                     deleteTasks.push(adapter.deleteFile('resources/' + res.thumb).catch(function() {}));
                 }
 
-                delete indexData.resources[resourceID];
-                deleteTasks.push(adapter.writeJSON('resources/_index.json', indexData));
-                return Promise.all(deleteTasks);
-            }).then(function() {
-                delete FrameTrail.module('Database').resources[resourceID];
-                successCallback();
+                return Promise.all(deleteTasks).then(function() {
+                    delete FrameTrail.module('Database').resources[resourceID];
+                    successCallback();
+                });
             }).catch(function(err) {
                 cancelCallback({ code: 1, string: err.message });
             });
@@ -2202,24 +2214,29 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
 
         if (FrameTrail.module('StorageManager').isLocal()) {
             var adapter = FrameTrail.module('StorageManager').getAdapter();
-            adapter.readJSON('resources/_index.json').then(function(indexData) {
-                if (!indexData.resources[resourceID]) {
+            // Changed in one step (updateJSON: another tab's change of the index meanwhile is kept).
+            var found = false;
+            adapter.updateJSON('resources/_index.json', function(indexData) {
+                indexData = indexData || { 'resources-increment': 0, 'resources': {} };
+                found = !!(indexData.resources || {})[resourceID];
+                if (found) {
+                    indexData.resources[resourceID].name = updateData.name;
+                    indexData.resources[resourceID].licenseType = updateData.licenseType;
+                    indexData.resources[resourceID].licenseAttribution = updateData.licenseAttribution;
+                }
+                return indexData;
+            }).then(function() {
+                if (!found) {
                     cancelCallback({ code: 3, string: 'Resource not found' });
                     return;
                 }
-                indexData.resources[resourceID].name = updateData.name;
-                indexData.resources[resourceID].licenseType = updateData.licenseType;
-                indexData.resources[resourceID].licenseAttribution = updateData.licenseAttribution;
-                return adapter.writeJSON('resources/_index.json', indexData).then(function() {
-                    // Update in-memory database
-                    var db = FrameTrail.module('Database');
-                    if (db.resources[resourceID]) {
-                        db.resources[resourceID].name = updateData.name;
-                        db.resources[resourceID].licenseType = updateData.licenseType;
-                        db.resources[resourceID].licenseAttribution = updateData.licenseAttribution;
-                    }
-                });
-            }).then(function() {
+                // Update in-memory database
+                var db = FrameTrail.module('Database');
+                if (db.resources[resourceID]) {
+                    db.resources[resourceID].name = updateData.name;
+                    db.resources[resourceID].licenseType = updateData.licenseType;
+                    db.resources[resourceID].licenseAttribution = updateData.licenseAttribution;
+                }
                 successCallback();
             }).catch(function(err) {
                 cancelCallback({ code: 1, string: err.message });

@@ -23,6 +23,10 @@ jobs:
       - name: Run tests
         run: node --test-reporter=spec tests/run-js.mjs
 
+      # The server contract against PHP's built-in server (the runner image has PHP)
+      - name: Run server contract tests
+        run: node --test-reporter=spec tests/run-php.mjs
+
   build:
     runs-on: ubuntu-latest
 

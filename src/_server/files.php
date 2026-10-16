@@ -1109,9 +1109,11 @@ function updateCSSFile($cssstring, $baseVersion = null) {
 
     $file = new sharedFile($conf["dir"]["data"]."/custom.css");
 
-    // Plain CSS carries no version field, so the modification time is the token.
-    clearstatcache(true, $conf["dir"]["data"]."/custom.css");
-    $currentVersion = filemtime($conf["dir"]["data"]."/custom.css");
+    // Plain CSS carries no version field, so its content is the token: a hash
+    // of it. The modification time used to be, which has a resolution of one
+    // second — two writes within it compared equal, and the second went over
+    // the first unseen.
+    $currentVersion = ftCSSVersion($conf["dir"]["data"]."/custom.css");
 
     if ($baseVersion !== null && $baseVersion !== "" && $currentVersion != $baseVersion) {
         $file->close();
@@ -1130,13 +1132,29 @@ function updateCSSFile($cssstring, $baseVersion = null) {
     collabRecordWrite("settings", "global",
                       $_SESSION["ohv"]["user"]["id"], $_SESSION["ohv"]["user"]["name"]);
 
-    $cssVersion = filemtime($conf["dir"]["data"]."/custom.css");
-
+    // lastchanged: the compare-and-swap token of the next write; version: the
+    // modification time, as the settings collaboration scope counts versions.
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "CSS file successfully saved.";
-    $return["response"] = array("lastchanged" => $cssVersion, "version" => $cssVersion);
+    $return["response"] = array(
+        "lastchanged" => ftCSSVersion($conf["dir"]["data"]."/custom.css"),
+        "version"     => filemtime($conf["dir"]["data"]."/custom.css")
+    );
     return $return;
+}
+
+/**
+ * I am the compare-and-swap token of custom.css: a hash of its content (0 when
+ * there is no file).
+ *
+ * @param String $path
+ * @return String|Integer
+ */
+function ftCSSVersion($path) {
+    clearstatcache(true, $path);
+    $hash = @sha1_file($path);
+    return ($hash === false) ? 0 : $hash;
 }
 
 /**
@@ -1166,14 +1184,13 @@ function getConfigVersions() {
     $cssPath    = $conf["dir"]["data"]."/custom.css";
 
     $current = json_decode(@file_get_contents($configPath), true);
-    $cssTime = @filemtime($cssPath);
 
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Config versions read.";
     $return["response"] = array(
         "config" => isset($current["lastchanged"]) ? $current["lastchanged"] : null,
-        "css"    => ($cssTime === false) ? 0 : $cssTime
+        "css"    => ftCSSVersion($cssPath)
     );
     return $return;
 }

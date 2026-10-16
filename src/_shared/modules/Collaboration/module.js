@@ -75,6 +75,10 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         POLL_GUEST   = 30000,
         POLL_LOCAL   = 30000;
 
+    // A poll answered "no session" asks UserManagement at most this often.
+    var SESSION_CHECK_INTERVAL = 30000,
+        lastSessionCheck       = 0;
+
     var mode       = MODE_DORMANT,
         sessions   = {},
         primaryKey = null,
@@ -237,6 +241,13 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
     }
 
 
+    // Poll at once instead of at the next interval (the answer schedules the next one).
+    function pollNow() {
+        window.clearTimeout(pollTimer);
+        poll();
+    }
+
+
     function poll() {
 
         if (mode === MODE_DORMANT) return;
@@ -287,6 +298,17 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
                     // A session may have been stopped while the poll was in
                     // flight; there is nothing left to apply it to.
                     if (sessions[key]) applyState(sessions[key], data.response[key]);
+                }
+            } else if (data && String(data.code) === '1') {
+                // No session any more (signed out in another tab, expired, on
+                // the platform). The poll is the first to notice — seconds,
+                // not the heartbeat's minutes — so the session check runs now
+                // and tells the user (UserManagement). Not again before the
+                // next one could have changed anything.
+                var now = Date.now();
+                if (now - lastSessionCheck > SESSION_CHECK_INTERVAL && FrameTrail.module('UserManagement')) {
+                    lastSessionCheck = now;
+                    FrameTrail.module('UserManagement').isLoggedIn(function() {});
                 }
             }
             scheduleNextPoll();
@@ -457,10 +479,12 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             // the server, against what we know now: a poll sent before our own
             // save must not report that save to us.
             session.stale = String(response.version) !== String(session.knownVersion);
-        } else if (session.lastWriter && String(session.lastWriter.id) === ownUserID()) {
-            // We wrote it. Never tell someone about their own change — and adopt
-            // the version so a save whose response we missed cannot leave us
-            // permanently "stale" against ourselves.
+        } else if (session.lastWriter && wroteItHere(session.lastWriter)) {
+            // This page wrote it. Never tell someone about their own change — and
+            // adopt the version so a save whose response we missed cannot leave
+            // us permanently "stale" against ourselves. Only this page, though:
+            // the same person writing in another tab, on another device or with
+            // a script is a change made elsewhere, and is reported like any other.
             session.knownVersion = response.version;
             session.stale = false;
         } else {
@@ -549,7 +573,12 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         scopeId = String(scopeId);
         var key = keyOf(scope, scopeId);
 
-        if (scope === 'hypervideo' && primaryKey && primaryKey !== key) {
+        // options.secondary: a hypervideo worked on next to the open one (its
+        // settings dialog, opened from the overview) — the open one's session,
+        // with its lock and presence, stays as it is.
+        var secondary = !!(options && options.secondary);
+
+        if (scope === 'hypervideo' && primaryKey && primaryKey !== key && !secondary) {
             // Switched to a different hypervideo — the old one is no longer ours.
             stop('hypervideo', sessions[primaryKey].scopeId);
         }
@@ -588,7 +617,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
             guestLastModified: null
         };
 
-        if (scope === 'hypervideo') primaryKey = key;
+        if (scope === 'hypervideo' && !secondary) primaryKey = key;
 
         bindWindowHandlers();
         poll();
@@ -768,6 +797,54 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
     }
 
 
+    /**
+     * I ask the server whether this page still holds the lock it believes it
+     * holds, before a save writes what the lock guards: a takeover since the
+     * last poll is not known here yet, and writing over the new holder is what
+     * the lock is for. Answers true at once where there is nothing to ask —
+     * no lock held (the compare-and-swap of the write guards that case), or no
+     * server.
+     *
+     * @method confirmLock
+     * @param {Function} callback  called with whether the write may go ahead
+     * @param {String} [scope]
+     * @param {String} [scopeId]
+     */
+    function confirmLock(callback, scope, scopeId) {
+
+        var session = sessionFor(scope, scopeId);
+
+        if (mode !== MODE_FULL || !holdsLock(session)) {
+            callback(true);
+            return;
+        }
+
+        _transport.post({
+            a:        'collabSync',
+            sessions: JSON.stringify([{
+                scope:        session.scope,
+                scopeId:      session.scopeId,
+                editing:      !!session.editing,
+                unsaved:      !!session.unsaved,
+                observe:      !!session.observe,
+                knownVersion: (session.knownVersion == null ? null : session.knownVersion)
+            }])
+        }, function(data) {
+            var key = keyOf(session.scope, session.scopeId);
+            if (data && data.code === 0 && data.response && data.response[key] && sessions[key]) {
+                applyState(sessions[key], data.response[key]);
+                callback(holdsLock(sessions[key]));
+                return;
+            }
+            // No answer to go by: the write's compare-and-swap still guards it.
+            callback(true);
+        }, function() {
+            callback(true);
+        });
+
+    }
+
+
     function hasLock(scope, scopeId) {
 
         return holdsLock(sessionFor(scope, scopeId));
@@ -843,8 +920,38 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
     function setUnsaved(value, scope, scopeId) {
 
         var session = sessionFor(scope, scopeId);
-        if (session) session.unsaved = !!value;
+        if (!session) return;
 
+        var becameUnsaved = !!value && !session.unsaved;
+        session.unsaved = !!value;
+
+        // The server refuses a takeover only while it knows of the unsaved work:
+        // it learns of it now, not with the next poll seconds later.
+        if (becameUnsaved && mode === MODE_FULL && holdsLock(session)) {
+            pollNow();
+        }
+
+    }
+
+
+    /**
+     * Whether a write was this page's: the server records the page it came
+     * from (collabTab, see StorageManager.tabID; null for a write without
+     * one). A server older than that, which records no page at all, is
+     * answered as before, by the person.
+     *
+     * @method wroteItHere
+     * @param {Object} lastWriter
+     * @return {Boolean}
+     * @private
+     */
+    function wroteItHere(lastWriter) {
+        // A write that came without a page (a script, another session's
+        // request) has tab null: written elsewhere.
+        if (Object.prototype.hasOwnProperty.call(lastWriter, 'tab')) {
+            return lastWriter.tab !== null && String(lastWriter.tab) === String(FrameTrail.module('StorageManager').tabID);
+        }
+        return String(lastWriter.id) === ownUserID();
     }
 
 
@@ -1335,6 +1442,7 @@ FrameTrail.defineModule('Collaboration', function(FrameTrail){
         mountDialogPresence: mountDialogPresence,
 
         hasLock:            hasLock,
+        confirmLock:        confirmLock,
         lockHolder:         lockHolder,
         isLockedByOther:    isLockedByOther,
         isStale:            isStale,

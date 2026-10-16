@@ -31,8 +31,26 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         // at whichever of this and the idle lifetime comes first.
         userSessionExpiresIn    = null,
         // Set while a silent re-auth frame is in flight, so a heartbeat that
-        // lands in the middle of one does not start a second.
+        // lands in the middle of one does not start a second: whoever asks
+        // meanwhile waits for its answer (renewWaiters). armRenewTimeout arms
+        // its deadline again after a timer sweep (rearmTimers).
         silentRenewInFlight     = false,
+        renewWaiters            = [],
+        armRenewTimeout         = null,
+        // The account the work on this page belongs to: the last one signed in
+        // here with a server session. Unlike userID it outlives the end of the
+        // session — it is how a session that comes back as somebody else is
+        // told apart from one that comes back, and whose annotations an export
+        // after the end of a session holds. Cleared by a logout the user asked
+        // for, and by guest mode.
+        workingAs               = '',
+        workingAsName           = '',
+        // The account a session was found to belong to instead, once the
+        // account-changed dialog has told the user (the heartbeat does not ask
+        // again for the same one), and whether that dialog is open.
+        accountChangeNotedFor   = null,
+        accountChangedOpen      = false,
+        sessionEndedOpen        = false,
         isGuestMode             = false,
         forceLoginRequired      = false,
         // The platform's own description of itself, when this instance defers
@@ -353,6 +371,18 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             var _st = loginBox.querySelector('.loginFormStatus');
             switch(response.code){
                 case 0:
+                    // Signed in as somebody else than the account whose unsaved
+                    // work is open here: it is not theirs. What waited for the
+                    // sign-in (a save) does not run under their name.
+                    if (workingAs && String(response.userdata.id) !== workingAs && FrameTrail.getState('unsavedChanges')) {
+                        var _cancel = userBoxCallbackCancel;
+                        _st.classList.remove('active', 'error', 'success'); _st.textContent = '';
+                        closeLoginBox();
+                        if (typeof _cancel === 'function') { _cancel.call(); }
+                        accountChangeNotedFor = String(response.userdata.id);
+                        showAccountChangedDialog(true);
+                        break;
+                    }
                     userSessionLifetime = parseInt(response.session_lifetime);
                     login(response.userdata);
                     FrameTrail.triggerEvent('userAction', {
@@ -693,9 +723,15 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
      */
     function ensureAuthenticated(callback, callbackCancel, disallowCancel, options){
 
-        var background = !!(options && options.background);
+        var background = !!(options && options.background),
+            // Read now: the check below may end the session, and with it edit mode.
+            hadUnsavedWork = !!FrameTrail.getState('unsavedChanges');
 
-        isLoggedIn(function(loginStatus) {
+        // Quiet: a session that ended is handled here, by what the caller
+        // needs (a login box, the platform), not announced as well. A timer
+        // has nobody waiting for a login box, so for it the end is announced
+        // as the heartbeat would (a dialog, never a navigation away from work).
+        isLoggedIn(function(loginStatus, why) {
 
             if (loginStatus) {
 
@@ -704,22 +740,36 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
             }
 
+            // Signed in as somebody else in this browser. Never silently, even
+            // for a timer: the next save would be attributed to a person who
+            // did not do the work.
+            if (why === 'changed') {
+                if (!background) {
+                    showAccountChangedDialog(hadUnsavedWork);
+                }
+                if (callbackCancel) callbackCancel.call();
+                return;
+            }
+
             // Ask the platform without moving the page. Free when there is
             // nothing to ask — silentRenew() answers false immediately unless
-            // this instance defers to a platform that offered a renewUrl.
-            silentRenew(function(renewed, identityChanged, reason) {
+            // this instance defers to a platform that offered a renewUrl — and
+            // not asked twice: a session that ended under us was renewed by the
+            // check just now if it could be.
+            var renew = (why === 'renewFailed')
+                      ? function(done) { done(false, false, null); }
+                      : silentRenew;
+
+            renew(function(renewed, identityChanged, reason) {
 
                 if (renewed) {
                     callback.call();
                     return;
                 }
 
-                // Signed in as somebody else next door. Never silently, even
-                // for a timer: the next save would be attributed to a person
-                // who did not do the work.
                 if (identityChanged) {
                     if (!background) {
-                        showAccountChangedDialog(!!FrameTrail.getState('unsavedChanges'));
+                        showAccountChangedDialog(hadUnsavedWork);
                     }
                     if (callbackCancel) callbackCancel.call();
                     return;
@@ -732,16 +782,15 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                     return;
                 }
 
-                if (externalAuth && externalAuth.mode === 'transparent') {
+                // Signing in with a platform leaves the page, and unsaved work
+                // would go with it: say so first, and offer the export.
+                if (externalAuth && hadUnsavedWork) {
+                    showSessionEndedDialog(true, FrameTrail.getState('editMode'));
+                    if (callbackCancel) callbackCancel.call();
+                    return;
+                }
 
-                    // Identity is the platform's to give, so there is nothing
-                    // to ask here — but leaving is still a decision, and it is
-                    // only ours to make when nothing would be lost by it.
-                    if (FrameTrail.getState('editMode') && FrameTrail.getState('unsavedChanges')) {
-                        showSessionEndedDialog(true);
-                        if (callbackCancel) callbackCancel.call();
-                        return;
-                    }
+                if (externalAuth && externalAuth.mode === 'transparent') {
 
                     // The cancel is handed to the wall rather than fired now:
                     // the box is a question, and answering it for the caller
@@ -761,7 +810,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
             });
 
-        });
+        }, { quiet: !background });
 
     }
 
@@ -769,10 +818,21 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
     /**
      * I check wether the user has logged in, and call the callback with a boolean to indicate this.
      *
+     * The callback's second argument says why not, where it matters:
+     * 'changed' (the session in this browser is somebody else's now — see
+     * sessionPresent), 'renewFailed' (it ended, and the platform could not
+     * renew it), 'ended' (it ended, nothing to renew it with).
+     *
+     * The session ending is announced here (sessionGone) — unless options.quiet:
+     * then the caller handles it (ensureAuthenticated shows the login box).
+     *
      * @method isLoggedIn
-     * @param {Function} callback
+     * @param {Function} callback  (loggedIn, why)
+     * @param {Object} [options]   quiet: do not announce; noRenew: do not ask the platform (the renewal confirming itself)
      */
-    function isLoggedIn(callback) {
+    function isLoggedIn(callback, options) {
+
+        options = options || {};
 
         var storageMode = FrameTrail.getState('storageMode');
 
@@ -833,47 +893,11 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                 // follows the provider's logoutUrl, would bounce an anonymous
                 // visitor off the page before it ever finished loading.
                 case 0:
-                    // Everything the decision below needs has to be read first:
-                    // resetLocalSession() clears loggedIn and editMode.
-                    var endedUnderUs   = FrameTrail.getState('loggedIn') && !isGuestMode,
-                        wasEditing     = !!FrameTrail.getState('editMode'),
-                        hadUnsavedWork = !!FrameTrail.getState('unsavedChanges');
-
-                    // Not logout(): there is nothing to tell the server, which
-                    // has just finished saying there is no session. Posting
-                    // userLogout here would be a request racing the silent
-                    // re-auth below — and it would win often enough to matter,
-                    // destroying the session the frame had just established.
-                    resetLocalSession();
-
-                    // A session that was here a moment ago and is not any more
-                    // is not the ordinary anonymous case above — somebody
-                    // signed out on the platform, signed in as somebody else,
-                    // or the bound ran out. Worth doing something about, and
-                    // worth announcing; an anonymous visitor's page load is not.
-                    if (endedUnderUs) {
-
-                        FrameTrail.triggerEvent('userAction', {
-                            action: 'UserLogout'
-                        });
-
-                        if (externalAuth) {
-                            handleSessionEnded(wasEditing, hadUnsavedWork);
-                        }
-
-                    }
-
-                    callback.call(window, false);
+                    sessionMissing(callback, options);
                     break;
 
                 case 1:
-                    userSessionLifetime = parseInt(response.session_lifetime);
-                    userSessionExpiresIn = (typeof response.session_expires_in === 'number')
-                                            ? response.session_expires_in
-                                            : null;
-                    reportServerExtensions(response.serverExtensions);
-                    login(response.response);
-                    callback.call(window, true);
+                    sessionPresent(response, callback, options);
                     break;
 
                 case 2:
@@ -899,22 +923,224 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                 case 3:
                 case 4:
                     console.error(labels[response.code === 3 ? 'ErrorNotActivated' : 'ErrorWrongRole']);
+                    var revokedWhileEditing = !!FrameTrail.getState('editMode'),
+                        revokedUnsavedWork  = !!FrameTrail.getState('unsavedChanges'),
+                        revokedUnderUs      = FrameTrail.getState('loggedIn') && !isGuestMode;
                     logout(true);
-                    callback.call(window, false);
+                    // Told why, and the work is kept: Export is the way out of a
+                    // tab whose account can no longer save.
+                    if (revokedUnderUs && !options.quiet && (revokedWhileEditing || revokedUnsavedWork)) {
+                        showSessionEndedDialog(revokedUnsavedWork, revokedWhileEditing, 'revoked');
+                    }
+                    callback.call(window, false, 'ended');
                     break;
 
             }
 
-        })
-        .catch(function() {
-            FrameTrail.changeState({
-                editMode: false,
-                loggedIn: false,
-                username: '',
-                userColor: ''
-            });
-            callback.call(window, false);
+        }, function() {
+            // The server could not be reached. That says nothing about the
+            // session: nothing is reset (closing edit mode here used to throw
+            // people out of their work on a flaky connection), the answer is
+            // what was known, and the heartbeat looks again soon.
+            if (FrameTrail.getState('loggedIn') && !isGuestMode) {
+                retrySessionCheckSoon();
+            }
+            callback.call(window, !!FrameTrail.getState('loggedIn'));
         });
+
+    }
+
+
+    /**
+     * The server says there is a session (userCheckLogin, code 1).
+     *
+     * Usually the one this page has. But the session is the browser's, not the
+     * tab's: another tab may have signed in as somebody else, or the platform
+     * may have. While edit mode is open or there is unsaved work here, that
+     * person is not adopted — whatever is unsaved was authored by the account
+     * the page worked as, and saving it now would file it under the new one's
+     * name. The page is signed out instead, the work stays, and the
+     * account-changed dialog says so (once per account, for the heartbeat).
+     *
+     * @method sessionPresent
+     * @param {Object} response
+     * @param {Function} callback
+     * @param {Object} options
+     * @private
+     */
+    function sessionPresent(response, callback, options) {
+
+        var incoming = String(response.response.id);
+
+        if (workingAs && incoming !== workingAs
+            && (FrameTrail.getState('editMode') || FrameTrail.getState('unsavedChanges'))) {
+
+            var hadUnsavedWork = !!FrameTrail.getState('unsavedChanges');
+
+            resetLocalSession();
+
+            if (!options.quiet && accountChangeNotedFor !== incoming) {
+                accountChangeNotedFor = incoming;
+                showAccountChangedDialog(hadUnsavedWork);
+            }
+
+            callback.call(window, false, 'changed');
+            return;
+
+        }
+
+        userSessionLifetime = parseInt(response.session_lifetime);
+        userSessionExpiresIn = (typeof response.session_expires_in === 'number')
+                                ? response.session_expires_in
+                                : null;
+        reportServerExtensions(response.serverExtensions);
+        login(response.response);
+        callback.call(window, true);
+
+    }
+
+
+    /**
+     * The server says there is no session (userCheckLogin, code 0).
+     *
+     * For an anonymous visitor that is the ordinary answer, and nothing
+     * happens. A session that was here a moment ago and is not any more is
+     * another matter — somebody signed out (here, in another tab, on the
+     * platform), the session expired, or somebody else signed in on the
+     * platform. On a platform that offers it, the platform is asked quietly
+     * first, before anything on screen changes: renewed, the editor goes on
+     * exactly where it was, edit mode included.
+     *
+     * @method sessionMissing
+     * @param {Function} callback
+     * @param {Object} options
+     * @private
+     */
+    function sessionMissing(callback, options) {
+
+        var endedUnderUs   = FrameTrail.getState('loggedIn') && !isGuestMode,
+            wasEditing     = !!FrameTrail.getState('editMode'),
+            hadUnsavedWork = !!FrameTrail.getState('unsavedChanges');
+
+        if (!endedUnderUs) {
+            // Not logout(): there is nothing to tell the server, which has just
+            // finished saying there is no session.
+            resetLocalSession();
+            callback.call(window, false, 'ended');
+            return;
+        }
+
+        if (!options.noRenew && canRenewSilently()) {
+            renewSession(function(result) {
+                if (result === 'renewed') {
+                    callback.call(window, true);
+                    return;
+                }
+                sessionGone(wasEditing, hadUnsavedWork, result, options);
+                callback.call(window, false, (result === 'changed') ? 'changed' : 'renewFailed');
+            });
+            return;
+        }
+
+        // The renewal confirming itself found no session: it reports that, and
+        // whoever started it decides what to say.
+        if (options.noRenew) {
+            resetLocalSession();
+            callback.call(window, false, 'ended');
+            return;
+        }
+
+        sessionGone(wasEditing, hadUnsavedWork, 'ended', options);
+        callback.call(window, false, 'ended');
+
+    }
+
+
+    /**
+     * A session that was here has ended and was not renewed: the page signs
+     * out (the in-memory work is untouched), and — unless the caller handles
+     * it (options.quiet) — the user is told, by what is at stake.
+     *
+     * @method sessionGone
+     * @param {Boolean} wasEditing
+     * @param {Boolean} hadUnsavedWork
+     * @param {String} result  'ended', 'failed' or 'changed'
+     * @param {Object} options
+     * @private
+     */
+    function sessionGone(wasEditing, hadUnsavedWork, result, options) {
+
+        // Not logout(): there is nothing to tell the server, which has just
+        // finished saying there is no session. Posting userLogout here could
+        // also destroy a session a renewal has just established.
+        resetLocalSession();
+
+        FrameTrail.triggerEvent('userAction', {
+            action: 'UserLogout'
+        });
+
+        if (options.quiet) return;
+
+        if (result === 'changed') {
+            showAccountChangedDialog(hadUnsavedWork);
+            return;
+        }
+
+        announceSessionEnded(wasEditing, hadUnsavedWork);
+
+    }
+
+
+    /**
+     * I tell the user that the session has ended, by what they would lose.
+     *
+     * Editing, or with unsaved changes: the session-ended dialog (Export, Sign
+     * in again, Not now) — never a navigation, which would take the work with
+     * it. Otherwise, on a private platform instance, nothing on the page is
+     * readable without a session, so the sign-in is the way on; anywhere else
+     * an anonymous visitor is a perfectly good state, and a short message
+     * says why the avatar went.
+     *
+     * @method announceSessionEnded
+     * @param {Boolean} wasEditing
+     * @param {Boolean} hadUnsavedWork
+     * @private
+     */
+    function announceSessionEnded(wasEditing, hadUnsavedWork) {
+
+        if (wasEditing || hadUnsavedWork) {
+            showSessionEndedDialog(hadUnsavedWork, wasEditing);
+            return;
+        }
+
+        if (externalAuth && isPrivateInstance()) {
+            goToExternalLogin();
+            return;
+        }
+
+        var modal = FrameTrail.module('InterfaceModal');
+
+        if (modal) {
+            modal.showStatusMessage(labels['MessageSessionEnded']);
+            modal.hideMessage(5000);
+        }
+
+    }
+
+
+    /**
+     * The heartbeat could not reach the server: look again in half a minute
+     * rather than at the end of the session's lifetime.
+     *
+     * @method retrySessionCheckSoon
+     * @private
+     */
+    function retrySessionCheckSoon() {
+
+        clearTimeout(userSessionTimeout);
+        userSessionTimeout = setTimeout(function() {
+            isLoggedIn(function(){});
+        }, 30000);
 
     }
 
@@ -932,6 +1158,11 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         userRole  = userData.role;
         userMail  = userData.mail;
         userRegistrationDate = userData.registrationDate;
+
+        // The work on this page is this account's from now on.
+        workingAs     = String(userData.id);
+        workingAsName = userData.name || '';
+        accountChangeNotedFor = null;
 
         resetSessionTimeout();
 
@@ -968,6 +1199,9 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         // decides which annotations are theirs to edit. Local mode has no
         // authentication anyway: whoever types a name is that guest.
         isGuestMode = true;
+        // A guest has no server session whose identity could change under it.
+        workingAs     = '';
+        workingAsName = '';
         userID   = window.FrameTrailSerializer.guestUserID(name);
         userRole = 'admin';
         userMail = '';
@@ -1046,6 +1280,13 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
      *                          navigating away mid-call, would both be wrong.
      */
     function logout(silent) {
+
+        // Asked for: whatever is open here is nobody's account's work any more.
+        // (A silent logout is a session that ended elsewhere: the work is still theirs.)
+        if (!silent) {
+            workingAs     = '';
+            workingAsName = '';
+        }
 
         // Guest / local / download logout: clear in-memory state, no server call needed.
         if (isGuestMode || FrameTrail.getState('storageMode') !== 'server') {
@@ -1158,10 +1399,15 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             action: 'UserLogout'
         });
 
+        // dataPath: a session belongs to its data folder (config.php), so
+        // sso.php has to know which one to end.
+        var dataPath = (FrameTrail.module('StorageManager').getAdapter() || {}).dataPathAbsolute;
+
         window.location.href = FrameTrail.module('RouteNavigation')
                                          .resolveServerURL('sso.php')
                              + '?a=logout'
-                             + (then === 'login' ? '&then=login' : '');
+                             + (then === 'login' ? '&then=login' : '')
+                             + (dataPath ? '&dataPath=' + encodeURIComponent(dataPath) : '');
 
     }
 
@@ -1199,66 +1445,15 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 
     /**
-     * I decide what to do about a session that ended without anyone asking.
+     * Whether a session that ended can be renewed without moving the page:
+     * a platform that offers a renewUrl (see renewSession).
      *
-     * Three ways this happens, and they are indistinguishable from here: the
-     * platform session was signed out, somebody signed in over there as a
-     * different person, or the absolute bound ran out. All three mean the same
-     * thing — the platform is no longer standing behind this session.
-     *
-     * Try to fix it invisibly first. If the platform still knows this browser,
-     * a frame can fetch a new session without the page moving, and nothing
-     * about the next few seconds is ever noticed. Only when that fails does
-     * anybody need to be told, and what to tell them depends on what they would
-     * lose by being sent away.
-     *
-     * @method handleSessionEnded
-     * @param {Boolean} wasEditing      whether edit mode was open when it ended
-     * @param {Boolean} hadUnsavedWork  whether there were changes worth keeping
+     * @method canRenewSilently
+     * @return {Boolean}
      * @private
      */
-    function handleSessionEnded(wasEditing, hadUnsavedWork) {
-
-        silentRenew(function(renewed, identityChanged) {
-
-            if (identityChanged) {
-                showAccountChangedDialog(hadUnsavedWork);
-                return;
-            }
-
-            if (renewed) {
-                // The good case, and the reason the frame exists: the page is
-                // where it was, the work is where it was, and the only trace is
-                // a request in the network panel.
-                return;
-            }
-
-            if (wasEditing) {
-                showSessionEndedDialog(hadUnsavedWork);
-                return;
-            }
-
-            if (isPrivateInstance()) {
-                // Nothing on this page is readable without a session anyway, so
-                // there is nothing to preserve by staying.
-                goToExternalLogin();
-                return;
-            }
-
-            // A public instance simply has an anonymous visitor again, which is
-            // a perfectly good state to be in. Say so, because an avatar
-            // vanishing without explanation is a small mystery, and leave it:
-            // the next thing that needs a session routes through
-            // ensureAuthenticated() and heals this without any help from here.
-            var modal = FrameTrail.module('InterfaceModal');
-
-            if (modal) {
-                modal.showStatusMessage(labels['MessageSessionEnded']);
-                modal.hideMessage(5000);
-            }
-
-        });
-
+    function canRenewSilently() {
+        return FrameTrail.getState('storageMode') === 'server' && !!externalAuth && !!externalAuth.renewUrl;
     }
 
 
@@ -1276,48 +1471,56 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
      * hop needs are actually sent. Against an unrelated domain the frame would
      * silently get nowhere, which is exactly what the timeout is for.
      *
+     * One renewal at a time: whoever asks while one is on its way gets its
+     * answer — a save must not be told "no" because the heartbeat happened to
+     * ask first.
+     *
      * Strictly a fast path. Every caller must be able to carry on when this
-     * answers false, because it will: a platform that has genuinely signed out
-     * answers false by design, and that is the common case rather than the
+     * answers 'failed', because it will: a platform that has genuinely signed
+     * out answers so by design, and that is the common case rather than the
      * exception.
      *
-     * @method silentRenew
-     * @param {Function} done  called with true only if there is a session again
+     * @method renewSession
+     * @param {Function} done  called with 'renewed', 'changed' (a session, but somebody else's) or 'failed', and the platform's reason
      * @private
      */
-    function silentRenew(done) {
+    function renewSession(done) {
 
-        if (silentRenewInFlight
-            || FrameTrail.getState('storageMode') !== 'server'
-            || !externalAuth
-            || !externalAuth.renewUrl) {
-            done(false);
+        if (!canRenewSilently()) {
+            done('failed', null);
             return;
         }
+
+        renewWaiters.push(done);
+
+        if (silentRenewInFlight) return;
 
         silentRenewInFlight = true;
 
         var frame    = document.createElement('iframe'),
             timer    = null,
-            finished = false,
-            // Who this session belonged to before the frame went out. A renew
-            // is only a continuation if it comes back as the same person.
-            previousUserID = userID;
+            finished = false;
 
-        function finish(renewed, identityChanged, reason) {
+        function finish(result, reason) {
 
             if (finished) return;
             finished = true;
 
             window.clearTimeout(timer);
             window.removeEventListener('message', onMessage);
+            armRenewTimeout = null;
 
             if (frame.parentNode) {
                 frame.parentNode.removeChild(frame);
             }
 
             silentRenewInFlight = false;
-            done(renewed, !!identityChanged, reason || null);
+
+            var waiters = renewWaiters;
+            renewWaiters = [];
+            waiters.forEach(function(waiter) {
+                try { waiter(result, reason || null); } catch (e) { console.error(e); }
+            });
 
         }
 
@@ -1350,35 +1553,19 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
                 // 'noaccess' need opposite things offered to them, and asking
                 // the person to find out for themselves — by sending them to
                 // the platform and back — is what this is here to avoid.
-                finish(false, false, event.data.reason);
+                finish('failed', event.data.reason);
                 return;
             }
 
             // Never take the frame's word for it. The worst way for this to
             // fail is to look like it worked and be discovered at save time, so
             // the session is confirmed from the server before anyone relies on
-            // it — and isLoggedIn() also puts the interface back together.
-            isLoggedIn(function(loggedIn) {
-
-                if (!loggedIn) {
-                    finish(false);
-                    return;
-                }
-
-                // A session, but somebody else's: signed in as a different
-                // person at the platform since this one started. Emphatically
-                // not a continuation — carrying on would write whatever is
-                // unsaved here into the new person's annotation file under
-                // their name. Report failure, and let the caller decide what to
-                // say; the work stays in memory either way.
-                if (previousUserID !== '' && userID !== previousUserID) {
-                    finish(false, true);
-                    return;
-                }
-
-                finish(true);
-
-            });
+            // it — and isLoggedIn() also puts the interface back together. It
+            // also tells a session that came back as somebody else
+            // (sessionPresent): emphatically not a continuation.
+            isLoggedIn(function(loggedIn, why) {
+                finish(loggedIn ? 'renewed' : ((why === 'changed') ? 'changed' : 'failed'));
+            }, { quiet: true, noRenew: true });
 
         }
 
@@ -1388,9 +1575,15 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         // a bad connection, and short enough that a frame which will never
         // answer — the wrong domain, a platform that is down — does not leave
         // somebody staring at an interface that has quietly stopped saving.
-        timer = window.setTimeout(function() {
-            finish(false);
-        }, 10000);
+        // Armed again by rearmTimers() when a hypervideo switch clears every
+        // timer on the page, or the renewal would never end.
+        armRenewTimeout = function() {
+            window.clearTimeout(timer);
+            timer = window.setTimeout(function() {
+                finish('failed');
+            }, 10000);
+        };
+        armRenewTimeout();
 
         frame.setAttribute('aria-hidden', 'true');
         frame.style.display = 'none';
@@ -1402,30 +1595,61 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 
     /**
-     * I tell somebody who was editing that their session is over.
+     * I ask the platform for a new session without moving the page (see
+     * renewSession), for callers that want to know only whether it worked.
+     *
+     * @method silentRenew
+     * @param {Function} done  called with (renewed, identityChanged, reason)
+     */
+    function silentRenew(done) {
+        renewSession(function(result, reason) {
+            done(result === 'renewed', result === 'changed', reason || null);
+        });
+    }
+
+
+    /**
+     * I tell somebody who was editing, or has unsaved changes, that their
+     * session is over.
      *
      * A dialog rather than the redirect the other cases get, because
      * goToExternalLogin() is a whole page load and would take unsaved work with
      * it. Edit mode has already closed by the time this runs — resetLocalSession()
      * saw to that, and it is honest: there is no session to edit against. But
      * the in-memory model is untouched, so the export below still has
-     * everything, and it is the one way to get work out of a tab that can no
-     * longer save.
+     * everything (BundleExport takes the own annotations of workingAs), and it
+     * is the one way to get work out of a tab that can no longer save.
+     *
+     * With an account of this instance, signing in again happens right here
+     * (the login box), and the work, still in the page, can be saved after it;
+     * with a platform it leaves the page. An account that was deactivated or
+     * removed (reason 'revoked') cannot sign in again at all.
      *
      * @method showSessionEndedDialog
      * @param {Boolean} hadUnsavedWork
+     * @param {Boolean} [wasEditing]  sign in again opens edit mode again
+     * @param {String} [reason]       'revoked': the account cannot sign in any more
      * @private
      */
-    function showSessionEndedDialog(hadUnsavedWork) {
+    function showSessionEndedDialog(hadUnsavedWork, wasEditing, reason) {
+
+        if (sessionEndedOpen) return;
 
         var label   = externalAuth ? externalAuth.label : '',
+            revoked = (reason === 'revoked'),
+            text    = revoked ? labels['UserAccountRevokedText']
+                    : externalAuth ? labels['UserSessionEndedText'].replace('%s', label)
+                    : labels['UserSessionEndedLocalText'],
+            warning = !hadUnsavedWork ? ''
+                    : (externalAuth && !revoked) ? labels['UserSessionEndedUnsavedWarning']
+                    : labels['UserUnsavedExportHint'],
             wrapper = document.createElement('div'),
             buttons = {};
 
         wrapper.className = 'sessionEndedDialog';
         wrapper.innerHTML = '<div class="message active">'
-            + labels['UserSessionEndedText'].replace('%s', label)
-            + (hadUnsavedWork ? ' ' + labels['UserSessionEndedUnsavedWarning'] : '')
+            + text
+            + (warning ? ' ' + warning : '')
             + '</div>';
 
         if (hadUnsavedWork) {
@@ -1435,14 +1659,29 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             };
         }
 
-        buttons[labels['UserSignInAgain']] = function() {
-            dialogCtrl.close();
-            goToExternalLogin();
-        };
+        if (!revoked) {
+            buttons[labels['UserSignInAgain']] = function() {
+                dialogCtrl.close();
+                if (externalAuth) {
+                    goToExternalLogin();
+                    return;
+                }
+                // In place: the work is still here, and goes on being edited.
+                userBoxCallback = function() {
+                    if (wasEditing && !FrameTrail.getState('editMode')) {
+                        FrameTrail.changeState('editMode', 'preview');
+                    }
+                };
+                userBoxCallbackCancel = null;
+                showLoginBox(false);
+            };
+        }
 
         buttons[labels['GenericNotNow']] = function() {
             dialogCtrl.close();
         };
+
+        sessionEndedOpen = true;
 
         var dialogCtrl = Dialog({
             resizable: false,
@@ -1450,6 +1689,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             title: labels['UserSessionEndedTitle'],
             content: wrapper,
             close: function() {
+                sessionEndedOpen = false;
                 dialogCtrl.destroy();
             },
             buttons: buttons
@@ -1459,14 +1699,15 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
 
     /**
-     * I say that the person at the platform is no longer the person who was
-     * working here.
+     * I say that the person signed in in this browser is no longer the person
+     * who was working here.
      *
      * Distinct from the session simply ending, and worth its own words: there
-     * *is* a valid session next door, it just belongs to somebody else. Taking
-     * it would be the easy thing and the wrong one — whatever is unsaved on
-     * this page was authored by the previous account, and saving it now would
-     * file it under the new one's name, in the new one's annotation file.
+     * *is* a valid session, it just belongs to somebody else — signed in at the
+     * platform, or in another tab. Taking it would be the easy thing and the
+     * wrong one — whatever is unsaved on this page was authored by the
+     * previous account, and saving it now would file it under the new one's
+     * name, in the new one's annotation file.
      *
      * So nothing is adopted until it is chosen. Continuing reloads the page
      * under the new identity, which is honest about what it costs; the export
@@ -1479,14 +1720,18 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
      */
     function showAccountChangedDialog(hadUnsavedWork) {
 
+        if (accountChangedOpen) return;
+
         var label   = externalAuth ? externalAuth.label : '',
+            text    = externalAuth ? labels['UserAccountChangedText'].replace('%s', label) : labels['UserAccountChangedLocalText'],
+            warning = !hadUnsavedWork ? '' : (externalAuth ? labels['UserSessionEndedUnsavedWarning'] : labels['UserUnsavedExportHint']),
             wrapper = document.createElement('div'),
             buttons = {};
 
         wrapper.className = 'sessionEndedDialog';
         wrapper.innerHTML = '<div class="message active">'
-            + labels['UserAccountChangedText'].replace('%s', label)
-            + (hadUnsavedWork ? ' ' + labels['UserSessionEndedUnsavedWarning'] : '')
+            + text
+            + (warning ? ' ' + warning : '')
             + '</div>';
 
         if (hadUnsavedWork) {
@@ -1498,6 +1743,11 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
 
         buttons[labels['UserContinueAsNewAccount']] = function() {
             dialogCtrl.close();
+            // Chosen: the previous account's unsaved work goes (or the browser
+            // would ask about leaving it once more).
+            if (FrameTrail.module('HypervideoModel') && FrameTrail.module('HypervideoModel').discardUnsaved) {
+                FrameTrail.module('HypervideoModel').discardUnsaved();
+            }
             window.location.reload();
         };
 
@@ -1505,12 +1755,15 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
             dialogCtrl.close();
         };
 
+        accountChangedOpen = true;
+
         var dialogCtrl = Dialog({
             resizable: false,
             modal: true,
             title: labels['UserAccountChangedTitle'],
             content: wrapper,
             close: function() {
+                accountChangedOpen = false;
                 dialogCtrl.destroy();
             },
             buttons: buttons
@@ -2114,6 +2367,27 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
     }
 
 
+    /**
+     * Opening another hypervideo clears every timer on the page
+     * (HypervideoModel.updateHypervideo): the heartbeat, and the deadline of a
+     * renewal on its way, are armed again here — or the session would go
+     * unrenewed until the next save, and a renewal would never end.
+     *
+     * @method rearmTimers
+     */
+    function rearmTimers() {
+
+        if (FrameTrail.getState('loggedIn') && !isGuestMode && FrameTrail.getState('storageMode') === 'server') {
+            resetSessionTimeout();
+        }
+
+        if (silentRenewInFlight && armRenewTimeout) {
+            armRenewTimeout();
+        }
+
+    }
+
+
     // Init the user model
     isLoggedIn(function(){});
 
@@ -2138,7 +2412,16 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
         forgetIntent:           forgetIntent,
         goToExternalLogin:      goToExternalLogin,
         silentRenew:            silentRenew,
+        rearmTimers:            rearmTimers,
         logout:                 logout,
+
+        /**
+         * The account whose work is open here — the last one signed in with a
+         * server session, also after that session ended ('' for none, and for
+         * guests, whose userID it is). An export takes its annotations.
+         */
+        workingAs:              function() { return workingAs; },
+        workingAsName:          function() { return workingAsName; },
         isGuestMode:            function() { return isGuestMode; },
         isForceLogin:           function() { return forceLoginRequired; },
 

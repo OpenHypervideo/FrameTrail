@@ -341,6 +341,7 @@ function updateAnnotationSources($hypervideoID, $newSourcePath) {
     }
 
     $filesUpdated = 0;
+    $rewritten    = array();
     $files = glob($annotationsDir . "*.json");
 
     foreach ($files as $file) {
@@ -360,8 +361,28 @@ function updateAnnotationSources($hypervideoID, $newSourcePath) {
             }
             if ($modified) {
                 file_put_contents($file, json_encode($content, $conf["settings"]["json_flags"]));
+                $rewritten[] = substr($filename, 0, -5);
                 $filesUpdated++;
             }
+        }
+    }
+
+    // Every file rewritten here has a new version: its owner's open editor
+    // notices, and its next save is refused rather than writing the old
+    // source back over the new one (annotationfileSave compares lastchanged).
+    if (count($rewritten)) {
+        $indexPath = $annotationsDir . "_index.json";
+        if (file_exists($indexPath)) {
+            $indexFile = new sharedFile($indexPath);
+            $index     = json_decode($indexFile->read(), true);
+            $now       = (int)round(microtime(true) * 1000);
+            foreach ($rewritten as $fileID) {
+                if (isset($index["annotationfiles"][$fileID]) && is_array($index["annotationfiles"][$fileID])) {
+                    $previous = isset($index["annotationfiles"][$fileID]["lastchanged"]) ? (int)$index["annotationfiles"][$fileID]["lastchanged"] : 0;
+                    $index["annotationfiles"][$fileID]["lastchanged"] = max($now, $previous + 1);
+                }
+            }
+            $indexFile->writeClose(json_encode($index, $conf["settings"]["json_flags"]));
         }
     }
 

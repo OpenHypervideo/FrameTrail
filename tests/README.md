@@ -6,6 +6,7 @@ Fixture-based tests for FrameTrail's data format: the JSON Schemas in [`schemas/
 node tests/run-js.mjs                          # Node 20 or later, nothing to install
 node --test-reporter=spec tests/run-js.mjs     # the same, with readable output outside a terminal
 node tests/run-js.mjs --data=path/to/_data     # also check a _data folder of your own; its lint findings are listed, not failed
+node tests/run-php.mjs                         # the server contract: PHP's built-in server over src/, a throwaway data folder (skipped without php)
 ```
 
 CI runs the tests on every push and pull request (`.github/workflows/build.yml`).
@@ -20,6 +21,8 @@ CI runs the tests on every push and pull request (`.github/workflows/build.yml`)
 | `fixtures/lint/` | Every data set is a valid bundle. Each case finds exactly the findings given, with a result that follows `FrameTrailLint.RESULT_SCHEMA`; every rule is found by some case. |
 | Unit tests | `FrameTrailSchema`, `FrameTrailSerializer` (also `schemaOfFile`, `guestUserID` with the example in DATA-MODEL.md), `FrameTrailHTMLFormat` (escaping of the data block and of an embedded library, attribute variants, newer formats refused; editing a page in place: the page around the block kept, a hypervideo page read as a project with its page settings moved into the data, an index entry without its folder left out, a new page from an empty project), `FrameTrailLint` (`partsOf`, plain text and WebVTT cues, `checkFolder` on a folder with every problem it reports and on a project file's folder), `FrameTrailKeyframes`, `FrameTrailWebVTT`, `FrameTrailPairing` (ids, join links and URLs, fingerprints, offer and answer blobs, the messages each side may send, the cookie a phone keeps a pairing grant in, chunks of a bundle, the phone's clock, ICE gathering, the selected path, a phone's bundle without code). |
 | Pairing broker | The [broker contract](../docs/PAIRING.md#broker-contract-v1) against the stub (`scripts/pairing-broker.mjs`, started in-process with a clock the test moves): a handshake, the host key, size and rate limits, lifetimes of rooms, offers and answers, CORS, `GET /ice` with coturn credentials, `pollAnswer`. A production broker should pass the same. |
+| Storage adapters | `StorageAdapterLocal` and `StorageAdapterHTMLFile` (run in a context of their own, against an in-memory File System Access API): an own write is unchanged and another program's is not; a file seen and deleted elsewhere is not unchanged, the adapter's own deletes forget it; in a project file, another tab's write of another path is no conflict, of the same path it is, and two tabs writing at the same moment both end up in the file. |
+| Server contract (`run-php.mjs`) | `src/_server/` behind `php -S`, with a data folder made through the setup actions: writes without a session refused (code 1); compare-and-swap (code 7) of `hypervideoChange`, `annotationfileSave`, `configChange`, `globalCSSChange` (also two writes within a second) and `overviewMapChange`; the collaboration lock (4, 5, takeover) and `lastWriter`; personal API tokens; a session belongs to its data folder; a change of the video source changes the version of the annotation files it rewrites. |
 
 The tests do not cover the user interface; see [CONTRIBUTING.md](../CONTRIBUTING.md#testing).
 

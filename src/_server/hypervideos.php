@@ -465,9 +465,14 @@ function hypervideoChange($hypervideoID, $src, $subtitlesToDelete = false, $subt
         $return["status"]   = "fail";
         $return["code"]     = 7;
         $return["string"]   = "Hypervideo was changed by someone else.";
+        // Who wrote it last, for the conflict dialog: the person who changed
+        // it, not the one who created it.
+        include_once("collaboration.php");
+        $lastWriter = collabLastWriter("hypervideo", (string)$hypervideoID);
         $return["response"] = array(
             "lastchanged" => $hv["meta"]["lastchanged"],
-            "creator"     => $hv["meta"]["creator"]
+            "creator"     => $hv["meta"]["creator"],
+            "lastWriter"  => ($lastWriter && isset($lastWriter["name"])) ? $lastWriter["name"] : null
         );
         return $return;
     }

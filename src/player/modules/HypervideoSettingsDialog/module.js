@@ -52,14 +52,13 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         lockMessageEl     = mounted.message;
 
         // Opened from the overview, this dialog is routinely about a hypervideo
-        // other than the loaded one — and the hypervideo scope is single: an
-        // out-of-band start re-targets the primary session, stopping the loaded
-        // video's. Remembering that here is what lets the close path put it
-        // back, instead of leaving the sidebar's notices, setEditing and the
-        // edit lock all pointed at a video nobody is watching.
+        // other than the loaded one. Its session is a secondary one then: the
+        // loaded video's session — the editor's lock, its presence, the
+        // sidebar's notices — stays exactly as it is, and closing the dialog
+        // stops only the dialog's.
         sessionOpenedByDialog = (lockScopeId !== String(FrameTrail.module('RouteNavigation').hypervideoID));
 
-        Collaboration.start('hypervideo', lockScopeId);
+        Collaboration.start('hypervideo', lockScopeId, sessionOpenedByDialog ? { secondary: true } : undefined);
 
         // Already ours from edit mode? Then leave it exactly as it is — taking
         // it again would make us release it when this dialog closes, dropping
@@ -90,19 +89,10 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             Collaboration.release(null, 'hypervideo', lockScopeId);
         }
 
-        // Hand the primary hypervideo scope back to whatever is actually
-        // loaded. start() is a no-op when its session already exists, so the
-        // ordinary case — the dialog opened on the loaded video — never gets
-        // here at all.
+        // The dialog's own session, for a hypervideo other than the loaded one
+        // (secondary: the loaded one's was never touched).
         if (Collaboration && sessionOpenedByDialog && lockScopeId !== null) {
-
             Collaboration.stop('hypervideo', lockScopeId);
-
-            var loadedID = FrameTrail.module('RouteNavigation').hypervideoID;
-            if (loadedID) {
-                Collaboration.start('hypervideo', loadedID);
-            }
-
         }
 
         presenceContainer     = null;
@@ -681,6 +671,31 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             return pendingContentCuts ? cutContents(json, pendingContentCuts) : json;
         }
 
+        // A write of the loaded hypervideo waits for a save of the editor in flight.
+        function whenWriteLaneFree(callback) {
+            var HypervideoModel = FrameTrail.module('HypervideoModel');
+            if (isLoadedHypervideo(thisID) && HypervideoModel.whenSaveIdle) {
+                HypervideoModel.whenSaveIdle(callback);
+            } else {
+                callback();
+            }
+        }
+
+        // What was just written is the version the next write compares with —
+        // the editor's too, which keeps this entry when the library is read
+        // again (Database.keepsEditorEntry). For the loaded hypervideo the
+        // editor's state was written with it: what it still has unsaved are
+        // the annotations.
+        function noteWritten(json, version) {
+            var entry = FrameTrail.module('Database').hypervideos[thisID];
+            if (entry && json && json.meta) {
+                entry.lastchanged = json.meta.lastchanged;
+            }
+            if (isLoadedHypervideo(thisID) && FrameTrail.module('HypervideoModel').hypervideoPartSaved) {
+                FrameTrail.module('HypervideoModel').hypervideoPartSaved(version);
+            }
+        }
+
         function updateDatabaseFromForm() {
             // Only called when saving - apply changes to database
             var DatabaseEntry = FrameTrail.module('Database').hypervideos[thisID];
@@ -765,6 +780,32 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
         var hypervideoDialogCtrl;
 
+        // Somebody else saved this hypervideo since it was read: saving again
+        // would meet the same refusal. The way out is what is stored now —
+        // for the loaded hypervideo the editor's copy as well, as in the
+        // editor's own conflict dialog; for another one the dialog opens again
+        // on it.
+        function showConflict(message) {
+            var conflictEl = EditHypervideoForm.querySelector('.message.error'),
+                reload     = document.createElement('button');
+            conflictEl.classList.add('active');
+            conflictEl.textContent = message + ' ';
+            reload.type = 'button';
+            reload.textContent = labels['GenericReloadDiscard'];
+            reload.addEventListener('click', function() {
+                hypervideoDialogCtrl.close();
+                if (isLoadedHypervideo(thisID)) {
+                    FrameTrail.module('HypervideoModel').refreshFromServer();
+                    return;
+                }
+                FrameTrail.module('Database').loadHypervideoData(function() {
+                    FrameTrail.module('ViewOverview').refreshList();
+                    open(thisID);
+                }, function() {});
+            });
+            conflictEl.appendChild(reload);
+        }
+
         function completeUpdate() {
             var sourceWasChanged = sourceChangeConfirmed;
             var newSourcePath = null;
@@ -807,9 +848,16 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                             FrameTrail.module('AnnotationsController').initController();
                         }
 
-                        // If source was changed, reload the hypervideo to get new video
+                        // If source was changed, reload the hypervideo to get new video —
+                        // after the user decided about what is unsaved still (annotations:
+                        // the settings themselves are written).
                         if (sourceWasChanged) {
-                            FrameTrail.module('HypervideoModel').updateHypervideo(thisID, FrameTrail.getState('editMode'), true);
+                            var editModeNow = FrameTrail.getState('editMode');
+                            FrameTrail.module('HypervideoModel').confirmUnsaved({
+                                proceed: function() {
+                                    FrameTrail.module('HypervideoModel').updateHypervideo(thisID, editModeNow, true);
+                                }
+                            });
                         }
 
                         hypervideoDialogCtrl.close();
@@ -915,60 +963,68 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
             // All validation passed - save
             updateDatabaseFromForm();
-            var formData = new FormData(form);
-            formData.set('a', 'hypervideoChange');
-            formData.set('hypervideoID', thisID);
-            formData.set('src', JSON.stringify(hypervideoJSON(), null, 4));
 
-            // Compare-and-swap token. This dialog posts the ENTIRE hypervideo.json
-            // — every overlay and code snippet included — so without it a settings
-            // dialog left open silently reverts everything another editor saved.
-            var baseVersion = FrameTrail.module('Database').hypervideos[thisID].lastchanged;
-            formData.set('baseVersion', (baseVersion == null ? '' : baseVersion));
+            // The open hypervideo is written whole, the editor's state with it:
+            // after a save in flight, or the version compared with below would
+            // be the one before it.
+            whenWriteLaneFree(function() {
 
-            // The hypervideo.json written here lists subtitles that were set in the editor and not saved yet; their files go with it.
-            var pendingSubtitles = takePendingSubtitles(thisID);
-            Object.keys(pendingSubtitles).forEach(function(lang) {
-                if (pendingSubtitles[lang] === null) {
-                    formData.append('SubtitlesToDelete[]', lang);
-                } else {
-                    formData.append('subtitles[' + lang + ']', new Blob([pendingSubtitles[lang]], { type: 'text/vtt' }), lang + '.vtt');
-                }
-            });
+                var writtenJSON = hypervideoJSON();
+                var formData = new FormData(form);
+                formData.set('a', 'hypervideoChange');
+                formData.set('hypervideoID', thisID);
+                formData.set('src', JSON.stringify(writtenJSON, null, 4));
 
-            _serverPost(formData)
-            .then(function(response) {
-                if (response['code'] !== 0 && isLoadedHypervideo(thisID)) {
-                    FrameTrail.module('HypervideoModel').returnPendingSubtitles(pendingSubtitles);
-                }
-                switch(response['code']) {
-                    case 7:
-                        // Someone else wrote this hypervideo since we opened.
-                        var _conflictEl = EditHypervideoForm.querySelector('.message.error');
-                        _conflictEl.classList.add('active');
-                        _conflictEl.innerHTML = labels['ErrorSaveConflict'];
-                        break;
-                    case 0:
-                        var sourceWasChanged = sourceChangeConfirmed;
-                        var newSourcePath = null;
-                        if (sourceWasChanged) {
-                            var newSourceInfo = getNewSourceInfo();
-                            newSourcePath = newSourceInfo.src;
-                        }
+                // Compare-and-swap token. This dialog posts the ENTIRE hypervideo.json
+                // — every overlay and code snippet included — so without it a settings
+                // dialog left open silently reverts everything another editor saved.
+                var baseVersion = FrameTrail.module('Database').hypervideos[thisID].lastchanged;
+                formData.set('baseVersion', (baseVersion == null ? '' : baseVersion));
 
-                        if (sourceWasChanged && newSourcePath !== null) {
-                            _serverPost(new URLSearchParams({ a: 'updateAnnotationSources', hypervideoID: thisID, newSourcePath: newSourcePath }))
-                            .then(function() { completeUpdate(); })
-                            .catch(function() { completeUpdate(); });
-                        } else {
-                            completeUpdate();
-                        }
-                        break;
-                    default:
-                        EditHypervideoForm.querySelector('.message.error').classList.add('active');
-                    EditHypervideoForm.querySelector('.message.error').innerHTML = 'Error: '+ response['string'];
-                        break;
-                }
+                // The hypervideo.json written here lists subtitles that were set in the editor and not saved yet; their files go with it.
+                var pendingSubtitles = takePendingSubtitles(thisID);
+                Object.keys(pendingSubtitles).forEach(function(lang) {
+                    if (pendingSubtitles[lang] === null) {
+                        formData.append('SubtitlesToDelete[]', lang);
+                    } else {
+                        formData.append('subtitles[' + lang + ']', new Blob([pendingSubtitles[lang]], { type: 'text/vtt' }), lang + '.vtt');
+                    }
+                });
+
+                _serverPost(formData)
+                .then(function(response) {
+                    if (response['code'] !== 0 && isLoadedHypervideo(thisID)) {
+                        FrameTrail.module('HypervideoModel').returnPendingSubtitles(pendingSubtitles);
+                    }
+                    switch(response['code']) {
+                        case 7:
+                            // Someone else wrote this hypervideo since we opened.
+                            showConflict(labels['ErrorSaveConflict']);
+                            break;
+                        case 0:
+                            noteWritten(writtenJSON, response['version']);
+                            var sourceWasChanged = sourceChangeConfirmed;
+                            var newSourcePath = null;
+                            if (sourceWasChanged) {
+                                var newSourceInfo = getNewSourceInfo();
+                                newSourcePath = newSourceInfo.src;
+                            }
+
+                            if (sourceWasChanged && newSourcePath !== null) {
+                                _serverPost(new URLSearchParams({ a: 'updateAnnotationSources', hypervideoID: thisID, newSourcePath: newSourcePath }))
+                                .then(function() { completeUpdate(); })
+                                .catch(function() { completeUpdate(); });
+                            } else {
+                                completeUpdate();
+                            }
+                            break;
+                        default:
+                            EditHypervideoForm.querySelector('.message.error').classList.add('active');
+                        EditHypervideoForm.querySelector('.message.error').innerHTML = 'Error: '+ response['string'];
+                            break;
+                    }
+                });
+
             });
         });
 
@@ -1072,9 +1128,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                     writeFiles();
                     return;
                 }
-                var _conflictEl = EditHypervideoForm.querySelector('.message.error');
-                _conflictEl.classList.add('active');
-                _conflictEl.innerHTML = labels[(FrameTrail.getState('storageMode') === 'file') ? 'ErrorSaveConflictInFile' : 'ErrorSaveConflictInFolder'];
+                showConflict(labels[(FrameTrail.getState('storageMode') === 'file') ? 'ErrorSaveConflictInFile' : 'ErrorSaveConflictInFolder']);
             });
 
             function writeFiles() {
@@ -1095,6 +1149,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 });
 
                 Promise.all(writeTasks).then(function() {
+                    noteWritten(hypervideoData, null);
                     // Update annotation sources if video source changed
                     if (sourceWasChanged && newSourcePath !== null) {
                         return updateAnnotationSourcesLocally(adapter, thisID, newSourcePath);
@@ -1106,7 +1161,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                         FrameTrail.module('HypervideoModel').returnPendingSubtitles(pendingSubtitles);
                     }
                     EditHypervideoForm.querySelector('.message.error').classList.add('active');
-                    EditHypervideoForm.querySelector('.message.error').innerHTML = 'Local save failed: ' + (err ? err.message : '');
+                    EditHypervideoForm.querySelector('.message.error').textContent = labels['ErrorSavingData'] + (err && err.message ? ' (' + err.message + ')' : '');
                 });
             }
         }
@@ -1205,17 +1260,20 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
         var adapter = FrameTrail.module('StorageManager').getAdapter();
 
-        adapter.readJSON('hypervideos/_index.json').then(function(hvi) {
-            if (!hvi.hypervideos[thisID]) {
+        // Out of the index in one step (updateJSON: another tab's change of it meanwhile is kept), then the folder.
+        var hvPath = null, missing = false;
+        adapter.updateJSON('hypervideos/_index.json', function(hvi) {
+            hvi = hvi || { 'hypervideo-increment': 0, 'hypervideos': {} };
+            if (!hvi.hypervideos || !hvi.hypervideos[thisID]) { missing = true; return hvi; }
+            hvPath = 'hypervideos/' + hvi.hypervideos[thisID];
+            delete hvi.hypervideos[thisID];
+            return hvi;
+        }).then(function() {
+            if (missing) {
                 deleteDialogCtrl.element.querySelector('.message.error').classList.add('active'); deleteDialogCtrl.element.querySelector('.message.error').innerHTML = labels['ErrorHypervideoDoesNotExist'];
                 return Promise.reject();
             }
-            var hvPath = 'hypervideos/' + hvi.hypervideos[thisID];
-            delete hvi.hypervideos[thisID];
-            return Promise.all([
-                adapter.writeJSON('hypervideos/_index.json', hvi),
-                adapter.deleteDirectory(hvPath).catch(function() {})
-            ]);
+            return adapter.deleteDirectory(hvPath).catch(function() {});
         }).then(function() {
             deleteDialogCtrl.close();
             FrameTrail.module('Database').loadHypervideoData(
@@ -1363,14 +1421,17 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             return;
         }
 
-        adapter.readJSON('hypervideos/_index.json').then(function(hvi) {
+        // The next id in one step (updateJSON), so a hypervideo added in another tab at the same moment gets another one.
+        var newID, srcPath, destPath;
+        adapter.updateJSON('hypervideos/_index.json', function(hvi) {
             if (!hvi['hypervideo-increment']) { hvi['hypervideo-increment'] = 0; }
             hvi['hypervideo-increment']++;
-            var newID = hvi['hypervideo-increment'];
-            var srcPath = 'hypervideos/' + hvi.hypervideos[thisID];
-            var destPath = 'hypervideos/' + newID;
-
+            newID = hvi['hypervideo-increment'];
+            srcPath = 'hypervideos/' + hvi.hypervideos[thisID];
+            destPath = 'hypervideos/' + newID;
             hvi.hypervideos[newID] = './' + newID;
+            return hvi;
+        }).then(function() {
 
             // Copy the directory, then overwrite hypervideo.json and annotations
             return adapter.copyDirectory(srcPath, destPath).then(function() {
@@ -1392,7 +1453,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 };
 
                 return Promise.all([
-                    adapter.writeJSON('hypervideos/_index.json', hvi),
                     adapter.writeJSON(destPath + '/hypervideo.json', currentData),
                     adapter.writeJSON(destPath + '/annotations/_index.json', annotationIndex),
                     adapter.writeJSON(destPath + '/annotations/1.json', [])
@@ -1401,7 +1461,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 });
             });
         }).then(done).catch(function(err) {
-            forkDialogCtrl.element.querySelector('.message.error').classList.add('active'); forkDialogCtrl.element.querySelector('.message.error').innerHTML = 'Local fork failed: ' + (err ? err.message : '');
+            forkDialogCtrl.element.querySelector('.message.error').classList.add('active'); forkDialogCtrl.element.querySelector('.message.error').textContent = labels['ErrorSavingData'] + (err && err.message ? ' (' + err.message + ')' : '');
         });
     }
 
@@ -1450,28 +1510,44 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
             forkDialogCtrl.close();
 
-            FrameTrail.module('Database').loadHypervideoData(
-                function() {
-                    FrameTrail.module('ViewOverview').refreshList();
+            // The unsaved changes of the open hypervideo are decided about
+            // before the library is read again, so that saving them still
+            // writes what the editor holds. Kept, the copy is in the overview.
+            function reloadLibrary(then) {
+                FrameTrail.module('Database').loadHypervideoData(
+                    function() {
+                        FrameTrail.module('ViewOverview').refreshList();
+                        if (then) then();
+                    },
+                    function() {}
+                );
+            }
 
-                    function navigate() {
-                        FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newHypervideoID });
+            FrameTrail.module('HypervideoModel').confirmUnsaved({
+                proceed: function() {
+                    reloadLibrary(function() {
 
-                        if (wasEditMode) {
-                            FrameTrail.changeState('editMode', false);
+                        function navigate() {
+                            FrameTrail.module('RouteNavigation').setHashVariables({ overview: null, t: null, hypervideo: newHypervideoID });
+
+                            if (wasEditMode) {
+                                FrameTrail.changeState('editMode', false);
+                            }
+
+                            FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, wasEditMode, true);
                         }
 
-                        FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, wasEditMode, true);
-                    }
-
-                    if (map) {
-                        map.flushMapSave(navigate);
-                    } else {
-                        navigate();
-                    }
+                        if (map) {
+                            map.flushMapSave(navigate);
+                        } else {
+                            navigate();
+                        }
+                    });
                 },
-                function() {}
-            );
+                cancel: function() {
+                    reloadLibrary(null);
+                }
+            });
         }
 
         forkDialog.querySelector('.forkHypervideoForm').addEventListener('submit', function(e) {

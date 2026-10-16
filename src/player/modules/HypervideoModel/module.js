@@ -63,7 +63,9 @@
         // baseVersion loaded from disk, so the second to land would lose the
         // server's compare-and-swap and report a conflict — with ourselves.
         saveInFlight            = false,
-        pendingSaves            = [];
+        pendingSaves            = [],
+        // Called once no save is in flight (whenSaveIdle).
+        idleWaiters             = [];
 
     // Long enough that a burst of edits coalesces into one write, short enough
     // that a collaborator's refresh shows recent work.
@@ -195,15 +197,6 @@
         initModelOfAnnotations(database);
         initModelOfSubtitles(database);
 
-
-        // Show warning if user tries to leave the page without having saved changes
-        window.addEventListener('beforeunload', function(e) {
-            if ( FrameTrail.getState('unsavedChanges') ) {
-                // This message is not actually shown to the user in most cases, but the browser needs a return value
-                var message = labels['MessageUnsavedChanges'];
-                return message;
-            }
-        });
 
         // Track presence for this hypervideo. Safe to call on every init: the
         // module no-ops when there is no server or nobody is logged in, and
@@ -1221,14 +1214,12 @@
 
 
     /**
-     * Auto-save exists so that other people can actually see the work — a
-     * collaborator refreshing reads hypervideo.json from disk, so unsaved work
-     * is invisible to them. It therefore arms only while somebody else is
-     * present, and only while we hold the lock (so it can never race).
-     *
-     * Once armed it stays armed for the rest of the edit session rather than
-     * flapping off when the last observer leaves, which would make save
-     * semantics change under the user twice.
+     * Auto-save writes the work ten seconds after the last change, in every
+     * edit session that can save (canSave()), whoever else is present: so that
+     * collaborators see it, and so that a closed tab loses little. It does not
+     * write while a script's transaction is open (editBusy), and save() itself
+     * does not write the hypervideo once the lock has gone to somebody else
+     * (Collaboration.confirmLock()).
      *
      * @method scheduleAutoSave
      */
@@ -1250,6 +1241,11 @@
             if (!FrameTrail.getState('unsavedChanges')) return;
             if (!FrameTrail.getState('editMode')) return;
             if (!FrameTrail.module('StorageManager').canSave()) return;
+            // A script is still changing the hypervideo: its half is not written; try again after it.
+            if (FrameTrail.getState('editBusy')) {
+                scheduleAutoSave();
+                return;
+            }
 
             // silent: a background save must never raise a modal.
             save(null, null, true);
@@ -1280,7 +1276,23 @@
         var deferred = pendingSaves;
         pendingSaves = [];
 
-        if (!runDeferred || !deferred.length) return;
+        // Whoever waited for the write lane (whenSaveIdle) has it now, unless a
+        // deferred save takes it first — then they wait for that one too.
+        if (!runDeferred || !deferred.length) {
+            var waiting = idleWaiters;
+            idleWaiters = [];
+            waiting.forEach(function(waiter) { waiter(); });
+        }
+
+        if (!deferred.length) return;
+
+        // Not run: whoever waits for them hears that nothing was saved.
+        if (!runDeferred) {
+            for (var j = 0; j < deferred.length; j++) {
+                if (deferred[j].callbackCancel) deferred[j].callbackCancel.call();
+            }
+            return;
+        }
 
         save(
             function() {
@@ -1292,9 +1304,81 @@
                 for (var i = 0; i < deferred.length; i++) {
                     if (deferred[i].callbackCancel) deferred[i].callbackCancel.call();
                 }
-            }
+            },
+            false,
+            { deferred: true }
         );
 
+    }
+
+
+    /**
+     * I call back once no save is in flight: a write of the same hypervideo
+     * past the save (the settings dialog) would otherwise compare with the
+     * version before it and meet a conflict with the editor's own save.
+     *
+     * @method whenSaveIdle
+     * @param {Function} callback
+     */
+    function whenSaveIdle(callback) {
+        if (!saveInFlight) {
+            callback();
+            return;
+        }
+        idleWaiters.push(callback);
+    }
+
+
+    /**
+     * The hypervideo itself was written past me, with the editor's state as it
+     * is now (the settings dialog writes the open hypervideo whole): what is
+     * unsaved still is the annotations, and the written version is the one the
+     * next save compares with (the dialog has set it on the entry).
+     *
+     * @method hypervideoPartSaved
+     * @param {Number|String} [version] the server's version of the written file
+     */
+    function hypervideoPartSaved(version) {
+
+        window.clearTimeout(autoSaveTimeout);
+
+        unsavedOverlays     = false;
+        unsavedCodeSnippets = false;
+        unsavedEvents       = false;
+        unsavedCustomCSS    = false;
+        unsavedChapters     = false;
+        unsavedLayout       = false;
+        unsavedSubtitles    = false;
+        unsavedConfig       = false;
+
+        var Collaboration = FrameTrail.module('Collaboration');
+        if (Collaboration) {
+            Collaboration.acknowledgeVersion(version || null);
+            Collaboration.setUnsaved(unsavedAnnotations);
+        }
+
+        FrameTrail.changeState('unsavedChanges', unsavedAnnotations || Object.keys(pendingSubtitles).length > 0);
+
+        if (FrameTrail.getState('unsavedChanges')) {
+            scheduleAutoSave();
+        }
+
+    }
+
+
+    /**
+     * Whether a save can write anything here. A server session that has ended
+     * still can, once the user signs in again (save() asks for that); download
+     * and static mode, and a guest on a server, never can — their changes
+     * leave through Export.
+     *
+     * @method canPersist
+     * @return {Boolean}
+     * @private
+     */
+    function canPersist() {
+        return FrameTrail.module('StorageManager').saveTarget() === 'save'
+            || (FrameTrail.getState('storageMode') === 'server' && !FrameTrail.module('UserManagement').isGuestMode());
     }
 
 
@@ -1311,11 +1395,41 @@
      * Note: The second parameter is optional and should not be needed because the user
      * should already be logged in at this point (cancelCallback means, the user canceled the login).
      *
+     * callbackCancel is also called when nothing was saved: the login was
+     * cancelled, the save failed, or there is nowhere to save to.
+     *
      * @method save
      * @param {Function} callback
      * @param {Function} callbackCancel
+     * @param {Boolean} [silent] the autosave: no messages, no dialogs
+     * @param {Object} [options] { deferred: true } for a save that waited behind another one
      */
-    function save(callback, callbackCancel, silent) {
+    function save(callback, callbackCancel, silent, options) {
+
+        var deferredRun = !!(options && options.deferred);
+
+        // Nothing of an unfinished script edit is written: its transaction is
+        // still open (state editBusy). The autosave comes back after it.
+        if (FrameTrail.getState('editBusy')) {
+            if (silent) {
+                scheduleAutoSave();
+            } else {
+                FrameTrail.module('InterfaceModal').showErrorMessage(labels['MessageEditBusy']);
+                FrameTrail.module('InterfaceModal').hideMessage(3000);
+            }
+            if (callbackCancel) callbackCancel.call();
+            return;
+        }
+
+        // Where nothing can be written, nothing is reported saved: the changes
+        // leave through Export (download and static mode, a guest on a server).
+        if (!canPersist()) {
+            if (!silent && FrameTrail.module('ExportDialog')) {
+                FrameTrail.module('ExportDialog').open();
+            }
+            if (callbackCancel) callbackCancel.call();
+            return;
+        }
 
         // A cue being written in the transcripts editor belongs to an explicit save (not to the automatic one, mid-word).
         if (!silent && FrameTrail.module('TranscriptsEditor')) {
@@ -1348,6 +1462,9 @@
 
         var saveRequests     = [],
             callbackReturns  = [],
+            nothingWritten   = false,
+            // The hypervideo was not written: the lock went to somebody else.
+            lockLost         = false,
             // Each result says which part it is: 'hypervideo' (hypervideo.json
             // with its subtitles) or 'annotations' (the user's annotation file).
             databaseCallback = function(part) {
@@ -1377,37 +1494,58 @@
                     FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateSaving']);
                 }
 
-                if ( unsavedOverlays || unsavedCodeSnippets
+                var hypervideoDirty = !!(unsavedOverlays || unsavedCodeSnippets
                     || unsavedEvents || unsavedCustomCSS || unsavedChapters || unsavedLayout
-                    || unsavedSubtitles || unsavedConfig || Object.keys(pendingSubtitles).length) {
-                    // Subtitles set from now on belong to the next save.
-                    var subtitleWrites = pendingSubtitles;
-                    pendingSubtitles = {};
-                    saveRequests.push(function(){
-                        FrameTrail.module('Database').saveHypervideo(function(result) {
-                            if (result.failed) {
-                                // Not written: keep them for the next save, under anything set since.
-                                pendingSubtitles = Object.assign(subtitleWrites, pendingSubtitles);
-                            }
-                            databaseCallback('hypervideo')(result);
-                        }, null, { subtitles: subtitleWrites });
-                    });
-                }
+                    || unsavedSubtitles || unsavedConfig || Object.keys(pendingSubtitles).length),
+                    Collaboration   = FrameTrail.module('Collaboration');
 
-                if (unsavedAnnotations) {
-                    saveRequests.push(function(){
-                        FrameTrail.module('Database').saveAnnotations(databaseCallback('annotations'));
-                    });
-                }
+                // Somebody may have taken over the lock since the last poll: the
+                // hypervideo is written only by the page that still holds it. The
+                // annotations are not under the lock.
+                var confirmLock = (hypervideoDirty && Collaboration && Collaboration.confirmLock)
+                                ? Collaboration.confirmLock
+                                : function(done) { done(true); };
 
-                for (var i in saveRequests) {
-                    saveRequests[i].call();
-                }
+                confirmLock(function(mayWriteHypervideo) {
 
-                // deal with save requests without unsaved data (just satisfying ux)
-                if (saveRequests.length === 0) {
-                    saveFinished();
-                }
+                    if (hypervideoDirty && !mayWriteHypervideo) {
+                        lockLost = true;
+                    }
+
+                    if (hypervideoDirty && mayWriteHypervideo) {
+                        // Subtitles set from now on belong to the next save.
+                        var subtitleWrites = pendingSubtitles;
+                        pendingSubtitles = {};
+                        saveRequests.push(function(){
+                            FrameTrail.module('Database').saveHypervideo(function(result) {
+                                if (result.failed) {
+                                    // Not written: keep them for the next save, under anything set since.
+                                    pendingSubtitles = Object.assign(subtitleWrites, pendingSubtitles);
+                                }
+                                databaseCallback('hypervideo')(result);
+                            }, null, { subtitles: subtitleWrites });
+                        });
+                    }
+
+                    if (unsavedAnnotations) {
+                        saveRequests.push(function(){
+                            FrameTrail.module('Database').saveAnnotations(databaseCallback('annotations'));
+                        });
+                    }
+
+                    for (var i in saveRequests) {
+                        saveRequests[i].call();
+                    }
+
+                    // Nothing unsaved: nothing is written, and nothing is said about
+                    // it — unless this save waited behind another one, whose user
+                    // pressed Save and is owed the answer.
+                    if (saveRequests.length === 0) {
+                        nothingWritten = !lockLost;
+                        saveFinished();
+                    }
+
+                });
 
             },
 
@@ -1488,20 +1626,88 @@
                         showSaveConflictDialog(shown.conflict, shown.part);
                     }
                     releaseSave(false);
+                    if (callbackCancel) callbackCancel.call();
+                    return;
+                }
+
+                // The hypervideo is gone (deleted elsewhere: code 4): there is
+                // nothing to save it into. Said so, and the work stays for Export.
+                if (failures.some(function(result) { return result.part === 'hypervideo' && String(result.code) === '4'; })) {
+                    if (!silent) {
+                        FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorHypervideoGone']);
+                    }
+                    releaseSave(false);
+                    if (callbackCancel) callbackCancel.call();
+                    return;
+                }
+
+                // The folder or project file cannot be written: the browser
+                // withdrew the access, or it was moved or deleted. Not a
+                // technical error message, but what can be done about it.
+                var storageProblem = failures.filter(function(result) {
+                    return ['NotAllowedError', 'SecurityError', 'NotFoundError'].indexOf(result.errorName) !== -1;
+                })[0];
+                if (storageProblem) {
+                    releaseSave(false);
+                    if (!silent) {
+                        FrameTrail.module('InterfaceModal').hideMessage();
+                        showStorageProblemDialog(storageProblem.errorName, function() {
+                            save(callback, callbackCancel);
+                        }, callbackCancel);
+                    } else if (callbackCancel) {
+                        callbackCancel.call();
+                    }
+                    return;
+                }
+
+                // Refused for want of a session (code 1: signed out meanwhile, or
+                // not permitted): the user signs in, and the save is tried once
+                // more. A timer does not ask: the session check tells the user.
+                if (failures.some(function(result) { return String(result.code) === '1'; })
+                    && !(options && options.retriedAfterSignIn)) {
+                    releaseSave(false);
+                    if (silent) {
+                        FrameTrail.module('UserManagement').isLoggedIn(function() {});
+                        if (callbackCancel) callbackCancel.call();
+                        return;
+                    }
+                    FrameTrail.module('InterfaceModal').hideMessage();
+                    FrameTrail.module('UserManagement').ensureAuthenticated(function() {
+                        save(callback, callbackCancel, false, { retriedAfterSignIn: true });
+                    }, function() {
+                        if (callbackCancel) callbackCancel.call();
+                    });
                     return;
                 }
 
                 if (!silent) {
-                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] +' ('+ failures[0].error +': '+ failures[0].code +')');
+                    var detail = [failures[0].error, failures[0].code].filter(function(part) { return part !== undefined && part !== null && part !== ''; }).join(': ');
+                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] + (detail ? ' (' + detail + ')' : ''));
                 }
                 releaseSave(false);
+                if (callbackCancel) callbackCancel.call();
                 return;
 
             }
 
-            if (!silent) {
+            // Whatever was written is clean (above); the hypervideo is not, and
+            // cannot be saved here any more: its lock went to somebody else.
+            if (lockLost) {
+                FrameTrail.changeState('unsavedChanges', true);
+                if (!silent) {
+                    var holder = Collaboration && Collaboration.lockHolder();
+                    FrameTrail.module('InterfaceModal').showErrorMessage(labels['MessageCollabLockLost'].replace('%s', (holder && holder.name) ? holder.name : ''));
+                }
+                releaseSave(false);
+                if (callbackCancel) callbackCancel.call();
+                return;
+            }
+
+            if (!silent && !(nothingWritten && !deferredRun)) {
                 FrameTrail.module('InterfaceModal').showSuccessMessage(labels['MessageSaveSuccess']);
                 FrameTrail.module('InterfaceModal').hideMessage(2000);
+            } else if (!silent) {
+                FrameTrail.module('InterfaceModal').hideMessage();
             }
 
             unsavedOverlays     = false;
@@ -1548,16 +1754,151 @@
      * disk.
      *
      * @method saveToFile
-     * @return {Promise}
+     * @return {Promise<Boolean>} whether everything is saved now
      */
     function saveToFile() {
 
+        var hypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
+
         return FrameTrail.module('StorageManager').saveToFile().then(function() {
+            // The user's annotation file is in the file now, written by this
+            // page: the save below must not take it for one that appeared
+            // since the hypervideo was loaded.
+            return FrameTrail.module('Database').adoptAnnotationIndex(hypervideoID);
+        }).then(function() {
             // Everything is in the file already; this clears the unsaved state.
-            save();
+            return new Promise(function(resolve) {
+                save(function() { resolve(true); }, function() { resolve(false); });
+            });
         }).catch(function(error) {
-            if (error && error.name === 'AbortError') { return; }   // a picker or question cancelled
+            if (error && error.name === 'AbortError') { return false; }   // a picker or question cancelled
             FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] + ' (' + ((error && error.message) || error) + ')');
+            return false;
+        });
+
+    }
+
+
+    /**
+     * I reset what is unsaved, without writing anything: the user discarded
+     * it. The model still holds the changes until the caller loads the
+     * hypervideo again (or another one, or the page).
+     *
+     * @method discardUnsaved
+     */
+    function discardUnsaved() {
+
+        window.clearTimeout(autoSaveTimeout);
+
+        unsavedOverlays     = false;
+        unsavedCodeSnippets = false;
+        unsavedEvents       = false;
+        unsavedCustomCSS    = false;
+        unsavedAnnotations  = false;
+        unsavedChapters     = false;
+        unsavedLayout       = false;
+        unsavedSubtitles    = false;
+        unsavedConfig       = false;
+        pendingSubtitles    = {};
+        FrameTrail.changeState('unsavedChanges', false);
+
+        if (FrameTrail.module('Collaboration')) {
+            // Nothing of ours is pending any more: a waiting collaborator may take over.
+            FrameTrail.module('Collaboration').setUnsaved(false);
+        }
+
+    }
+
+
+    /**
+     * I ask what becomes of the unsaved changes before something would drop
+     * them: leaving edit mode or signing out, opening another hypervideo, a
+     * reload of the page. Where they can be saved: Yes / Discard / Cancel
+     * ("Save to this file" on a page opened from disk). Where nothing can be
+     * saved (download and static mode, a guest on a server, a server session
+     * that has ended): Export / Discard / Cancel — Export opens the Export
+     * dialog and leaves everything as it is, so nothing is ever reported saved
+     * that was not.
+     *
+     * Without unsaved changes, proceed runs at once. An async transaction of
+     * the edit API still open is taken back first, so the question is about
+     * the rest.
+     *
+     * @method confirmUnsaved
+     * @param {Object} options
+     * @param {Function} options.proceed  called with 'clean', 'saved' or 'discarded'
+     * @param {Function} [options.cancel] called when things stay as they are (Cancel, Export, closing the dialog, a save that did not go through)
+     */
+    function confirmUnsaved(options) {
+
+        var proceed = options.proceed,
+            cancel  = options.cancel || function() {};
+
+        if (FrameTrail.module('EditAPI')) {
+            FrameTrail.module('EditAPI').stop(true);
+        }
+
+        if (!FrameTrail.getState('unsavedChanges')) {
+            proceed('clean');
+            return;
+        }
+
+        var target     = FrameTrail.module('StorageManager').saveTarget(),
+            exportOnly = (target === 'export'),
+            decided    = false,
+            wrapper    = document.createElement('div');
+
+        wrapper.innerHTML = '<div class="confirmSaveChanges">'
+                          + '    <div class="message active">' + labels[exportOnly ? 'MessageChangesExportOnly' : 'MessageSaveChanges'] + '</div>'
+                          + (exportOnly ? '' : '    <p>' + labels['MessageSaveChangesQuestion'] + '</p>')
+                          + '</div>';
+
+        var confirmDialogCtrl = Dialog({
+            title:     labels[exportOnly ? 'MessageUnsavedChangesTitle' : 'MessageSaveChangesQuestionShort'],
+            content:   wrapper.firstElementChild,
+            resizable: false,
+            modal:     true,
+            close: function() {
+                confirmDialogCtrl.destroy();
+                if (!decided) cancel();
+            },
+            buttons: [
+                {
+                    text: exportOnly ? labels['GenericExport'] : labels[target === 'pageFile' ? 'SaveToThisFile' : 'GenericYes'],
+                    click: function() {
+                        if (exportOnly) {
+                            // Nothing happens to the changes; what was about to drop them waits for another try.
+                            confirmDialogCtrl.close();
+                            FrameTrail.module('ExportDialog').open();
+                            return;
+                        }
+                        decided = true;
+                        confirmDialogCtrl.close();
+                        if (target === 'pageFile') {
+                            saveToFile().then(function(saved) {
+                                if (saved && !FrameTrail.getState('unsavedChanges')) { proceed('saved'); } else { cancel(); }
+                            });
+                        } else {
+                            save(function() { proceed('saved'); }, cancel);
+                        }
+                    }
+                },
+                {
+                    text: labels['GenericNoDiscard'],
+                    click: function() {
+                        decided = true;
+                        confirmDialogCtrl.close();
+                        discardUnsaved();
+                        proceed('discarded');
+                    }
+                },
+                {
+                    text: labels['GenericCancel'],
+                    click: function() {
+                        confirmDialogCtrl.close();
+                    }
+                }
+            ]
         });
 
     }
@@ -1574,120 +1915,94 @@
      */
     function leaveEditMode(logoutAfterLeaving) {
 
-        // Changes still being made are taken back first, so the question below is about the rest.
-        if (FrameTrail.module('EditAPI')) {
-            FrameTrail.module('EditAPI').stop(true);
-        }
+        confirmUnsaved({
+            proceed: function(outcome) {
 
-        if (FrameTrail.getState('unsavedChanges')){
+                if (FrameTrail.module('RouteNavigation').environment.iframe) {
+                    FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
+                }
 
-                var _confirmWrapper = document.createElement('div');
-                _confirmWrapper.innerHTML = '<div class="confirmSaveChanges">'
-                                    + '    <div class="message active">'+ labels['MessageSaveChanges'] +'</div>'
-                                    + '    <p>'+ labels['MessageSaveChangesQuestion'] +'</p>'
-                                    + '</div>';
-                var confirmDialog = _confirmWrapper.firstElementChild;
+                FrameTrail.changeState('editMode', false);
 
-                var confirmDialogCtrl = Dialog({
-                    title:     labels['MessageSaveChangesQuestionShort'],
-                    content:   confirmDialog,
-                    resizable: false,
-                    modal:     true,
-                    close: function() {
-                        confirmDialogCtrl.destroy();
-                    },
-                    buttons: [
-                        {
-                            text: labels['GenericYes'],
-                            click: function() {
-
-                                // TODO: Show saving indicator in dialog
-
-                                save(function(){
-                                    
-                                    if (FrameTrail.module('RouteNavigation').environment.iframe) {
-                                        FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
-                                    }
-
-                                    FrameTrail.changeState('editMode', false);
-
-                                    FrameTrail.triggerEvent('userAction', {
-                                        action: 'EditEnd'
-                                    });
-
-                                    confirmDialogCtrl.close();
-
-                                    if (logoutAfterLeaving) {
-                                        FrameTrail.module('UserManagement').logout();
-                                    }
-
-                                    /*
-                                    window.setTimeout(function() {
-                                        window.location.reload();
-                                    }, 100);
-
-                                    if (logoutAfterLeaving) {
-                                        FrameTrail.module('UserManagement').logout();
-                                    }
-                                    */
-                                });
-
-                            }
-                        },
-                        {
-                            text: labels['GenericNoDiscard'],
-                            click: function() {
-
-                                FrameTrail.changeState('unsavedChanges', false);
-                                confirmDialogCtrl.close();
-
-                                if (FrameTrail.module('RouteNavigation').environment.iframe) {
-                                    FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
-                                }
-
-                                FrameTrail.triggerEvent('userAction', {
-                                    action: 'EditEnd'
-                                });
-
-                                if (logoutAfterLeaving) {
-                                    FrameTrail.module('UserManagement').logout();
-                                }
-
-                                window.setTimeout(function() {
-                                    //window.location.reload();
-                                    updateHypervideo(FrameTrail.module('RouteNavigation').hypervideoID, false, true);
-                                }, 100);
-                            }
-                        },
-                        {
-                            text: labels['GenericCancel'],
-                            click: function() {
-                                confirmDialogCtrl.close();
-                            }
-                        }
-                    ]
+                FrameTrail.triggerEvent('userAction', {
+                    action: 'EditEnd'
                 });
 
-        } else {
+                if (logoutAfterLeaving) {
+                    FrameTrail.module('UserManagement').logout();
+                }
 
-            if (FrameTrail.module('RouteNavigation').environment.iframe) {
-                FrameTrail.module('ViewVideo').toggleNativeFullscreenState(false, 'close');
+                // Discarded: back to what is stored.
+                if (outcome === 'discarded') {
+                    window.setTimeout(function() {
+                        updateHypervideo(FrameTrail.module('RouteNavigation').hypervideoID, false, true);
+                    }, 100);
+                }
+
             }
-            
-            FrameTrail.changeState('editMode', false);
-
-            FrameTrail.triggerEvent('userAction', {
-                action: 'EditEnd'
-            });
-
-            if (logoutAfterLeaving) {
-                FrameTrail.module('UserManagement').logout();
-            }
-
-        }
+        });
 
     }
 
+
+
+    /**
+     * A save could not write to the folder or project file. Withdrawn access
+     * (NotAllowedError, SecurityError) can be given again — it needs a click,
+     * which "Allow" is — and the save then runs again; a folder or file moved
+     * or deleted (NotFoundError) cannot, and the work leaves through Export.
+     *
+     * @method showStorageProblemDialog
+     * @param {String} errorName
+     * @param {Function} retry   saves again once access is given
+     * @param {Function} [cancel]
+     * @private
+     */
+    function showStorageProblemDialog(errorName, retry, cancel) {
+
+        var gone    = (errorName === 'NotFoundError'),
+            adapter = FrameTrail.module('StorageManager').getAdapter(),
+            wrapper = document.createElement('div'),
+            buttons = [];
+
+        wrapper.innerHTML = '<div class="confirmSaveChanges"><div class="message active">'
+                          + labels[gone ? 'ErrorStorageGone' : 'ErrorStorageAccessLost'] + '</div></div>';
+
+        if (!gone && adapter && adapter.requestAccess) {
+            buttons.push({ text: labels['ProjectFileAllow'], click: function() {
+                dialogCtrl.close();
+                adapter.requestAccess().then(function(granted) {
+                    if (granted) {
+                        retry();
+                    } else {
+                        FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorStorageAccessLost']);
+                        if (cancel) cancel();
+                    }
+                });
+            } });
+        }
+        buttons.push({ text: labels['GenericExport'], click: function() {
+            dialogCtrl.close();
+            if (cancel) cancel();
+            FrameTrail.module('ExportDialog').open();
+        } });
+        buttons.push({ text: labels['GenericCancel'], click: function() {
+            dialogCtrl.close();
+            if (cancel) cancel();
+        } });
+
+        var dialogCtrl = Dialog({
+            title:     labels['MessageUnsavedChangesTitle'],
+            content:   wrapper.firstElementChild,
+            resizable: false,
+            modal:     true,
+            close: function() {
+                dialogCtrl.destroy();
+            },
+            buttons: buttons
+        });
+
+    }
 
 
     /**
@@ -1702,7 +2017,8 @@
      */
     function showSaveConflictDialog(conflict, part) {
 
-        var by = (conflict && conflict.creator) ? conflict.creator : '',
+        // Who changed it: the last writer the server recorded, else (an older server) the creator.
+        var by = (conflict && (conflict.lastWriter || conflict.creator)) ? (conflict.lastWriter || conflict.creator) : '',
             // In a local folder or project file it was another program (or tab), and there is no server.
             // The user's annotation file has one writer, the user: elsewhere, in any mode.
             text = (part === 'annotations') ? labels['ErrorSaveConflictAnnotations']
@@ -1755,28 +2071,56 @@
         var currentID = FrameTrail.module('RouteNavigation').hypervideoID,
             wasEditing = !!FrameTrail.getState('editMode');
 
-        window.clearTimeout(autoSaveTimeout);
-
-        unsavedOverlays     = false;
-        unsavedCodeSnippets = false;
-        unsavedEvents       = false;
-        unsavedCustomCSS    = false;
-        unsavedAnnotations  = false;
-        unsavedChapters     = false;
-        unsavedLayout       = false;
-        unsavedSubtitles    = false;
-        unsavedConfig       = false;
-        pendingSubtitles    = {};
-        FrameTrail.changeState('unsavedChanges', false);
+        discardUnsaved();
 
         var Collaboration = FrameTrail.module('Collaboration');
         if (Collaboration) {
-            Collaboration.setUnsaved(false);
             Collaboration.acknowledgeVersion();
             Collaboration.acknowledgeVersion(null, 'annotations', String(currentID));
         }
 
         updateHypervideo(currentID, wasEditing, true);
+
+    }
+
+
+    /**
+     * I read the annotations of the open hypervideo again, and nothing else:
+     * the Refresh of their notice (they were changed elsewhere — another tab,
+     * a script). Unsaved changes of the hypervideo itself stay; the user's own
+     * unsaved annotations go (Sidebar asks before).
+     *
+     * @method refreshAnnotations
+     * @return {Promise}
+     */
+    function refreshAnnotations() {
+
+        var Database     = FrameTrail.module('Database'),
+            hypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
+
+        return Database.adoptAnnotationIndex(hypervideoID).then(function() {
+            return new Promise(function(resolve, reject) { Database.loadAnnotationData(resolve, reject); });
+        }).then(function() {
+
+            unsavedAnnotations = false;
+            initModelOfAnnotations(Database);
+            if (FrameTrail.module('AnnotationsController')) {
+                FrameTrail.module('AnnotationsController').initController();
+            }
+
+            var stillUnsaved = !!(unsavedOverlays || unsavedCodeSnippets || unsavedEvents || unsavedCustomCSS
+                || unsavedChapters || unsavedLayout || unsavedSubtitles || unsavedConfig || Object.keys(pendingSubtitles).length);
+
+            var Collaboration = FrameTrail.module('Collaboration');
+            if (Collaboration) {
+                Collaboration.acknowledgeVersion(null, 'annotations', String(hypervideoID));
+                Collaboration.setUnsaved(stillUnsaved);
+            }
+            FrameTrail.changeState('unsavedChanges', stillUnsaved);
+
+        }, function(error) {
+            FrameTrail.module('InterfaceModal').showErrorMessage(labels['ErrorSavingData'] + ' (' + ((error && error.message) || error) + ')');
+        });
 
     }
 
@@ -1792,6 +2136,11 @@
     function updateHypervideo(newHypervideoID, restartEditMode, update) {
 
         FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateLoading']);
+
+        // What was unsaved goes with this model: the user was asked before
+        // (confirmUnsaved), and the model loaded next starts clean — so must
+        // the state, or Save would stay marked for changes nobody holds.
+        discardUnsaved();
 
         // A transaction still changing this hypervideo ends with it.
         if (FrameTrail.module('EditAPI')) {
@@ -1815,6 +2164,12 @@
         var highestTimeoutId = setTimeout(";");
         for (var i = 0 ; i < highestTimeoutId ; i++) {
             clearTimeout(i);
+        }
+
+        // The session is not the hypervideo's: its heartbeat, and a renewal on
+        // its way, are armed again.
+        if (FrameTrail.module('UserManagement').rearmTimers) {
+            FrameTrail.module('UserManagement').rearmTimers();
         }
 
         document.querySelector(FrameTrail.getState('target')).querySelectorAll('.viewVideo').forEach(function(el) { el.remove(); });
@@ -2189,9 +2544,15 @@
 
         save:                   save,
         saveToFile:             saveToFile,
+        confirmUnsaved:         confirmUnsaved,
+        discardUnsaved:         discardUnsaved,
+        whenSaveIdle:           whenSaveIdle,
+        hypervideoPartSaved:    hypervideoPartSaved,
         leaveEditMode:          leaveEditMode,
         updateHypervideo:       updateHypervideo,
-        refreshFromServer:      refreshFromServer
+        refreshFromServer:      refreshFromServer,
+        refreshAnnotations:     refreshAnnotations,
+        hasUnsavedAnnotations:  function() { return !!unsavedAnnotations; }
 
     }
 
