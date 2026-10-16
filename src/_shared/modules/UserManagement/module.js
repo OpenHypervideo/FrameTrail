@@ -2463,7 +2463,7 @@ FrameTrail.defineModule('UserManagement', function(FrameTrail){
          */
         get userRole()  { return userRole            },
         /**
-         * The users registration Date, which is a Number (milliseconds since 01-01-1970)
+         * The users registration Date, which is a Number (Unix timestamp in milliseconds)
          * @attribute userRegistrationDate
          */
         get userRegistrationDate() { return userRegistrationDate }

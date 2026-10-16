@@ -465,11 +465,11 @@
                     "description": "Id of the user who created the hypervideo. They (and administrators) may edit it."
                 },
                 "created": {
-                    "description": "When the hypervideo was created, in milliseconds since 1970.",
+                    "description": "When the hypervideo was created, as a Unix timestamp in milliseconds.",
                     "type": "number"
                 },
                 "lastchanged": {
-                    "description": "When the file was last saved, in milliseconds since 1970. The compare-and-swap token for saves in server mode.",
+                    "description": "When the file was last saved, as a Unix timestamp in milliseconds. The compare-and-swap token for saves in server mode.",
                     "type": "number"
                 }
             }

@@ -43,7 +43,7 @@
                     "description": "Id of the user who added the resource."
                 },
                 "created": {
-                    "description": "When the resource was added, in seconds since 1970.",
+                    "description": "When the resource was added, as a Unix timestamp in seconds.",
                     "type": "integer"
                 },
                 "tags": {

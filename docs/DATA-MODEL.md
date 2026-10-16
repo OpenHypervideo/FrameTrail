@@ -418,12 +418,12 @@ Timestamps are not all in the same unit:
 | Where | Unit |
 |-------|------|
 | items' `created` | ISO 8601 (older: `toString()` text) |
-| `hypervideo.json` → `meta.created`, `meta.lastchanged` | milliseconds since 1970 |
-| `config.json` → `lastchanged` | milliseconds since 1970 |
-| `hypervideos/_index.json` → `overviewMap.lastchanged` | milliseconds since 1970 |
-| `resources/_index.json` → `created` | seconds since 1970 |
-| `annotations/_index.json` → `created` | seconds since 1970 |
-| `annotations/_index.json` → `lastchanged` | milliseconds since 1970 (seconds in older files) |
+| `hypervideo.json` → `meta.created`, `meta.lastchanged` | Unix timestamp in milliseconds |
+| `config.json` → `lastchanged` | Unix timestamp in milliseconds |
+| `hypervideos/_index.json` → `overviewMap.lastchanged` | Unix timestamp in milliseconds |
+| `resources/_index.json` → `created` | Unix timestamp in seconds |
+| `annotations/_index.json` → `created` | Unix timestamp in seconds |
+| `annotations/_index.json` → `lastchanged` | Unix timestamp in milliseconds (seconds in older files) |
 
 ## Unknown Properties
 

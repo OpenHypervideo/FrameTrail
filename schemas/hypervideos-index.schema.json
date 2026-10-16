@@ -53,7 +53,7 @@
                     "default": "none"
                 },
                 "lastchanged": {
-                    "description": "Compare-and-swap token: when the map was last saved, in milliseconds since 1970.",
+                    "description": "Compare-and-swap token: when the map was last saved, as a Unix timestamp in milliseconds.",
                     "type": "number"
                 },
                 "markers": {

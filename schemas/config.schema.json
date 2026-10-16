@@ -284,7 +284,7 @@
             "default": ""
         },
         "lastchanged": {
-            "description": "Compare-and-swap token: when the file was last saved through FrameTrail, in milliseconds since 1970.",
+            "description": "Compare-and-swap token: when the file was last saved through FrameTrail, as a Unix timestamp in milliseconds.",
             "type": "number"
         },
         "updateServiceURL": {
