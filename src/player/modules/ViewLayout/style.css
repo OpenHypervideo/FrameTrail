@@ -122,23 +122,23 @@
     width: 100%;
 }
 
-/* Hidden tabs in layout manager preview */
+/* Hidden tabs in layout editor preview */
 
-.layoutManager .layoutArea.hiddenTabs > .layoutAreaTabs {
+.layoutEditor .layoutArea.hiddenTabs > .layoutAreaTabs {
     display: none !important;
 }
 
-.layoutManager .layoutArea.hiddenTabs .contentViewPreview {
+.layoutEditor .layoutArea.hiddenTabs .contentViewPreview {
     top: 10px;
     height: calc(100% - 20px);
 }
 
-.layoutManager .layoutArea[data-area="areaLeft"].hiddenTabs .contentViewPreview {
+.layoutEditor .layoutArea[data-area="areaLeft"].hiddenTabs .contentViewPreview {
     right: 10px;
     width: calc(100% - 20px);
 }
 
-.layoutManager .layoutArea[data-area="areaRight"].hiddenTabs .contentViewPreview {
+.layoutEditor .layoutArea[data-area="areaRight"].hiddenTabs .contentViewPreview {
     left: 10px;
     width: calc(100% - 20px);
 }
@@ -217,30 +217,30 @@
 
 
 /*******************
-* Layout Manager
+* Layout Editor
 *******************/
 
-.layoutManagerContainer {
+.layoutEditorContainer {
     width: 100%;
     height: 100%;
     color: var(--primary-fg-color);
     box-sizing: border-box;
 }
 
-.layoutManagerContainer * {
+.layoutEditorContainer * {
     box-sizing: border-box;
 }
 
-.layoutManagerContainer [class^="icon-"]::before {
+.layoutEditorContainer [class^="icon-"]::before {
     font-size: 19px;
 }
 
-.layoutManagerContainer {
+.layoutEditorContainer {
     display: flex;
     flex-direction: column;
 }
 
-.layoutManagerContainer .layoutManagerOptions {
+.layoutEditorContainer .layoutEditorOptions {
     flex: 0 0 auto;
     display: flex;
     flex-direction: row;
@@ -252,7 +252,7 @@
     background: #fff;
 }
 
-.layoutManagerContainer .layoutManagerOptions .message {
+.layoutEditorContainer .layoutEditorOptions .message {
     flex: 0 0 auto;
     position: relative;
     width: 147px;
@@ -260,7 +260,7 @@
     margin-right: 8px;
 }
 
-.layoutManagerContainer .layoutManagerOptions .message:after {
+.layoutEditorContainer .layoutEditorOptions .message:after {
     position: absolute;
     content: "";
     top: 50%;
@@ -271,7 +271,7 @@
     border-left: 6px solid #FF9919;
 }
 
-.layoutManagerContainer .layoutManagerOptions .contentViewTemplate, body > .contentViewTemplate {
+.layoutEditorContainer .layoutEditorOptions .contentViewTemplate, body > .contentViewTemplate {
     background: var(--primary-bg-color);
     flex: 0 0 auto;
     cursor: move;
@@ -280,21 +280,21 @@
     overflow: hidden;
 }
 
-.layoutManagerContainer .layoutManagerBody {
+.layoutEditorContainer .layoutEditorBody {
     flex: 1 1 auto;
     display: flex;
     flex-direction: row;
     min-height: 0;
 }
 
-.layoutManagerContainer .layoutManagerMain {
+.layoutEditorContainer .layoutEditorMain {
     flex: 1 1 auto;
     min-width: 0;
     display: flex;
     flex-direction: column;
 }
 
-.layoutManagerContainer .layoutManager {
+.layoutEditorContainer .layoutEditor {
     display: flex;
     flex-direction: column;
     flex-wrap: nowrap;
@@ -312,7 +312,7 @@
     overflow: hidden;
 }
 
-.layoutManagerContainer .settingsContainer {
+.layoutEditorContainer .settingsContainer {
     height: 160px;
     color: var(--primary-bg-color);
 }
@@ -325,7 +325,7 @@ body > .contentViewTemplate {
     overflow: hidden;
 }
 
-.layoutManagerContainer .contentViewTemplate .contentViewOptionThumb,
+.layoutEditorContainer .contentViewTemplate .contentViewOptionThumb,
 body > .contentViewTemplate .contentViewOptionThumb {
     height: 60px;
     width: 140px;
@@ -334,7 +334,7 @@ body > .contentViewTemplate .contentViewOptionThumb {
     background: var(--primary-bg-color);
 }
 
-.layoutManagerContainer .contentViewTemplate .contentViewTemplateLabel,
+.layoutEditorContainer .contentViewTemplate .contentViewTemplateLabel,
 body > .contentViewTemplate .contentViewTemplateLabel {
     padding: 5px 6px;
     font-size: 13px;
@@ -349,50 +349,50 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 
 /* Layout Areas */
 
-.layoutManager .layoutArea {
+.layoutEditor .layoutArea {
     position: relative;
     order: 0;
     transition-property: all;
     transition-duration: 100ms;
 }
 
-.layoutManager .layoutArea[data-area="areaTop"] .layoutAreaTabs {
+.layoutEditor .layoutArea[data-area="areaTop"] .layoutAreaTabs {
     top: auto;
     right: 10px;
     bottom: 11px;
 }
 
-.layoutManager .layoutArea[data-area="areaBottom"] .layoutAreaTabs {
+.layoutEditor .layoutArea[data-area="areaBottom"] .layoutAreaTabs {
     top: 11px;
     right: 10px;
 }
 
-.layoutManager .layoutArea[data-area="areaLeft"] .layoutAreaTabs {
+.layoutEditor .layoutArea[data-area="areaLeft"] .layoutAreaTabs {
     top: 10px;
     right: 47px;
 }
 
-.layoutManager .layoutArea[data-area="areaRight"] .layoutAreaTabs {
+.layoutEditor .layoutArea[data-area="areaRight"] .layoutAreaTabs {
     top: 10px;
     right: calc(100% - 11px);
 }
 
-.layoutManager .layoutArea .layoutAreaTabs .contentViewTab {
+.layoutEditor .layoutArea .layoutAreaTabs .contentViewTab {
     background: var(--secondary-bg-color);
 }
 
-.layoutManager .layoutArea .layoutAreaContent {
+.layoutEditor .layoutArea .layoutAreaContent {
     border: 1px dashed var(--secondary-fg-color);
     padding: 10px;
 }
 
-.layoutManager .layoutArea[data-area="areaTop"], .layoutManager .layoutArea[data-area="areaBottom"] {
+.layoutEditor .layoutArea[data-area="areaTop"], .layoutEditor .layoutArea[data-area="areaBottom"] {
     flex: 0 1 auto;
     align-self: auto;
     width: 100%;
 }
 
-.layoutManager .playerWrapper {
+.layoutEditor .playerWrapper {
     padding: 10px 0;
     position: relative;
     display: flex;
@@ -405,12 +405,12 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     align-self: auto;
 }
 
-.layoutManager .layoutArea[data-area="areaLeft"], .layoutManager .layoutArea[data-area="areaRight"] {
+.layoutEditor .layoutArea[data-area="areaLeft"], .layoutEditor .layoutArea[data-area="areaRight"] {
     align-self: stretch;
     min-height: 100%;
 }
 
-.layoutManager .playerWrapper .playerArea {
+.layoutEditor .playerWrapper .playerArea {
     position: relative;
     order: 0;
     flex: 1 1 auto;
@@ -421,13 +421,13 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     flex-direction: column;
 }
 
-.layoutManager .playerWrapper .playerArea .schematicVideoArea {
+.layoutEditor .playerWrapper .playerArea .schematicVideoArea {
     flex: 1 1 auto;
     position: relative;
     background-color: var(--video-background-color);
 }
 
-.layoutManager .playerWrapper .playerArea .schematicVideoArea .icon-play-1 {
+.layoutEditor .playerWrapper .playerArea .schematicVideoArea .icon-play-1 {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -437,17 +437,17 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     pointer-events: none;
 }
 
-.layoutManager .playerWrapper .playerArea .schematicVideoArea .icon-play-1::before {
+.layoutEditor .playerWrapper .playerArea .schematicVideoArea .icon-play-1::before {
     font-size: 60px !important;
 }
 
-.layoutManager .schematicPlayerProgress {
+.layoutEditor .schematicPlayerProgress {
     flex: 0 0 4px;
     background-color: var(--semi-transparent-fg-color);
     position: relative;
 }
 
-.layoutManager .schematicPlayerProgressFill {
+.layoutEditor .schematicPlayerProgressFill {
     position: absolute;
     top: 0;
     left: 0;
@@ -456,7 +456,7 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     background-color: var(--primary-fg-color);
 }
 
-.layoutManager .schematicControls {
+.layoutEditor .schematicControls {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
@@ -465,17 +465,17 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     background-color: var(--secondary-bg-color);
 }
 
-.layoutManager .schematicControlsLeft {
+.layoutEditor .schematicControlsLeft {
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.layoutManager .schematicControlsLeft .icon-play-1::before {
+.layoutEditor .schematicControlsLeft .icon-play-1::before {
     font-size: 20px !important;
 }
 
-.layoutManager .schematicTimeBar {
+.layoutEditor .schematicTimeBar {
     width: 40px;
     height: 6px;
     border-radius: 3px;
@@ -483,13 +483,13 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     opacity: 0.4;
 }
 
-.layoutManager .schematicControlsRight {
+.layoutEditor .schematicControlsRight {
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.layoutManager .schematicControlDot {
+.layoutEditor .schematicControlDot {
     width: 14px;
     height: 14px;
     border-radius: 50%;
@@ -499,88 +499,88 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 
 /* SIZES */
 
-.layoutManager .layoutArea[data-area="areaTop"], .layoutManager .layoutArea[data-area="areaBottom"] {
+.layoutEditor .layoutArea[data-area="areaTop"], .layoutEditor .layoutArea[data-area="areaBottom"] {
     min-height: calc(10px + 20px);
 }
 
-.layoutManager .layoutArea[data-area="areaTop"][data-size="small"], .layoutManager .layoutArea[data-area="areaBottom"][data-size="small"] {
+.layoutEditor .layoutArea[data-area="areaTop"][data-size="small"], .layoutEditor .layoutArea[data-area="areaBottom"][data-size="small"] {
     min-height: calc(50px + 38px + 20px);
 }
 
-.layoutManager .layoutArea[data-area="areaTop"][data-size="medium"], .layoutManager .layoutArea[data-area="areaBottom"][data-size="medium"] {
+.layoutEditor .layoutArea[data-area="areaTop"][data-size="medium"], .layoutEditor .layoutArea[data-area="areaBottom"][data-size="medium"] {
     min-height: calc(90px + 38px + 20px);
 }
 
-.layoutManager .layoutArea[data-area="areaTop"][data-size="large"], .layoutManager .layoutArea[data-area="areaBottom"][data-size="large"] {
+.layoutEditor .layoutArea[data-area="areaTop"][data-size="large"], .layoutEditor .layoutArea[data-area="areaBottom"][data-size="large"] {
     min-height: calc(200px + 38px + 20px);
 }
 
-.layoutManager .layoutArea[data-area="areaLeft"], .layoutManager .layoutArea[data-area="areaRight"] {
+.layoutEditor .layoutArea[data-area="areaLeft"], .layoutEditor .layoutArea[data-area="areaRight"] {
     flex: 0 0 30px;
     min-width: 30px;
 }
 
-.layoutManager .layoutArea[data-area="areaLeft"][data-size="small"], .layoutManager .layoutArea[data-area="areaRight"][data-size="small"] {
+.layoutEditor .layoutArea[data-area="areaLeft"][data-size="small"], .layoutEditor .layoutArea[data-area="areaRight"][data-size="small"] {
     flex: 0 0 110px;
     min-width: 110px;
 }
 
-.layoutManager .layoutArea[data-area="areaLeft"][data-size="medium"], .layoutManager .layoutArea[data-area="areaRight"][data-size="medium"] {
+.layoutEditor .layoutArea[data-area="areaLeft"][data-size="medium"], .layoutEditor .layoutArea[data-area="areaRight"][data-size="medium"] {
     flex: 0 1 400px;
     min-width: 110px;
 }
 
-.layoutManager .layoutArea[data-area="areaLeft"][data-size="large"], .layoutManager .layoutArea[data-area="areaRight"][data-size="large"] {
+.layoutEditor .layoutArea[data-area="areaLeft"][data-size="large"], .layoutEditor .layoutArea[data-area="areaRight"][data-size="large"] {
     flex: 0 1 400px;
     min-width: 110px;
 }
 
-/* Hidden tabs: reduce layout manager area sizes (remove 38px tab bar) */
+/* Hidden tabs: reduce layout editor area sizes (remove 38px tab bar) */
 
-.layoutManager .layoutArea.hiddenTabs[data-area="areaTop"][data-size="small"],
-.layoutManager .layoutArea.hiddenTabs[data-area="areaBottom"][data-size="small"] {
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaTop"][data-size="small"],
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaBottom"][data-size="small"] {
     min-height: calc(50px + 20px);
 }
 
-.layoutManager .layoutArea.hiddenTabs[data-area="areaTop"][data-size="medium"],
-.layoutManager .layoutArea.hiddenTabs[data-area="areaBottom"][data-size="medium"] {
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaTop"][data-size="medium"],
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaBottom"][data-size="medium"] {
     min-height: calc(90px + 20px);
 }
 
-.layoutManager .layoutArea.hiddenTabs[data-area="areaTop"][data-size="large"],
-.layoutManager .layoutArea.hiddenTabs[data-area="areaBottom"][data-size="large"] {
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaTop"][data-size="large"],
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaBottom"][data-size="large"] {
     min-height: calc(200px + 20px);
 }
 
-.layoutManager .layoutArea.hiddenTabs[data-area="areaLeft"][data-size="small"],
-.layoutManager .layoutArea.hiddenTabs[data-area="areaRight"][data-size="small"] {
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaLeft"][data-size="small"],
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaRight"][data-size="small"] {
     flex: 0 0 74px;
     min-width: 74px;
 }
 
-.layoutManager .layoutArea.hiddenTabs[data-area="areaLeft"][data-size="medium"],
-.layoutManager .layoutArea.hiddenTabs[data-area="areaRight"][data-size="medium"] {
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaLeft"][data-size="medium"],
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaRight"][data-size="medium"] {
     flex: 0 1 364px;
     min-width: 74px;
 }
 
-.layoutManager .layoutArea.hiddenTabs[data-area="areaLeft"][data-size="large"],
-.layoutManager .layoutArea.hiddenTabs[data-area="areaRight"][data-size="large"] {
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaLeft"][data-size="large"],
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaRight"][data-size="large"] {
     flex: 0 1 364px;
     min-width: 74px;
 }
 
 /* Sortable preview tabs */
 
-.layoutManager .layoutArea .layoutAreaTabs .contentViewTab {
+.layoutEditor .layoutArea .layoutAreaTabs .contentViewTab {
     cursor: move;
 }
 
-.layoutManager .layoutArea .layoutAreaTabs .sortable-ghost {
+.layoutEditor .layoutArea .layoutAreaTabs .sortable-ghost {
     opacity: 0.3;
 }
 
-.layoutManager .layoutArea .layoutAreaTabs .sortable-drag {
+.layoutEditor .layoutArea .layoutAreaTabs .sortable-drag {
     cursor: grabbing;
     opacity: 1;
 }
@@ -589,7 +589,7 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 /* The phone: the companion area (layoutArea.areaCompanion), the views a paired phone shows.
    Laid out as the phone shows them: the tabs in a row above the views, which take the whole width. */
 
-.layoutManagerContainer .companionLayoutManager {
+.layoutEditorContainer .companionLayoutEditor {
     position: relative;
     flex: 0 0 280px;
     width: 280px;
@@ -604,7 +604,7 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 
 /* The power button. */
 
-.layoutManagerContainer .companionLayoutManager::after {
+.layoutEditorContainer .companionLayoutEditor::after {
     content: "";
     position: absolute;
     left: 50%;
@@ -617,11 +617,11 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     opacity: .4;
 }
 
-.companionLayoutManager .schematicPlayerProgress {
+.companionLayoutEditor .schematicPlayerProgress {
     margin-top: 10px;
 }
 
-.companionLayoutManager .companionLayoutLabel {
+.companionLayoutEditor .companionLayoutLabel {
     flex: 0 0 auto;
     padding-bottom: 8px;
     font-size: 13px;
@@ -629,13 +629,13 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     color: var(--primary-fg-color);
 }
 
-.layoutManager .layoutArea[data-area="areaCompanion"] {
+.layoutEditor .layoutArea[data-area="areaCompanion"] {
     flex: 1 1 auto;
     align-self: stretch;
     min-height: 200px;
 }
 
-.layoutManager .layoutArea[data-area="areaCompanion"] .layoutAreaTabs {
+.layoutEditor .layoutArea[data-area="areaCompanion"] .layoutAreaTabs {
     top: 11px;
     left: 10px;
     right: 10px;
@@ -647,15 +647,205 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     scrollbar-width: none;
 }
 
-.layoutManager .layoutArea[data-area="areaCompanion"] .layoutAreaTabs::-webkit-scrollbar {
+.layoutEditor .layoutArea[data-area="areaCompanion"] .layoutAreaTabs::-webkit-scrollbar {
     display: none;
 }
 
-.layoutManager .layoutArea[data-area="areaCompanion"] .layoutAreaTabs .contentViewTab:first-child {
+.layoutEditor .layoutArea[data-area="areaCompanion"] .layoutAreaTabs .contentViewTab:first-child {
     margin-left: 0;
 }
 
-.layoutManager .layoutArea[data-area="areaCompanion"] .contentViewPreview .contentViewOptions {
+.layoutEditor .layoutArea[data-area="areaCompanion"] .contentViewPreview .contentViewOptions {
     top: auto;
     bottom: 0px;
+}
+
+
+/*******************
+* Annotation Display: the Display tab of an annotation's properties,
+* where its views are in the layout. Edit panel palette, not themed.
+*******************/
+
+.annotationDisplay {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px 16px;
+}
+
+.annotationDisplayLayout {
+    flex: none;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* The player's proportions, scaled to 280px for a player of about 1600 × 1000px */
+.annotationDisplayPlayer {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    width: 280px;
+    height: 168px;
+}
+
+.annotationDisplayMiddle {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    gap: 3px;
+}
+
+.annotationDisplayVideo {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+    background: var(--primary-bg-color);
+    color: var(--primary-fg-color);
+}
+
+.annotationDisplayArea {
+    box-sizing: border-box;
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    overflow: hidden;
+    border: 1px solid var(--secondary-bg-color);
+    border-radius: 3px;
+}
+
+/* An area takes the size of its active view, as in the player; an empty one is a thin strip */
+.annotationDisplayArea[data-area="top"],
+.annotationDisplayArea[data-area="bottom"] {
+    flex: none;
+    height: 6px;
+}
+
+.annotationDisplayArea[data-area="top"][data-size="small"],
+.annotationDisplayArea[data-area="bottom"][data-size="small"] {
+    height: 28px;
+}
+
+.annotationDisplayArea[data-area="top"][data-size="medium"],
+.annotationDisplayArea[data-area="bottom"][data-size="medium"] {
+    height: 38px;
+}
+
+.annotationDisplayArea[data-area="top"][data-size="large"],
+.annotationDisplayArea[data-area="bottom"][data-size="large"] {
+    height: 54px;
+}
+
+.annotationDisplayArea[data-area="left"],
+.annotationDisplayArea[data-area="right"] {
+    flex: none;
+    width: 6px;
+}
+
+.annotationDisplayArea[data-area="left"][data-size="small"],
+.annotationDisplayArea[data-area="right"][data-size="small"] {
+    width: 24px;
+}
+
+.annotationDisplayArea[data-area="left"][data-size="medium"],
+.annotationDisplayArea[data-area="right"][data-size="medium"] {
+    width: 70px;
+}
+
+.annotationDisplayArea[data-area="left"][data-size="large"],
+.annotationDisplayArea[data-area="right"][data-size="large"] {
+    width: 98px;
+}
+
+/* A small side area has room for the views' icons only (their names are in the tooltip) */
+.annotationDisplayArea[data-area="left"][data-size="small"] .annotationDisplayView,
+.annotationDisplayArea[data-area="right"][data-size="small"] .annotationDisplayView {
+    padding: 2px 0;
+}
+
+.annotationDisplayArea[data-area="left"][data-size="small"] .annotationDisplayViewName,
+.annotationDisplayArea[data-area="right"][data-size="small"] .annotationDisplayViewName {
+    display: none;
+}
+
+.annotationDisplayArea[data-area="left"],
+.annotationDisplayArea[data-area="right"],
+.annotationDisplayArea[data-area="companion"] {
+    flex-direction: column;
+}
+
+.annotationDisplayArea.empty {
+    padding: 0;
+    border-style: dashed;
+    opacity: .5;
+}
+
+.annotationDisplayArea.shows {
+    border-color: var(--primary-bg-color);
+    box-shadow: inset 0 0 0 1px var(--primary-bg-color);
+}
+
+/* The views of an area share it, along its direction: one alone fills it */
+.annotationDisplayView {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 4px;
+    font-size: 11px;
+    line-height: 14px;
+    overflow: hidden;
+    border: 1px solid var(--secondary-bg-color);
+    border-radius: 2px;
+}
+
+.annotationDisplayView > [class^="icon-"] {
+    flex: none;
+}
+
+.annotationDisplayViewName {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.annotationDisplayView.shows {
+    border-color: var(--primary-bg-color);
+    background: var(--primary-bg-color);
+    color: var(--primary-fg-color);
+}
+
+.annotationDisplayPhone {
+    flex: none;
+    box-sizing: border-box;
+    display: flex;
+    width: 60px;
+    height: 110px;
+    padding: 8px 4px;
+    border: 2px solid var(--primary-bg-color);
+    border-radius: 8px;
+}
+
+.annotationDisplayPhone .annotationDisplayArea {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.annotationDisplayInfo {
+    flex: 1 1 180px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.annotationDisplayInfo .message {
+    margin: 0;
 }

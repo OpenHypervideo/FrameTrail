@@ -802,10 +802,6 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
         return views.map(function(view) { return view.name + ' (' + labels[AREA_LABELS[view.area]] + ')'; }).join(', ');
     }
 
-    function openLayout() {
-        FrameTrail.changeState('editMode', 'layout');
-    }
-
     /**
      * I draw the panel.
      * @method render
@@ -826,9 +822,8 @@ FrameTrail.defineModule('TranscriptsEditor', function(FrameTrail){
         editor = el('<div class="transcriptsEditor"></div>');
         editor.setAttribute('data-lang', lang || '');
 
-        var hint = el('<div class="message active transcriptsHint"><span class="icon-doc-text"></span> ' + esc(labels['MessageTranscriptsHint'])
-            + ' <button type="button" class="transcriptsLayoutLink">' + esc(labels['TranscriptsOpenLayout']) + '</button></div>');
-        hint.querySelector('.transcriptsLayoutLink').addEventListener('click', openLayout);
+        var hint = el('<div class="message active transcriptsHint"><span class="icon-doc-text"></span> ' + esc(labels['MessageTranscriptsHint']) + ' </div>');
+        hint.appendChild(FrameTrail.module('ViewLayout').renderOpenEditorButton());
         editor.appendChild(hint);
 
         if (generation) { editor.appendChild(renderGeneration()); }

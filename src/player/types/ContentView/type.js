@@ -23,8 +23,8 @@ FrameTrail.defineType(
 
         /**
          * I delegate to the single schematic generator owned by the ViewLayout
-         * module, so the Layout Manager palette and these previews can never
-         * drift apart. Every call path runs inside or after the Layout Manager,
+         * module, so the Layout Editor palette and these previews can never
+         * drift apart. Every call path runs inside or after the Layout Editor,
          * so the module is initialized by then; the guard is for safety only.
          */
         function _generateSchematic(type, size, axis, thumbnail, maxCards) {
@@ -189,6 +189,22 @@ FrameTrail.defineType(
                     return FrameTrail.module('TagModel').getContentCollection(
                         f.tags, false, true, f.users, f.text, f.types
                     );
+                },
+
+
+                /**
+                 * Whether I show an annotation: Collections (TimedContent) and Timelines show the annotations
+                 * their filter lets through. Asked of the filter, not of my collection, so it is right before I
+                 * am updated too.
+                 *
+                 * @method showsAnnotation
+                 * @param {Annotation} annotation
+                 * @return {Boolean}
+                 */
+                showsAnnotation: function(annotation) {
+                    var type = this.contentViewData.type;
+                    return (type == 'TimedContent' || type == 'Timelines')
+                        && this._getFilteredCollection().indexOf(annotation) !== -1;
                 },
 
                 _isSameResource: function(itemA, itemB) {
@@ -2630,7 +2646,7 @@ FrameTrail.defineType(
                                         (function(contentViewRef, oldData, newData, labels) {
                                             FrameTrail.module('UndoManager').register({
                                                 category: 'layout',
-                                                description: labels['SidebarLayout'] + ' ' + labels['GenericType'],
+                                                description: labels['SidebarLayoutEditor'] + ' ' + labels['GenericType'],
                                                 undo: function() {
                                                     contentViewRef.contentViewData = JSON.parse(JSON.stringify(oldData));
                                                     contentViewRef.updateContentViewPreview();

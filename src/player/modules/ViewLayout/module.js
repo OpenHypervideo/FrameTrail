@@ -20,7 +20,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
      * I build the schematic preview markup for a ContentView type.
      *
      * I am the single source of truth for these previews. Three callers render
-     * through me: the type palette of the Layout Manager (below), the preview
+     * through me: the type palette of the Layout Editor (below), the preview
      * element of a placed ContentView, and the type/size option cards in the
      * ContentView settings dialog. The latter two live in the ContentView type
      * and reach me via FrameTrail.module('ViewLayout').generateSchematic().
@@ -169,6 +169,16 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         { name: 'companion', key: 'areaCompanion', cap: 'Companion' }
     ];
 
+    // The types of content view, in the order of the layout editor's palette: the icon and label they are shown
+    // with (the palette, the Display tab of an annotation's properties) and the size the palette offers them in.
+    var VIEW_TYPES = [
+        { type: 'TimedContent', icon: 'icon-docs',        label: 'GenericAnnotationCollection', size: 'medium' },
+        { type: 'CustomHTML',   icon: 'icon-file-code',   label: 'GenericCustomHTML',           size: 'medium' },
+        { type: 'Transcript',   icon: 'icon-doc-text',    label: 'GenericTextTranscript',       size: 'large'  },
+        { type: 'Timelines',    icon: 'icon-tasks',       label: 'GenericTimelines',            size: 'large'  },
+        { type: 'Chapters',     icon: 'icon-list-bullet', label: 'SettingsChapters',            size: 'small'  }
+    ];
+
     var configLayoutArea,
 
         // The content views of each area, by its name.
@@ -190,6 +200,19 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
     function allContentViews() {
         return AREAS.reduce(function(list, area) { return list.concat(contentViews[area.name]); }, []);
+    }
+
+    function viewTypeOf(type) {
+        for (var i = 0; i < VIEW_TYPES.length; i++) {
+            if (VIEW_TYPES[i].type === type) { return VIEW_TYPES[i]; }
+        }
+        return null;
+    }
+
+    // The phone is there when pairing is set up, and wherever there are views for it already.
+    function showsCompanionArea() {
+        var config = FrameTrail.module('Database').config;
+        return !!(config && config.pairingBrokerURL) || contentViews.companion.length > 0;
     }
 
     function create() {
@@ -247,7 +270,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                 container.classList.toggle('hiddenTabs', shouldHide);
             }
 
-            // Also update layout manager preview area
+            // Also update layout editor preview area
             var previewArea = HypervideoLayoutContainer.querySelector('.layoutArea[data-area="' + area.key + '"]');
             if (previewArea) {
                 previewArea.classList.toggle('hiddenTabs', shouldHide);
@@ -323,7 +346,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             var labels = FrameTrail.module('Localization').labels;
             FrameTrail.module('UndoManager').register({
                 category: 'layout',
-                description: labels['SidebarLayout'] + ' ' + labels['GenericDelete'],
+                description: labels['SidebarLayoutEditor'] + ' ' + labels['GenericDelete'],
                 undo: function() {
                     var restoredContentView = createContentView(whichArea, contentViewData, true, true);
                     FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
@@ -371,7 +394,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         var editMode = FrameTrail.getState('editMode');
 
         if (editMode === 'layout') {
-            initLayoutManager();
+            initLayoutEditor();
         } else if (editMode && editMode !== 'preview') {
             // The other editors hide the layout areas; a change of an area's visibility must not show it.
             var ViewVideo = FrameTrail.module('ViewVideo');
@@ -421,7 +444,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             }
         });
 
-        // Reorder LayoutManager preview DOM (Sortable handles it on drag; needed for undo/redo)
+        // Reorder LayoutEditor preview DOM (Sortable handles it on drag; needed for undo/redo)
         if (updatePreviewDOM) {
             var previewArea = ViewVideo.HypervideoLayoutContainer
                 .querySelector('.layoutArea[data-area="' + areaKey + '"]');
@@ -571,44 +594,28 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
     }
 
-    function initLayoutManager() {
+    function initLayoutEditor() {
         
         HypervideoLayoutContainer.innerHTML = '';
 
-        var database   = FrameTrail.module('Database'),
-            thisID     = FrameTrail.module('RouteNavigation').hypervideoID;
+        var thisID = FrameTrail.module('RouteNavigation').hypervideoID;
 
-        // The phone is there when pairing is set up, and wherever there are views for it already.
-        var showCompanion = !!(database.config && database.config.pairingBrokerURL) || contentViews.companion.length > 0;
+        var showCompanion = showsCompanionArea();
 
         var _lmWrapper = document.createElement('div');
-        _lmWrapper.innerHTML = '<div class="layoutManagerContainer">' +
-            '    <div class="layoutManagerOptions">' +
-            '        <div class="message active mb-0">'+ labels['MessageLayoutManagerDropContentViews'] +'</div>' +
-            '        <div class="contentViewTemplate" data-type="TimedContent" data-size="medium">' +
-            '            <div class="contentViewOptionThumb"></div>' +
-            '            <div class="contentViewTemplateLabel"><span class="icon-docs">'+ labels['GenericAnnotationCollection'] +'</span></div>' +
-            '        </div>' +
-            '        <div class="contentViewTemplate" data-type="CustomHTML" data-size="medium">' +
-            '            <div class="contentViewOptionThumb"></div>' +
-            '            <div class="contentViewTemplateLabel"><span class="icon-file-code">'+ labels['GenericCustomHTML'] +'</span></div>' +
-            '        </div>' +
-            '        <div class="contentViewTemplate" data-type="Transcript" data-size="large">' +
-            '            <div class="contentViewOptionThumb"></div>' +
-            '            <div class="contentViewTemplateLabel"><span class="icon-doc-text">'+ labels['GenericTextTranscript'] +'</span></div>' +
-            '        </div>' +
-            '        <div class="contentViewTemplate" data-type="Timelines" data-size="large">' +
-            '            <div class="contentViewOptionThumb"></div>' +
-            '            <div class="contentViewTemplateLabel"><span class="icon-tasks">'+ labels['GenericTimelines'] +'</span></div>' +
-            '        </div>' +
-            '        <div class="contentViewTemplate" data-type="Chapters" data-size="small">' +
-            '            <div class="contentViewOptionThumb"></div>' +
-            '            <div class="contentViewTemplateLabel"><span class="icon-list-bullet">'+ labels['SettingsChapters'] +'</span></div>' +
-            '        </div>' +
+        _lmWrapper.innerHTML = '<div class="layoutEditorContainer">' +
+            '    <div class="layoutEditorOptions">' +
+            '        <div class="message active mb-0">'+ labels['MessageLayoutEditorDropContentViews'] +'</div>' +
+            VIEW_TYPES.map(function(viewType) {
+                return '        <div class="contentViewTemplate" data-type="'+ viewType.type +'" data-size="'+ viewType.size +'">' +
+                       '            <div class="contentViewOptionThumb"></div>' +
+                       '            <div class="contentViewTemplateLabel"><span class="'+ viewType.icon +'">'+ labels[viewType.label] +'</span></div>' +
+                       '        </div>';
+            }).join('') +
             '    </div>' +
-            '    <div class="layoutManagerBody">' +
-            '        <div class="layoutManagerMain">' +
-            '            <div class="layoutManager">' +
+            '    <div class="layoutEditorBody">' +
+            '        <div class="layoutEditorMain">' +
+            '            <div class="layoutEditor">' +
             '                <div data-area="areaTop" class="layoutArea">' +
             '                    <div class="layoutAreaTabs"></div>' +
             '                    <div class="layoutAreaContent"></div>' +
@@ -649,8 +656,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             '            </div>' +
             '        </div>' +
             (showCompanion ?
-            '        <div class="layoutManager companionLayoutManager">' +
-            '            <div class="companionLayoutLabel" data-tooltip-bottom="'+ labels['MessageLayoutManagerCompanion'] +'"><span class="icon-mobile-1">'+ labels['LayoutAreaCompanionTitle'] +'</span></div>' +
+            '        <div class="layoutEditor companionLayoutEditor">' +
+            '            <div class="companionLayoutLabel" data-tooltip-bottom="'+ labels['MessageLayoutEditorCompanion'] +'"><span class="icon-mobile-1">'+ labels['LayoutAreaCompanionTitle'] +'</span></div>' +
             '            <div data-area="areaCompanion" class="layoutArea">' +
             '                <div class="layoutAreaTabs"></div>' +
             '                <div class="layoutAreaContent"></div>' +
@@ -671,14 +678,14 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             '    </div>' +
             '</div>';
         var domElement = _lmWrapper.firstElementChild,
-        LayoutManager        = domElement.querySelector('.layoutManager'),
-        LayoutManagerOptions = domElement.querySelector('.layoutManagerOptions'),
+        LayoutEditor        = domElement.querySelector('.layoutEditor'),
+        LayoutEditorOptions = domElement.querySelector('.layoutEditorOptions'),
         self = this;
 
         HypervideoLayoutContainer.append(domElement);
 
         // Populate template preview thumbnails
-        LayoutManagerOptions.querySelectorAll('.contentViewTemplate').forEach(function(tmpl) {
+        LayoutEditorOptions.querySelectorAll('.contentViewTemplate').forEach(function(tmpl) {
             var thumb = tmpl.querySelector('.contentViewOptionThumb');
             if (thumb) {
                 // maxCards 3 keeps the palette thumbnails as compact as they have always been
@@ -697,8 +704,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                     var rect = el.getBoundingClientRect();
                     dragClone = el.cloneNode(true);
                     dragClone.style.cssText = 'position:fixed;z-index:1000;pointer-events:none;width:' + rect.width + 'px;left:' + rect.left + 'px;top:' + rect.top + 'px;';
-                    // Copy theme CSS variables from the themed layoutManager so the clone renders correctly
-                    var lm = domElement.querySelector('.layoutManager');
+                    // Copy theme CSS variables from the themed layoutEditor so the clone renders correctly
+                    var lm = domElement.querySelector('.layoutEditor');
                     if (lm) {
                         var cs = getComputedStyle(lm);
                         ['--primary-bg-color','--primary-fg-color','--secondary-bg-color','--secondary-fg-color',
@@ -721,7 +728,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                 }
             }
         };
-        LayoutManagerOptions.querySelectorAll('.contentViewTemplate').forEach(function(el) { interact(el).draggable(draggableListeners); });
+        LayoutEditorOptions.querySelectorAll('.contentViewTemplate').forEach(function(el) { interact(el).draggable(draggableListeners); });
 
         var dropzoneOpts = {
                 accept: '.contentViewTemplate, .contentViewPreview',
@@ -775,7 +782,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                         };
                         FrameTrail.module('UndoManager').register({
                             category: 'layout',
-                            description: labels['SidebarLayout'] + ' ' + labels['GenericAdd'],
+                            description: labels['SidebarLayoutEditor'] + ' ' + labels['GenericAdd'],
                             undo: function() {
                                 var contentView = findContentView();
                                 if (contentView) {
@@ -790,7 +797,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                     })(whichArea, JSON.parse(JSON.stringify(templateContentViewData)));
                 }
         };
-        domElement.querySelectorAll('.layoutManager .layoutAreaContent').forEach(function(el) { interact(el).dropzone(dropzoneOpts); });
+        domElement.querySelectorAll('.layoutEditor .layoutAreaContent').forEach(function(el) { interact(el).dropzone(dropzoneOpts); });
         }());
 
         AREAS.forEach(function(area) {
@@ -807,7 +814,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         // Make preview tabs sortable within each layout area
         AREAS.forEach(function(area) {
             var cfg = { area: area.name, key: area.key };
-            var previewArea   = domElement.querySelector('.layoutManager [data-area="' + cfg.key + '"]');
+            var previewArea   = domElement.querySelector('.layoutEditor [data-area="' + cfg.key + '"]');
             var tabsContainer = previewArea ? previewArea.querySelector('.layoutAreaTabs') : null;
             if (!tabsContainer) { return; }
 
@@ -823,7 +830,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                     (function(area, fromIdx, toIdx) {
                         FrameTrail.module('UndoManager').register({
                             category: 'layout',
-                            description: labels['SidebarLayout'] + ' ' + labels['GenericReorder'],
+                            description: labels['SidebarLayoutEditor'] + ' ' + labels['GenericReorder'],
                             undo: function() { reorderContentView(area, toIdx, fromIdx, true); },
                             redo: function() { reorderContentView(area, fromIdx, toIdx, true); }
                         });
@@ -831,6 +838,150 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                 }
             });
         });
+
+    }
+
+
+    /**
+     * I make the button that opens the Layout Editor (edit mode "layout"), for the places that point to it. It is
+     * disabled for those who may not use that mode (Sidebar.mayUseEditMode).
+     *
+     * @method renderOpenEditorButton
+     * @return {HTMLElement}
+     */
+    function renderOpenEditorButton() {
+
+        var Sidebar = FrameTrail.module('Sidebar'),
+            button  = document.createElement('button');
+
+        button.type = 'button';
+        button.className = 'openLayoutEditorButton';
+        button.innerHTML = '<span class="icon-website"></span> ' + labels['GenericOpenLayoutEditor'];
+        button.disabled = !!(Sidebar && !Sidebar.mayUseEditMode('layout'));
+        button.addEventListener('click', function() {
+            FrameTrail.changeState('editMode', 'layout');
+        });
+
+        return button;
+
+    }
+
+
+    /**
+     * I make the Display tab of an annotation's properties: the layout areas around the video (and the paired
+     * phone, where the Layout Editor shows it) with their views, each area in proportion to its size in the
+     * player (an empty one a thin strip, as in the Layout Editor), the views that show the annotation marked, then
+     * which views these are, or why it is shown nowhere, and the button to the Layout Editor. Editing hides the
+     * areas, so this is where an author sees where an annotation will appear. refresh() draws it again, after a
+     * change of the annotation's tags or of the layout.
+     *
+     * @method renderAnnotationDisplay
+     * @param {Annotation} annotation
+     * @return {Object} { element, refresh }
+     */
+    function renderAnnotationDisplay(annotation) {
+
+        var element = document.createElement('div');
+        element.className = 'annotationDisplay';
+
+        // An area's size, as the player has it: that of its active view (see ContentView.resizeLayoutArea).
+        function areaSize(area) {
+            var container = FrameTrail.module('ViewVideo')['Area' + area.cap + 'Container'],
+                size      = container && container.getAttribute('data-size');
+            return size || contentViews[area.name][0].contentViewData.contentSize;
+        }
+
+        function refresh() {
+
+            var shownIn = [],
+                canShow = false,   // whether any view shows annotations at all
+                areas   = {};
+
+            ['top', 'left', 'right', 'bottom', 'companion'].forEach(function(name) {
+
+                if (name === 'companion' && !showsCompanionArea()) { return; }
+
+                var area   = areaByName(name),
+                    areaEl = document.createElement('div');
+
+                areaEl.className = 'annotationDisplayArea' + (contentViews[name].length ? '' : ' empty');
+                areaEl.setAttribute('data-area', name);
+                if (contentViews[name].length) { areaEl.setAttribute('data-size', areaSize(area)); }
+
+                contentViews[name].forEach(function(contentView) {
+                    var data     = contentView.contentViewData,
+                        viewType = viewTypeOf(data.type),
+                        viewName = data.name || (viewType ? labels[viewType.label] : data.type),
+                        shows    = contentView.showsAnnotation(annotation),
+                        viewEl   = document.createElement('div'),
+                        iconEl   = document.createElement('span'),
+                        nameEl   = document.createElement('span');
+
+                    if (data.type === 'TimedContent' || data.type === 'Timelines') { canShow = true; }
+
+                    viewEl.className = 'annotationDisplayView' + (shows ? ' shows' : '');
+                    viewEl.title = viewName;
+                    iconEl.className = viewType ? viewType.icon : '';
+                    nameEl.className = 'annotationDisplayViewName';
+                    nameEl.textContent = viewName;
+                    viewEl.append(iconEl, nameEl);
+                    areaEl.appendChild(viewEl);
+
+                    if (shows) {
+                        areaEl.classList.add('shows');
+                        shownIn.push(viewName + ' (' + labels['LayoutArea' + area.cap] + ')');
+                    }
+                });
+
+                areas[name] = areaEl;
+
+            });
+
+            var layout = document.createElement('div'),
+                player = document.createElement('div'),
+                middle = document.createElement('div'),
+                video  = document.createElement('div');
+
+            layout.className = 'annotationDisplayLayout';
+            player.className = 'annotationDisplayPlayer';
+            middle.className = 'annotationDisplayMiddle';
+            video.className  = 'annotationDisplayVideo';
+            video.innerHTML  = '<span class="icon-play-1"></span>';
+
+            middle.append(areas.left, video, areas.right);
+            player.append(areas.top, middle, areas.bottom);
+            layout.appendChild(player);
+
+            if (areas.companion) {
+                var phone = document.createElement('div');
+                phone.className = 'annotationDisplayPhone';
+                phone.title = labels['LayoutAreaCompanionTitle'];
+                phone.appendChild(areas.companion);
+                layout.appendChild(phone);
+            }
+
+            var info = document.createElement('div'),
+                text = document.createElement('div');
+
+            info.className = 'annotationDisplayInfo';
+
+            if (shownIn.length) {
+                text.className = 'annotationDisplayShownIn';
+                text.textContent = labels['AnnotationDisplayShownIn'].replace('%s', shownIn.join(', '));
+            } else {
+                text.className = 'message active';
+                text.textContent = labels[canShow ? 'MessageAnnotationDisplayFiltered' : 'MessageAnnotationDisplayNoViews'];
+            }
+
+            info.append(text, renderOpenEditorButton());
+
+            element.replaceChildren(layout, info);
+
+        }
+
+        refresh();
+
+        return { element: element, refresh: refresh };
 
     }
 
@@ -1045,7 +1196,10 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         updateTimedStateOfContentViews: updateTimedStateOfContentViews,
 
-        initLayoutManager: initLayoutManager,
+        initLayoutEditor: initLayoutEditor,
+
+        renderOpenEditorButton:  renderOpenEditorButton,
+        renderAnnotationDisplay: renderAnnotationDisplay,
 
         reorderContentView:  reorderContentView,
 

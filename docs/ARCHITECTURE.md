@@ -472,13 +472,13 @@ Themes are defined in `src/_shared/styles/variables.css` using two scoping layer
 }
 ```
 
-**Layer 2 — per-theme selectors:** Each theme targets the sub-contexts that should be themed (main content, loading screen, login overlay, titlebar, layout manager). Edit modes like `annotations`, `overlays`, and `codesnippets` are excluded so the editor UI falls back to the base (classic) palette's known-good contrast:
+**Layer 2 — per-theme selectors:** Each theme targets the sub-contexts that should be themed (main content, loading screen, login overlay, titlebar, layout editor). Edit modes like `annotations`, `overlays`, and `codesnippets` are excluded so the editor UI falls back to the base (classic) palette's known-good contrast:
 
 ```css
 .frametrail-body[data-frametrail-theme="bright"] :is(
     .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"],
                         [data-edit-mode="codesnippets"], [data-edit-mode="annotations"]),
-    .loadingScreen, .userLoginOverlay, .titlebar:not(.editActive), .sidePanel:not(.editActive), .layoutManager
+    .loadingScreen, .userLoginOverlay, .titlebar:not(.editActive), .sidePanel:not(.editActive), .layoutEditor
 ),
 .themeItem[data-theme="bright"] {
     --primary-bg-color: rgba(255, 255, 255, 1);

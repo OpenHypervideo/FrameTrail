@@ -1282,18 +1282,41 @@ FrameTrail.defineType(
 
                     var thumbContainer = document.createElement('div');
                     thumbContainer.className = 'previewThumbContainer';
-
-                    // The tags, always in view, then the options of the type.
-                    var annotationOptions = document.createElement('div');
-                    annotationOptions.className = 'annotationOptionsWrapper';
-                    annotationOptions.innerHTML = '<div class="annotationTags"><label>'+ this.labels['GenericTags'] +'</label></div>'
-                                            + '<div id="AnnotationOptions"></div>';
-
                     thumbContainer.appendChild(annotation.resourceItem.renderThumb());
 
-                    controlsContainer.appendChild(defaultControls);
-                    controlsContainer.appendChild(thumbContainer);
+                    // The time controls and, always in view, the tags, beside the thumbnail.
+                    var header = document.createElement('div');
+                    header.className = 'annotationPropertiesHeader';
+                    header.innerHTML = '<div class="annotationPropertiesMain">'
+                                     + '    <div class="annotationTags"><label>'+ this.labels['GenericTags'] +'</label></div>'
+                                     + '</div>';
+                    header.firstElementChild.prepend(defaultControls);
+                    header.appendChild(thumbContainer);
+
+                    // Where the annotation is shown, and the options of its type (see initTabs).
+                    var annotationOptions = document.createElement('div');
+                    annotationOptions.className = 'annotationOptionsWrapper';
+                    annotationOptions.innerHTML = '<div class="annotationOptionsTabs">'
+                                            + '    <ul>'
+                                            + '        <li><a href="#AnnotationDisplay">'+ this.labels['GenericDisplay'] +'</a></li>'
+                                            + '        <li><a href="#AnnotationOptions">'+ this.labels['GenericOptions'] +'</a></li>'
+                                            + '    </ul>'
+                                            + '    <div id="AnnotationDisplay"></div>'
+                                            + '    <div id="AnnotationOptions"></div>'
+                                            + '</div>';
+
+                    controlsContainer.classList.add('annotationControls');
+                    controlsContainer.appendChild(header);
                     controlsContainer.appendChild(annotationOptions);
+
+                    // Display
+
+                    var ViewLayout = FrameTrail.module('ViewLayout'),
+                        display    = ViewLayout ? ViewLayout.renderAnnotationDisplay(annotation) : null;
+
+                    if (display) {
+                        annotationOptions.querySelector('#AnnotationDisplay').appendChild(display.element);
+                    }
 
                     // Tags
 
@@ -1322,6 +1345,7 @@ FrameTrail.defineType(
                             FrameTrail.module('ViewLayout').updateManagedContent();
                             FrameTrail.module('ViewLayout').updateContentInContentViews();
                             if (tagPicker && tagPicker.element.isConnected) { tagPicker.refresh(); }
+                            if (display && display.element.isConnected) { display.refresh(); }
                         }
 
                         // One undo step for each tag added or removed.
@@ -1342,7 +1366,7 @@ FrameTrail.defineType(
                             onAdd:    function(tag) { changeTag(tag, true); },
                             onRemove: function(tag) { changeTag(tag, false); }
                         });
-                        annotationOptions.querySelector('.annotationTags').appendChild(tagPicker.element);
+                        header.querySelector('.annotationTags').appendChild(tagPicker.element);
 
                     })(annotation.data.created);
 
@@ -1490,6 +1514,30 @@ FrameTrail.defineType(
                             manualInputMode = false;
                             controlsContainer.querySelector('#TimeEnd').value = val;
                             manualInputMode = true;
+                        },
+
+                        // The tabs, once the type has added its options: Options only when there are any. They
+                        // open on the tab last chosen for the annotation, else on its options.
+                        initTabs: function() {
+                            var tabs    = controlsContainer.querySelector('.annotationOptionsTabs'),
+                                options = tabs.querySelector('#AnnotationOptions'),
+                                names   = ['display', 'options'];
+                            if (!options.children.length) {
+                                tabs.querySelector('a[href="#AnnotationOptions"]').parentElement.remove();
+                                options.remove();
+                                names = ['display'];
+                            }
+                            var active = names.indexOf(annotation._lastPropertiesTab);
+                            FTTabs(tabs, {
+                                heightStyle: 'fill',
+                                active: (active === -1) ? names.length - 1 : active,
+                                activate: function(event, ui) {
+                                    annotation._lastPropertiesTab = names[FTTabs(tabs, 'option', 'active')];
+                                    if (display && ui.newPanel.id === 'AnnotationDisplay') { display.refresh(); }
+                                    var cm6Wrapper = ui.newPanel.querySelector('.cm6-wrapper');
+                                    if (cm6Wrapper && cm6Wrapper._cm6view) { cm6Wrapper._cm6view.requestMeasure(); }
+                                }
+                            });
                         }
 
                     }

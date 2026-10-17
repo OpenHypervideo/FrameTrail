@@ -404,8 +404,9 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
     margin-right: 6px;
 }
 
+/* An annotation's text editors fill its Options tab */
 .editPropertiesContainer .textContentEditorContainer {
-    height: calc(100% - 90px);
+    height: 100%;
 }
 
 .editPropertiesContainer .overlayOptionsWrapper {
@@ -413,21 +414,38 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
     height: calc(100% - 41px);
 }
 
-.editPropertiesContainer .annotationOptionsWrapper {
-    clear: both;
-    height: calc(100% - 104px);
+/* An annotation's properties: the header (time controls, tags, thumbnail), then the tabs */
+.editPropertiesContainer .controlsWrapper.annotationControls {
     display: flex;
     flex-direction: column;
 }
 
-/* The annotation's tags, above its options */
-.editPropertiesContainer .annotationTags {
+.editPropertiesContainer .annotationPropertiesHeader {
     flex: none;
+    display: flex;
+    align-items: flex-end;
+    gap: 10px;
+}
+
+.editPropertiesContainer .annotationPropertiesMain {
+    flex: 1 1 auto;
+    min-width: 0;
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+}
+
+.editPropertiesContainer .annotationPropertiesHeader .previewThumbContainer {
+    flex: none;
+    float: none;
+}
+
+/* The tags, at the bottom beside the thumbnail */
+.editPropertiesContainer .annotationTags {
+    margin-top: auto;
     display: flex;
     align-items: baseline;
     gap: 8px;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--secondary-bg-color);
 }
 
 .editPropertiesContainer .annotationTags > label {
@@ -439,15 +457,13 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
     min-width: 0;
 }
 
-.editPropertiesContainer #AnnotationOptions {
+.editPropertiesContainer .annotationOptionsWrapper {
     flex: 1 1 auto;
     min-height: 0;
-    overflow-y: auto;
-    position: relative;
-    padding-top: 12px;
 }
 
-.editPropertiesContainer .overlayOptionsTabs {
+.editPropertiesContainer .overlayOptionsTabs,
+.editPropertiesContainer .annotationOptionsTabs {
     clear: both;
     height: 100%;
     display: flex;

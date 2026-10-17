@@ -446,8 +446,7 @@
         updateControlsEnd          = propertiesControlsInterface.changeEnd;
 
         ViewVideo.switchInfoTab('properties');
-        var _atabs = ViewVideo.EditPropertiesContainer.querySelector('.annotationOptionsTabs');
-        if (_atabs) { FTTabs(_atabs, 'refresh'); } // Phase 2 bridge
+        if (propertiesControlsInterface.initTabs) { propertiesControlsInterface.initTabs(); }
 
         var cm6Wrapper = ViewVideo.EditPropertiesContainer.querySelector('.cm6-wrapper');
         if ( cm6Wrapper && cm6Wrapper._cm6view ) { cm6Wrapper._cm6view.requestMeasure(); }

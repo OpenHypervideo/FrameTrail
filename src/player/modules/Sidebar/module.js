@@ -50,7 +50,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '                    <div style="clear: both;"></div>'
                    + '                </div>'
                    + '                <button class="editMode" data-editmode="preview"><span class="icon-eye"></span><span class="editModeLabel">'+ labels['SidebarPreview'] +'</span></button>'
-                   + '                <button class="editMode" data-editmode="layout"><span class="icon-website"></span><span class="editModeLabel">'+ labels['SidebarLayout'] +'</span></button>'
+                   + '                <button class="editMode" data-editmode="layout"><span class="icon-website"></span><span class="editModeLabel">'+ labels['SidebarLayoutEditor'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="overlays"><span class="icon-object-ungroup"></span><span class="editModeLabel">'+ labels['SidebarOverlays'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="codesnippets"><span class="icon-code"></span><span class="editModeLabel">'+ labels['SidebarCustomCode'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="chapters"><span class="icon-list-bullet"></span><span class="editModeLabel">'+ labels['SidebarChapters'] +'</span></button>'
@@ -1391,13 +1391,31 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         }
 
         if (FrameTrail.module('RouteNavigation').hypervideoID) {
-            var mayEditHypervideo = FrameTrail.module('UserManagement').userRole == 'admin'
-                || parseInt(FrameTrail.module('HypervideoModel').creatorId) == FrameTrail.module('UserManagement').userID;
-
             videoContainerControls.querySelectorAll('.editMode').forEach(function(el) {
-                el.classList.toggle('disabled', !mayEditHypervideo && isLockGatedMode(el.dataset.editmode));
+                el.classList.toggle('disabled', !mayUseEditMode(el.dataset.editmode));
             });
         }
+
+    }
+
+
+    /**
+     * Whether the user may enter an edit mode of the open hypervideo: every
+     * mode for admins and the hypervideo's owner, for others all but the
+     * lock-gated ones (see updateEditModeButtonPermissions). Nothing is
+     * checked before a login, as the buttons are not.
+     * @method mayUseEditMode
+     * @param {String} editMode
+     * @return {Boolean}
+     */
+    function mayUseEditMode(editMode) {
+
+        if (!isLockGatedMode(editMode) || !FrameTrail.getState('loggedIn')) {
+            return true;
+        }
+
+        return FrameTrail.module('UserManagement').userRole == 'admin'
+            || parseInt(FrameTrail.module('HypervideoModel').creatorId) == FrameTrail.module('UserManagement').userID;
 
     }
 
@@ -1447,6 +1465,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
          * @return {Boolean}
          */
         isLockGatedMode: isLockGatedMode,
+        mayUseEditMode:  mayUseEditMode,
 
         setOverviewMapSaveFailed:   setOverviewMapSaveFailed,
         refreshOverviewMapControls: updateOverviewMapControls,

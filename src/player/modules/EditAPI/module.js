@@ -1174,7 +1174,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
             category: 'layout',
             undo: function() { FrameTrail.module('ViewLayout').setContentViews(whichArea, previous); },
             redo: function() { FrameTrail.module('ViewLayout').setContentViews(whichArea, next); }
-        }, 'SidebarLayout', 'GenericChange');
+        }, 'SidebarLayoutEditor', 'GenericChange');
 
         return contentViewsOf(whichArea);
 

@@ -1278,7 +1278,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         AreaTopDetails.style.display = 'none';
         AreaBottomDetails.style.display = 'none';
         
-        FrameTrail.module('ViewLayout').initLayoutManager();
+        FrameTrail.module('ViewLayout').initLayoutEditor();
         HypervideoLayoutContainer.classList.add('active');
 
     }

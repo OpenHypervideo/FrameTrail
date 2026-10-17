@@ -14,7 +14,7 @@ body > .contentViewPreview,
 .message,
 .viewResources:not(.resourceManager),
 .themeItem,
-.layoutManager {
+.layoutEditor {
     --primary-bg-color: rgba(47, 50, 58, 1);
     --secondary-bg-color: rgba(73, 76, 81, .6);
     --primary-fg-color: rgba(255, 255, 255, 1);
@@ -53,7 +53,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="bright"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -72,7 +72,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="dark"] {
     --primary-bg-color: rgba(0, 0, 0, 1);
@@ -91,7 +91,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="midnight"] {
     --primary-bg-color: rgba(13, 17, 23, 1);
@@ -111,7 +111,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="slate"] {
     --primary-bg-color: rgba(30, 41, 59, 1);
@@ -129,7 +129,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="studio"] {
     --primary-bg-color: rgba(234, 218, 186, 1);
@@ -152,7 +152,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="lagoon"] {
     --primary-bg-color: rgba(18, 62, 65, 1);
@@ -173,7 +173,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="dusk"] {
     --primary-bg-color: rgba(18, 24, 55, 1);
@@ -193,7 +193,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="nordic"] {
     --primary-bg-color: rgba(58, 82, 118, 1);
@@ -215,7 +215,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="obsidian"] {
     --primary-bg-color: rgba(14, 10, 12, 1);
@@ -236,7 +236,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="jungle"] {
     --primary-bg-color: rgba(42, 50, 20, 1);
@@ -256,7 +256,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="carbon"] {
     --primary-bg-color: rgba(25, 30, 38, 1);
@@ -277,7 +277,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="aurora"] {
     --primary-bg-color: rgba(12, 32, 38, 1);
@@ -298,7 +298,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="terra"] {
     --primary-bg-color: rgba(178, 92, 65, 1);
@@ -319,7 +319,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="eclipse"] {
     --primary-bg-color: rgba(30, 10, 55, 1);
@@ -339,7 +339,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="parchment"] {
     --primary-bg-color: rgba(250, 244, 228, 1);
@@ -362,7 +362,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="neon"] {
     --primary-bg-color: rgba(8, 10, 20, 1);
@@ -385,7 +385,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="navy"] {
     --primary-bg-color: rgba(32, 36, 70, 1);
@@ -402,7 +402,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="blue"] {
     --primary-bg-color: rgba(80, 93, 110, 1);
@@ -421,7 +421,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="grey"] {
     --primary-bg-color: rgba(210, 210, 210, 1);
@@ -442,7 +442,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="plum"] {
     --primary-bg-color: rgba(65, 24, 75, 1);
@@ -460,7 +460,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="crimson"] {
     --primary-bg-color: rgba(110, 12, 12, 1);
@@ -478,7 +478,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="ocean"] {
     --primary-bg-color: rgba(0, 48, 73, 1);
@@ -498,7 +498,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="forest"] {
     --primary-bg-color: rgba(18, 40, 28, 1);
@@ -516,7 +516,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="emerald"] {
     --primary-bg-color: rgba(5, 90, 65, 1);
@@ -534,7 +534,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="green"] {
     --primary-bg-color: rgba(22, 160, 133, 1);
@@ -552,7 +552,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="coral"] {
     --primary-bg-color: rgba(255, 108, 94, 1);
@@ -572,7 +572,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="violet"] {
     --primary-bg-color: rgba(138, 98, 184, 1);
@@ -590,7 +590,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="sunset"] {
     --primary-bg-color: rgba(55, 18, 32, 1);
@@ -611,7 +611,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="coffee"] {
     --primary-bg-color: rgba(43, 29, 18, 1);
@@ -629,7 +629,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="mocha"] {
     --primary-bg-color: rgba(158, 128, 108, 1);
@@ -649,7 +649,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="sand"] {
     --primary-bg-color: rgba(210, 175, 130, 1);
@@ -674,7 +674,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="rose"] {
     --primary-bg-color: rgba(253, 232, 236, 1);
@@ -699,7 +699,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="arctic"] {
     --primary-bg-color: rgba(238, 248, 255, 1);
@@ -723,7 +723,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="sage"] {
     --primary-bg-color: rgba(198, 214, 192, 1);
@@ -747,7 +747,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="mint"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -769,7 +769,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="sky"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -791,7 +791,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="steel"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -813,7 +813,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="lavender"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -835,7 +835,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="peach"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -857,7 +857,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="blush"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -879,7 +879,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="lemon"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -901,7 +901,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="turquoise"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -923,7 +923,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="grape"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -945,7 +945,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="tangerine"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -967,7 +967,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="tomato"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
@@ -988,7 +988,7 @@ body > .contentViewPreview,
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="orange"] {
     --primary-bg-color: rgba(255, 255, 255, 1);

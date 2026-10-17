@@ -650,7 +650,7 @@ Edit `src/_shared/styles/variables.css`:
     .signInWall,
     .titlebar:not(.editActive),
     .sidePanel:not(.editActive),
-    .layoutManager
+    .layoutEditor
 ),
 .themeItem[data-theme="mytheme"] {
     /* Required: the 4 core colors */
