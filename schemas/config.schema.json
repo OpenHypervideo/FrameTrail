@@ -5,8 +5,8 @@
     "description": "Instance configuration: _data/config.json. On a public instance the file is readable by anyone, so it must not hold secrets. Missing keys take the defaults given here. Unknown keys are allowed; writers keep them. See docs/INTEGRATION.md (\"Writing the Settings\") and docs/DEPLOYMENT.md.",
     "type": "object",
     "properties": {
-        "defaultTheme": {
-            "description": "Colour theme: a built-in theme id or one defined in custom.css. Empty means classic. A hypervideo's config.theme overrides it.",
+        "theme": {
+            "description": "Colour theme of the instance, for the overview and every hypervideo: a built-in theme id or one defined in custom.css. Empty means classic. Set in Administration.",
             "type": "string",
             "pattern": "^[a-z0-9_-]*$",
             "default": ""
@@ -295,8 +295,8 @@
             "description": "Not used.",
             "type": "boolean"
         },
-        "theme": {
-            "description": "Legacy. Former name of defaultTheme, renamed when read.",
+        "defaultTheme": {
+            "description": "Legacy. Former name of theme, read as theme when that is empty.",
             "type": "string",
             "pattern": "^[a-z0-9_-]*$"
         },

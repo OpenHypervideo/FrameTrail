@@ -28,7 +28,7 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
         HTMLFormat = window.FrameTrailHTMLFormat;
 
     // The settings of config.json a page with a single hypervideo plays with.
-    var PAGE_CONFIG_KEYS = ['defaultTheme', 'defaultLanguage', 'videoFit'];
+    var PAGE_CONFIG_KEYS = ['theme', 'defaultLanguage', 'videoFit'];
 
 
     function isObject(value) {

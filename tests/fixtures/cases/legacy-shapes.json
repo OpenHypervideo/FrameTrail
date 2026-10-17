@@ -409,17 +409,16 @@
             }
         },
         {
-            "name": "config.json with theme and the overview map with markers as a list",
+            "name": "config.json with defaultTheme and the overview map with markers as a list",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",
                 "allowUploads": true,
                 "alwaysForceLogin": false,
                 "userNeedsConfirmation": true,
-                "theme": "dark",
+                "defaultTheme": "dark",
                 "overviewMap": {
                     "background": "map.svg",
                     "fit": "cover",
@@ -613,6 +612,49 @@
             }
         },
         {
+            "name": "hypervideo.json with a theme of its own, which is not used",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Themed",
+                    "description": "",
+                    "thumb": null,
+                    "creator": "demo",
+                    "creatorId": "1",
+                    "created": 1791361800000,
+                    "lastchanged": 1791366000000
+                },
+                "config": {
+                    "slidingMode": "adjust",
+                    "slidingTrigger": "key",
+                    "autohideControls": false,
+                    "captionsVisible": false,
+                    "clipTimeVisible": false,
+                    "theme": "lagoon",
+                    "layoutArea": {
+                        "areaTop": [],
+                        "areaBottom": [],
+                        "areaLeft": [],
+                        "areaRight": []
+                    }
+                },
+                "clips": [
+                    {
+                        "resourceId": null,
+                        "src": "video.mp4",
+                        "duration": 0,
+                        "in": 0,
+                        "out": 0
+                    }
+                ],
+                "globalEvents": {},
+                "customCSS": "",
+                "contents": [],
+                "chapters": [],
+                "subtitles": []
+            }
+        },
+        {
             "name": "tag definitions as PHP's []",
             "schema": "tagdefinitions.schema.json",
             "data": []
@@ -629,7 +671,7 @@
             "name": "extension settings as PHP's []",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",

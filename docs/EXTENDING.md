@@ -544,7 +544,7 @@ Reading works whenever a hypervideo is open; `getUser()`, `permission()` and `li
 | `remove(kind, ref)` | removes one and returns it as it was |
 | `setLayout(area, contentViews)` | replaces the content views of a layout area: `'top'`, `'bottom'`, `'left'`, `'right'`, `'companion'` (the views of a paired phone) (or `'areaTop'`, …) |
 | `setSubtitles(lang, vttText)` | sets the subtitles of a language to a WebVTT text, or removes them (`null`). The file is written with the next save |
-| `setConfig(patch)` | changes the hypervideo's settings (its `config`, without `layoutArea`) with a JSON Merge Patch |
+| `setConfig(patch)` | changes the hypervideo's settings (its `config`, without `layoutArea`) with a JSON Merge Patch. The theme is not one of them: it is the instance's (`config.json` → `theme`), and a patch naming `theme` is refused |
 
 For a new item `add` fills in what follows from its kind and place: `type`, `frametrail:type`, the `creator` (the signed-in user; for annotations always), a `created` of its own, the target's `type` and `source` (the hypervideo's video) and the selector's `type` and `conformsTo`. What is left to give is the body and `target.selector.value`, with keyframes or a rotation if the overlay moves. A `created` that is given is kept, unless another item of the collection has it already. A chapter cannot start where another one starts, and an item's `created`, `creator` and type cannot be changed: remove it and add a new one.
 
@@ -674,7 +674,7 @@ Edit `src/_shared/styles/variables.css`:
 }
 ```
 
-The theme selector in `HypervideoSettingsDialog` automatically picks up themes defined in CSS.
+The theme is a setting of the instance (`config.json` → `theme`); hypervideos have no theme of their own. To offer the new theme in Administration → Color Theme, add a card for it to the theme list in `AdminSettingsDialog` (and its id to `THEMES` in `setup.html`, for the setup wizard). A theme defined in the global `custom.css` instead can be chosen by setting `theme` in `config.json`.
 
 ## Extending the Backend
 

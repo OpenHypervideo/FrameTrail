@@ -23,7 +23,7 @@ FrameTrail's Export writes this format ("Download Files" → HTML File), and its
 <body>
 <script type="application/ld+json" data-frametrail="hypervideo" data-frametrail-format="1"
         data-frametrail-datapath="https://example.org/_data/"
-        data-frametrail-config="{&quot;defaultTheme&quot;:&quot;dark&quot;}">
+        data-frametrail-config="{&quot;theme&quot;:&quot;dark&quot;}">
 {
     "bundle": "hypervideo",
     "formatVersion": 1,
@@ -51,7 +51,7 @@ The bundle is the text of a `<script type="application/ld+json">` element with a
 | `data-frametrail` | `hypervideo` or `project`, the kind of bundle (required; the bundle's own `bundle` property says the same) |
 | `data-frametrail-format` | the version of this format, `1`. A reader refuses a block in a newer format. Default `1` |
 | `data-frametrail-datapath` | what relative media paths resolve against: the `_data/` folder they are relative to (an uploaded file `x.mp4` is at `<datapath>resources/x.mp4`). Absolute or relative to the page. Without it, a `_data/` folder next to the file |
-| `data-frametrail-config` | playback settings for the page, as JSON: `defaultTheme`, `defaultLanguage`, `videoFit`, … For a project they override the bundle's own `config` |
+| `data-frametrail-config` | playback settings for the page, as JSON: `theme`, `defaultLanguage`, `videoFit`, … For a project they override the bundle's own `config`. `defaultTheme`, the former name of `theme`, is still read |
 | `data-frametrail-language` | the language, shorthand for `defaultLanguage` |
 | `data-frametrail-target` | where to mount the player, a CSS selector. Default: the `<body>`. Only the first block for each target is played |
 | `data-frametrail-fullpage` | `true` or `false`: may the player name the browser tab (as for `<video data-frametrail>`) |
@@ -77,7 +77,7 @@ A one-line `<script>FrameTrail.autoInit();</script>` after the library plays the
 FrameTrail.init({
     bundle:   bundle,                          // a hypervideo or project bundle
     dataPath: 'https://example.org/_data/',     // what relative media paths resolve against
-    config:   { defaultTheme: 'dark' },         // optional; overrides a project's config
+    config:   { theme: 'dark' },                // optional; overrides a project's config
     target:   '#player'
 }, 'PlayerLauncher');
 ```

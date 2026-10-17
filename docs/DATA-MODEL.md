@@ -123,12 +123,12 @@ A **project bundle** holds a library:
     "hypervideos": { "9": { "bundle": "hypervideo", … } },  // keyed as in hypervideosIndex; without "resources"
     "resources": { … },                               // resources/_index.json
     "tagdefinitions": { … },
-    "config": { "defaultTheme": "studio", "defaultLanguage": "en" },
+    "config": { "theme": "studio", "defaultLanguage": "en" },
     "customCSS": "…"                                  // custom.css
 }
 ```
 
-`config` carries only the settings that decide how the library looks and plays: `defaultTheme`, `defaultLanguage`, `videoFit`, `overviewMode`, `overviewTitle` and `overviewShowSearchBar`. Accounts, authentication, privacy and upload settings belong to an instance and never travel. A project bundle never contains `users.json` or anything from the dot-folders (`.auth/`, `.collab/` and any other).
+`config` carries only the settings that decide how the library looks and plays: `theme`, `defaultLanguage`, `videoFit`, `overviewMode`, `overviewTitle` and `overviewShowSearchBar`. Accounts, authentication, privacy and upload settings belong to an instance and never travel. A project bundle never contains `users.json` or anything from the dot-folders (`.auth/`, `.collab/` and any other).
 
 A hypervideo's `globalEvents`, `customCSS` and code snippets are JavaScript and CSS that run in the viewer's browser. An importer should show them and ask before taking them.
 
@@ -250,7 +250,7 @@ The overview shows the hypervideos as a grid or, when `config.json` has `overvie
 {
     "meta": { "name": "…", "description": "…", "thumb": "…", "creator": "demo", "creatorId": "1",
               "created": 1783322367127, "lastchanged": 1791235975527 },
-    "config": { "slidingMode": "adjust", "theme": "", "autohideControls": false, "captionsVisible": false,
+    "config": { "slidingMode": "adjust", "autohideControls": false, "captionsVisible": false,
                 "clipTimeVisible": false, "slidingTrigger": "key",
                 "layoutArea": { "areaTop": [], "areaBottom": [], "areaLeft": [], "areaRight": [ { "type": "Transcript", … } ] } },
     "clips": [ { "resourceId": "51", "src": "1_1783322343_lecture.mp4", "duration": 0, "in": 0, "out": 0 } ],
@@ -463,8 +463,9 @@ Readers must accept these shapes. Each is in the schemas as a separate alternati
 | `animationIn`, `animationOut`, `animationDuration` | overlay attributes | `attributes.animation` |
 | `linkUrl` | hotspot attributes | `action: "openUrl"` with that target, when `action` is empty |
 | `overviewMap` (markers as a list of `{ hypervideoID, x, y, size }`) | `config.json` | the overview map, when `hypervideos/_index.json` has none; moved there by the first map save |
-| `theme` | `config.json` | `defaultTheme` |
+| `defaultTheme` | `config.json`, a project bundle's `config`, init options, `data-frametrail-config` | `theme`, when that is empty |
 | `allowCollaboration`, `defaultUserRole`, `updateServiceURL`, `autoUpdate` | `config.json` | not used |
+| `theme` | `hypervideo.json` → `config` | not used: a hypervideo has no theme of its own, the instance's `theme` applies. Kept in the file as it is |
 | `hidden` | `hypervideo.json` → `config` | not used |
 | `start`, `end` | clips | not used |
 | `embed` | `urlpreview` attributes | not used |

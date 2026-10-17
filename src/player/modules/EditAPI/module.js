@@ -446,10 +446,11 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
         return clone(FrameTrail.module('ViewLayout').getLayoutAreaData()[AREA_KEYS[whichArea]] || []);
     }
 
-    // config without layoutArea, which belongs to the content views.
+    // config without layoutArea, which belongs to the content views, and without a legacy theme: the theme is the instance's, and the file keeps it as it is.
     function currentConfig() {
         var config = clone(FrameTrail.module('Database').hypervideo.config) || {};
         delete config.layoutArea;
+        delete config.theme;
         return config;
     }
 
@@ -1240,7 +1241,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     }
 
     /**
-     * I change the hypervideo's settings — its config, without layoutArea — with a JSON Merge Patch, and return them.
+     * I change the hypervideo's settings — its config, without layoutArea and theme (the instance's) — with a JSON Merge Patch, and return them.
      *
      * @method setConfig
      * @param {Object} patch
@@ -1256,6 +1257,10 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
 
         if (patch.layoutArea !== undefined) {
             throw editError('invalid', 'Invalid settings', [{ path: '/layoutArea', message: 'is set with setLayout()' }]);
+        }
+
+        if (patch.theme !== undefined) {
+            throw editError('invalid', 'Invalid settings', [{ path: '/theme', message: 'is a setting of the instance (config.json → theme)' }]);
         }
 
         var previous = currentConfig(),

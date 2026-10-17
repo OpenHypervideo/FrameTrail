@@ -346,7 +346,7 @@ External settings is independent of external authentication, but they are meant 
 - **The platform is the only writer** of `config.json`, of `custom.css`, and of the privacy gate in `_data/.htaccess`: `ftSyncPrivacyRules()` used to run after every settings save, and there are none now. A platform that makes an instance private writes that rule itself.
 - **Setup counts as done.** `setupCheckDetailed` and `setupInit` treat an instance with either `externalSettings` or `externalAuth` as already set up, whatever files it has, because setup rewrites `custom.css` and the indexes.
 
-What stays with the instance: per-hypervideo themes and CSS (in each `hypervideo.json`), the overview map's content (in `hypervideos/_index.json`), tag definitions, and — unless external authentication is also on — the user accounts.
+What stays with the instance: per-hypervideo CSS (in each `hypervideo.json`), the overview map's content (in `hypervideos/_index.json`), tag definitions, and — unless external authentication is also on — the user accounts.
 
 `manageUrl` reaches the browser only if it starts with `https://`, `http://` or a single `/`; anything else is replaced with an empty string rather than drawn as a link. What the browser learns is a whitelist, `ftExternalSettingsPublic()` in [`src/_server/externalsettings.php`](../src/_server/externalsettings.php).
 
@@ -356,7 +356,7 @@ The keys the dialog used to write, with what FrameTrail does when a key is missi
 
 | Key | Values | Missing means | Takes effect |
 |-----|--------|---------------|--------------|
-| `defaultTheme` | a theme id, `""` | `classic` | at once |
+| `theme` | a theme id, `""` (`defaultTheme`, its former name, is still read when `theme` is empty) | `classic` | at once |
 | `overviewTitle` | any string, shown as text | the localized "Overview" | at once |
 | `overviewMode` | `"grid"`, `"map"` | grid | on reload |
 | `overviewShowSearchBar` | boolean | off | at once |

@@ -5,7 +5,7 @@
             "name": "allowUploads as a string",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",
@@ -24,7 +24,7 @@
             "name": "apiTokens as a string",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",
@@ -44,7 +44,7 @@
             "name": "overview mode list",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "list",
@@ -63,7 +63,7 @@
             "name": "extension script from another origin",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",
@@ -88,7 +88,7 @@
             "name": "extension script protocol-relative",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",
@@ -113,7 +113,7 @@
             "name": "extension script root-relative",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",
@@ -138,7 +138,7 @@
             "name": "extension without a name",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",
@@ -162,7 +162,7 @@
             "name": "external authentication mode magic",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",
@@ -449,7 +449,7 @@
             "name": "extension settings as a list",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",

@@ -747,6 +747,30 @@ describe('FrameTrailSerializer', () => {
         assert.equal(out.meta.lastchanged, 7);
     });
 
+    test("a hypervideo's legacy theme is kept as stored; one never stored is written without one", () => {
+        const stored = hypervideo([]);
+        stored.config.theme = 'lagoon';
+        const model = Serializer.parseHypervideo(stored);
+        model.config.slidingMode = 'overlay';
+        assert.equal(Serializer.serializeHypervideo(model, { now: 7 }).config.theme, 'lagoon');
+        const fresh = Serializer.parseHypervideo(hypervideo([]));
+        delete fresh._stored;
+        delete fresh.config.theme;
+        assert.ok(!('theme' in Serializer.serializeHypervideo(fresh, { now: 7 }).config));
+    });
+
+    test('normalizeConfig: defaultTheme, the former name of theme, becomes theme when that is empty', () => {
+        assert.deepStrictEqual(Serializer.normalizeConfig({ defaultTheme: 'dark', videoFit: 'cover' }), { theme: 'dark', videoFit: 'cover' });
+        assert.deepStrictEqual(Serializer.normalizeConfig({ theme: 'lagoon', defaultTheme: 'dark' }), { theme: 'lagoon' });
+        assert.deepStrictEqual(Serializer.normalizeConfig({ theme: '', defaultTheme: 'dark' }), { theme: 'dark' });
+        assert.deepStrictEqual(Serializer.normalizeConfig({ defaultTheme: '' }), {});
+        assert.deepStrictEqual(Serializer.normalizeConfig({ theme: 'studio' }), { theme: 'studio' });
+        const config = { defaultTheme: 'dark' };
+        assert.equal(Serializer.normalizeConfig(config), config);
+        assert.equal(Serializer.normalizeConfig(null), null);
+        assert.equal(Serializer.normalizeConfig('config.json'), 'config.json');
+    });
+
     test('overlays with the same second-precision created stay distinct and are written as ISO', () => {
         const model = Serializer.parseHypervideo(hypervideo([overlayItem(toStringCreated), overlayItem(toStringCreated), overlayItem(undefined)]));
         const created = model.overlays.map((o) => o.created);
@@ -958,10 +982,10 @@ describe('FrameTrailHTMLFormat', () => {
 
     test('a page carries the bundle and the page settings, and reads back as written', () => {
         const bundle = allTypes(),
-              html   = HTMLFormat.write(bundle, { datapath: 'https://example.org/_data/', config: { defaultTheme: 'dark', defaultLanguage: 'de' }, target: '#player' }),
+              html   = HTMLFormat.write(bundle, { datapath: 'https://example.org/_data/', config: { theme: 'dark', defaultLanguage: 'de' }, target: '#player' }),
               blocks = HTMLFormat.parse(html);
         assert.equal(blocks.length, 1);
-        assert.deepStrictEqual(blocks[0], { kind: 'hypervideo', format: 1, datapath: 'https://example.org/_data/', config: { defaultTheme: 'dark', defaultLanguage: 'de' }, target: '#player', bundle });
+        assert.deepStrictEqual(blocks[0], { kind: 'hypervideo', format: 1, datapath: 'https://example.org/_data/', config: { theme: 'dark', defaultLanguage: 'de' }, target: '#player', bundle });
         assert.match(html, /<html lang="de">/);
         assert.match(html, /<title>All Item Types<\/title>/);
         assert.match(html, /<script>FrameTrail\.autoInit\(\);<\/script>/);
@@ -991,9 +1015,9 @@ describe('FrameTrailHTMLFormat', () => {
 
     test('pages written by hand: attribute order, quotes, case, entities, whitespace', () => {
         const bundle = { bundle: 'project', formatVersion: 1, hypervideosIndex: { hypervideos: {} }, hypervideos: {} },
-              html   = '<body><script src="x.js"></script>\n<SCRIPT data-frametrail-config=\'{"defaultTheme":"a&amp;b"}\' Type = "Application/LD+JSON" data-frametrail data-frametrail-datapath=../data/ >\n\n  '
+              html   = '<body><script src="x.js"></script>\n<SCRIPT data-frametrail-config=\'{"theme":"a&amp;b"}\' Type = "Application/LD+JSON" data-frametrail data-frametrail-datapath=../data/ >\n\n  '
                      + JSON.stringify(bundle) + '  \n</Script >';
-        assert.deepStrictEqual(HTMLFormat.parse(html), [{ kind: 'project', format: 1, datapath: '../data/', config: { defaultTheme: 'a&b' }, target: null, bundle }]);
+        assert.deepStrictEqual(HTMLFormat.parse(html), [{ kind: 'project', format: 1, datapath: '../data/', config: { theme: 'a&b' }, target: null, bundle }]);
         assert.deepStrictEqual(HTMLFormat.parse('<script type="application/ld+json">{"other":"data"}</script>'), []);
     });
 
@@ -1029,6 +1053,7 @@ describe('FrameTrailHTMLFormat', () => {
                       + block.replace('<script ', '<script id="data" ') + '\n'
                       + '<script type="application/ld+json" data-frametrail="hypervideo">{"second":"block"}</script>\n<script>FrameTrail.autoInit();</script></body></html>\n',
               files   = HTMLFormat.readProject(page).files;
+        // A config.json in the former form keeps its theme.
         files['config.json'] = { defaultTheme: 'dark' };
         const edited = HTMLFormat.writeProject(files, page),
               start  = page.indexOf('<script id="data"'),
@@ -1037,28 +1062,36 @@ describe('FrameTrailHTMLFormat', () => {
         assert.equal(edited.slice(edited.indexOf('</script>', start)), page.slice(page.indexOf('</script>', start)));
         assert.match(edited, /<script id="data" type="application\/ld\+json" data-frametrail="project" data-frametrail-format="1">/);
         assert.equal(blocks.length, 2);
-        assert.deepStrictEqual(blocks[0].bundle.config, { defaultTheme: 'dark' });
+        assert.deepStrictEqual(blocks[0].bundle.config, { theme: 'dark' });
         assert.deepStrictEqual(blocks[1].bundle, { second: 'block' });
         assert.equal(HTMLFormat.firstBlockText(edited), '\n' + HTMLFormat.blockJSON(blocks[0].bundle) + '\n');
     });
 
     test('a hypervideo page is read as a project with that hypervideo; its page settings move into the data', () => {
         const bundle = allTypes(),
-              page   = HTMLFormat.write(bundle, { datapath: 'https://example.org/_data/', config: { defaultTheme: 'dark', videoFit: 'cover' } })
+              page   = HTMLFormat.write(bundle, { datapath: 'https://example.org/_data/', config: { theme: 'dark', videoFit: 'cover' } })
                            .replace('data-frametrail-format="1"', 'data-frametrail-format="1" data-frametrail-language="fr"'),
               read   = HTMLFormat.readProject(page);
         assert.equal(read.kind, 'hypervideo');
         assert.equal(read.datapath, 'https://example.org/_data/');
         assert.deepStrictEqual(read.files['hypervideos/_index.json'], { 'hypervideo-increment': 1, 'hypervideos': { '1': './1' } });
-        assert.deepStrictEqual(read.files['config.json'], { defaultTheme: 'dark', videoFit: 'cover', defaultLanguage: 'fr' });
+        assert.deepStrictEqual(read.files['config.json'], { theme: 'dark', videoFit: 'cover', defaultLanguage: 'fr' });
         const written = HTMLFormat.parse(HTMLFormat.writeProject(read.files, page)),
               errors  = validator.validate('project-bundle.schema.json', written[0].bundle);
         assert.ok(!errors.length, formatErrors(errors));
         assert.deepStrictEqual([written[0].kind, written[0].config, written[0].datapath], ['project', null, 'https://example.org/_data/']);
-        assert.deepStrictEqual(written[0].bundle.config, { defaultTheme: 'dark', defaultLanguage: 'fr', videoFit: 'cover' });
+        assert.deepStrictEqual(written[0].bundle.config, { theme: 'dark', defaultLanguage: 'fr', videoFit: 'cover' });
         assert.deepStrictEqual(written[0].bundle.hypervideos['1'].hypervideo, bundle.hypervideo);
         assert.deepStrictEqual(written[0].bundle.hypervideos['1'].annotations, bundle.annotations);
         assert.deepStrictEqual(written[0].bundle.resources.resources, bundle.resources);
+    });
+
+    test("a page's settings in the former form still override its project's theme", () => {
+        const project = Serializer.readBundle(readDataFolder(path.join(FIXTURES, 'data', 'zoom-in-on-dna')), 'folder');
+        project.config = { theme: 'lagoon', videoFit: 'cover' };
+        const page = HTMLFormat.write(project, { config: { defaultTheme: 'dark' } }),
+              read = HTMLFormat.readProject(page);
+        assert.deepStrictEqual(read.files['config.json'], { theme: 'dark', videoFit: 'cover' });
     });
 
     test('a hypervideo listed before its folder is written is left out', () => {

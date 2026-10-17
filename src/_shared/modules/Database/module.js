@@ -400,10 +400,31 @@
 
         Object.keys(config).forEach(function(key) { delete config[key]; });
         Object.assign(config, JSON.parse(JSON.stringify(newConfig)));
+        // The former name goes from what is held, so the next save of config.json writes theme.
+        Serializer.normalizeConfig(config);
 
         FrameTrail.changeState('config', config);
 
     };
+
+
+    /**
+     * I show the instance's theme (config.json → theme): on the target, so
+     * the overview and every hypervideo wear it. Hypervideos have no theme
+     * of their own.
+     *
+     * @method applyTheme
+     */
+    function applyTheme() {
+
+        var target  = FrameTrail.getState('target'),
+            element = (typeof target === 'string') ? document.querySelector(target) : target;
+
+        if (element) {
+            element.setAttribute('data-frametrail-theme', (config && config.theme) || 'classic');
+        }
+
+    }
 
 
     function loadConfigData(success, fail) {
@@ -428,21 +449,9 @@
 
         if (typeof configInitOptions === 'object' && configInitOptions !== null) {
 
-            config = configInitOptions;
-            // Migrate legacy "theme" key → "defaultTheme"
-            if (!config.defaultTheme && config.theme) {
-                config.defaultTheme = config.theme;
-                delete config.theme;
-            }
+            config = Serializer.normalizeConfig(configInitOptions);
             FrameTrail.changeState('config', config);
-
-            // Apply global theme only if no per-hypervideo theme is set
-            var hvTheme = hypervideo && hypervideo.config && hypervideo.config.theme;
-            if (!hvTheme) {
-                var _t = FrameTrail.getState('target');
-                var _themeEl = (typeof _t === 'string') ? document.querySelector(_t) : _t;
-                if (_themeEl) _themeEl.setAttribute('data-frametrail-theme', config.defaultTheme || 'classic');
-            }
+            applyTheme();
 
             return success.call(this);
 
@@ -453,24 +462,13 @@
         if (configInitOptions == null && FrameTrail.getState('storageMode') === 'download') {
             config = {};
             FrameTrail.changeState('config', config);
+            applyTheme();
             return success.call(this);
         }
 
         function applyConfig(data) {
             replaceConfigContents(data);
-            // Migrate legacy "theme" key → "defaultTheme"
-            if (!config.defaultTheme && config.theme) {
-                config.defaultTheme = config.theme;
-                delete config.theme;
-            }
-            FrameTrail.changeState('config', config);
-            // Apply global theme only if no per-hypervideo theme is set
-            var hvTheme = hypervideo && hypervideo.config && hypervideo.config.theme;
-            if (!hvTheme) {
-                var _t = FrameTrail.getState('target');
-                var _themeEl = (typeof _t === 'string') ? document.querySelector(_t) : _t;
-                if (_themeEl) _themeEl.setAttribute('data-frametrail-theme', config.defaultTheme || 'classic');
-            }
+            applyTheme();
             success.call(this);
         }
 
@@ -2548,6 +2546,7 @@
         loadConfigVersions:    loadConfigVersions,
         loadUserData:          loadUserData,
         replaceConfigContents: replaceConfigContents,
+        applyTheme:            applyTheme,
 
         loadHypervideoData:    loadHypervideoData,
         updateHypervideoData:  updateHypervideoData,

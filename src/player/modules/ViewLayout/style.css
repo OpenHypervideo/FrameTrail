@@ -586,53 +586,6 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 }
 
 
-/*******************
-* Theme Panel
-*******************/
-
-.layoutManagerThemePanel {
-    flex: 0 0 163px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: #fff;
-    margin-left: 10px;
-}
-
-.layoutManagerThemePanel .themeContainer {
-    display: flex;
-    flex-direction: column;
-    flex-wrap: nowrap;
-    gap: 0px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    flex: 1 1 auto;
-    padding: 10px;
-}
-
-.layoutManagerThemePanel .themeContainer .message {
-    flex: 0 0 auto;
-    margin-bottom: 10px;
-    position: relative;
-}
-
-.layoutManagerThemePanel .themeContainer .message::after {
-    position: absolute;
-    content: "";
-    left: 50%;
-    margin-left: -14px;
-    bottom: -7px;
-    border-left: 14px solid transparent;
-    border-right: 14px solid transparent;
-    border-top: 6px solid #FF9919;
-}
-
-.layoutManagerThemePanel .themeContainer .themeItem {
-    float: none;
-    display: block;
-    width: auto;
-    flex: 0 0 auto;
-}
 /* The phone: the companion area (layoutArea.areaCompanion), the views a paired phone shows.
    Laid out as the phone shows them: the tabs in a row above the views, which take the whole width. */
 

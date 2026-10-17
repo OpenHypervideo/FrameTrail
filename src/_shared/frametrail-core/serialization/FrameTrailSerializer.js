@@ -106,7 +106,7 @@
 
     // The playback-relevant keys of config.json, the only ones a project bundle carries: how its pages play,
     // and how they pair with phones (so a project file can do that too, docs/PAIRING.md).
-    var PLAYBACK_CONFIG_KEYS = ['defaultTheme', 'defaultLanguage', 'videoFit', 'overviewMode', 'overviewTitle', 'overviewShowSearchBar',
+    var PLAYBACK_CONFIG_KEYS = ['theme', 'defaultLanguage', 'videoFit', 'overviewMode', 'overviewTitle', 'overviewShowSearchBar',
                                 'pairingBrokerURL', 'pairingButtonVisible', 'pairingCompanionURL'];
 
     // Keys of annotations/_index.json that are not legacy per-user entries.
@@ -1034,7 +1034,6 @@
                 "autohideControls": config.autohideControls,
                 "captionsVisible":  config.captionsVisible,
                 "clipTimeVisible":  config.clipTimeVisible,
-                "theme":            config.theme || "",
                 "layoutArea":       layout
             }, config, ['layoutArea']),
             "clips":        model.clips,
@@ -1090,6 +1089,39 @@
             .concat((model.otherContents || []).map(clone));
 
         return out;
+
+    }
+
+
+    /* ------------------------------------------------------------------ */
+    /*  Configuration                                                     */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * I bring a config into its current form, in place, and return it: the
+     * contents of config.json, init options, or the playback settings of a
+     * bundle or a page (data-frametrail-config). defaultTheme, the former
+     * name of theme, becomes theme when that is empty, and is dropped.
+     * Anything that is no object is returned as it is.
+     *
+     * Every way a config comes in goes through me, each source on its own
+     * before they are merged, so that an override in the former form still
+     * overrides.
+     *
+     * @method normalizeConfig
+     * @param {Object} config
+     * @return {Object}
+     */
+    function normalizeConfig(config) {
+
+        if (!isObject(config)) { return config; }
+
+        if (has(config, 'defaultTheme')) {
+            if (!config.theme && config.defaultTheme) { config.theme = config.defaultTheme; }
+            delete config.defaultTheme;
+        }
+
+        return config;
 
     }
 
@@ -1342,6 +1374,8 @@
             if (resources !== undefined)      { bundle.resources = resources; }
             if (tagdefinitions !== undefined) { bundle.tagdefinitions = tagdefinitions; }
             if (isObject(config)) {
+                // A config.json in the former form keeps its theme in the bundle.
+                config = normalizeConfig(clone(config));
                 bundle.config = {};
                 PLAYBACK_CONFIG_KEYS.forEach(function(key) {
                     if (has(config, key)) { bundle.config[key] = config[key]; }
@@ -1747,8 +1781,9 @@
         parseAnnotationIndex:    parseAnnotationIndex,
         setAnnotationIndexEntry: setAnnotationIndexEntry,
         guestUserID:             guestUserID,
+        normalizeConfig:         normalizeConfig,
 
-        dedupeCreated:           dedupeCreated,
+        dedupeCreated:          dedupeCreated,
         mergeStored:             mergeStored,
 
         schemaOfFile:            schemaOfFile,

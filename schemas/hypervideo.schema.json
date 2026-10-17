@@ -505,10 +505,9 @@
                     "default": false
                 },
                 "theme": {
-                    "description": "Colour theme of this hypervideo. Empty means the instance's defaultTheme.",
+                    "description": "Legacy. Not used: the instance's theme (config.json → theme) applies. Kept in the file as it is.",
                     "type": "string",
-                    "pattern": "^[a-z0-9_-]*$",
-                    "default": ""
+                    "pattern": "^[a-z0-9_-]*$"
                 },
                 "layoutArea": {
                     "description": "The content views around the video, and those of a paired phone.",

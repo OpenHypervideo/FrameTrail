@@ -472,7 +472,7 @@ Themes are defined in `src/_shared/styles/variables.css` using two scoping layer
 }
 ```
 
-**Layer 2 — per-theme selectors:** Each theme targets the sub-contexts that should be themed (main content, loading screen, login overlay, titlebar, layout manager). Edit modes like `annotations`, `overlays`, and `codesnippets` are excluded so the editor UI falls back to the default theme's known-good contrast:
+**Layer 2 — per-theme selectors:** Each theme targets the sub-contexts that should be themed (main content, loading screen, login overlay, titlebar, layout manager). Edit modes like `annotations`, `overlays`, and `codesnippets` are excluded so the editor UI falls back to the base (classic) palette's known-good contrast:
 
 ```css
 .frametrail-body[data-frametrail-theme="bright"] :is(
@@ -487,7 +487,7 @@ Themes are defined in `src/_shared/styles/variables.css` using two scoping layer
 }
 ```
 
-Themes are activated by setting `data-frametrail-theme` on `.frametrail-body`.
+Themes are activated by setting `data-frametrail-theme` on `.frametrail-body`. The theme is a setting of the instance, `config.json` → `theme` (chosen under Administration → Color Theme; `defaultTheme`, its former name, is still read): `Database.applyTheme()` sets it whenever the config is loaded or the administration changes it, and the overview and every hypervideo show it. Hypervideos have no theme of their own; a `theme` in an older `hypervideo.json` is not used.
 
 ### CSS Organization
 

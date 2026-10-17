@@ -583,8 +583,9 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
             clock.update(lastState, Date.now(), rtt);
         }
 
+        // The theme is the instance's (its config), never the hypervideo's.
         var meta  = data.bundle.hypervideo.meta || {},
-            theme = (data.bundle.hypervideo.config && data.bundle.hypervideo.config.theme) || (data.config && data.config.defaultTheme) || 'classic';
+            theme = window.FrameTrailSerializer.normalizeConfig(Object.assign({}, data.config || {})).theme || 'classic';
 
         title.textContent = meta.name || '';
         document.title = meta.name || 'FrameTrail';

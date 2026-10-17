@@ -236,6 +236,7 @@
             function() { edit.add('chapters', { start: 0, title: 'Same start' }); },
             function() { edit.setLayout('top', [{ type: 'Nonsense' }]); },
             function() { edit.setSubtitles('en', 'not WebVTT'); },
+            function() { edit.setConfig({ theme: 'dark' }); },
             function() { edit.transaction('Half done', function(tx) { tx.add('chapters', { start: 40 }); tx.add('chapters', { start: -1 }); }); }
         ];
         refusals.forEach(function(attempt, index) {

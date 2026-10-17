@@ -490,7 +490,7 @@
                 },
                 "hypervideos": {},
                 "config": {
-                    "defaultTheme": "studio",
+                    "theme": "studio",
                     "alwaysForceLogin": true
                 }
             },

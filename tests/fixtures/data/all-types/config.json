@@ -7,7 +7,7 @@
     "alwaysForceLogin": false,
     "allowUploads": true,
     "defaultUserRole": "user",
-    "defaultTheme": "",
+    "theme": "",
     "defaultLanguage": "en",
     "videoFit": "contain",
     "overviewMode": "grid",

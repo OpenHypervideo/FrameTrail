@@ -302,7 +302,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         /* Change Theme UI */
         var _ctw = document.createElement('div');
         _ctw.innerHTML = '<div class="themeContainer">'
-                            + '    <div class="message active">'+ labels['SettingsSelectColorTheme'] +'. '+ labels['MessageSelectColorTheme'] +'</div>'
+                            + '    <div class="message active">'+ labels['SettingsSelectColorTheme'] +'</div>'
                             + '    <div class="themeItem" data-theme="classic">'
                             + '        <div class="themeName">Classic</div>'
                             + '        <div class="themeColorContainer">'
@@ -683,17 +683,17 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         var ChangeThemeUI = _ctw.firstElementChild;
 
         ChangeThemeUI.querySelectorAll('.themeItem').forEach(function(item) {
-            if (database.config.defaultTheme == item.getAttribute('data-theme')) {
+            if (database.config.theme == item.getAttribute('data-theme')) {
                 item.classList.add('active');
             }
-            if (!database.config.defaultTheme && item.getAttribute('data-theme') == 'classic') {
+            if (!database.config.theme && item.getAttribute('data-theme') == 'classic') {
                 item.classList.add('active');
             }
         });
 
         adminTabs.querySelector('#ChangeTheme').appendChild(ChangeThemeUI);
 
-        var selectedThemeValue = database.config.defaultTheme || 'classic';
+        var selectedThemeValue = database.config.theme || 'classic';
         ChangeThemeUI.querySelectorAll('.themeItem').forEach(function(item) {
             item.addEventListener('click', function() {
                 ChangeThemeUI.querySelectorAll('.themeItem').forEach(function(t) { t.classList.remove('active'); });
@@ -1052,13 +1052,9 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                 database.config.overviewShowSearchBar = selectedOverviewShowSearchBar;
                                 database.config.overviewTitle = selectedOverviewTitle.trim();
 
-                                // Apply global default theme
-                                database.config.defaultTheme = selectedThemeValue;
-                                // Only apply to current view if the hypervideo has no per-hypervideo theme
-                                var hvConfig = database.hypervideo && database.hypervideo.config;
-                                if (!hvConfig || !hvConfig.theme) {
-                                    document.querySelector(FrameTrail.getState('target')).setAttribute('data-frametrail-theme', selectedThemeValue);
-                                }
+                                // The theme, for the overview and every hypervideo
+                                database.config.theme = selectedThemeValue;
+                                database.applyTheme();
                             }
                             
                             // Apply CSS changes
@@ -1114,11 +1110,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                                         // later Apply meet a conflict against this one.
                                         if (configChanged && !configSaved) {
                                             database.replaceConfigContents(initialConfig);
-                                            // Only revert theme on current view if hypervideo has no per-hypervideo theme
-                                            var hvCfg = database.hypervideo && database.hypervideo.config;
-                                            if (!hvCfg || !hvCfg.theme) {
-                                                document.querySelector(FrameTrail.getState('target')).setAttribute('data-frametrail-theme', initialConfig.defaultTheme || 'classic');
-                                            }
+                                            database.applyTheme();
                                         }
                                         if (globalCSSChanged && !cssSaved) {
                                             setLiveGlobalCSS(initialCSS);

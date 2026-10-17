@@ -30,8 +30,7 @@
                         "areaLeft": [],
                         "areaRight": []
                     },
-                    "slidingMode": "overlay",
-                    "theme": ""
+                    "slidingMode": "overlay"
                 },
                 "clips": [
                     {

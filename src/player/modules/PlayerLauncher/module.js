@@ -94,7 +94,11 @@
 
         }
 
-        FrameTrail.changeState('config', Object.assign({}, _bundle.config || {}, FrameTrail.getState('config') || {}));
+        // Each on its own first, so that the page's settings in the former form still override the bundle's.
+        var _normalizeConfig = window.FrameTrailSerializer.normalizeConfig;
+        FrameTrail.changeState('config', Object.assign({},
+            _normalizeConfig(Object.assign({}, _bundle.config || {})),
+            _normalizeConfig(Object.assign({}, FrameTrail.getState('config') || {}))));
 
     }
     // ─── end bundle pre-processing ───────────────────────────────────────────

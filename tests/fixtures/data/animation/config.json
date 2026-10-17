@@ -8,7 +8,7 @@
     "userNeedsConfirmation": true,
     "alwaysForceLogin": false,
     "allowUploads": true,
-    "defaultTheme": "studio",
+    "theme": "studio",
     "videoFit": "contain",
     "defaultLanguage": "en",
     "overviewMode": "map",

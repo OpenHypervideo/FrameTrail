@@ -481,7 +481,10 @@
             throw new Error('The data block holds no bundle');
         }
 
-        var config   = Object.assign({}, isObject(files['config.json']) ? files['config.json'] : {}, block.config || {}),
+        // Each on its own first, so that the page's settings in the former form still override the bundle's.
+        var config   = Object.assign({},
+                           Serializer.normalizeConfig(Object.assign({}, isObject(files['config.json']) ? files['config.json'] : {})),
+                           Serializer.normalizeConfig(Object.assign({}, block.config || {}))),
             language = element.attributes['data-frametrail-language'];
         if (language) { config.defaultLanguage = language; }
         files['config.json'] = config;

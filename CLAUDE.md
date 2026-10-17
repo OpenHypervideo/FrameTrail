@@ -404,6 +404,8 @@ There is no session-based override — every request is validated independently.
 - Default user roles and permissions
 - Custom labels for UI elements
 
+**Theme:** a setting of the instance only, `config.json` → `theme` (Administration → Color Theme), shown on the overview and every hypervideo by `Database.applyTheme()`. `defaultTheme` is its former name: every way a config comes in (Database, the bundle and page settings in `PlayerLauncher` and `FrameTrailHTMLFormat.readProject`, a folder's `config.json` in `readBundle`, Import, the phone's config) goes through `FrameTrailSerializer.normalizeConfig()`, each source before merging. A hypervideo's `config.theme` is legacy: not used, not offered by the Edit API (`setConfig` refuses it), and kept in the file as stored (the writer no longer writes it, `HypervideoModel` skips it).
+
 ## Saving and Unsaved Changes
 
 The contract (checked by the save audit, `plans/save-audit-results.md`): "saved" only after the write reached persistent storage; nothing drops unsaved work without asking; the dirty state, badges and lock agree with reality; a save never overwrites a change made elsewhere unseen; a session that ends never drops work silently.

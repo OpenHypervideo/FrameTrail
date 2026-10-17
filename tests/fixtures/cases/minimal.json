@@ -104,7 +104,6 @@
                     "autohideControls": false,
                     "captionsVisible": false,
                     "clipTimeVisible": false,
-                    "theme": "",
                     "layoutArea": {
                         "areaTop": [],
                         "areaBottom": [
@@ -349,7 +348,7 @@
                 },
                 "hypervideos": {},
                 "config": {
-                    "defaultTheme": "studio",
+                    "theme": "studio",
                     "pairingBrokerURL": "https://pair.example.org/",
                     "pairingButtonVisible": true,
                     "pairingCompanionURL": ""
@@ -479,7 +478,6 @@
                     "autohideControls": false,
                     "captionsVisible": false,
                     "clipTimeVisible": false,
-                    "theme": "",
                     "layoutArea": {
                         "areaTop": [],
                         "areaBottom": [
@@ -609,7 +607,7 @@
             "name": "extension entry in config.json",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",
@@ -635,7 +633,7 @@
             "name": "personal API tokens switched on",
             "schema": "config.schema.json",
             "data": {
-                "defaultTheme": "",
+                "theme": "",
                 "defaultLanguage": "en",
                 "videoFit": "contain",
                 "overviewMode": "grid",

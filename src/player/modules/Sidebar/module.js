@@ -181,7 +181,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             "config": {
                 "slidingMode": "adjust",
                 "slidingTrigger": "key",
-                "theme": "",
                 "autohideControls": (newDialogCtrl.element.querySelector('input[name="config[autohideControls]"]') || {}).checked || false,
                 "captionsVisible": false,
                 "clipTimeVisible": false,
@@ -432,7 +431,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                 "config": {
                     "slidingMode": "adjust",
                     "slidingTrigger": "key",
-                    "theme": "",
                     "autohideControls": (newDialog.querySelector('input[name="config[autohideControls]"]') || {}).checked || false,
                     "captionsVisible": false,
                     "clipTimeVisible": false,

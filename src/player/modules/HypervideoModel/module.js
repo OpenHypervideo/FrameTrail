@@ -105,21 +105,12 @@
         created        = hypervideo.created;
         lastchanged    = hypervideo.lastchanged;
         posterFrame    = hypervideo.posterFrame || null;
-        // Read in config of Hypervideo
+        // Read in config of Hypervideo. A theme there is legacy and not used: the theme is the instance's (Database.applyTheme).
         for (var key in hypervideo.config) {
 
-            if (key === 'layoutArea') { continue; }
+            if (key === 'layoutArea' || key === 'theme') { continue; }
 
             FrameTrail.changeState('hv_config_' + key, hypervideo.config[key]);
-        }
-
-        // Apply per-hypervideo theme (falls back to global theme)
-        var hvTheme = hypervideo.config.theme;
-        if (hvTheme) {
-            document.querySelector(FrameTrail.getState('target')).setAttribute('data-frametrail-theme', hvTheme);
-        } else {
-            var globalTheme = database.config.defaultTheme || 'classic';
-            document.querySelector(FrameTrail.getState('target')).setAttribute('data-frametrail-theme', globalTheme);
         }
 
         /**
@@ -848,7 +839,7 @@
 
 
     /**
-     * I replace the hypervideo's settings (its config, without layoutArea, which belongs to the layout) and apply them. They are written with the next save.
+     * I replace the hypervideo's settings (its config, without layoutArea, which belongs to the layout, and without a legacy theme, which stays as stored) and apply them. They are written with the next save.
      *
      * @method setConfig
      * @param {Object} newConfig
@@ -862,7 +853,7 @@
         // The same object stays: the settings dialog and the save read it.
         keys.forEach(function(key) {
 
-            if (key === 'layoutArea') { return; }
+            if (key === 'layoutArea' || key === 'theme') { return; }
 
             if (newConfig.hasOwnProperty(key)) {
                 config[key] = JSON.parse(JSON.stringify(newConfig[key]));
@@ -873,9 +864,6 @@
             FrameTrail.changeState('hv_config_' + key, config[key]);
 
         });
-
-        var theme = config.theme || database.config.defaultTheme || 'classic';
-        document.querySelector(FrameTrail.getState('target')).setAttribute('data-frametrail-theme', theme);
 
         newUnsavedChange('config');
 

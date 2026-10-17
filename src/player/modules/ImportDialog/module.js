@@ -682,8 +682,10 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
         if (ctx.parts.settings && isObject(bundle.config)) {
             tasks = tasks.then(function() {
                 return new Promise(function(resolve) {
+                    // Older exports name the theme defaultTheme.
+                    var settings = Serializer.normalizeConfig(Object.assign({}, bundle.config));
                     Serializer.PLAYBACK_CONFIG_KEYS.forEach(function(key) {
-                        if (bundle.config[key] !== undefined) { Database.config[key] = bundle.config[key]; }
+                        if (settings[key] !== undefined) { Database.config[key] = settings[key]; }
                     });
                     Database.saveConfig(function(result) {
                         if (result && result.failed) { ctx.report.problems.push(labels['ImportProblemSettings'] + ' ' + (result.error || result.code || '')); }
