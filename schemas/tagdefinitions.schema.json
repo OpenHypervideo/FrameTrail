@@ -2,27 +2,47 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://frametrail.org/schemas/1/tagdefinitions.schema.json",
     "title": "FrameTrail tag definitions",
-    "description": "Tag definitions: _data/tagdefinitions.json. Keys are tag names (at least two characters), values hold a label and description per language code.",
+    "description": "Tag definitions: _data/tagdefinitions.json. Keys are tag ids, values the tag's label and description. Items refer to tags by id in frametrail:tags, and annotation thumbnails carry the ids as class names, so an id never changes once items use it.",
     "oneOf": [
         {
             "type": "object",
             "additionalProperties": {
-                "description": "A tag: label and description per two-letter language code.",
-                "type": "object",
-                "additionalProperties": {
-                    "type": "object",
-                    "required": ["label"],
-                    "properties": {
-                        "label": {
-                            "description": "Label of the tag in this language.",
-                            "type": "string"
-                        },
-                        "description": {
-                            "description": "Description of the tag in this language.",
-                            "type": "string"
+                "oneOf": [
+                    {
+                        "description": "A tag: one label and an optional description.",
+                        "type": "object",
+                        "required": ["label"],
+                        "properties": {
+                            "label": {
+                                "description": "The tag's name, as editors see it in the tag pickers and in Manage Tags.",
+                                "type": "string",
+                                "pattern": "\\S"
+                            },
+                            "description": {
+                                "description": "What the tag is for. Shown in Manage Tags.",
+                                "type": "string"
+                            }
+                        }
+                    },
+                    {
+                        "description": "Legacy. A tag with a label and description per language code, written before tags had one label. Read with the label in the interface language, else English, else the first; replaced by the one-label form the first time the tag is edited.",
+                        "type": "object",
+                        "additionalProperties": {
+                            "type": "object",
+                            "required": ["label"],
+                            "properties": {
+                                "label": {
+                                    "description": "Label of the tag in this language.",
+                                    "type": "string"
+                                },
+                                "description": {
+                                    "description": "Description of the tag in this language.",
+                                    "type": "string"
+                                }
+                            }
                         }
                     }
-                }
+                ]
             }
         },
         { "$ref": "common.schema.json#/$defs/phpEmptyObject" }

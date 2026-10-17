@@ -253,19 +253,24 @@ switch($_REQUEST["a"]) {
      ############ Tag Handling
      #########################################*/
 
+    case "tagAdd":
+        include_once("tags.php");
+        $return = tagAdd($_REQUEST["tagName"] ?? null, $_REQUEST["label"] ?? "", $_REQUEST["description"] ?? "");
+        break;
+
     case "tagSet":
         include_once("tags.php");
-        $return = tagSet($_REQUEST["tagName"],$_REQUEST["lang"],$_REQUEST["label"],$_REQUEST["description"]);
+        $return = tagSet($_REQUEST["tagName"] ?? null, $_REQUEST["label"] ?? "", $_REQUEST["description"] ?? "");
         break;
 
     case "tagDelete":
         include_once("tags.php");
-        $return = tagDelete($_REQUEST["tagName"]);
+        $return = tagDelete($_REQUEST["tagName"] ?? null, $_REQUEST["force"] ?? false);
         break;
 
-    case "tagLangDelete":
+    case "tagUsage":
         include_once("tags.php");
-        $return = tagLangDelete($_REQUEST["tagName"], $_REQUEST["lang"]);
+        $return = tagUsage();
         break;
 
     /*#########################################

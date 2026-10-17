@@ -41,6 +41,10 @@
             "type": "object",
             "additionalProperties": { "$ref": "resources-index.schema.json#/$defs/resource" }
         },
+        "tagdefinitions": {
+            "$ref": "tagdefinitions.schema.json",
+            "description": "The definitions of the tags the hypervideo's items name, as in tagdefinitions.json. Omitted inside a project bundle, which carries all of them."
+        },
         "subtitles": {
             "description": "The subtitle files as WebVTT text, keyed by srclang.",
             "type": "object",

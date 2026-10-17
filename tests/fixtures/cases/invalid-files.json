@@ -406,15 +406,28 @@
             "schema": "tagdefinitions.schema.json",
             "data": {
                 "tag": {
-                    "en": {
-                        "description": "no label"
-                    }
+                    "description": "no label"
                 }
             },
             "errors": [
                 {
-                    "path": "/tag/en/label",
+                    "path": "/tag/label",
                     "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "tag with an empty label",
+            "schema": "tagdefinitions.schema.json",
+            "data": {
+                "tag": {
+                    "label": "  "
+                }
+            },
+            "errors": [
+                {
+                    "path": "/tag/label",
+                    "message": "must match the pattern \\S"
                 }
             ]
         },
@@ -423,24 +436,16 @@
             "schema": "tagdefinitions.schema.json",
             "data": {
                 "demo": {
-                    "en": {
-                        "label": "Demo",
-                        "description": ""
-                    },
-                    "de": {
-                        "label": "Demo",
-                        "description": ""
-                    }
+                    "label": "Demo",
+                    "description": ""
                 },
                 "a/b~c": {
-                    "en": {
-                        "label": 5
-                    }
+                    "label": 5
                 }
             },
             "errors": [
                 {
-                    "path": "/a~1b~0c/en/label",
+                    "path": "/a~1b~0c/label",
                     "message": "must be string, is number"
                 }
             ]

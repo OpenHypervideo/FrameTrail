@@ -2731,14 +2731,7 @@ FrameTrail.defineType(
                                     +'        <div class="layoutRow">'
                                     +'            <div class="column-3">'
                                     +'                <label>'+ self.labels['SettingsFilterByTags'] +'</label>'
-                                    +'                <div class="existingTags"></div>'
-                                    +'                <div class="button small contextSelectButton newTagButton">'
-                                    +'                    <span class="icon-plus">'+ self.labels['GenericAdd'] +'</span>'
-                                    +'                    <div class="contextSelectList"></div>'
-                                    +'                </div>'
-                                    +'                <div class="button small manageTagsButton" style="display: none;">'
-                                    +'                    <span class="icon-cog"> '+ self.labels['SettingsManageTags'] +'</span>'
-                                    +'                </div>'
+                                    +'                <div class="collectionFilterTags"></div>'
                                     +'                <input type="hidden" class="contentViewData" data-property="collectionFilter-tags" data-value="'+ contentViewData.collectionFilter.tags +'" value="'+ contentViewData.collectionFilter.tags +'" placeholder="('+ self.labels['GenericOptional'] +')">'
                                     +'            </div>'
                                     +'            <div class="column-3">'
@@ -2995,42 +2988,22 @@ FrameTrail.defineType(
                         return { refresh: updateExisting };
                     }
 
-                    // Tag Filter UI
-                    var tagFilterSection = createFilterSection({
-                        filters:    tagFilters,
-                        attrName:   'tag',
-                        itemClass:  'tagItem',
-                        containerSel: '.existingTags',
-                        buttonSel:  '.newTagButton',
-                        getLabel: function(id) {
-                            return FrameTrail.module('TagModel').getTagLabelAndDescription(id, FrameTrail.module('Localization').language).label;
-                        },
-                        getAllItems: function() {
-                            var allTags = FrameTrail.module('TagModel').getAllTagLabelsAndDescriptions(FrameTrail.module('Localization').language),
-                                result = [];
-                            for (var tagID in allTags) { result.push({ id: tagID, label: allTags[tagID].label }); }
-                            return result;
-                        }
-                    });
-
-                    // Defining a tag is admin-only on the server, so the button
-                    // is only offered where it could actually work.
-                    (function() {
-
-                        var manageTagsButton = editingUI.querySelector('.manageTagsButton'),
-                            tagsDialog       = FrameTrail.module('ManageTagsDialog');
-
-                        if (!manageTagsButton || !tagsDialog
-                                || FrameTrail.module('UserManagement').userRole !== 'admin') return;
-
-                        manageTagsButton.style.display = '';
-                        manageTagsButton.addEventListener('click', function() {
-                            // Opens on top of this dialog — native <dialog>
-                            // stacking puts the newest modal in front.
-                            tagsDialog.open({ onChanged: tagFilterSection.refresh });
+                    // Tag Filter UI: the shared picker, which can also make a new tag.
+                    if (FrameTrail.module('TagPicker')) {
+                        var tagFilterPicker = FrameTrail.module('TagPicker').create({
+                            selected: tagFilters,
+                            onAdd: function(id) {
+                                if (tagFilters.indexOf(id) === -1) { tagFilters.push(id); }
+                                updateCollectionFilterValues();
+                            },
+                            onRemove: function(id) {
+                                var at = tagFilters.indexOf(id);
+                                if (at !== -1) { tagFilters.splice(at, 1); }
+                                updateCollectionFilterValues();
+                            }
                         });
-
-                    })();
+                        editingUI.querySelector('.collectionFilterTags').appendChild(tagFilterPicker.element);
+                    }
 
                     // Type Filter UI
                     createFilterSection({

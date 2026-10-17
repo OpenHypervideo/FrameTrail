@@ -21,7 +21,10 @@
  *   account (403);
  * - a session belongs to the data folder it was opened for;
  * - a change of the video source changes the version of every annotation
- *   file it rewrites, so their owners' next saves do not undo it.
+ *   file it rewrites, so their owners' next saves do not undo it;
+ * - tags: any signed-in user adds one, never over an existing id; only admins
+ *   change (written with one label) and delete them, a tag in use only when
+ *   asked to.
  */
 
 import { describe, test, before, after } from 'node:test';
@@ -292,6 +295,48 @@ describe('server contract (src/_server/)', () => {
         assert.equal(String(changed.code), '0', JSON.stringify(changed));
         const after = readJSON(annotationIndexFile(folder)).annotationfiles['1'].lastchanged;
         assert.notEqual(String(after), String(before), 'the owner\'s next save must meet a new version');
+    });
+
+    test('tags: any signed-in user adds one; only admins change and delete them, a tag in use only when asked to', async () => {
+        const anonymous = new Client(folder),
+              a    = await Client.signedIn(folder, 'a@example.org', 'adminadmin'),
+              b    = await Client.signedIn(folder, 'b@example.org', 'userbuser'),
+              file = path.join(folder.dir, 'tagdefinitions.json'),
+              code = async (client, params) => String((await client.post(params)).code);
+        writeJSON(file, { lecture: { en: { label: 'Lecture', description: '' }, de: { label: 'Vorlesung', description: '' } }, demo: { label: 'Demo' } });
+
+        assert.equal(await code(anonymous, { a: 'tagAdd', tagName: 'x-tag', label: 'X' }), '1');
+        const added = await b.post({ a: 'tagAdd', tagName: 'fact-check', label: ' Fact check ', description: '' });
+        assert.equal(String(added.code), '0', JSON.stringify(added));
+        assert.deepStrictEqual(readJSON(file)['fact-check'], { label: 'Fact check', description: '' });
+        const again = await b.post({ a: 'tagAdd', tagName: 'fact-check', label: 'Other' });
+        assert.equal(String(again.code), '5', JSON.stringify(again));
+        assert.equal(again.response['fact-check'].label, 'Fact check', 'an existing tag is never changed by adding');
+        assert.equal(await code(b, { a: 'tagAdd', tagName: 'a"b', label: 'Quote' }), '3');
+        assert.equal(await code(b, { a: 'tagAdd', tagName: 'blank', label: '   ' }), '4');
+        assert.equal(await code(b, { a: 'tagSet', tagName: 'fact-check', label: 'Mine' }), '1', 'only admins change tags');
+        assert.equal(await code(b, { a: 'tagDelete', tagName: 'fact-check' }), '1');
+        assert.equal(await code(b, { a: 'tagUsage' }), '1');
+
+        assert.equal(await code(a, { a: 'tagSet', tagName: 'lecture', label: 'Lecture', description: 'Hall' }), '0');
+        assert.deepStrictEqual(readJSON(file).lecture, { label: 'Lecture', description: 'Hall' }, 'a label per language becomes one label');
+
+        const items     = fs.readdirSync(path.join(folder.dir, 'hypervideos', '1', 'annotations')).filter((name) => name !== '_index.json')
+                            .flatMap((name) => readJSON(path.join(folder.dir, 'hypervideos', '1', 'annotations', name)))
+                            .concat(readJSON(hypervideoFile(folder)).contents),
+              demoCount = items.filter((item) => (item['frametrail:tags'] || []).includes('demo')).length;
+        assert.ok(demoCount > 0, 'the fixture tags items with demo');
+        const usage = await a.post({ a: 'tagUsage' });
+        assert.deepStrictEqual(usage.response.demo, { count: demoCount, hypervideos: ['1'] }, JSON.stringify(usage));
+
+        const refused = await a.post({ a: 'tagDelete', tagName: 'demo' });
+        assert.equal(String(refused.code), '5', JSON.stringify(refused));
+        assert.equal(refused.response.count, demoCount);
+        assert.equal(await code(a, { a: 'tagDelete', tagName: 'demo', force: '1' }), '0');
+        assert.ok(!('demo' in readJSON(file)), 'deleted');
+        assert.equal(await code(a, { a: 'tagDelete', tagName: 'fact-check' }), '0', 'a tag nothing uses needs no force');
+        assert.equal(await code(a, { a: 'tagDelete', tagName: 'lecture' }), '0');
+        assert.equal(fs.readFileSync(file, 'utf8').trim(), '{}', "no tags left is {}, not PHP's []");
     });
 
 });

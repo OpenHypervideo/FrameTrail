@@ -32,6 +32,7 @@ FrameTrail.defineModule('Interface', function(FrameTrail){
     // offers a Manage Users entry, by asking whether the module resolves.
     FrameTrail.initModule('ManageUsersDialog');
     FrameTrail.initModule('ManageTagsDialog');
+    FrameTrail.initModule('TagPicker');
 
 
     FrameTrail.initModule('Titlebar');

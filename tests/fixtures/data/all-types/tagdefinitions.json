@@ -1,12 +1,16 @@
 {
     "demo": {
+        "label": "Demo",
+        "description": "Items made for the demo."
+    },
+    "lecture": {
         "en": {
-            "label": "Demo",
-            "description": "Items made for the demo."
+            "label": "Lecture",
+            "description": "Recorded in the lecture hall."
         },
         "de": {
-            "label": "Demo",
-            "description": "Für die Demo erstellte Einträge."
+            "label": "Vorlesung",
+            "description": "Im Hörsaal aufgezeichnet."
         }
     }
 }

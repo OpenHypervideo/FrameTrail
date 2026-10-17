@@ -1283,28 +1283,11 @@ FrameTrail.defineType(
                     var thumbContainer = document.createElement('div');
                     thumbContainer.className = 'previewThumbContainer';
 
-                    var _aow = document.createElement('div');
-                    _aow.innerHTML = '<div class="annotationOptionsWrapper">'
-                                            + '    <div class="annotationOptionsTabs">'
-                                            + '        <ul>'
-                                            + '            <li><a href="#AnnotationOptions">'+ this.labels['GenericOptions'] +'</a></li>'
-                                            + '            <li><a href="#TagOptions">'+ this.labels['GenericTags'] +'</a></li>'
-                                            + '        </ul>'
-                                            + '        <div id="AnnotationOptions"></div>'
-                                            + '        <div id="TagOptions">'
-                                            + '            <label>'+ this.labels['SettingsManageTags'] +':</label>'
-                                            + '            <div class="existingTags"></div>'
-                                            + '            <div class="button small contextSelectButton newTagButton">'
-                                            + '                <span class="icon-plus">'+ this.labels['GenericAdd'] +'</span>'
-                                            + '                <div class="contextSelectList"></div>'
-                                            + '            </div>'
-                                            + '            <div class="button small manageTagsButton" style="display: none;">'
-                                            + '                <span class="icon-cog"> '+ this.labels['SettingsManageTags'] +'</span>'
-                                            + '            </div>'
-                                            + '        </div>'
-                                            + '    </div>'
-                                            + '</div>';
-                    var annotationOptions = _aow.firstElementChild;
+                    // The tags, always in view, then the options of the type.
+                    var annotationOptions = document.createElement('div');
+                    annotationOptions.className = 'annotationOptionsWrapper';
+                    annotationOptions.innerHTML = '<div class="annotationTags"><label>'+ this.labels['GenericTags'] +'</label></div>'
+                                            + '<div id="AnnotationOptions"></div>';
 
                     thumbContainer.appendChild(annotation.resourceItem.renderThumb());
 
@@ -1312,178 +1295,56 @@ FrameTrail.defineType(
                     controlsContainer.appendChild(thumbContainer);
                     controlsContainer.appendChild(annotationOptions);
 
-                    FTTabs(controlsContainer.querySelector('.annotationOptionsTabs'), {
-                        heightStyle: 'fill',
-                        activate: function(event, ui) {
-                            FTTabs(controlsContainer.querySelector('.annotationOptionsTabs'), 'refresh');
-                            var cm6Wrapper = ui.newPanel.querySelector('.cm6-wrapper');
-                            if (cm6Wrapper && cm6Wrapper._cm6view) { cm6Wrapper._cm6view.requestMeasure(); }
-                        }
-                    });
+                    // Tags
 
-                    // Tag Management
+                    var tagPicker = null;
 
-                    var tagManagementUI = annotationOptions.querySelector('#TagOptions');
+                    (function(annotationId) {
 
-                    updateExistingTags();
-
-                    tagManagementUI.querySelector('.newTagButton').addEventListener('click', function() {
-                        var _self = this;
-                        tagManagementUI.querySelectorAll('.contextSelectButton').forEach(function(el) {
-                            if (el !== _self) { el.classList.remove('active'); }
-                        });
-
-                        updateTagSelectContainer();
-                        this.classList.toggle('active');
-                    });
-
-                    // Defining a tag is admin-only on the server, so offering
-                    // the button to anyone else would only ever fail. This is
-                    // where someone discovers the tag they want does not exist
-                    // yet, which is why it belongs beside the picker.
-                    var manageTagsButton = tagManagementUI.querySelector('.manageTagsButton'),
-                        tagsDialog       = FrameTrail.module('ManageTagsDialog');
-
-                    if (manageTagsButton && tagsDialog
-                            && FrameTrail.module('UserManagement').userRole === 'admin') {
-
-                        manageTagsButton.style.display = '';
-                        manageTagsButton.addEventListener('click', function() {
-                            tagsDialog.open({ onChanged: function() {
-                                updateExistingTags();
-                                updateTagSelectContainer();
-                            }});
-                        });
-
-                    }
-
-                    function updateExistingTags() {
-                        tagManagementUI.querySelector('.existingTags').innerHTML = '';
-
-                        for (var i=0; i<annotation.data.tags.length; i++) {
-
-                            var tagLabel = FrameTrail.module('TagModel').getTagLabelAndDescription(annotation.data.tags[i], FrameTrail.module('Localization').language).label;
-                            var _tiw = document.createElement('div');
-                            _tiw.innerHTML = '<div class="tagItem" data-tag="'+ annotation.data.tags[i] +'">'+ tagLabel +'</div>';
-                            var tagItem = _tiw.firstElementChild;
-                            var _dbw = document.createElement('div');
-                            _dbw.innerHTML = '<div class="deleteItem"><span class="icon-cancel"></span></div>';
-                            var deleteButton = _dbw.firstElementChild;
-                            deleteButton.addEventListener('click', function() {
-
-                                // Delete tag
-                                var tagToRemove = this.parentElement.dataset.tag;
-                                annotation.data.tags.splice(annotation.data.tags.indexOf(tagToRemove), 1);
-                                updateExistingTags();
-                                FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
-
-                                FrameTrail.module('ViewLayout').updateManagedContent();
-                                FrameTrail.module('ViewLayout').updateContentInContentViews();
-
-                                // Register undo for tag removal
-                                (function(annotationId, removedTag, labels) {
-                                    var findAnnotation = function() {
-                                        var annotations = FrameTrail.module('HypervideoModel').annotations;
-                                        for (var i = 0; i < annotations.length; i++) {
-                                            if (annotations[i].data.created === annotationId) {
-                                                return annotations[i];
-                                            }
-                                        }
-                                        return null;
-                                    };
-                                    FrameTrail.module('UndoManager').register({
-                                        category: 'annotations',
-                                        description: labels['SidebarMyAnnotations'] + ' Tag',
-                                        undo: function() {
-                                            var a = findAnnotation();
-                                            if (!a) return;
-                                            a.data.tags.push(removedTag);
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
-                                            FrameTrail.module('ViewLayout').updateManagedContent();
-                                            FrameTrail.module('ViewLayout').updateContentInContentViews();
-                                        },
-                                        redo: function() {
-                                            var a = findAnnotation();
-                                            if (!a) return;
-                                            var idx = a.data.tags.indexOf(removedTag);
-                                            if (idx !== -1) a.data.tags.splice(idx, 1);
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
-                                            FrameTrail.module('ViewLayout').updateManagedContent();
-                                            FrameTrail.module('ViewLayout').updateContentInContentViews();
-                                        }
-                                    });
-                                })(annotation.data.created, tagToRemove, self.labels);
-
-                            });
-                            tagItem.appendChild(deleteButton);
-                            tagManagementUI.querySelector('.existingTags').appendChild(tagItem);
-
-                        }
-                    }
-
-                    function updateTagSelectContainer() {
-
-                        tagManagementUI.querySelector('.newTagButton .contextSelectList').innerHTML = '';
-
-                        var allTags = FrameTrail.module('TagModel').getAllTagLabelsAndDescriptions(FrameTrail.module('Localization').language);
-                        for (var tagID in allTags) {
-                            if ( annotation.data.tags.indexOf(tagID) != -1 ) {
-                                continue;
+                        // Undo may run when this panel shows another annotation, or none.
+                        function findAnnotation() {
+                            var annotations = FrameTrail.module('HypervideoModel').annotations;
+                            for (var i = 0; i < annotations.length; i++) {
+                                if (annotations[i].data.created === annotationId) {
+                                    return annotations[i];
+                                }
                             }
-                            var tagLabel = allTags[tagID].label;
-                            var _tiw2 = document.createElement('div');
-                            _tiw2.innerHTML = '<div class="tagItem" data-tag="'+ tagID +'">'+ tagLabel +'</div>';
-                            var tagItem = _tiw2.firstElementChild;
-                            tagItem.addEventListener('click', function() {
-
-                                // Add tag
-                                var tagToAdd = this.dataset.tag;
-                                annotation.data.tags.push(tagToAdd);
-                                updateExistingTags();
-                                FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
-
-                                FrameTrail.module('ViewLayout').updateManagedContent();
-                                FrameTrail.module('ViewLayout').updateContentInContentViews();
-
-                                // Register undo for tag addition
-                                (function(annotationId, addedTag, labels) {
-                                    var findAnnotation = function() {
-                                        var annotations = FrameTrail.module('HypervideoModel').annotations;
-                                        for (var i = 0; i < annotations.length; i++) {
-                                            if (annotations[i].data.created === annotationId) {
-                                                return annotations[i];
-                                            }
-                                        }
-                                        return null;
-                                    };
-                                    FrameTrail.module('UndoManager').register({
-                                        category: 'annotations',
-                                        description: labels['SidebarMyAnnotations'] + ' Tag',
-                                        undo: function() {
-                                            var a = findAnnotation();
-                                            if (!a) return;
-                                            var idx = a.data.tags.indexOf(addedTag);
-                                            if (idx !== -1) a.data.tags.splice(idx, 1);
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
-                                            FrameTrail.module('ViewLayout').updateManagedContent();
-                                            FrameTrail.module('ViewLayout').updateContentInContentViews();
-                                        },
-                                        redo: function() {
-                                            var a = findAnnotation();
-                                            if (!a) return;
-                                            a.data.tags.push(addedTag);
-                                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
-                                            FrameTrail.module('ViewLayout').updateManagedContent();
-                                            FrameTrail.module('ViewLayout').updateContentInContentViews();
-                                        }
-                                    });
-                                })(annotation.data.created, tagToAdd, self.labels);
-
-                            });
-                            tagManagementUI.querySelector('.newTagButton .contextSelectList').appendChild(tagItem);
+                            return null;
                         }
 
-                    }
+                        function setTag(target, tag, on) {
+                            if (!target) return;
+                            if (!Array.isArray(target.data.tags)) { target.data.tags = []; }
+                            var at = target.data.tags.indexOf(tag);
+                            if (on && at === -1) { target.data.tags.push(tag); }
+                            if (!on && at !== -1) { target.data.tags.splice(at, 1); }
+                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                            FrameTrail.module('ViewLayout').updateManagedContent();
+                            FrameTrail.module('ViewLayout').updateContentInContentViews();
+                            if (tagPicker && tagPicker.element.isConnected) { tagPicker.refresh(); }
+                        }
+
+                        // One undo step for each tag added or removed.
+                        function changeTag(tag, on) {
+                            setTag(annotation, tag, on);
+                            FrameTrail.module('UndoManager').register({
+                                category: 'annotations',
+                                description: self.labels['SidebarMyAnnotations'] + ' Tag',
+                                undo: function() { setTag(findAnnotation(), tag, !on); },
+                                redo: function() { setTag(findAnnotation(), tag, on); }
+                            });
+                        }
+
+                        if (!FrameTrail.module('TagPicker')) return;
+
+                        tagPicker = FrameTrail.module('TagPicker').create({
+                            selected: function() { return annotation.data.tags || []; },
+                            onAdd:    function(tag) { changeTag(tag, true); },
+                            onRemove: function(tag) { changeTag(tag, false); }
+                        });
+                        annotationOptions.querySelector('.annotationTags').appendChild(tagPicker.element);
+
+                    })(annotation.data.created);
 
                     // Timing
 

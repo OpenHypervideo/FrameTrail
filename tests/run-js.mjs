@@ -341,7 +341,7 @@ function checkDataFolder(label, dir, listFindings) {
             const page    = Serializer.writeBundle(Serializer.readBundle(files, 'folder'), 'html', { library: { css: '/* css */', js: '/* js */' }, datapath: './' }),
                   project = HTMLFormat.readProject(page);
             assert.equal(HTMLFormat.writeProject(project.files, page), page);
-            project.files['tagdefinitions.json'] = Object.assign({}, project.files['tagdefinitions.json'], { added: { en: { label: 'Added', description: '' } } });
+            project.files['tagdefinitions.json'] = Object.assign({}, project.files['tagdefinitions.json'], { added: { label: 'Added', description: '' } });
             const edited = HTMLFormat.writeProject(project.files, page),
                   start  = page.indexOf('<script type="application/ld+json"'),
                   end    = page.indexOf('</script>', start);
@@ -350,7 +350,7 @@ function checkDataFolder(label, dir, listFindings) {
             const bundle = HTMLFormat.parse(edited)[0].bundle,
                   errors = validator.validate('project-bundle.schema.json', bundle);
             assert.ok(!errors.length, formatErrors(errors));
-            assert.equal(bundle.tagdefinitions.added.en.label, 'Added');
+            assert.equal(bundle.tagdefinitions.added.label, 'Added');
         });
 
     });
@@ -931,6 +931,41 @@ describe('FrameTrailSerializer', () => {
         assert.equal(Serializer.guestUserID('Zoë'), Serializer.guestUserID('ZOË'));
         assert.notEqual(Serializer.guestUserID('Zoë'), Serializer.guestUserID('Zoe'), 'names that read alike once reduced stay apart');
         assert.match(Serializer.guestUserID('李明'), /^guest_[0-9a-f]{8}$/);
+    });
+
+    test('tagEntry: one label, or the legacy one per language; the id where there is none', () => {
+        const legacy = { de: { label: 'Vorlesung' }, en: { label: 'Lecture', description: 'Hall' }, fr: { label: 'Cours', description: 5 } };
+        assert.deepStrictEqual(Serializer.tagEntry({ label: 'Demo', description: 'For the demo' }, 'demo', 'de'), { label: 'Demo', description: 'For the demo' });
+        assert.deepStrictEqual(Serializer.tagEntry({ label: 'Demo' }, 'demo'), { label: 'Demo', description: '' });
+        assert.deepStrictEqual(Serializer.tagEntry(legacy, 'lecture', 'de'), { label: 'Vorlesung', description: '' });
+        assert.deepStrictEqual(Serializer.tagEntry(legacy, 'lecture', 'it'), { label: 'Lecture', description: 'Hall' }, 'else English');
+        assert.deepStrictEqual(Serializer.tagEntry(legacy, 'lecture', 'fr'), { label: 'Cours', description: '' });
+        assert.deepStrictEqual(Serializer.tagEntry({ de: { label: 'Nur deutsch' } }, 'x', 'en'), { label: 'Nur deutsch', description: '' }, 'else the first');
+        assert.deepStrictEqual(Serializer.tagEntry(undefined, 'gone', 'en'), { label: 'gone', description: '' });
+        assert.deepStrictEqual(Serializer.tagEntry({ en: { description: 'no label' } }, 'odd', 'en'), { label: 'odd', description: '' });
+    });
+
+    test('tagID: a class name made from the label, unique; tagLabelKey tells labels apart', () => {
+        assert.equal(Serializer.tagID('Fact Check'), 'fact-check');
+        assert.equal(Serializer.tagID('  Über-Größe! '), 'uber-grosse', 'accents go, ß is ss');
+        assert.equal(Serializer.tagID('Café', ['cafe']), 'cafe-2');
+        assert.equal(Serializer.tagID('Café', { cafe: {}, 'cafe-2': {} }), 'cafe-3', 'the definitions work as the list of ids');
+        assert.equal(Serializer.tagID('2024'), 'tag-2024');
+        assert.equal(Serializer.tagID('A'), 'tag-a');
+        assert.equal(Serializer.tagID('李明'), 'tag');
+        assert.equal(Serializer.tagID('李明', ['tag']), 'tag-2');
+        assert.equal(Serializer.tagID('constructor'), 'constructor', 'no inherited property is taken');
+        assert.ok(Serializer.tagID('x'.repeat(39) + ' yz').length <= 40);
+        assert.match(Serializer.tagID('a'.repeat(39) + ' b'), /^[a-z][a-z0-9-]*[a-z0-9]$/, 'no dash at the end after cutting');
+        assert.equal(Serializer.tagLabelKey(' Fact   check '), Serializer.tagLabelKey('fact Check'));
+        assert.notEqual(Serializer.tagLabelKey('Café'), Serializer.tagLabelKey('Cafe'));
+    });
+
+    test('usedTagIds: the tags a hypervideo bundle\'s items name; a hypervideo bundle carries their definitions', () => {
+        const bundle = Serializer.readBundle(readDataFolder(path.join(FIXTURES, 'data', 'all-types')), 'folder', { bundle: 'hypervideo', id: '1' });
+        assert.deepStrictEqual(Serializer.usedTagIds(bundle), ['demo']);
+        assert.deepStrictEqual(Object.keys(bundle.tagdefinitions), ['demo'], 'only the tags it names');
+        assert.deepStrictEqual(Serializer.usedTagIds({ hypervideo: { contents: [{ 'frametrail:tags': ['a', 'b'] }] }, annotations: { files: { 1: [{ 'frametrail:tags': ['b', 'c', 5] }] } } }), ['a', 'b', 'c']);
     });
 
     test("DATA-MODEL.md's table of resource types matches the serializer and the schemas", () => {

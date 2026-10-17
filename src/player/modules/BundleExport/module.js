@@ -279,8 +279,10 @@ FrameTrail.defineModule('BundleExport', function(FrameTrail){
 
         });
 
+        // A hypervideo takes the definitions of the tags it names (readBundle picks them).
+        files['tagdefinitions.json'] = clone(FrameTrail.module('TagModel').getAllTags() || {});
+
         if (scope === 'project') {
-            files['tagdefinitions.json'] = clone(FrameTrail.module('TagModel').getAllTags() || {});
             files['config.json'] = clone(Database.config || {});
             tasks.push(readGlobalCSS().then(function(css) {
                 if (typeof css === 'string') { files['custom.css'] = css; }

@@ -441,6 +441,17 @@ Why the index rather than `config.json`, where it used to live: the map is part 
 - **Settings:** background / fit / colour are edited in `OverviewMapSettingsDialog`, opened from map editing. `AdminSettingsDialog` only owns the grid/map mode cards.
 - **Back-compat:** a `_data` directory whose map is still in `config.overviewMap` (markers as an array) is adopted on load and migrated to the index on the first map save, which then drops the legacy key.
 
+## Tags
+
+Tags route annotations into content views (a TimedContent view's `collectionFilter.tags`: any of them) and are class names on annotation thumbnails (custom CSS). Viewers never see them. Data: [docs/DATA-MODEL.md](docs/DATA-MODEL.md#tagdefinitionsjson).
+
+- **One label per tag:** `tagdefinitions.json` → `{ "<id>": { label, description } }`. The legacy form (a label per language code) is read by `FrameTrailSerializer.tagEntry()` (interface language → `en` → first) and written in the one-label form on the first edit. There is no language UI.
+- **Ids never change:** `FrameTrailSerializer.tagID(label, existing)` makes a class-safe id from the label for a new tag; renaming changes the label only. Deleting removes only the definition: items keep the id, which `TagModel.getTag()` reports as `known: false` (the picker shows it marked, Manage Tags lists it under "Not defined" with Define).
+- **Who:** `TagModel.canCreate()` (anyone who can edit; on a server a signed-in account) adds tags (`addTag(label)`, PHP `tagAdd`, never over an existing id: code 5 answers with the definitions and the client takes the tag with that label or a new id); `canManage()` (admins) changes and deletes (`setTag`, `deleteTag(id, force)`, PHP `tagSet` / `tagDelete`, which refuses a tag in use without `force`). `usage()`: PHP `tagUsage` on a server, else counted from `BundleExport.collectFolder('project')`. `ensureTag(id, label)` (imports) adds an exact id if missing.
+- **TagModel** is the only reader and writer of the definitions: in memory (download, static) what it wrote is the truth (`written`), `updateTagModel()` never fails a load (a missing file is no tags), `subscribe(fn)` tells open pickers.
+- **UI:** `TagPicker.create({ selected, onAdd, onRemove })` (`src/_shared/modules/TagPicker/`): chips, a field with a top-layer popover list, "Create tag …", "Manage tags …" for admins. Used by the annotation panel (an always visible row above `#AnnotationOptions`; one undo step per tag) and the content-view filter. `ManageTagsDialog`: one dialog, rows edited in place (written on Enter or blur, Esc reverts), usage per row, delete confirms.
+- **Bundles:** a hypervideo bundle carries the definitions of the tags its items name (`FrameTrailSerializer.usedTagIds()`), a project bundle all of them.
+
 ## Routing and View State
 
 The hash fragment records **which view is on screen**, not just which hypervideo is loaded:

@@ -186,7 +186,7 @@ The dialog lists the hypervideos, their annotations, subtitles and code, and imp
 - **resources** this instance already has (the same URL or file) are reused, the others are added. Media files a zip carries are copied (uploaded on a server, which needs uploads to be allowed; not into a project file, which holds none); all other relative media paths point at the folder the file came from, and files that cannot be found anywhere are listed;
 - **annotations** of all users go into your own annotations of each hypervideo, each keeping its author, so you can edit them from then on (a switch, on by default);
 - **code** — global events, code snippets, the hypervideo's custom CSS and the global CSS — is imported only when "Import code" is switched on, and on a server only by an administrator;
-- of a **project**, the overview map (it replaces this instance's), the playback settings (theme, language, overview, pairing with phones) and the global CSS (added to this instance's) are switches of their own: on when this instance has no hypervideos yet, administrators only on a server, and the settings and CSS not at all when a platform manages them (`externalSettings`). Tag definitions this instance lacks are added (by an administrator on a server).
+- of a **project**, the overview map (it replaces this instance's), the playback settings (theme, language, overview, pairing with phones) and the global CSS (added to this instance's) are switches of their own: on when this instance has no hypervideos yet, administrators only on a server, and the settings and CSS not at all when a platform manages them (`externalSettings`). Tags this instance lacks are added under the ids the imported items name.
 
 ## Player Initialization
 

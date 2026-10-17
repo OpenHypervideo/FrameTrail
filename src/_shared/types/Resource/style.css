@@ -293,11 +293,6 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
     height: 100%;
 }
 
-.editPropertiesContainer .tagManagementUI {
-    padding-top: 10px;
-    clear: both;
-}
-
 .editPropertiesContainer .propertiesTypeIcon {
     float: left;
     background-position: left 3px;
@@ -421,9 +416,38 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
 .editPropertiesContainer .annotationOptionsWrapper {
     clear: both;
     height: calc(100% - 104px);
+    display: flex;
+    flex-direction: column;
 }
 
-.editPropertiesContainer .overlayOptionsTabs, .editPropertiesContainer .annotationOptionsTabs {
+/* The annotation's tags, above its options */
+.editPropertiesContainer .annotationTags {
+    flex: none;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--secondary-bg-color);
+}
+
+.editPropertiesContainer .annotationTags > label {
+    flex: none;
+}
+
+.editPropertiesContainer .annotationTags .tagPicker {
+    flex: 1;
+    min-width: 0;
+}
+
+.editPropertiesContainer #AnnotationOptions {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    position: relative;
+    padding-top: 12px;
+}
+
+.editPropertiesContainer .overlayOptionsTabs {
     clear: both;
     height: 100%;
     display: flex;

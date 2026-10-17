@@ -40,7 +40,7 @@ FrameTrail's Export writes this format ("Download Files" → HTML File), and its
 </html>
 ```
 
-The data is a **bundle**: a hypervideo bundle or a project bundle, as described in [DATA-MODEL.md](DATA-MODEL.md#bundles) and by `schemas/hypervideo-bundle.schema.json` and `schemas/project-bundle.schema.json`. A hypervideo bundle carries the hypervideo, all users' annotations, the resource entries it uses and its subtitles. A project bundle carries every hypervideo, the overview map, the resource library, the tag definitions, the playback settings and the global CSS.
+The data is a **bundle**: a hypervideo bundle or a project bundle, as described in [DATA-MODEL.md](DATA-MODEL.md#bundles) and by `schemas/hypervideo-bundle.schema.json` and `schemas/project-bundle.schema.json`. A hypervideo bundle carries the hypervideo, all users' annotations, the resource entries it uses, the definitions of the tags its items name and its subtitles. A project bundle carries every hypervideo, the overview map, the resource library, the tag definitions, the playback settings and the global CSS.
 
 ## The Data Block
 

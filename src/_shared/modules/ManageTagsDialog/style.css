@@ -1,7 +1,7 @@
 /* Manage Tags dialog
-   Moved verbatim out of AdminSettingsDialog when the tag tab became its
-   own dialog. Deliberately mirrors the user list — same header/filter/
-   list/row shape — so the two management dialogs read as one thing. */
+   The same header/list/row shape as the user list, so the two management
+   dialogs read as one thing. Colours come from the theme: the dialog's
+   background is --primary-fg-color, its text --primary-bg-color. */
 
 .tagDefinitionsContainer {
     padding: 10px;
@@ -15,161 +15,97 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 15px;
+    margin-bottom: 12px;
     gap: 10px;
 }
 
-.tagFilterInput {
+.tagListHeader .tagFilterInput {
     flex: 1;
-    max-width: 200px;
+    max-width: 260px;
+    margin: 0;
 }
 
 .tagList {
     flex: 1;
     overflow-y: auto;
-    border: 1px solid #ddd;
+    border: 1px solid var(--secondary-bg-color);
     border-radius: 4px;
+}
+
+.tagList > .message {
+    margin: 10px;
 }
 
 .tagListItem {
     display: flex;
-    align-items: flex-start;
-    padding: 12px;
-    border-bottom: 1px solid #eee;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--secondary-bg-color);
 }
 
 .tagListItem:last-child {
     border-bottom: none;
 }
 
-.tagListItem:hover {
-    background: #f9f9f9;
+.tagListItem.saving {
+    opacity: .6;
 }
 
-.tagId {
-    font-weight: bold;
-    font-family: monospace;
-    min-width: 120px;
-    color: #333;
-}
-
-.tagLanguages {
-    flex: 1;
-    padding: 0 15px;
-}
-
-.tagLang {
-    font-size: 0.9em;
-    margin-bottom: 4px;
-}
-
-.tagLang .langCode {
-    font-weight: bold;
-    color: #666;
-}
-
-.tagLang .langLabel {
-    color: #333;
-}
-
-.tagLang .langDesc {
-    color: #888;
+.tagListItem.undefinedTag .tagListName {
     font-style: italic;
 }
 
-.tagActions {
-    display: flex;
-    gap: 5px;
-}
-
-.tagActions button {
-    padding: 4px 8px;
-    cursor: pointer;
-}
-
-/* Tag Edit Dialog */
-.tagEditDialog .formRow {
-    margin-bottom: 15px;
-}
-
-.tagEditDialog label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-
-.tagEditDialog .tagIdInput {
-    width: 100%;
-    box-sizing: border-box;
-    font-family: monospace;
-}
-
-.tagEditDialog .tagIdInput[readonly] {
-    background: #f5f5f5;
-    color: #666;
-}
-
-.languagesContainer {
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    padding: 10px;
-}
-
-.languagesContainer > label {
-    display: block;
-    font-weight: bold;
-    margin-bottom: 8px;
-}
-
-.languageRow {
-    background: #f9f9f9;
-    border-radius: 4px;
-    padding: 10px;
-    margin-bottom: 10px;
-}
-
-.langHeader {
-    display: flex;
-    justify-content: space-between;
+/* Label and description side by side, the id and the uses beneath */
+.tagListInfo {
+    flex: 1;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr);
+    gap: 0 8px;
     align-items: center;
-    margin-bottom: 8px;
 }
 
-.langCodeInput {
-    width: 50px;
-    text-transform: uppercase;
-    font-weight: bold;
-}
-
-.langCodeInput[readonly] {
-    background: #eee;
-    color: #666;
-}
-
-.langFields {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-.langFields input {
+/* The fields read as text until they are pointed at or edited */
+.tagListInfo input[type="text"] {
     width: 100%;
     box-sizing: border-box;
+    margin: 0;
+    border-color: transparent;
+    background: transparent;
 }
 
-.addLanguageButton {
-    margin-top: 10px;
+.tagListInfo input[type="text"]:hover,
+.tagListInfo input[type="text"]:focus,
+.tagListItem.pendingTag .tagListInfo input[type="text"] {
+    border-color: var(--semi-transparent-bg-color);
+    background: var(--primary-fg-color);
 }
 
-/* Tag Usage Warning Dialog */
-.tagUsageWarning .usageList {
-    max-height: 200px;
-    overflow-y: auto;
-    margin: 10px 0;
-    padding-left: 20px;
+.tagListInfo .tagLabelInput {
+    font-weight: 600;
 }
 
-.tagUsageWarning .usageList li {
-    margin-bottom: 5px;
-    font-size: 0.9em;
+.tagListName {
+    font-weight: 600;
+    padding: 4px 5px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.tagListMeta {
+    grid-column: 1 / -1;
+    padding: 0 6px;
+    font-size: 12px;
+    opacity: .7;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.tagListActions {
+    flex-shrink: 0;
+    display: flex;
+    gap: 5px;
 }

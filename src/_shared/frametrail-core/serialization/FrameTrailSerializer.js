@@ -873,6 +873,118 @@
 
 
     /* ------------------------------------------------------------------ */
+    /*  Tags                                                              */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * I return what an entry of tagdefinitions.json says: { label,
+     * description }. An entry has one label; a legacy entry has one per
+     * language code, of which I take the one in language, else the English
+     * one, else the first. Without an entry, or with no label in it, the label
+     * is the tag's id, so an item naming a tag nobody defines shows what it
+     * names.
+     *
+     * @method tagEntry
+     * @param {Object} entry      a value of tagdefinitions.json, or undefined
+     * @param {String} id         the tag's id (its key there)
+     * @param {String} [language] the interface language
+     * @return {Object} { label, description }
+     */
+    function tagEntry(entry, id, language) {
+
+        var text = function(from) {
+            return { label: from.label, description: (typeof from.description === 'string') ? from.description : '' };
+        };
+
+        if (!isObject(entry)) { return { label: String(id), description: '' }; }
+
+        if (typeof entry.label === 'string') { return text(entry); }
+
+        var codes = Object.keys(entry).filter(function(code) {
+                return isObject(entry[code]) && typeof entry[code].label === 'string';
+            }),
+            code  = (codes.indexOf(language) >= 0) ? language : ((codes.indexOf('en') >= 0) ? 'en' : codes[0]);
+
+        return (code === undefined) ? { label: String(id), description: '' } : text(entry[code]);
+
+    }
+
+    /**
+     * I return what tells tag labels apart: two labels with the same key name
+     * the same tag ("Fact check" and " fact  Check"), so a new tag cannot take
+     * an existing one's label. Accents count ("Café" is not "Cafe").
+     *
+     * @method tagLabelKey
+     * @param {String} label
+     * @return {String}
+     */
+    function tagLabelKey(label) {
+        return String(label).trim().replace(/\s+/g, ' ').toLowerCase();
+    }
+
+    /**
+     * I make the id of a new tag from its label. Annotation thumbnails carry
+     * tag ids as class names, so the id is a readable [a-z0-9-] form of the
+     * label that starts with a letter ("Fact Check" → "fact-check", "Größe" →
+     * "grosse"), with
+     * "tag-" in front where the label gives too little ("2024" → "tag-2024",
+     * a non-Latin label → "tag"), and "-2", "-3", … when it is taken.
+     *
+     * @method tagID
+     * @param {String} label
+     * @param {Array|Object} [existing] ids in use: a list, or the definitions
+     * @return {String}
+     */
+    function tagID(label, existing) {
+
+        var taken = Object.create(null),
+            ids   = Array.isArray(existing) ? existing : Object.keys(isObject(existing) ? existing : {});
+
+        ids.forEach(function(id) { taken[String(id)] = true; });
+
+        var base = String(label).normalize('NFKD').replace(/\p{M}/gu, '').toLowerCase().replace(/ß/g, 'ss')
+                       .replace(/[^a-z0-9]+/g, '-').replace(/^-+/, '').substring(0, 40).replace(/-+$/, '');
+
+        if (base.length < 2 || !/^[a-z]/.test(base)) { base = ('tag-' + base).replace(/-+$/, ''); }
+
+        var id = base, n = 2;
+        while (taken[id]) { id = base + '-' + (n++); }
+
+        return id;
+
+    }
+
+    /**
+     * I return the ids of the tags the items of a hypervideo bundle name: its
+     * overlays and code snippets and every annotation file's annotations.
+     *
+     * @method usedTagIds
+     * @param {Object} bundle a hypervideo bundle
+     * @return {Array} ids, in the order first named
+     */
+    function usedTagIds(bundle) {
+
+        var used  = [],
+            hv    = bundle.hypervideo || {},
+            items = Array.isArray(hv.contents) ? hv.contents.slice() : [],
+            files = (bundle.annotations && isObject(bundle.annotations.files)) ? bundle.annotations.files : {};
+
+        Object.keys(files).forEach(function(fileId) {
+            if (Array.isArray(files[fileId])) { items = items.concat(files[fileId]); }
+        });
+
+        items.forEach(function(item) {
+            (isObject(item) && Array.isArray(item['frametrail:tags']) ? item['frametrail:tags'] : []).forEach(function(tag) {
+                if (typeof tag === 'string' && used.indexOf(tag) < 0) { used.push(tag); }
+            });
+        });
+
+        return used;
+
+    }
+
+
+    /* ------------------------------------------------------------------ */
     /*  Hypervideos                                                       */
     /* ------------------------------------------------------------------ */
 
@@ -1306,6 +1418,15 @@
                     if (has(all, resourceId)) { bundle.resources[resourceId] = all[resourceId]; }
                 });
             }
+            // The definitions of the tags its items name, so their labels travel with it.
+            var definitions = folderFile(files, 'tagdefinitions.json');
+            if (isObject(definitions)) {
+                usedTagIds(bundle).forEach(function(tag) {
+                    if (!has(definitions, tag)) { return; }
+                    bundle.tagdefinitions = bundle.tagdefinitions || {};
+                    bundle.tagdefinitions[tag] = definitions[tag];
+                });
+            }
         }
 
         (Array.isArray(hypervideo.subtitles) ? hypervideo.subtitles : []).forEach(function(entry) {
@@ -1423,6 +1544,7 @@
                         "resources":           clone(bundle.resources)
                     };
                 }
+                if (isObject(bundle.tagdefinitions)) { files['tagdefinitions.json'] = clone(bundle.tagdefinitions); }
 
             } else {
                 throw new Error('Not a bundle: ' + bundle.bundle);
@@ -1782,6 +1904,11 @@
         setAnnotationIndexEntry: setAnnotationIndexEntry,
         guestUserID:             guestUserID,
         normalizeConfig:         normalizeConfig,
+
+        tagEntry:                tagEntry,
+        tagLabelKey:             tagLabelKey,
+        tagID:                   tagID,
+        usedTagIds:              usedTagIds,
 
         dedupeCreated:          dedupeCreated,
         mergeStored:             mergeStored,

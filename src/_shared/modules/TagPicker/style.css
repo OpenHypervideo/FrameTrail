@@ -1,0 +1,64 @@
+/* Tag picker: chips, then the field that adds to them */
+
+.tagPicker {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.tagPicker .tagItem {
+    margin: 2px 6px 2px 0;
+}
+
+/* A tag the item names but nobody defines (any more) */
+.tagPicker .tagItem.unknown,
+.tagPicker .tagItem.unknown:hover {
+    font-style: italic;
+    color: inherit;
+    background: transparent;
+    outline: 1px dashed currentColor;
+    outline-offset: -1px;
+    opacity: .75;
+}
+
+.tagPicker .tagPickerInput {
+    flex: 1 1 120px;
+    min-width: 100px;
+    margin: 2px 0;
+}
+
+/* The list, a popover in the top layer */
+.contextSelectList.tagPickerList {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: 2px 0;
+    max-height: 240px;
+    overflow-y: auto;
+}
+
+.contextSelectList.tagPickerList:popover-open {
+    display: block;
+}
+
+.contextSelectList.tagPickerList .tagPickerOption.focused {
+    color: var(--primary-fg-color);
+    background: var(--primary-bg-color);
+}
+
+.contextSelectList.tagPickerList .tagPickerCreate::before {
+    content: '+ ';
+}
+
+.contextSelectList.tagPickerList .tagPickerManage {
+    border-top: 1px solid var(--secondary-bg-color);
+}
+
+.contextSelectList.tagPickerList .tagPickerHint,
+.contextSelectList.tagPickerList .tagPickerHint:hover {
+    color: var(--primary-bg-color);
+    background: var(--primary-fg-color);
+    opacity: .7;
+    cursor: default;
+    white-space: normal;
+}

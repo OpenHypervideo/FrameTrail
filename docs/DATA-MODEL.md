@@ -68,7 +68,7 @@ A name is resolved against `https://frametrail.org/schemas/1/`; a fragment selec
 _data/
 ├── config.json                  # instance settings (public on a public instance)
 ├── users.json                   # accounts and their API token hashes — not covered here, never exported
-├── tagdefinitions.json          # tag labels and descriptions per language
+├── tagdefinitions.json          # tags: label and description per tag id
 ├── custom.css                   # global CSS, including custom themes
 ├── resources/
 │   ├── _index.json              # the resource library
@@ -109,6 +109,7 @@ A **hypervideo bundle** holds one hypervideo and everything it needs:
         "files": { "1": [ … ] }                       // annotations/1.json, keyed by file id
     },
     "resources": { "51": { … } },                     // the resource entries it uses: its clip, items made from resources
+    "tagdefinitions": { "fact-check": { … } },        // the definitions of the tags its items name
     "subtitles": { "en": "WEBVTT\n\n00:00.000 --> …" } // subtitle files as text, keyed by srclang
 }
 ```
@@ -120,7 +121,7 @@ A **project bundle** holds a library:
     "bundle": "project",
     "formatVersion": 1,
     "hypervideosIndex": { … },                        // hypervideos/_index.json, with the overview map
-    "hypervideos": { "9": { "bundle": "hypervideo", … } },  // keyed as in hypervideosIndex; without "resources"
+    "hypervideos": { "9": { "bundle": "hypervideo", … } },  // keyed as in hypervideosIndex; without "resources" and "tagdefinitions"
     "resources": { … },                               // resources/_index.json
     "tagdefinitions": { … },
     "config": { "theme": "studio", "defaultLanguage": "en" },
@@ -213,10 +214,16 @@ Booleans are strict. The server refuses uploads only when `allowUploads` is `fal
 ### `tagdefinitions.json`
 
 ```json
-{ "lecture": { "en": { "label": "Lecture", "description": "…" }, "de": { "label": "Vorlesung", "description": "…" } } }
+{ "fact-check": { "label": "Fact check", "description": "Claims checked against sources." } }
 ```
 
-Tag names are the keys. Items refer to tags by name in `frametrail:tags`.
+The tags of the instance, keyed by id: each has a `label` and an optional `description`. Items refer to tags by id in `frametrail:tags`; a content view's `collectionFilter.tags` shows the annotations having any of the tags it lists. Only editors see labels and descriptions: in the tag pickers and in Manage Tags.
+
+Annotation thumbnails carry their tag ids as class names (`resourceThumb fact-check`), so global CSS can style tagged annotations. That is why an id never changes: renaming a tag changes its label only. FrameTrail makes the id of a new tag from its label, as a class name: lowercase letters, digits and dashes, starting with a letter (`Größe` → `grosse`, `2024` → `tag-2024`), with `-2`, `-3`, … when it is taken. Ids in older files may have other characters.
+
+An item may name a tag that is not defined, for instance after the tag was deleted: deleting removes only the definition. Such a tag shows as its id, marked as no longer defined, until the item's author removes it or the tag is defined again with that id.
+
+Older files have a label and description per language code (`{ "lecture": { "en": { "label": "Lecture" }, "de": { "label": "Vorlesung" } } }`). FrameTrail reads the label in the interface language, else the English one, else the first, and writes the one-label form the first time the tag is edited.
 
 ### `resources/_index.json`
 
@@ -464,6 +471,7 @@ Readers must accept these shapes. Each is in the schemas as a separate alternati
 | `frametrail:lat`, `frametrail:long`, `frametrail:boundingBox` on the body | location annotations | `attributes.lat`, `.lon`, `.boundingBox` |
 | `animationIn`, `animationOut`, `animationDuration` | overlay attributes | `attributes.animation` |
 | `linkUrl` | hotspot attributes | `action: "openUrl"` with that target, when `action` is empty |
+| a label and description per language code (`{ "en": { "label": … }, "de": { … } }`) | tags in `tagdefinitions.json` | the label in the interface language, else the English one, else the first; written as `{ label, description }` the first time the tag is edited |
 | `overviewMap` (markers as a list of `{ hypervideoID, x, y, size }`) | `config.json` | the overview map, when `hypervideos/_index.json` has none; moved there by the first map save |
 | `defaultTheme` | `config.json`, a project bundle's `config`, init options, `data-frametrail-config` | `theme`, when that is empty |
 | `allowCollaboration`, `defaultUserRole`, `updateServiceURL`, `autoUpdate` | `config.json` | not used |

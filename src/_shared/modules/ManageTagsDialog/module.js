@@ -3,20 +3,21 @@
  */
 
 /**
- * I am the ManageTagsDialog. I list the instance's tag definitions and let an
- * admin add, edit and remove them, in every language they are defined in.
+ * I am the ManageTagsDialog: the instance's tags in one list, for admins to
+ * rename, describe, delete and add. A tag's label and description are fields
+ * edited in place and written when the field is left (or on Enter; Esc puts
+ * back what was there). There is nothing to save or cancel.
  *
- * I used to be a tab in the admin settings dialog. Two things were wrong with
- * that. I write tagdefinitions.json rather than config.json and I write it
- * immediately, so the soft lock guarding that dialog's Apply was disabling me
- * for no reason — one admin with the settings dialog open blocked everyone else
- * from touching tags at all. And tags are chosen in the annotation editor and
- * the content-view filter, which is exactly where someone discovers that the
- * tag they want has not been defined yet; making them close their work, find
- * the cog and hunt for a tab was the long way round.
+ * Every row shows the tag's id and how often items use it. Deleting asks
+ * first and removes only the definition: items keep the id, and the list
+ * shows such ids at the end, as "not defined", with Define to make them tags
+ * again. An id never changes.
  *
- * My writes are per-tag and taken under an exclusive file lock on the server,
- * so two admins in here cannot clobber each other and I take no lock. When the
+ * I used to be a tab in the admin settings dialog. I write
+ * tagdefinitions.json rather than config.json and I write it at once, so the
+ * soft lock guarding that dialog's Apply has nothing to do with me. My writes
+ * are per tag and taken under an exclusive file lock on the server, so two
+ * admins in here cannot clobber each other and I take no lock. When the
  * definitions move underneath me I quietly re-read them.
  *
  * I live under _shared because my triggers do: the tag picker is part of the
@@ -35,8 +36,22 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
         containerElement  = null,
         presenceContainer = null,
         messageElement    = null,
+        messageTimer      = null,
         changed           = false,
-        onChanged         = null;
+        onChanged         = null,
+        // { id: { count, hypervideos } }; null while counting, false when it could not be counted
+        usageMap          = null,
+        // A row for a new tag is open at the top.
+        newRow            = false,
+        // The id of a tag no longer defined that is being defined again.
+        defining          = null,
+        // The list is being drawn again: its fields' blur is not an edit.
+        rendering         = false;
+
+
+    function TagModel() {
+        return FrameTrail.module('TagModel');
+    }
 
 
     /**
@@ -45,12 +60,12 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
      * @method open
      * @param {Object} [options] options.onChanged runs once on close, and only
      *                           if something was actually written — so a caller
-     *                           can re-render its tag picker without being
-     *                           redrawn under the user's cursor mid-edit
+     *                           can re-render without being redrawn under the
+     *                           user's cursor mid-edit
      */
     function open(options) {
 
-        if (FrameTrail.module('UserManagement').userRole !== 'admin') {
+        if (!TagModel().canManage()) {
             console.error('Admin access required');
             return;
         }
@@ -59,16 +74,23 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
 
         changed   = false;
         onChanged = (options && options.onChanged) || null;
+        usageMap  = null;
+        newRow    = false;
+        defining  = null;
 
         var _tdw = document.createElement('div');
         _tdw.innerHTML = '<div class="tagDefinitionsContainer">'
             + '    <div class="tagListHeader">'
-            + '        <button class="addTagButton"><span class="icon-plus"></span> '+ labels['TagAdd'] +'</button>'
-            + '        <input type="text" class="tagFilterInput" placeholder="'+ labels['SettingsFilterByName'] +'">'
+            + '        <input type="text" class="tagFilterInput">'
+            + '        <button type="button" class="addTagButton"><span class="icon-plus"></span> '+ labels['TagAdd'] +'</button>'
             + '    </div>'
             + '    <div class="tagList"></div>'
             + '</div>';
         containerElement = _tdw.firstElementChild;
+
+        var filterInput = containerElement.querySelector('.tagFilterInput');
+        filterInput.placeholder = labels['TagSearchPlaceholder'];
+        filterInput.setAttribute('aria-label', labels['TagSearchPlaceholder']);
 
         dialogCtrl = Dialog({
             title:     labels['SettingsManageTags'],
@@ -76,8 +98,8 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
             content:   containerElement,
             modal:     true,
             resizable: false,
-            width:     600,
-            height:    520,
+            width:     640,
+            height:    540,
             close:     function() {
 
                 if (FrameTrail.module('Collaboration')) {
@@ -86,6 +108,7 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
 
                 var notify = changed ? onChanged : null;
 
+                clearTimeout(messageTimer);
                 dialogCtrl.destroy();
                 dialogCtrl        = null;
                 containerElement  = null;
@@ -108,32 +131,33 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
         messageElement.style.flexBasis = '100%';
         dialogCtrl.widget().querySelector('.ft-dialog-buttonpane').prepend(messageElement);
 
-        containerElement.querySelector('.tagFilterInput').addEventListener('input', function() {
-            renderTagList(this.value);
-        });
+        filterInput.addEventListener('input', function() { renderTagList(); });
 
         containerElement.querySelector('.addTagButton').addEventListener('click', function() {
-            openTagEditDialog(null);
-        });
-
-        containerElement.addEventListener('click', function(evt) {
-            var _editBtn = evt.target.closest('.editTagButton');
-            if (_editBtn) {
-                openTagEditDialog(_editBtn.closest('.tagListItem').dataset.tagId);
-                return;
-            }
-            var _delBtn = evt.target.closest('.deleteTagButton');
-            if (_delBtn) {
-                confirmDeleteTag(_delBtn.closest('.tagListItem').dataset.tagId);
-            }
+            newRow = true;
+            renderTagList({ focus: { key: 'new', field: 'label' } });
         });
 
         startPresence();
 
-        FrameTrail.module('TagModel').updateTagModel(function() {
-            renderTagList('');
-        }, function() {
-            renderTagList('');
+        TagModel().updateTagModel(function() {
+            renderTagList();
+        });
+
+        loadUsage();
+
+    }
+
+
+    function loadUsage() {
+
+        TagModel().usage().then(function(map) {
+            usageMap = map || {};
+        }, function(error) {
+            console.warn('FrameTrail: where tags are used could not be counted:', error && error.message);
+            usageMap = false;
+        }).then(function() {
+            renderTagList();
         });
 
     }
@@ -148,10 +172,26 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
 
         if (!messageElement) return;
 
+        clearTimeout(messageTimer);
         messageElement.textContent = text || '';
         messageElement.classList.toggle('active', !!text);
         messageElement.classList.toggle('error', !!isError);
+        messageElement.classList.toggle('success', !!text && !isError);
 
+        if (text && !isError) {
+            messageTimer = setTimeout(function() { showMessage(''); }, 2000);
+        }
+
+    }
+
+    function showFailure(error) {
+        var text = {
+            labelEmpty:   labels['TagErrorLabelEmpty'],
+            labelTooLong: labels['TagErrorLabelTooLong'],
+            labelTaken:   labels['TagErrorLabelTaken']
+        }[error && error.code];
+        if (!text) console.warn('FrameTrail: the tag could not be saved:', error && error.message);
+        showMessage(text || labels['TagErrorSaveFailed'], true);
     }
 
 
@@ -180,9 +220,9 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
     /**
      * I react to the collaboration state changing.
      *
-     * The list is a view of server state with nothing unsaved in it, so a write
-     * by somebody else is answered by re-reading rather than by a notice. An
-     * open tag edit form is a separate dialog holding its own copy.
+     * The list is a view of what is stored, with nothing unsaved in it but the
+     * field being typed in, so a write by somebody else is answered by
+     * re-reading, keeping that field as it is.
      *
      * @method updatePresence
      */
@@ -195,305 +235,403 @@ FrameTrail.defineModule('ManageTagsDialog', function(FrameTrail){
 
         if (Collaboration.isStale('tags', 'global')) {
             Collaboration.acknowledgeVersion(null, 'tags', 'global');
-            FrameTrail.module('TagModel').updateTagModel(function() {
-                if (containerElement) {
-                    renderTagList(containerElement.querySelector('.tagFilterInput').value);
-                }
-            }, function() {});
+            TagModel().updateTagModel(function() {
+                renderTagList();
+            });
         }
 
     }
 
 
-    function renderTagList(filterText) {
+    function usesText(use) {
+        if (!use || !use.count) return labels['TagUnused'];
+        return (use.count === 1) ? labels['TagUsesOne'] : labels['TagUsesMany'].replace('%s', use.count);
+    }
+
+    function hypervideosText(use) {
+        var n = (use && use.hypervideos) ? use.hypervideos.length : 0;
+        return (n === 1) ? labels['ExportHypervideoCountOne'] : labels['ExportHypervideoCountMany'].replace('%s', n);
+    }
+
+    function metaText(id) {
+        if (usageMap === null) return id + ' · ' + labels['TagCounting'];
+        if (usageMap === false) return id;
+        return id + ' · ' + usesText(usageMap[id]);
+    }
+
+    // Ids items name that no tag has, sorted.
+    function undefinedIds() {
+        if (!usageMap) return [];
+        return Object.keys(usageMap).filter(function(id) { return !TagModel().getTag(id).known; }).sort();
+    }
+
+
+    // Which field has the focus, so a redraw can give it back as it was.
+    function focusState() {
+        var active = document.activeElement;
+        if (!containerElement || !active || !containerElement.contains(active) || !active.dataset.field) return null;
+        var row = active.closest('.tagListItem');
+        return {
+            key:   row.dataset.key,
+            field: active.dataset.field,
+            value: active.value,
+            start: active.selectionStart,
+            end:   active.selectionEnd
+        };
+    }
+
+    function restoreFocus(state, keepValue) {
+        if (!state || !containerElement) return;
+        var row   = containerElement.querySelector('.tagListItem[data-key="' + CSS.escape(state.key) + '"]'),
+            input = row && row.querySelector('[data-field="' + state.field + '"]');
+        if (!input) return;
+        if (keepValue && state.value !== undefined) input.value = state.value;
+        input.focus();
+        if (state.select) {
+            input.select();
+        } else if (state.start !== undefined && state.start !== null) {
+            try { input.setSelectionRange(state.start, state.end); } catch (e) {}
+        }
+    }
+
+    /**
+     * I draw the list again: a new tag's row, the tags, the ids no longer
+     * defined, all filtered by the search field.
+     *
+     * @method renderTagList
+     * @param {Object} [options] focus: { key, field, select } to put the
+     *                           focus there; remap: { from, to }, a row that
+     *                           has become another (a new tag, written)
+     */
+    function renderTagList(options) {
 
         if (!containerElement) return;
 
-        var tagList = containerElement.querySelector('.tagList');
-        tagList.innerHTML = '';
-        var allTags = FrameTrail.module('TagModel').getAllTags();
+        options = options || {};
 
-        for (var tagId in allTags) {
-            if (filterText && tagId.toLowerCase().indexOf(filterText.toLowerCase()) === -1) {
-                continue;
-            }
+        var focus = focusState(),
+            list  = containerElement.querySelector('.tagList'),
+            query = containerElement.querySelector('.tagFilterInput').value;
 
-            var tagData = allTags[tagId];
-            var _tiw = document.createElement('div');
-            _tiw.innerHTML = '<div class="tagListItem" data-tag-id="'+ tagId +'">'
-                + '    <div class="tagId">'+ tagId +'</div>'
-                + '    <div class="tagLanguages"></div>'
-                + '    <div class="tagActions">'
-                + '        <button class="editTagButton" title="'+ labels['GenericEditStart'] +'"><span class="icon-pencil"></span></button>'
-                + '        <button class="deleteTagButton" title="'+ labels['GenericDelete'] +'"><span class="icon-trash"></span></button>'
-                + '    </div>'
-                + '</div>';
-            var tagItem = _tiw.firstElementChild;
+        if (focus && options.remap && focus.key === options.remap.from) focus.key = options.remap.to;
 
-            var langContainer = tagItem.querySelector('.tagLanguages');
-            for (var lang in tagData) {
-                langContainer.insertAdjacentHTML('beforeend',
-                    '<div class="tagLang">'
-                    + '    <span class="langCode">'+ lang.toUpperCase() +':</span> '
-                    + '    <span class="langLabel">'+ tagData[lang].label +'</span>'
-                    + '    <span class="langDesc">&mdash; '+ tagData[lang].description +'</span>'
-                    + '</div>'
-                );
-            }
+        rendering = true;
+        list.innerHTML = '';
 
-            tagList.appendChild(tagItem);
+        if (newRow) {
+            list.appendChild(editableRow({ key: 'new', label: '', description: '', meta: '' }));
         }
 
-        if (tagList.children.length === 0) {
-            tagList.insertAdjacentHTML('beforeend', '<div class="message active">'+ labels['TagNoTagsDefined'] +'</div>');
+        TagModel().listTags().filter(function(tag) {
+            return TagModel().matches(tag, query);
+        }).forEach(function(tag) {
+            list.appendChild(editableRow({ key: 'tag:' + tag.id, id: tag.id, label: tag.label, description: tag.description, meta: metaText(tag.id) }));
+        });
+
+        undefinedIds().filter(function(id) {
+            return TagModel().matches({ id: id, label: id, description: '' }, query);
+        }).forEach(function(id) {
+            list.appendChild(defining === id
+                ? editableRow({ key: 'define:' + id, id: id, label: id, description: '', meta: id })
+                : undefinedRow(id));
+        });
+
+        if (!list.children.length) {
+            var empty = document.createElement('div');
+            empty.className = 'message active';
+            empty.textContent = query ? labels['TagListNoMatch'] : labels['TagListEmpty'];
+            list.appendChild(empty);
+        }
+
+        rendering = false;
+
+        if (options.focus) {
+            restoreFocus(options.focus, false);
+        } else {
+            restoreFocus(focus, true);
         }
 
     }
 
 
-    function currentFilter() {
-        return containerElement ? containerElement.querySelector('.tagFilterInput').value : '';
+    function button(className, icon, title, text) {
+        var el = document.createElement('button');
+        el.type = 'button';
+        el.className = className;
+        el.title = title;
+        el.setAttribute('aria-label', title);
+        el.innerHTML = '<span class="' + icon + '"></span>';
+        if (text) el.appendChild(document.createTextNode(' ' + text));
+        return el;
     }
 
+    function field(className, name, value, placeholder, ariaLabel) {
+        var input = document.createElement('input');
+        input.type = 'text';
+        input.className = className;
+        input.dataset.field = name;
+        input.dataset.saved = value;
+        input.value = value;
+        input.placeholder = placeholder;
+        input.setAttribute('aria-label', ariaLabel);
+        return input;
+    }
 
-    function openTagEditDialog(tagId) {
+    // A row whose label and description are edited in place.
+    function editableRow(spec) {
 
-        var isNew = (tagId === null);
-        var allTags = FrameTrail.module('TagModel').getAllTags();
-        var existingData = isNew ? {} : (allTags[tagId] || {});
-        var errorDiv = document.createElement('div');
-        errorDiv.className = 'message dialogError';
-        // The button pane wraps, so a full-width message takes the row above.
-        errorDiv.style.flexBasis = '100%';
+        var row     = document.createElement('div'),
+            info    = document.createElement('div'),
+            actions = document.createElement('div'),
+            label   = field('tagLabelInput', 'label', spec.label, labels['TagLabel'], labels['TagLabel']),
+            desc    = field('tagDescriptionInput', 'description', spec.description, labels['TagDescriptionPlaceholder'], labels['TagDescription']),
+            meta    = document.createElement('div');
 
-        var _dcw = document.createElement('div');
-        _dcw.innerHTML = '<div class="tagEditDialog">'
-            + '    <div class="formRow">'
-            + '        <label>'+ labels['TagID'] +'</label>'
-            + '        <input type="text" class="tagIdInput" value="'+ (tagId || '') +'" '+ (isNew ? '' : 'readonly') +'>'
-            + '        <div class="fieldHint">'+ labels['TagIDHint'] +'</div>'
-            + '    </div>'
-            + '    <div class="languagesContainer">'
-            + '        <label>'+ labels['TagLanguages'] +'</label>'
-            + '        <div class="languagesList"></div>'
-            + '        <button class="addLanguageButton"><span class="icon-plus"></span> '+ labels['TagAddLanguage'] +'</button>'
-            + '    </div>'
-            + '</div>';
-        var dialogContent = _dcw.firstElementChild;
+        row.className = 'tagListItem' + (spec.key === 'new' || spec.key.indexOf('define:') === 0 ? ' pendingTag' : '');
+        row.dataset.key = spec.key;
+        info.className = 'tagListInfo';
+        actions.className = 'tagListActions';
+        label.maxLength = 80;
+        desc.maxLength = 1000;
+        meta.className = 'tagListMeta';
+        meta.textContent = spec.meta;
+        if (spec.id) meta.title = labels['TagIdTitle'];
 
-        var languagesList = dialogContent.querySelector('.languagesList');
+        info.appendChild(label);
+        info.appendChild(desc);
+        info.appendChild(meta);
 
-        function addLanguageRow(lang, label, description, isExisting) {
-            var _rw = document.createElement('div');
-            _rw.innerHTML = '<div class="languageRow" data-lang="'+ (lang || '') +'">'
-                + '    <div class="langHeader">'
-                + '        <input type="text" class="langCodeInput" value="'+ (lang || '') +'" placeholder="en" maxlength="2" '+ (isExisting ? 'readonly' : '') +'>'
-                + '        <button class="removeLangButton" title="'+ labels['TagDeleteLanguage'] +'"><span class="icon-cancel"></span></button>'
-                + '    </div>'
-                + '    <div class="langFields">'
-                + '        <input type="text" class="langLabelInput" value="'+ (label || '') +'" placeholder="'+ labels['TagLabel'] +'">'
-                + '        <input type="text" class="langDescInput" value="'+ (description || '') +'" placeholder="'+ labels['TagDescription'] +'">'
-                + '    </div>'
-                + '</div>';
-            var row = _rw.firstElementChild;
+        if (spec.key.indexOf('tag:') === 0) {
+            var del = button('deleteTagButton', 'icon-trash', labels['GenericDelete']);
+            del.addEventListener('click', function() { confirmDelete(spec.id); });
+            actions.appendChild(del);
+        } else {
+            var cancel = button('cancelTagButton', 'icon-cancel', labels['GenericCancel']);
+            cancel.addEventListener('mousedown', function(evt) { evt.preventDefault(); });
+            cancel.addEventListener('click', function() { dropPending(spec.key); });
+            actions.appendChild(cancel);
+        }
 
-            row.querySelector('.removeLangButton').addEventListener('click', function() {
+        [label, desc].forEach(function(input) {
 
-                // A row that was never saved is only in the DOM.
-                if (!isExisting) {
-                    row.remove();
-                    return;
-                }
-
-                // A stored language has to be removed on the server, or Save
-                // would simply write it back — every language present is set,
-                // and none is ever unset.
-                FrameTrail.module('TagModel').deleteLang(tagId, lang,
-                    function() {
-                        row.remove();
-                        noteChange();
-                        renderTagList(currentFilter());
-                        // Removing the last language removes the tag itself, so
-                        // there may be nothing left here to edit.
-                        if (!languagesList.children.length) tagDialogCtrl.close();
-                    },
-                    function() {
-                        errorDiv.textContent = labels['TagErrorDeleteLanguageFailed'];
-                        errorDiv.classList.add('active', 'error');
+            input.addEventListener('keydown', function(evt) {
+                if (evt.key === 'Enter') {
+                    evt.preventDefault();
+                    commit(row, input.dataset.field === 'label' ? 'description' : null);
+                    if (input.dataset.field !== 'label') input.blur();
+                } else if (evt.key === 'Escape') {
+                    // Puts the field back, and does not close the dialog.
+                    evt.preventDefault();
+                    evt.stopPropagation();
+                    if (row.dataset.key.indexOf('tag:') !== 0) {
+                        if (!row._writing) dropPending(row.dataset.key);
+                        return;
                     }
-                );
-
+                    input.value = input.dataset.saved;
+                    input.blur();
+                }
             });
 
-            languagesList.appendChild(row);
-        }
+            input.addEventListener('blur', function() {
+                if (!rendering) commit(row);
+            });
 
-        for (var lang in existingData) {
-            addLanguageRow(lang, existingData[lang].label, existingData[lang].description, true);
-        }
-
-        if (isNew) {
-            addLanguageRow('', '', '', false);
-        }
-
-        dialogContent.querySelector('.addLanguageButton').addEventListener('click', function() {
-            addLanguageRow('', '', '', false);
         });
 
-        var tagDialogCtrl = Dialog({
-            title:   isNew ? labels['TagAddNew'] : labels['TagEdit'] + ': ' + tagId,
-            icon:    isNew ? 'icon-plus' : 'icon-tag-1',
-            content: dialogContent,
-            modal:   true,
-            width:   500,
-            buttons: [
-                {
-                    text: labels['GenericSave'],
-                    click: function() {
-                        saveTag(dialogContent, errorDiv, function() {
-                            tagDialogCtrl.close();
-                            noteChange();
-                            renderTagList(currentFilter());
-                        });
-                    }
-                },
-                {
-                    text: labels['GenericCancel'],
-                    click: function() { tagDialogCtrl.close(); }
-                }
-            ],
-            close: function() { tagDialogCtrl.destroy(); }
+        // A new tag's row left empty goes away.
+        row.addEventListener('focusout', function(evt) {
+            if (rendering || row.dataset.key !== 'new' || row.contains(evt.relatedTarget)) return;
+            if (!label.value.trim() && !desc.value.trim() && !row._writing) dropPending('new');
         });
-        tagDialogCtrl.widget().querySelector('.ft-dialog-buttonpane').prepend(errorDiv);
+
+        row.appendChild(info);
+        row.appendChild(actions);
+
+        return row;
 
     }
 
+    // A row for an id that items name and no tag has.
+    function undefinedRow(id) {
 
-    function saveTag(dialogContent, errorDiv, onSuccess) {
+        var row     = document.createElement('div'),
+            info    = document.createElement('div'),
+            name    = document.createElement('div'),
+            meta    = document.createElement('div'),
+            actions = document.createElement('div'),
+            define  = button('defineTagButton', 'icon-tag', labels['TagDefineTitle'], labels['TagDefine']);
 
-        var tagId = dialogContent.querySelector('.tagIdInput').value.trim();
-        var languageRows = dialogContent.querySelectorAll('.languageRow');
+        row.className = 'tagListItem undefinedTag';
+        row.dataset.key = 'undefined:' + id;
+        info.className = 'tagListInfo';
+        name.className = 'tagListName';
+        name.textContent = id;
+        meta.className = 'tagListMeta';
+        meta.textContent = labels['TagNotDefined'] + ' · ' + usesText(usageMap && usageMap[id]);
+        actions.className = 'tagListActions';
 
-        function showDialogError(msg) {
-            errorDiv.textContent = msg;
-            errorDiv.classList.add('active', 'error');
-        }
-
-        if (tagId.length < 2) {
-            showDialogError(labels['TagErrorIDTooShort']);
-            return;
-        }
-
-        if (languageRows.length === 0) {
-            showDialogError(labels['TagErrorNoLanguages']);
-            return;
-        }
-
-        var saveQueue = [];
-        languageRows.forEach(function(row) {
-            var lang = row.querySelector('.langCodeInput').value.trim().toLowerCase();
-            var label = row.querySelector('.langLabelInput').value.trim();
-            var desc = row.querySelector('.langDescInput').value.trim();
-
-            if (lang.length === 2 && label.length >= 4) {
-                saveQueue.push({ lang: lang, label: label, description: desc });
-            }
+        define.addEventListener('click', function() {
+            defining = id;
+            renderTagList({ focus: { key: 'define:' + id, field: 'label', select: true } });
         });
 
-        if (saveQueue.length === 0) {
-            showDialogError(labels['TagErrorInvalidLanguages']);
-            return;
-        }
+        info.appendChild(name);
+        info.appendChild(meta);
+        actions.appendChild(define);
+        row.appendChild(info);
+        row.appendChild(actions);
 
-        function saveNext(idx) {
-            if (idx >= saveQueue.length) {
-                onSuccess();
+        return row;
+
+    }
+
+    function dropPending(key) {
+        if (key === 'new') newRow = false;
+        if (key.indexOf('define:') === 0) defining = null;
+        renderTagList();
+    }
+
+
+    /**
+     * I write a row whose fields differ from what is stored. Values are taken
+     * as saved at once, so the blur after an Enter does not write again; a
+     * failed write puts them back.
+     *
+     * @method commit
+     * @param {HTMLElement} row
+     * @param {String} [then] the field of the row to focus afterwards
+     */
+    function commit(row, then) {
+
+        var key         = row.dataset.key,
+            labelInput  = row.querySelector('.tagLabelInput'),
+            descInput   = row.querySelector('.tagDescriptionInput'),
+            label       = labelInput.value.trim(),
+            description = descInput.value.trim(),
+            focusNext   = function(newKey) {
+                if (then) restoreFocus({ key: newKey || key, field: then }, false);
+            };
+
+        if (row._writing) return;
+
+        if (key === 'new' || key.indexOf('define:') === 0) {
+
+            if (!label) {
+                if (then) showMessage(labels['TagErrorLabelEmpty'], true);
                 return;
             }
-            var item = saveQueue[idx];
-            FrameTrail.module('TagModel').setTag(
-                tagId,
-                item.lang,
-                item.label,
-                item.description,
-                function() {
-                    saveNext(idx + 1);
-                },
-                function() {
-                    showDialogError(labels['TagErrorSaveFailed']);
-                }
-            );
-        }
 
-        saveNext(0);
+            var id = (key === 'new') ? null : key.slice('define:'.length);
 
-    }
+            if (TagModel().findByLabel(label)) {
+                showMessage(labels['TagErrorLabelTaken'], true);
+                return;
+            }
 
+            row._writing = true;
+            row.classList.add('saving');
 
-    function confirmDeleteTag(tagId) {
+            var write = id ? TagModel().setTag(id, label, description).then(function() { return id; })
+                           : TagModel().addTag(label, description);
 
-        FrameTrail.module('TagModel').deleteTag(tagId,
-            function(response) {
+            write.then(function(written) {
+                if (key === 'new') newRow = false; else defining = null;
                 noteChange();
-                renderTagList(currentFilter());
-                showMessage(labels['TagDeleted'], false);
-                setTimeout(function() { showMessage(''); }, 3000);
-            },
-            function(response) {
-                if (response && response.code === 5 && response.response) {
-                    showTagUsageWarning(tagId, response.response);
-                } else {
-                    showMessage(labels['TagErrorDeleteFailed'], true);
-                }
-            }
-        );
+                showMessage(labels['TagSaved']);
+                renderTagList({ remap: { from: key, to: 'tag:' + written } });
+                focusNext('tag:' + written);
+            }, function(error) {
+                row._writing = false;
+                row.classList.remove('saving');
+                showFailure(error);
+            });
+
+            return;
+
+        }
+
+        var tagId      = key.slice('tag:'.length),
+            savedLabel = labelInput.dataset.saved,
+            savedDesc  = descInput.dataset.saved;
+
+        if (!label) {
+            showMessage(labels['TagErrorLabelEmpty'], true);
+            labelInput.value = savedLabel;
+            return;
+        }
+
+        if (label === savedLabel && description === savedDesc) {
+            labelInput.value = savedLabel;
+            descInput.value = savedDesc;
+            focusNext();
+            return;
+        }
+
+        labelInput.dataset.saved = labelInput.value = label;
+        descInput.dataset.saved = descInput.value = description;
+        row._writing = true;
+        row.classList.add('saving');
+
+        TagModel().setTag(tagId, label, description).then(function() {
+            row._writing = false;
+            row.classList.remove('saving');
+            noteChange();
+            showMessage(labels['TagSaved']);
+        }, function(error) {
+            row._writing = false;
+            row.classList.remove('saving');
+            labelInput.dataset.saved = savedLabel;
+            descInput.dataset.saved = savedDesc;
+            if (document.activeElement !== labelInput) labelInput.value = savedLabel;
+            if (document.activeElement !== descInput) descInput.value = savedDesc;
+            showFailure(error);
+        });
+
+        focusNext();
 
     }
 
 
-    function showTagUsageWarning(tagId, usageData) {
+    function confirmDelete(id) {
 
-        var _tuw = document.createElement('div');
-        _tuw.innerHTML = '<div class="tagUsageWarning">'
-            + '    <p><strong>'+ labels['TagCannotDelete'].replace('{tagId}', tagId) +'</strong></p>'
-            + '    <p>'+ labels['TagInUseCount'].replace('{count}', usageData.count) +'</p>'
-            + '    <ul class="usageList"></ul>'
-            + '    <p>'+ labels['TagRemoveBeforeDelete'] +'</p>'
-            + '</div>';
-        var content = _tuw.firstElementChild;
+        var tag = TagModel().getTag(id),
+            use = usageMap ? usageMap[id] : undefined,
+            message;
 
-        var usageList = content.querySelector('.usageList');
-
-        if (usageData.matches) {
-            for (var i = 0; i < usageData.matches.length; i++) {
-                var match = usageData.matches[i];
-                usageList.insertAdjacentHTML('beforeend',
-                    '<li>Hypervideo "'+ match.hypervideo +'" &mdash; '
-                    + match.where + ' ('+ match.type +') by '+ match.owner
-                    + '</li>'
-                );
-            }
+        if (usageMap === false || usageMap === null) {
+            message = labels['TagDeleteConfirmUnknown'];
+        } else if (use && use.count) {
+            message = labels['TagDeleteConfirmUsed'].replace('{uses}', usesText(use)).replace('{hypervideos}', hypervideosText(use));
+        } else {
+            message = labels['TagDeleteConfirmUnused'];
         }
 
-        var tagUsageDialogCtrl = Dialog({
-            title:   labels['TagCannotDeleteTitle'],
-            icon:    'icon-attention',
-            content: content,
-            modal:   true,
-            width:   450,
-            buttons: [
-                { text: labels['GenericOK'], click: function() { tagUsageDialogCtrl.close(); } }
-            ],
-            close: function() { tagUsageDialogCtrl.destroy(); }
+        ConfirmDialog({
+            title:        labels['TagDeleteTitle'],
+            icon:         'icon-trash',
+            message:      message.replace('{label}', tag.label),
+            confirmLabel: labels['GenericDelete'],
+            cancelLabel:  labels['GenericCancel'],
+            width:        440,
+            onConfirm:    function() {
+                TagModel().deleteTag(id, true).then(function() {
+                    noteChange();
+                    renderTagList();
+                    showMessage(labels['TagDeleted']);
+                }, function(error) {
+                    console.warn('FrameTrail: the tag could not be deleted:', error && error.message);
+                    showMessage(labels['TagErrorDeleteFailed'], true);
+                });
+            }
         });
 
     }
 
 
     /**
-     * Record that the definitions moved. TagModel has already re-read them —
-     * every write path ends in updateTagModel — so there is nothing to reload
-     * here beyond telling the collaboration poll that this change was ours.
+     * Record that the definitions moved. TagModel has already taken them in —
+     * every write ends there — so there is nothing to reload here beyond
+     * telling the collaboration poll that this change was ours.
      *
      * @method noteChange
      */

@@ -614,38 +614,23 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
 
     }
 
-    // Tag definitions this instance does not have yet.
+    // Tag definitions this instance does not have yet, under the ids the
+    // imported items name: anyone who may import may add tags. The label is
+    // read as here (a file with a label per language gives one).
     function importTags(ctx, tagdefinitions) {
 
-        var have    = FrameTrail.module('TagModel').getAllTags() || {},
-            missing = Object.keys(tagdefinitions || {}).filter(function(tag) { return !have[tag]; });
-
-        if (!missing.length) { return Promise.resolve(); }
-
-        if (!isAdmin()) {
-            ctx.report.problems.push(labels['ImportProblemTags']);
-            return Promise.resolve();
-        }
-
-        if (isLocal()) {
-            var adapter = FrameTrail.module('StorageManager').getAdapter();
-            return adapter.updateJSON('tagdefinitions.json', function(data) {
-                data = data || {};
-                missing.forEach(function(tag) { data[tag] = clone(tagdefinitions[tag]); });
-                return data;
+        var TagModel = FrameTrail.module('TagModel'),
+            language = FrameTrail.module('Localization').language,
+            missing  = Object.keys(isObject(tagdefinitions) ? tagdefinitions : {}).filter(function(tag) {
+                return !TagModel.getTag(tag).known;
             });
-        }
 
         return missing.reduce(function(chain, tag) {
             return chain.then(function() {
-                return Object.keys(tagdefinitions[tag] || {}).reduce(function(inner, lang) {
-                    return inner.then(function() {
-                        var entry = tagdefinitions[tag][lang] || {};
-                        return serverPost({ a: 'tagSet', tagName: tag, lang: lang, label: entry.label || tag, description: entry.description || '' });
-                    });
-                }, Promise.resolve());
+                var text = Serializer.tagEntry(tagdefinitions[tag], tag, language);
+                return TagModel.ensureTag(tag, text.label, text.description);
             }).catch(function(error) {
-                ctx.report.problems.push(error.message);
+                ctx.report.problems.push((error && error.message) || String(error));
             });
         }, Promise.resolve());
 

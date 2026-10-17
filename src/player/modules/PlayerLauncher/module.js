@@ -61,9 +61,6 @@
             if (_bundle.resources && _bundle.resources.resources) {
                 FrameTrail.changeState('resources', [{ label: 'Bundle', type: 'frametrail', data: _bundle.resources.resources }]);
             }
-            if (_bundle.tagdefinitions && !FrameTrail.getState('tagdefinitions')) {
-                FrameTrail.changeState('tagdefinitions', _bundle.tagdefinitions);
-            }
             if (_bundle.hypervideosIndex && _bundle.hypervideosIndex.overviewMap) {
                 FrameTrail.changeState('overviewMap', _bundle.hypervideosIndex.overviewMap);
             }
@@ -92,6 +89,11 @@
                 FrameTrail.changeState('startID', _bundleID);
             }
 
+        }
+
+        // A project carries all tag definitions, a hypervideo those its items name.
+        if (_bundle.tagdefinitions && !FrameTrail.getState('tagdefinitions')) {
+            FrameTrail.changeState('tagdefinitions', _bundle.tagdefinitions);
         }
 
         // Each on its own first, so that the page's settings in the former form still override the bundle's.
