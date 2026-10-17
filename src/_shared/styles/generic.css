@@ -601,7 +601,7 @@ input:checked + .slider:before {
     display: inline-block;
     padding: 2px 6px;
     color: var(--primary-fg-color);
-    background: var(--secondary-bg-color);
+    background: var(--primary-bg-color);
     margin: 2px 6px 6px 0px;
     border-radius: 3px;
     line-height: 20px;
@@ -616,6 +616,11 @@ input:checked + .slider:before {
     display: inline-block;
     margin-right: -4px;
     cursor: pointer;
+    opacity: 0.6;
+}
+
+.tagItem .deleteItem:hover, .typeItem .deleteItem:hover, .userItem .deleteItem:hover {
+    opacity: 1;
 }
 
 /* Theme Items */
