@@ -335,6 +335,7 @@ node scripts/publish-schemas.mjs ../FrameTrail-Website/schemas/1   # then commit
 3. Return JSON response with `success`/`error` keys
 4. Client-side: Call via `FrameTrail.module('StorageManager').serverPost(new URLSearchParams({ a: action, … }))` (adds `dataPath`, resolves with the answer whatever its code)
 5. An action that manages the account or its tokens goes into `ftBearerRefusesAction()` (`tokens.php`), so a personal API token cannot call it
+6. A file that is read, changed and written back is decoded with `json_decode($json)` (objects), never with `true`, and an empty map is created as `new stdClass()`: PHP arrays write `{}` as `[]` (`ftResourceIndexRead()`, `ftHypervideoIndexRead()`, `tags.php`)
 
 ### File Conventions
 

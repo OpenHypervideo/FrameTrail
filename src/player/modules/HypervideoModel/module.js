@@ -484,6 +484,24 @@
 
 
     /**
+     * I return a copy of a resource's attributes for a new overlay or annotation:
+     * always an object, also where the resource index holds the empty [] that
+     * older versions of the PHP backend wrote for {}.
+     *
+     * @method copyResourceAttributes
+     * @param {Object} resource
+     * @return {Object}
+     * @private
+     */
+    function copyResourceAttributes(resource) {
+        var attributes = resource.attributes;
+        return (attributes && typeof attributes === 'object' && !Array.isArray(attributes))
+            ? JSON.parse(JSON.stringify(attributes))
+            : {};
+    }
+
+
+    /**
      * I create a new {{#crossLink "Overlay"}}overlay{{/crossLink}}.
      *
      * I am called from {{#crossLink "OverlaysController/makeTimelineDroppable:method"}}OverlaysController{{/crossLink}}.
@@ -546,7 +564,7 @@
                     "startOffset":          0,
                     "endOffset":            0,
                     "resourceId":           protoData.resourceId,
-                    "attributes":           JSON.parse(JSON.stringify(resourceDatabase[protoData.resourceId].attributes || {})),
+                    "attributes":           copyResourceAttributes(resourceDatabase[protoData.resourceId]),
                     "position": {
                         "top":      protoData.position.top,
                         "left":     protoData.position.left,
@@ -724,7 +742,7 @@
                     "start":                protoData.start,
                     "end":                  protoData.end,
                     "resourceId":           protoData.resourceId,
-                    "attributes":           JSON.parse(JSON.stringify(resourceDatabase[protoData.resourceId].attributes || {})),
+                    "attributes":           copyResourceAttributes(resourceDatabase[protoData.resourceId]),
                     "tags":                 [],
                     "source": {
                         frametrail: true,

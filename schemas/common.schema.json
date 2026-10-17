@@ -5,7 +5,7 @@
     "description": "Definitions shared by the FrameTrail data schemas.",
     "$defs": {
         "phpEmptyObject": {
-            "description": "An empty object as PHP writes it. PHP cannot tell an empty JSON object from an empty array, so files written or rewritten by the PHP backend can hold [] where an empty object is meant. Readers treat it as {}.",
+            "description": "Legacy. An empty object as older versions of the PHP backend wrote it: they decoded files to PHP arrays, which cannot tell an empty JSON object from an empty array, so files they wrote or rewrote can hold [] where an empty object is meant. Readers treat it as {}; FrameTrail now writes {}.",
             "const": []
         },
         "context": {

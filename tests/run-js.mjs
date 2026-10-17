@@ -879,6 +879,17 @@ describe('FrameTrailSerializer', () => {
         assert.deepStrictEqual(validator.validate('content-item.schema.json', written), []);
     });
 
+    test('a new item whose model holds PHP\'s [] (copied from an older resource) is written with {}', () => {
+        const base = { name: 'N', creator: 'demo', creatorId: '1', created: Date.UTC(2026, 9, 7, 10, 0, 0, 5), type: 'image', src: 'pic.png', thumb: null, start: 1, end: 2 };
+        const annotation = Serializer.serializeAnnotation(Object.assign({}, base, { attributes: [], tags: [] }), { sourcePath: 'v.mp4' });
+        assert.deepStrictEqual(annotation.body['frametrail:attributes'], {});
+        const overlay = Serializer.serializeOverlay(Object.assign({}, base, { attributes: [], events: [], position: { top: 1, left: 2, width: 3, height: 4 } }), { sourcePath: 'v.mp4' });
+        assert.deepStrictEqual(overlay.body['frametrail:attributes'], {});
+        assert.deepStrictEqual(overlay['frametrail:events'], {});
+        const snippet = Serializer.serializeCodeSnippet({ name: 'S', creator: 'demo', creatorId: '1', created: base.created, snippet: 'x()', start: 1, attributes: [] }, { sourcePath: 'v.mp4' });
+        assert.deepStrictEqual(snippet.body['frametrail:attributes'], {});
+    });
+
     test('the target source follows the context, or stays as stored', () => {
         const model = Serializer.parseHypervideo(hypervideo([overlayItem(toStringCreated)]));
         assert.equal(Serializer.serializeHypervideo(model, {}).contents[0].target.source, 'video.mp4');

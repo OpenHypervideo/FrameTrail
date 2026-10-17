@@ -97,6 +97,26 @@ function ftWriteSubtitleFiles($hypervideoDir, $toDelete = false, $uploads = fals
 }
 
 /**
+ * I read the hypervideo index from a locked file, decoded so that objects stay
+ * objects: decoded as arrays, an empty {} (the overview map's markers) would be
+ * written back as []. "hypervideos" is always an object, also where the file
+ * holds PHP's former [] for it.
+ *
+ * @param sharedFile $file
+ * @return stdClass
+ */
+function ftHypervideoIndexRead($file) {
+    $hvi = json_decode((string)$file->read());
+    if (!($hvi instanceof stdClass)) {
+        $hvi = new stdClass();
+    }
+    if (!isset($hvi->hypervideos) || !($hvi->hypervideos instanceof stdClass)) {
+        $hvi->hypervideos = new stdClass();
+    }
+    return $hvi;
+}
+
+/**
  * @param $src
  * @param $subtitles      uploaded subtitle files, keyed by language
  * @param $subtitleTexts  (optional) WebVTT texts keyed by language, for callers
@@ -139,16 +159,16 @@ function hypervideoAdd($src, $subtitles = false, $subtitleTexts = false) {
     }
 
     $file = new sharedFile($conf["dir"]["data"]."/hypervideos/_index.json");
-    $json = $file->read();
-    $hvi = json_decode($json,true);
+    $hvi = ftHypervideoIndexRead($file);
     // BUGFIX: First video won't be linked as the initial value is null.
-    if (!$hvi["hypervideo-increment"]) {
-        $hvi["hypervideo-increment"] = 0;
+    if (empty($hvi->{"hypervideo-increment"})) {
+        $hvi->{"hypervideo-increment"} = 0;
     }
-    $hvi["hypervideo-increment"]++;
-    $hvi["hypervideos"][$hvi["hypervideo-increment"]] = "./".$hvi["hypervideo-increment"];
+    $hvi->{"hypervideo-increment"}++;
+    $newID = $hvi->{"hypervideo-increment"};
+    $hvi->hypervideos->{$newID} = "./".$newID;
     $file->writeClose(json_encode($hvi, $conf["settings"]["json_flags"]));
-    $newHVdir = $conf["dir"]["data"]."/hypervideos/".$hvi["hypervideo-increment"];
+    $newHVdir = $conf["dir"]["data"]."/hypervideos/".$newID;
 
     mkdir($newHVdir);
     mkdir($newHVdir."/annotations");
@@ -184,7 +204,7 @@ function hypervideoAdd($src, $subtitles = false, $subtitleTexts = false) {
     $return["code"] = 0;
     $return["string"] = "Hypervideo has been added. Look at response.";
     $return["response"] = $src;
-    $return["newHypervideoID"] = $hvi["hypervideo-increment"];
+    $return["newHypervideoID"] = $newID;
     return $return;
 }
 
@@ -222,22 +242,22 @@ function hypervideoClone($hypervideoID, $src) {
     }
 
     $file = new sharedFile($conf["dir"]["data"]."/hypervideos/_index.json");
-    $json = $file->read();
-    $hvi = json_decode($json,true);
-    if (!array_key_exists($hypervideoID,$hvi["hypervideos"])) {
+    $hvi = ftHypervideoIndexRead($file);
+    if (!property_exists($hvi->hypervideos, (string)$hypervideoID)) {
         $return["status"] = "fail";
         $return["code"] = 5;
         $return["string"] = "hypervideoID seems to be wrong.";
         $file->close();
         return $return;
     }
-    $hvi["hypervideo-increment"]++;
-    mkdir($conf["dir"]["data"]."/hypervideos/".$hvi["hypervideo-increment"]);
-    copyr($conf["dir"]["data"]."/hypervideos/".$hvi["hypervideos"][$hypervideoID], $conf["dir"]["data"]."/hypervideos/".$hvi["hypervideo-increment"]);
-    $hvi["hypervideos"][$hvi["hypervideo-increment"]] = "./".$hvi["hypervideo-increment"];
+    $hvi->{"hypervideo-increment"}++;
+    $newID = $hvi->{"hypervideo-increment"};
+    mkdir($conf["dir"]["data"]."/hypervideos/".$newID);
+    copyr($conf["dir"]["data"]."/hypervideos/".$hvi->hypervideos->{$hypervideoID}, $conf["dir"]["data"]."/hypervideos/".$newID);
+    $hvi->hypervideos->{$newID} = "./".$newID;
     $file->writeClose(json_encode($hvi, $conf["settings"]["json_flags"]));
 
-    $file = new sharedFile($conf["dir"]["data"]."/hypervideos/".$hvi["hypervideo-increment"]."/hypervideo.json");
+    $file = new sharedFile($conf["dir"]["data"]."/hypervideos/".$newID."/hypervideo.json");
     $json = $file->read();
     $newHV = json_decode($json,true);
 
@@ -250,27 +270,29 @@ function hypervideoClone($hypervideoID, $src) {
     $newHV["meta"]["lastchanged"] = $time;
     */
 
-    $fileA = new sharedFile($conf["dir"]["data"]."/hypervideos/".$hvi["hypervideo-increment"]."/annotations/_index.json");
+    $fileA = new sharedFile($conf["dir"]["data"]."/hypervideos/".$newID."/annotations/_index.json");
     $jsonA = $fileA->read();
-    $annotationfiles = json_decode($jsonA,true);
+    // Decoded as objects, so that an entry kept below keeps its {} as {}.
+    $annotationfiles = json_decode($jsonA);
+    $oldAnnotationfiles = (isset($annotationfiles->annotationfiles) && is_object($annotationfiles->annotationfiles)) ? (array)$annotationfiles->annotationfiles : array();
+    $mainOwnerId = (isset($oldAnnotationfiles["1"]) && isset($oldAnnotationfiles["1"]->ownerId)) ? $oldAnnotationfiles["1"]->ownerId : null;
 
-    if ($annotationfiles["annotationfiles"]["1"]["ownerId"] != $_SESSION["ohv"]["user"]["id"]) {
+    if ($mainOwnerId != $_SESSION["ohv"]["user"]["id"]) {
         $tmpFound = 0;
-        $oldAnnotationfiles = $annotationfiles["annotationfiles"];
         $newAnnotationfile = array();
         foreach ($oldAnnotationfiles as $k=>$v) {
             // A key is a user id and becomes a file name below.
             if (!preg_match('/^[A-Za-z0-9_-]+$/', (string)$k)) continue;
-            if ($v["ownerId"] == $_SESSION["ohv"]["user"]["id"]) {
+            if (isset($v->ownerId) && $v->ownerId == $_SESSION["ohv"]["user"]["id"]) {
                 $tmpFound = 1;
-                $newAnnotationfile["1"] = $v;
-                rename($conf["dir"]["data"]."/hypervideos/".$hvi["hypervideo-increment"]."/annotations/".$k.".json", $conf["dir"]["data"]."/hypervideos/".$hvi["hypervideo-increment"]."/annotations/1.json");
+                $newAnnotationfile["1"] = (array)$v;
+                rename($conf["dir"]["data"]."/hypervideos/".$newID."/annotations/".$k.".json", $conf["dir"]["data"]."/hypervideos/".$newID."/annotations/1.json");
             } elseif ($k != 1) {
-                unlink($conf["dir"]["data"]."/hypervideos/".$hvi["hypervideo-increment"]."/annotations/".$k.".json");
+                unlink($conf["dir"]["data"]."/hypervideos/".$newID."/annotations/".$k.".json");
             }
         }
         if ($tmpFound == 0) {
-            file_put_contents($conf["dir"]["data"]."/hypervideos/".$hvi["hypervideo-increment"]."/annotations/1.json", "[]");
+            file_put_contents($conf["dir"]["data"]."/hypervideos/".$newID."/annotations/1.json", "[]");
             $newAnnotationfile["1"]["name"] = $newHV["meta"]["name"];
             $newAnnotationfile["1"]["description"] = $newHV["meta"]["description"];
             $newAnnotationfile["1"]["hidden"] = false;
@@ -283,10 +305,10 @@ function hypervideoClone($hypervideoID, $src) {
         // below lists "1" only. Walk the annotations index, which the server
         // writes, not hypervideo.json, which the author does — its keys once
         // reached this unlink() as paths.
-        foreach ((array)$annotationfiles["annotationfiles"] as $k=>$v) {
+        foreach ($oldAnnotationfiles as $k=>$v) {
             if (!preg_match('/^[A-Za-z0-9_-]+$/', (string)$k)) continue;
             if ($k != 1) {
-                unlink($conf["dir"]["data"] . "/hypervideos/" . $hvi["hypervideo-increment"] . "/annotations/" . $k . ".json");
+                unlink($conf["dir"]["data"] . "/hypervideos/" . $newID . "/annotations/" . $k . ".json");
             }
         }
         $newAnnotationfile["1"]["name"] = $newHV["meta"]["name"];
@@ -317,7 +339,7 @@ function hypervideoClone($hypervideoID, $src) {
     $return["code"] = 0;
     $return["string"] = "Hypervideo has been cloned. Look at response.";
     $return["response"] = $newHV;
-    $return["newHypervideoID"] = $hvi["hypervideo-increment"];
+    $return["newHypervideoID"] = $newID;
     $return["clonedFrom"] = $hypervideoID;
     return $return;
 }
@@ -347,10 +369,9 @@ function hypervideoDelete($hypervideoID,$hypervideoName) {
         return $return;
     }
     $file = new sharedFile($conf["dir"]["data"]."/hypervideos/_index.json");
-    $json = $file->read();
-    $hvi = json_decode($json,true);
+    $hvi = ftHypervideoIndexRead($file);
 
-    if (!array_key_exists($hypervideoID,$hvi["hypervideos"])) {
+    if (!property_exists($hvi->hypervideos, (string)$hypervideoID)) {
         $return["status"] = "fail";
         $return["code"] = 4;
         $return["string"] = "hypervideoID could not be found in database.";
@@ -358,7 +379,7 @@ function hypervideoDelete($hypervideoID,$hypervideoName) {
         return $return;
     }
 
-    $hv = json_decode(file_get_contents($conf["dir"]["data"]."/hypervideos/".$hvi["hypervideos"][$hypervideoID]."/hypervideo.json"),true);
+    $hv = json_decode(file_get_contents($conf["dir"]["data"]."/hypervideos/".$hvi->hypervideos->{$hypervideoID}."/hypervideo.json"),true);
 
     if (strtolower($hv["meta"]["name"]) != strtolower($hypervideoName)) {
         $return["status"] = "fail";
@@ -376,8 +397,8 @@ function hypervideoDelete($hypervideoID,$hypervideoName) {
         return $return;
     }
 
-    rrmdir($conf["dir"]["data"]."/hypervideos/".$hvi["hypervideos"][$hypervideoID]);
-    unset($hvi["hypervideos"][$hypervideoID]);
+    rrmdir($conf["dir"]["data"]."/hypervideos/".$hvi->hypervideos->{$hypervideoID});
+    unset($hvi->hypervideos->{$hypervideoID});
     $file->writeClose(json_encode($hvi, $conf["settings"]["json_flags"]));
 
     include_once("collaboration.php");
@@ -541,9 +562,10 @@ function overviewMapChange($src, $baseVersion = null) {
     // is an instance-wide act, not something a hypervideo's own author may do.
     if ($err = requireLogin("admin")) return $err;
 
-    $newMap = json_decode($src, true);
+    // Decoded as objects, so that {} stays {} (see ftHypervideoIndexRead()).
+    $newMap = json_decode($src);
 
-    if (!is_array($newMap)) {
+    if (!($newMap instanceof stdClass)) {
         $return["status"] = "fail";
         $return["code"] = 3;
         $return["string"] = "Overview map JSON has not been sent.";
@@ -553,16 +575,12 @@ function overviewMapChange($src, $baseVersion = null) {
     $indexPath = $conf["dir"]["data"]."/hypervideos/_index.json";
 
     $file = new sharedFile($indexPath);
-    $hvi = json_decode($file->read(), true);
-
-    if (!is_array($hvi)) {
-        $hvi = array();
-    }
+    $hvi = ftHypervideoIndexRead($file);
 
     // Compare-and-swap on the map's own token, not on the index file as a
     // whole: a hypervideo added since we loaded is no reason to refuse a
     // marker drag.
-    $currentChanged = isset($hvi["overviewMap"]["lastchanged"]) ? $hvi["overviewMap"]["lastchanged"] : null;
+    $currentChanged = isset($hvi->overviewMap->lastchanged) ? $hvi->overviewMap->lastchanged : null;
 
     if ($baseVersion !== null && $baseVersion !== ""
         && $currentChanged !== null && $currentChanged != $baseVersion) {
@@ -570,22 +588,19 @@ function overviewMapChange($src, $baseVersion = null) {
         $return["status"]   = "fail";
         $return["code"]     = 7;
         $return["string"]   = "Overview map was changed by someone else.";
-        $return["response"] = array("overviewMap" => $hvi["overviewMap"]);
+        $return["response"] = array("overviewMap" => $hvi->overviewMap);
         return $return;
     }
 
-    $newMap["lastchanged"] = round(microtime(true) * 1000);
+    $newMap->lastchanged = round(microtime(true) * 1000);
 
-    // An empty markers object decodes to an empty PHP array and would be
-    // re-encoded as [] — which the client reads back as "no map at all".
-    if (!isset($newMap["markers"]) || !is_array($newMap["markers"])) {
-        $newMap["markers"] = array();
-    }
-    if (count($newMap["markers"]) === 0) {
-        $newMap["markers"] = new stdClass();
+    // No markers, or none as PHP's former [], are an empty object.
+    if (!isset($newMap->markers) || $newMap->markers === array()
+        || !(is_array($newMap->markers) || $newMap->markers instanceof stdClass)) {
+        $newMap->markers = new stdClass();
     }
 
-    $hvi["overviewMap"] = $newMap;
+    $hvi->overviewMap = $newMap;
 
     $file->writeClose(json_encode($hvi, $conf["settings"]["json_flags"]));
 
@@ -601,7 +616,7 @@ function overviewMapChange($src, $baseVersion = null) {
     // lastchanged is the compare-and-swap token for the map itself;
     // version is the mtime the collaboration poll compares against.
     $return["response"] = array(
-        "lastchanged" => $newMap["lastchanged"],
+        "lastchanged" => $newMap->lastchanged,
         "version"     => @filemtime($indexPath)
     );
     return $return;

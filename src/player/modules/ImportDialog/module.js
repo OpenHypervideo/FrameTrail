@@ -380,6 +380,8 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
         // The entry as it would be here: paths rewritten, owned by the importer.
         function entryOf(resource) {
             var entry = clone(resource);
+            // Older PHP versions wrote empty attributes as []; a new entry gets {}.
+            if (Array.isArray(entry.attributes) && !entry.attributes.length) { entry.attributes = {}; }
             if (FILE_TYPES.indexOf(entry.type) >= 0 && typeof entry.src === 'string') { entry.src = mapPath(ctx, entry.src); }
             if (typeof entry.thumb === 'string') { entry.thumb = mapPath(ctx, entry.thumb); }
             return entry;

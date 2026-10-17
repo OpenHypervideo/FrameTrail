@@ -48,20 +48,20 @@ function ftAnnotationHypervideoDir($hypervideoID) {
  * "annotationfiles", else at the top level of the file, where local-folder mode
  * used to write it (FrameTrailSerializer.parseAnnotationIndex reads it alike).
  *
- * @param array  $index
- * @param string $fileID
- * @return array|null
+ * @param stdClass $index  decoded as objects (json_decode without true)
+ * @param string   $fileID
+ * @return stdClass|null
  */
 function ftAnnotationIndexEntry($index, $fileID) {
 
     $fileID = (string)$fileID;
 
-    if (isset($index["annotationfiles"][$fileID]) && is_array($index["annotationfiles"][$fileID])) {
-        return $index["annotationfiles"][$fileID];
+    if (isset($index->annotationfiles->{$fileID}) && $index->annotationfiles->{$fileID} instanceof stdClass) {
+        return $index->annotationfiles->{$fileID};
     }
     if (!in_array($fileID, array("mainAnnotation", "annotation-increment", "annotationfiles"), true)
-        && isset($index[$fileID]) && is_array($index[$fileID])) {
-        return $index[$fileID];
+        && isset($index->{$fileID}) && $index->{$fileID} instanceof stdClass) {
+        return $index->{$fileID};
     }
 
     return null;
@@ -141,14 +141,15 @@ function annotationfileSave($hypervideoID, $annotationfileID, $action, $name, $d
     // index change as one.
     $file = new sharedFile($hypervideoDir."/annotations/_index.json");
     $json = $file->read();
-    $an = json_decode($json,true);
-    if (!is_array($an)) {
-        $an = array();
+    // Decoded as objects: as arrays, an empty {} would be written back as [].
+    $an = json_decode($json);
+    if (!($an instanceof stdClass)) {
+        $an = new stdClass();
     }
 
     $anID    = (string)$annotationfileID;
     $entry   = ftAnnotationIndexEntry($an, $anID);
-    $current = ($entry !== null && isset($entry["lastchanged"])) ? $entry["lastchanged"] : 0;
+    $current = ($entry !== null && isset($entry->lastchanged)) ? $entry->lastchanged : 0;
 
     if ($baseVersion !== null && $baseVersion !== "" && $current != $baseVersion) {
         $file->close();
@@ -170,29 +171,32 @@ function annotationfileSave($hypervideoID, $annotationfileID, $action, $name, $d
         $hidden = true;
     }
 
-    if ($action == "save" && $entry !== null && isset($entry["created"])) {
-        $created = $entry["created"];
+    if ($action == "save" && $entry !== null && isset($entry->created)) {
+        $created = $entry->created;
     } else {
         $created = time();
     }
 
-    if (!isset($an["annotationfiles"]) || !is_array($an["annotationfiles"])) {
-        $an["annotationfiles"] = array();
+    if (!isset($an->annotationfiles) || !($an->annotationfiles instanceof stdClass)) {
+        $an->annotationfiles = new stdClass();
     }
-    $previous = isset($an["annotationfiles"][$anID]) ? $an["annotationfiles"][$anID] : (($entry !== null) ? $entry : array());
+    $previous = isset($an->annotationfiles->{$anID}) ? $an->annotationfiles->{$anID} : $entry;
+    if (!($previous instanceof stdClass)) {
+        $previous = new stdClass();
+    }
 
-    $an["annotationfiles"][$anID] = $previous;
-    $an["annotationfiles"][$anID]["name"] = ($name) ? $name : (isset($previous["name"]) ? $previous["name"] : "");
-    $an["annotationfiles"][$anID]["description"] = ($description) ? $description : (isset($previous["description"]) ? $previous["description"] : "");
-    $an["annotationfiles"][$anID]["created"] = $created;
-    $an["annotationfiles"][$anID]["lastchanged"] = $time;
-    $an["annotationfiles"][$anID]["owner"] = $_SESSION["ohv"]["user"]["name"];
-    $an["annotationfiles"][$anID]["ownerId"] = $_SESSION["ohv"]["user"]["id"];
-    $an["annotationfiles"][$anID]["hidden"] = $hidden;
+    $previous->name = ($name) ? $name : (isset($previous->name) ? $previous->name : "");
+    $previous->description = ($description) ? $description : (isset($previous->description) ? $previous->description : "");
+    $previous->created = $created;
+    $previous->lastchanged = $time;
+    $previous->owner = $_SESSION["ohv"]["user"]["name"];
+    $previous->ownerId = $_SESSION["ohv"]["user"]["id"];
+    $previous->hidden = $hidden;
+    $an->annotationfiles->{$anID} = $previous;
 
     // The entry says it once: a legacy top-level copy goes.
-    if (!in_array($anID, array("mainAnnotation", "annotation-increment", "annotationfiles"), true) && isset($an[$anID]) && is_array($an[$anID])) {
-        unset($an[$anID]);
+    if (!in_array($anID, array("mainAnnotation", "annotation-increment", "annotationfiles"), true) && isset($an->{$anID}) && $an->{$anID} instanceof stdClass) {
+        unset($an->{$anID});
     }
 
     // The annotation file first, then the index: whoever sees the new
@@ -216,23 +220,32 @@ function annotationfileSave($hypervideoID, $annotationfileID, $action, $name, $d
 
 /**
  * @param $hypervideoID
- * @param $annotationfileID
+ * @param $baseVersion  the lastchanged of the user's entry in annotations/_index.json the client loaded (optional)
  * @return mixed
  *
+ * I delete the signed-in user's annotation file of a hypervideo
+ * (annotations/<userId>.json) and its entry in annotations/_index.json — the
+ * user's own only, as annotationfileSave() writes only that one. An entry at
+ * the top level of the index (local-folder mode) goes too.
+ *
+ * Compare-and-swap as in annotationfileSave(): with a baseVersion, a file
+ * saved since (another tab, a script with an API token) is not deleted. Without
+ * one it is deleted as it is. Another tab's next save of the deleted file is
+ * refused (code 7), since its baseVersion no longer matches.
+ *
  * Returning Code:
- * 0       =   Success. Annotation file has been deleted.
+ * 0       =   Success. Annotation file has been deleted. response: { version } ("0": no file)
  * 1       =   failed. Not logged in or user not active.
- * 3       =   failed. Could not find the annotations folder.
- * 4       =   failed. Annotation file is the main file and can't be deleted.
- * 5       =   failed. Annotation with id=$annotationfileID has not been found.
- * 7       =   Permission denied. You are not the annotation's owner and not an administrator.
+ * 3       =   failed. hypervideoID is not a hypervideo of this instance, or it has no annotations folder.
+ * 5       =   failed. The user has no annotation file in this hypervideo.
+ * 7       =   failed. The file was saved by someone else since baseVersion. response: { lastchanged, version }
  */
-function annotationfileDelete($hypervideoID,$annotationfileID) {
+function annotationfileDelete($hypervideoID, $baseVersion = null) {
     global $conf;
 
     if ($err = requireLogin()) return $err;
 
-    $annotationfileID = $_SESSION["ohv"]["user"];
+    $anID = (string)$_SESSION["ohv"]["user"]["id"];
 
     // Same lookup as annotationfileSave(): an unknown id has no folder.
     $hypervideoDir = ftAnnotationHypervideoDir($hypervideoID);
@@ -244,47 +257,61 @@ function annotationfileDelete($hypervideoID,$annotationfileID) {
         return $return;
     }
 
-    $file = new sharedFile($hypervideoDir."/annotations/_index.json");
-    $hvannotationsIndexJson = $file->read();
-    $hvannotationsIndex = json_decode($hvannotationsIndexJson,true);
+    include_once("collaboration.php");
 
-    if ($hvannotationsIndex["mainAnnotation"] == $annotationfileID) {
-        $return["status"] = "fail";
-        $return["code"] = 4;
-        $return["string"] = "Annotation file is the main file and can't be deleted.";
-        $file->close();
-        return $return;
+    $indexPath = $hypervideoDir."/annotations/_index.json";
+    $filePath  = $hypervideoDir."/annotations/".$anID.".json";
+
+    // sharedFile creates a missing file: only an index that is there is opened.
+    $file  = file_exists($indexPath) ? new sharedFile($indexPath) : null;
+    // Decoded as objects: as arrays, an empty {} would be written back as [].
+    $index = $file ? json_decode((string)$file->read()) : null;
+    if (!($index instanceof stdClass)) {
+        $index = new stdClass();
     }
+    $entry = ftAnnotationIndexEntry($index, $anID);
 
-    if ((!is_array($hvannotationsIndex["annotationfiles"][$annotationfileID])) || (!file_exists($hypervideoDir."/annotations/".$annotationfileID.".json"))) {
+    if ($entry === null && !file_exists($filePath)) {
+        if ($file) $file->close();
         $return["status"] = "fail";
         $return["code"] = 5;
-        $return["string"] = "Annotation with id=".$annotationfileID." has not been found.";
-        $file->close();
+        $return["string"] = "You have no annotations in this hypervideo.";
         return $return;
     }
 
-    $currAnnotation = $hvannotationsIndex["annotationfiles"][$annotationfileID];
+    $current = ($entry !== null && isset($entry->lastchanged)) ? $entry->lastchanged : 0;
+    if ($baseVersion !== null && $baseVersion !== "" && $current != $baseVersion) {
+        if ($file) $file->close();
+        $return["status"]   = "fail";
+        $return["code"]     = 7;
+        $return["string"]   = "The annotations were saved elsewhere in the meantime.";
+        $return["response"] = array(
+            "lastchanged" => $current,
+            "version"     => _collabAnnotationVersion($hypervideoID, $anID)
+        );
+        return $return;
+    }
 
-    // if (($_SESSION["ohv"]["user"]["id"] != $currAnnotation["ownerId"]) && ($_SESSION["ohv"]["user"]["role"] != "admin")) {
-    //  $return["status"] = "fail";
-    //  $return["code"] = 6;
-    //  $return["string"] = "Permission denied. You are not the annotations owner and no administrator!";
-    //  $file->close();
-    //  return $return;
-    // }
+    if (file_exists($filePath)) {
+        unlink($filePath);
+    }
 
-    unlink($hypervideoDir."/annotations/".$annotationfileID.".json");
-    unset($hvannotationsIndex["annotationfiles"][$annotationfileID]);
-
-    $file->writeClose(json_encode($hvannotationsIndex, $conf["settings"]["json_flags"]));
+    if ($entry !== null) {
+        if (isset($index->annotationfiles) && $index->annotationfiles instanceof stdClass) {
+            unset($index->annotationfiles->{$anID});
+        }
+        if (!in_array($anID, array("mainAnnotation", "annotation-increment", "annotationfiles"), true)) {
+            unset($index->{$anID});
+        }
+        $file->writeClose(json_encode($index, $conf["settings"]["json_flags"]));
+    } elseif ($file) {
+        $file->close();
+    }
 
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Annotations deleted.";
-
-
-
+    $return["response"] = array("version" => _collabAnnotationVersion($hypervideoID, $anID));
     return $return;
 }
 
@@ -350,12 +377,14 @@ function updateAnnotationSources($hypervideoID, $newSourcePath) {
             continue;
         }
 
-        $content = json_decode(file_get_contents($file), true);
+        // Decoded as objects: as arrays, every {} of every annotation (its
+        // attributes, its events) would be written back as [].
+        $content = json_decode(file_get_contents($file));
         if (is_array($content)) {
             $modified = false;
-            foreach ($content as &$annotation) {
-                if (isset($annotation["target"]["source"])) {
-                    $annotation["target"]["source"] = $newSourcePath;
+            foreach ($content as $annotation) {
+                if (isset($annotation->target->source)) {
+                    $annotation->target->source = $newSourcePath;
                     $modified = true;
                 }
             }
@@ -374,12 +403,13 @@ function updateAnnotationSources($hypervideoID, $newSourcePath) {
         $indexPath = $annotationsDir . "_index.json";
         if (file_exists($indexPath)) {
             $indexFile = new sharedFile($indexPath);
-            $index     = json_decode($indexFile->read(), true);
+            $index     = json_decode($indexFile->read());
             $now       = (int)round(microtime(true) * 1000);
             foreach ($rewritten as $fileID) {
-                if (isset($index["annotationfiles"][$fileID]) && is_array($index["annotationfiles"][$fileID])) {
-                    $previous = isset($index["annotationfiles"][$fileID]["lastchanged"]) ? (int)$index["annotationfiles"][$fileID]["lastchanged"] : 0;
-                    $index["annotationfiles"][$fileID]["lastchanged"] = max($now, $previous + 1);
+                if (isset($index->annotationfiles->{$fileID}) && $index->annotationfiles->{$fileID} instanceof stdClass) {
+                    $entry    = $index->annotationfiles->{$fileID};
+                    $previous = isset($entry->lastchanged) ? (int)$entry->lastchanged : 0;
+                    $entry->lastchanged = max($now, $previous + 1);
                 }
             }
             $indexFile->writeClose(json_encode($index, $conf["settings"]["json_flags"]));

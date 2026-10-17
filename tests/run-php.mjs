@@ -25,7 +25,12 @@
  *   file it rewrites, so their owners' next saves do not undo it;
  * - tags: any signed-in user adds one, never over an existing id; only admins
  *   change (written with one label) and delete them, a tag in use only when
- *   asked to.
+ *   asked to;
+ * - empty maps are written as {}, never as PHP's []: setup's indexes, new
+ *   resources, and every file the backend reads and writes back (resource and
+ *   hypervideo index, annotation files, config);
+ * - annotationfileDelete: only the user's own file and its index entry,
+ *   compare-and-swap on that entry (code 7), 5 when there is none.
  */
 
 import { describe, test, before, after } from 'node:test';
@@ -78,6 +83,11 @@ async function makeDataFolder() {
     const check  = await setup.post({ a: 'setupCheckDetailed' });
     const init   = await setup.post({ a: 'setupInit', csrf: check.csrf, name: 'Admin A', mail: 'a@example.org', passwd: 'adminadmin' });
     assert.equal(String(init.code), '1', 'setupInit: ' + JSON.stringify(init));
+    // The indexes as setup wrote them, before the hypervideo index is replaced below.
+    folder.setup = {
+        hypervideos: readJSON(path.join(dir, 'hypervideos', '_index.json')),
+        resources:   readJSON(path.join(dir, 'resources', '_index.json'))
+    };
 
     writeJSON(path.join(dir, 'config.json'), { userNeedsConfirmation: false, apiTokens: true, defaultLanguage: 'en', lastchanged: Date.now() });
 
@@ -107,11 +117,19 @@ class Client {
         return client;
     }
 
+    /** params: an object of form fields, or FormData (multipart, for uploads). */
     async post(params, folder = this.folder) {
-        const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+        const headers = {};
+        let body;
+        if (params instanceof FormData) {
+            body = params;
+            body.set('dataPath', folder.dataPath);
+        } else {
+            headers['Content-Type'] = 'application/x-www-form-urlencoded';
+            body = new URLSearchParams(Object.assign({ dataPath: folder.dataPath }, params));
+        }
         if (this.cookies.size) { headers.Cookie = [...this.cookies].map(([k, v]) => k + '=' + v).join('; '); }
         if (this.bearer) { headers.Authorization = 'Bearer ' + this.bearer; }
-        const body = new URLSearchParams(Object.assign({ dataPath: folder.dataPath }, params));
         const res  = await fetch(base + '/_server/ajaxServer.php', { method: 'POST', headers, body });
         for (const cookie of res.headers.getSetCookie()) {
             const [pair] = cookie.split(';');
@@ -125,6 +143,9 @@ class Client {
     }
 
 }
+
+// A 1×1 PNG, for uploads.
+const PIXEL_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
 
 const hypervideoFile = (folder) => path.join(folder.dir, 'hypervideos', '1', 'hypervideo.json');
 const annotationIndexFile = (folder) => path.join(folder.dir, 'hypervideos', '1', 'annotations', '_index.json');
@@ -173,6 +194,7 @@ describe('server contract (src/_server/)', () => {
         for (const params of [
             { a: 'hypervideoChange', hypervideoID: '1', src: JSON.stringify(hv), baseVersion: String(hv.meta.lastchanged) },
             { a: 'annotationfileSave', hypervideoID: '1', annotationfileID: '1', action: 'save', name: 'Nobody', description: 'x', hidden: 'false', src: '[]', baseVersion: '0' },
+            { a: 'annotationfileDelete', hypervideoID: '1' },
             { a: 'configChange', src: '{}', baseVersion: '' },
             { a: 'globalCSSChange', src: 'body {}', baseVersion: '' },
             { a: 'overviewMapChange', src: '{}', baseVersion: '' },
@@ -354,6 +376,113 @@ describe('server contract (src/_server/)', () => {
         assert.equal(await code(a, { a: 'tagDelete', tagName: 'fact-check' }), '0', 'a tag nothing uses needs no force');
         assert.equal(await code(a, { a: 'tagDelete', tagName: 'lecture' }), '0');
         assert.equal(fs.readFileSync(file, 'utf8').trim(), '{}', "no tags left is {}, not PHP's []");
+    });
+
+    test("empty maps are written as {}, never as PHP's []", async () => {
+        const a = await Client.signedIn(folder, 'a@example.org', 'adminadmin'),
+              b = await Client.signedIn(folder, 'b@example.org', 'userbuser'),
+              ok = (answer, what) => assert.equal(String(answer.code), '0', what + ': ' + JSON.stringify(answer)),
+              resources  = () => readJSON(path.join(folder.dir, 'resources', '_index.json')).resources,
+              indexFile  = path.join(folder.dir, 'hypervideos', '_index.json'),
+              configFile = path.join(folder.dir, 'config.json'),
+              annotationFile = path.join(folder.dir, 'hypervideos', '1', 'annotations', '1.json');
+
+        assert.deepStrictEqual(folder.setup.hypervideos.hypervideos, {}, 'setup: hypervideos');
+        assert.deepStrictEqual(folder.setup.resources.resources, {}, 'setup: resources');
+
+        // New resources: an embed (whose attributes the client sends as {}) and an upload,
+        // added to an index that still holds PHP's former [] for no resources. Their ids
+        // start past those the fixture's items name, so that they can be deleted below.
+        writeJSON(path.join(folder.dir, 'resources', '_index.json'), { 'resources-increment': 1000, resources: [] });
+        const clip = await a.post({ a: 'fileUpload', type: 'url', name: 'Clip', description: '',
+            attributes: JSON.stringify({ src: 'https://www.youtube.com/watch?v=abcdefghijk', type: 'youtube', attributes: {}, thumb: 'https://img.youtube.com/vi/abcdefghijk/0.jpg' }) });
+        ok(clip, 'fileUpload url');
+        const form = new FormData();
+        form.append('a', 'fileUpload');
+        form.append('type', 'image');
+        form.append('name', 'Pixel');
+        form.append('description', '');
+        form.append('file', new Blob([Buffer.from(PIXEL_PNG, 'base64')], { type: 'image/png' }), 'pixel.png');
+        const pixel = await a.post(form);
+        ok(pixel, 'fileUpload image');
+        const clipID = String(clip.response.resId), pixelID = String(pixel.response.resId);
+        assert.deepStrictEqual(resources()[clipID].attributes, {}, 'embed');
+        assert.deepStrictEqual(resources()[pixelID].attributes, {}, 'upload');
+
+        // Changing or deleting one resource leaves the others' {} as they are.
+        ok(await a.post({ a: 'fileUpdate', resourcesID: clipID, name: 'Clip 2', licenseType: '', licenseAttribution: '' }), 'fileUpdate');
+        ok(await a.post({ a: 'fileUploadThumb', resourcesID: clipID, thumb: 'data:image/png;base64,' + PIXEL_PNG }), 'fileUploadThumb');
+        assert.deepStrictEqual(resources()[pixelID].attributes, {}, 'after fileUpdate and fileUploadThumb');
+        ok(await a.post({ a: 'fileDelete', resourcesID: pixelID }), 'fileDelete');
+        assert.deepStrictEqual(resources()[clipID].attributes, {}, 'after fileDelete');
+        ok(await a.post({ a: 'fileDelete', resourcesID: clipID }), 'fileDelete');
+        assert.deepStrictEqual(resources(), {}, 'no resources left');
+
+        // config.json: an extension's empty settings.
+        const config = readJSON(configFile);
+        ok(await a.post({ a: 'configChange', src: JSON.stringify(Object.assign({}, config, { extensions: [{ name: 'none', settings: {} }] })), baseVersion: String(config.lastchanged) }), 'configChange');
+        assert.deepStrictEqual(readJSON(configFile).extensions[0].settings, {}, 'config');
+        writeJSON(configFile, config);
+
+        // Annotation files rewritten for a new video source.
+        const items = readJSON(annotationFile);
+        assert.ok(items.length > 0, 'the fixture has annotations');
+        items[0].body['frametrail:attributes'] = {};
+        items[0]['frametrail:events'] = {};
+        ok(await saveAnnotations(a, '1', items, readJSON(annotationIndexFile(folder)).annotationfiles['1'].lastchanged), 'annotationfileSave');
+        ok(await a.post({ a: 'updateAnnotationSources', hypervideoID: '1', newSourcePath: 'empty-maps.mp4' }), 'updateAnnotationSources');
+        const rewritten = readJSON(annotationFile)[0];
+        assert.equal(rewritten.target.source, 'empty-maps.mp4');
+        assert.deepStrictEqual(rewritten.body['frametrail:attributes'], {}, 'annotation attributes');
+        assert.deepStrictEqual(rewritten['frametrail:events'], {}, 'annotation events');
+
+        // The hypervideo index: the map's markers through add, clone and delete.
+        const map = readJSON(indexFile).overviewMap;
+        ok(await a.post({ a: 'overviewMapChange', src: JSON.stringify({ background: '', markers: {} }), baseVersion: map ? String(map.lastchanged) : '' }), 'overviewMapChange');
+        const hv = readJSON(hypervideoFile(folder));
+        hv.meta.name = 'Empty maps';
+        const added = await a.post({ a: 'hypervideoAdd', src: JSON.stringify(hv) });
+        ok(added, 'hypervideoAdd');
+        const cloned = await b.post({ a: 'hypervideoClone', hypervideoID: String(added.newHypervideoID), src: JSON.stringify(hv) });
+        ok(cloned, 'hypervideoClone');
+        assert.deepStrictEqual(readJSON(indexFile).overviewMap.markers, {}, 'after add and clone');
+        const clonedIndex = readJSON(path.join(folder.dir, 'hypervideos', String(cloned.newHypervideoID), 'annotations', '_index.json'));
+        assert.equal(clonedIndex.annotationfiles['1'].ownerId, '2', 'the clone\'s annotations are its maker\'s');
+        for (const id of [cloned.newHypervideoID, added.newHypervideoID]) {
+            ok(await a.post({ a: 'hypervideoDelete', hypervideoID: String(id), hypervideoName: 'Empty maps' }), 'hypervideoDelete ' + id);
+        }
+        const index = readJSON(indexFile);
+        assert.deepStrictEqual(index.overviewMap.markers, {}, 'after delete');
+        assert.deepStrictEqual(index.hypervideos, { 1: './1' });
+    });
+
+    test("annotationfileDelete: the user's own file only, compare-and-swap on its index entry (code 7)", async () => {
+        const a   = await Client.signedIn(folder, 'a@example.org', 'adminadmin'),
+              b   = await Client.signedIn(folder, 'b@example.org', 'userbuser'),
+              dir = path.join(folder.dir, 'hypervideos', '1', 'annotations'),
+              code = async (client, params) => String((await client.post(params)).code);
+
+        const saved = await b.post({ a: 'annotationfileSave', hypervideoID: '1', annotationfileID: '2', action: 'save',
+            name: 'User B', description: "User B's annotations", hidden: 'false', src: '[]', baseVersion: '0' });
+        assert.equal(String(saved.code), '0', JSON.stringify(saved));
+        assert.ok(fs.existsSync(path.join(dir, '2.json')));
+
+        const stale = await b.post({ a: 'annotationfileDelete', hypervideoID: '1', baseVersion: String(saved.response.lastchanged - 1) });
+        assert.equal(String(stale.code), '7', JSON.stringify(stale));
+        assert.ok(fs.existsSync(path.join(dir, '2.json')), 'a stale delete deletes nothing');
+
+        const deleted = await b.post({ a: 'annotationfileDelete', hypervideoID: '1', baseVersion: String(saved.response.lastchanged) });
+        assert.equal(String(deleted.code), '0', JSON.stringify(deleted));
+        assert.equal(deleted.response.version, '0');
+        assert.ok(!fs.existsSync(path.join(dir, '2.json')), 'the file is gone');
+        assert.ok(!('2' in readJSON(annotationIndexFile(folder)).annotationfiles), 'and so is its entry');
+        assert.ok(fs.existsSync(path.join(dir, '1.json')) && '1' in readJSON(annotationIndexFile(folder)).annotationfiles, "another user's file stays");
+
+        assert.equal(await code(b, { a: 'annotationfileDelete', hypervideoID: '1' }), '5', 'nothing left to delete');
+        assert.equal(await code(b, { a: 'annotationfileDelete', hypervideoID: '999' }), '3', 'no such hypervideo');
+
+        assert.equal(await code(a, { a: 'annotationfileDelete', hypervideoID: '1' }), '0', 'without baseVersion');
+        assert.deepStrictEqual(readJSON(annotationIndexFile(folder)).annotationfiles, {}, "no files left is {}, not PHP's []");
     });
 
 });

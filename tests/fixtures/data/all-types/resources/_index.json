@@ -9,7 +9,7 @@
             "description": null,
             "src": "1_1790000000_fixture-lecture.mp4",
             "type": "video",
-            "attributes": [],
+            "attributes": {},
             "thumb": "1_1790000000_thumb_fixture-lecture.png"
         },
         "2": {
@@ -20,7 +20,7 @@
             "description": null,
             "src": "1_1790000060_dna-double-helix.png",
             "type": "image",
-            "attributes": [],
+            "attributes": {},
             "thumb": "1_1790000060_thumb_dna-double-helix.png",
             "licenseType": "CC-BY-SA",
             "licenseAttribution": "Example Author"
@@ -33,7 +33,7 @@
             "description": null,
             "src": "1_1790000120_narration.mp3",
             "type": "audio",
-            "attributes": [],
+            "attributes": {},
             "thumb": null
         },
         "4": {
@@ -44,7 +44,7 @@
             "description": null,
             "src": "1_1790000180_handout.pdf",
             "type": "pdf",
-            "attributes": [],
+            "attributes": {},
             "thumb": "1_1790000180_thumb_handout.png"
         },
         "5": {
@@ -55,7 +55,7 @@
             "description": null,
             "src": "https://www.youtube.com/embed/wZozOrFluiw",
             "type": "youtube",
-            "attributes": [],
+            "attributes": {},
             "thumb": "https://img.youtube.com/vi/wZozOrFluiw/hqdefault.jpg",
             "licenseType": "CC-BY",
             "licenseAttribution": "yourgenome.org, Genome Research Limited"

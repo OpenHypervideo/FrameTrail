@@ -130,7 +130,8 @@
         return (value === undefined) ? undefined : JSON.parse(JSON.stringify(value));
     }
 
-    // PHP writes an empty object as [], so read [] as {} where an object is meant.
+    // Older versions of the PHP backend wrote an empty object as []: read [] as
+    // {} where an object is meant, and write {} for a model that still holds [].
     function objectOrEmpty(value) {
         return (Array.isArray(value) && value.length === 0) ? {} : value;
     }
@@ -486,7 +487,7 @@
 
     function overlayAttributes(overlay) {
 
-        if (overlay.type !== 'location' || !isObject(overlay.attributes)) { return overlay.attributes; }
+        if (overlay.type !== 'location' || !isObject(overlay.attributes)) { return objectOrEmpty(overlay.attributes); }
 
         var attributes = Object.assign({}, overlay.attributes);
         attributes.lat         = parseFloat(overlay.attributes.lat);
@@ -526,7 +527,7 @@
                 "frametrail:resourceId":         overlay.resourceId,
                 "frametrail:attributes":         overlayAttributes(overlay)
             },
-            "frametrail:events": overlay.events
+            "frametrail:events": objectOrEmpty(overlay.events)
         };
 
     }
@@ -605,7 +606,7 @@
                 "frametrail:name":       snippet.name,
                 "frametrail:thumb":      null,
                 "frametrail:resourceId": null,
-                "frametrail:attributes": snippet.attributes
+                "frametrail:attributes": objectOrEmpty(snippet.attributes)
             }
         };
     }
@@ -730,7 +731,7 @@
                 "frametrail:licenseAttribution": annotation.licenseAttribution,
                 "selector":                      mediaSelector(annotation),
                 "frametrail:resourceId":         annotation.resourceId,
-                "frametrail:attributes":         annotation.attributes
+                "frametrail:attributes":         objectOrEmpty(annotation.attributes)
             }
         };
 
@@ -1149,7 +1150,7 @@
                 "layoutArea":       layout
             }, config, ['layoutArea']),
             "clips":        model.clips,
-            "globalEvents": model.globalEvents || {},
+            "globalEvents": objectOrEmpty(model.globalEvents) || {},
             "customCSS":    model.customCSS || "",
             "contents":     CONTENTS_SLOT,
             "chapters":     model.chapters || [],

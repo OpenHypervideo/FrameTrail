@@ -234,15 +234,10 @@ switch($_REQUEST["a"]) {
         $return = updateAnnotationSources($_REQUEST["hypervideoID"],$_REQUEST["newSourcePath"]);
         break;
 
-    /**
-     * in case we need to provide an api interface for deleting annotations:
-     *
     case "annotationfileDelete":
         include_once("annotationfiles.php");
-        $return = annotationfileDelete($_REQUEST["projectID"],$_REQUEST["hypervideoID"],$_REQUEST["annotationfileID"]);
+        $return = annotationfileDelete($_REQUEST["hypervideoID"], isset($_REQUEST["baseVersion"]) ? $_REQUEST["baseVersion"] : null);
         break;
-     *
-     */
 
 
 
@@ -550,8 +545,8 @@ switch($_REQUEST["a"]) {
 
         mkdir($conf["dir"]["data"]."/hypervideos");
         mkdir($conf["dir"]["data"]."/resources");
-        file_put_contents($conf["dir"]["data"]."/hypervideos/_index.json", json_encode(array("hypervideo-increment"=>0,"hypervideos"=>array())),$conf["settings"]["json_flags"]);
-        file_put_contents($conf["dir"]["data"]."/resources/_index.json", json_encode(array("resources-increment"=>0,"resources"=>array())),$conf["settings"]["json_flags"]);
+        file_put_contents($conf["dir"]["data"]."/hypervideos/_index.json", json_encode(array("hypervideo-increment"=>0,"hypervideos"=>new stdClass()),$conf["settings"]["json_flags"]));
+        file_put_contents($conf["dir"]["data"]."/resources/_index.json", json_encode(array("resources-increment"=>0,"resources"=>new stdClass()),$conf["settings"]["json_flags"]));
         file_put_contents($conf["dir"]["data"]."/tagdefinitions.json", "{}");
         file_put_contents($conf["dir"]["data"]."/custom.css", "");
         include_once("user.php");

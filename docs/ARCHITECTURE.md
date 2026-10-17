@@ -529,6 +529,7 @@ All AJAX requests go through `src/_server/ajaxServer.php`:
 | `configVersions` | Read the compare-and-swap tokens for `config.json` and `custom.css` |
 | `globalCSSChange` | Update `custom.css` (admin; refused with code 8 under `externalSettings`) |
 | `annotationfileSave` | Save the signed-in user's annotations (the hypervideo id is looked up in the index, never used as a path); `baseVersion` = the `lastchanged` the client loaded, refused with code 7 when the file was saved since |
+| `annotationfileDelete` | Delete the signed-in user's annotation file of a hypervideo and its index entry (own file only); optional `baseVersion` as for `annotationfileSave` (code 7), code 5 when the user has none |
 
 An action the switch does not know goes to the server extensions switched on in `config.json` → `extensions` (`src/_server/extensionloader.php`), so FrameTrail's own actions always win. Their routes, which answer with their own HTTP semantics, go through `src/_server/extension.php?e=<name>&r=<route>`. See [EXTENDING.md](EXTENDING.md#server-extensions).
 

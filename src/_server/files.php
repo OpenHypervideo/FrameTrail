@@ -5,6 +5,29 @@ require_once("./user.php");
 include_once("./opengraph.php");
 
 /**
+ * I read the resource index from a locked file, decoded so that objects stay
+ * objects: decoded as arrays, an empty {} (a resource's attributes) would be
+ * written back as []. "resources" is always an object, also where the file
+ * holds PHP's former [] for it, and "resources-increment" a number.
+ *
+ * @param sharedFile $file
+ * @return stdClass
+ */
+function ftResourceIndexRead($file) {
+    $res = json_decode((string)$file->read());
+    if (!($res instanceof stdClass)) {
+        $res = new stdClass();
+    }
+    if (!isset($res->resources) || !($res->resources instanceof stdClass)) {
+        $res->resources = new stdClass();
+    }
+    if (empty($res->{"resources-increment"})) {
+        $res->{"resources-increment"} = 0;
+    }
+    return $res;
+}
+
+/**
  * @param $type
  * @param $name
  * @param $description
@@ -110,7 +133,9 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
             }
             $newResource["src"] = $urlAttr["src"];
             $newResource["type"] = $urlAttr["type"];
-            $newResource["attributes"] = $urlAttr["attributes"];
+            // Decoded as objects: as an array, {} would be written as [].
+            $urlObj = json_decode($attributes);
+            $newResource["attributes"] = (isset($urlObj->attributes) && is_object($urlObj->attributes)) ? $urlObj->attributes : new stdClass();
             // For webpage/urlpreview/wikipedia: download and cache thumbnail locally
             if (in_array($urlAttr["type"], ['webpage', 'urlpreview', 'wikipedia'])
                 && !empty($urlAttr["thumb"])
@@ -184,7 +209,7 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
 
             $newResource["src"] = $filename;
             $newResource["type"] = "image";
-            $newResource["attributes"] = [];
+            $newResource["attributes"] = new stdClass();
         break;
 
         case "pdf":
@@ -210,7 +235,7 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
             move_uploaded_file($uploadedFile["tmp_name"], $conf["dir"]["data"]."/resources/".$filename);
             $newResource["src"] = $filename;
             $newResource["type"] = "pdf";
-            $newResource["attributes"] = [];
+            $newResource["attributes"] = new stdClass();
         break;
 
         case "audio":
@@ -257,7 +282,7 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
 
             $newResource["src"] = $filename;
             $newResource["type"] = "audio";
-            $newResource["attributes"] = [];
+            $newResource["attributes"] = new stdClass();
         break;
 
         case "video":
@@ -319,7 +344,7 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
 
             $newResource["src"] = $filename.".mp4";
             $newResource["type"] = "video";
-            $newResource["attributes"] = [];
+            $newResource["attributes"] = new stdClass();
         break;
 
         case "map":
@@ -359,20 +384,16 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
     }
 
     $file = new sharedFile($conf["dir"]["data"]."/resources/_index.json");
-    $json = $file->read();
-    $res = json_decode($json, true);
-    if (!$res["resources-increment"]) {
-        $res["resources-increment"] = 0;
-    }
-    $res["resources-increment"]++;
-    $res["resources"][$res["resources-increment"]] = $newResource;
+    $res = ftResourceIndexRead($file);
+    $res->{"resources-increment"}++;
+    $res->resources->{$res->{"resources-increment"}} = $newResource;
     $file->writeClose(json_encode($res, $conf["settings"]["json_flags"]));
 
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "File saved.";
     $return["response"]["resource"] = $newResource;
-    $return["response"]["resId"] = $res["resources-increment"];
+    $return["response"]["resId"] = $res->{"resources-increment"};
     return $return;
 }
 
@@ -408,9 +429,9 @@ function fileUploadThumb($resourcesID,$thumb) {
         return $return;
     }
     $file = new sharedFile($conf["dir"]["data"]."/resources/_index.json");
-    $json = $file->read();
-    $res = json_decode($json,true);
-    if (!is_array($res["resources"][$resourcesID])) {
+    $res = ftResourceIndexRead($file);
+    $resource = isset($res->resources->{$resourcesID}) ? $res->resources->{$resourcesID} : null;
+    if (!($resource instanceof stdClass)) {
         $return["status"] = "fail";
         $return["code"] = 5;
         $return["string"] = "No valid resourcesID";
@@ -418,7 +439,7 @@ function fileUploadThumb($resourcesID,$thumb) {
         $file->close();
         return $return;
     }
-    if (($res["resources"][$resourcesID]["creatorId"] != $_SESSION["ohv"]["user"]["id"]) && ($_SESSION["ohv"]["user"]["role"] != "admin")) {
+    if (($resource->creatorId != $_SESSION["ohv"]["user"]["id"]) && ($_SESSION["ohv"]["user"]["role"] != "admin")) {
         $return["status"] = "fail";
         $return["code"] = 6;
         $return["string"] = "Not permitted. It's not your resource and you're not an admin!";
@@ -430,15 +451,15 @@ function fileUploadThumb($resourcesID,$thumb) {
     //echo $_REQUEST["thumb"];
     $data = base64_decode($thumb);
 
-    $filename = substr($_SESSION["ohv"]["user"]["id"]."_".$res["resources"][$resourcesID]["created"]."_thumb_".sanitize($res["resources"][$resourcesID]["name"]),0,90);
+    $filename = substr($_SESSION["ohv"]["user"]["id"]."_".$resource->created."_thumb_".sanitize($resource->name),0,90);
     file_put_contents($conf["dir"]["data"]."/resources/".$filename.".png", $data);
 
-    $res["resources"][$resourcesID]["thumb"] = $filename.".png";
+    $resource->thumb = $filename.".png";
     $file->writeClose(json_encode($res, $conf["settings"]["json_flags"]));
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "thumb saved";
-    $return["response"] = $res["resources"][$resourcesID];
+    $return["response"] = $resource;
     return $return;
 }
 
@@ -465,16 +486,16 @@ function fileDelete($resourcesID) {
         return $return;
     }
     $file = new sharedFile($conf["dir"]["data"]."/resources/_index.json");
-    $json = $file->read();
-    $res = json_decode($json,true);
-    if (!$res["resources"][$resourcesID]) {
+    $res = ftResourceIndexRead($file);
+    $resource = isset($res->resources->{$resourcesID}) ? $res->resources->{$resourcesID} : null;
+    if (!($resource instanceof stdClass)) {
         $return["status"] = "fail";
         $return["code"] = 3;
         $return["string"] = "No valid resourcesID";
         $file->close();
         return $return;
     }
-    if (($res["resources"][$resourcesID]["creatorId"] != $_SESSION["ohv"]["user"]["id"]) && ($_SESSION["ohv"]["user"]["role"] != "admin")) {
+    if (($resource->creatorId != $_SESSION["ohv"]["user"]["id"]) && ($_SESSION["ohv"]["user"]["role"] != "admin")) {
         $return["status"] = "fail";
         $return["code"] = 4;
         $return["string"] = "Not permitted. It's not your resource and you're not an admin!";
@@ -552,16 +573,16 @@ function fileDelete($resourcesID) {
     // goes through ftResourceFilePath(): a resource entry is data a user wrote,
     // and only a plain file directly inside resources/ may be deleted for it.
     $ownedFiles = array("thumb");
-    if (in_array($res["resources"][$resourcesID]["type"], array("video", "image", "pdf"), true)) {
+    if (isset($resource->type) && in_array($resource->type, array("video", "image", "pdf"), true)) {
         $ownedFiles[] = "src";
     }
     foreach ($ownedFiles as $field) {
-        $path = isset($res["resources"][$resourcesID][$field]) ? ftResourceFilePath($res["resources"][$resourcesID][$field]) : null;
+        $path = isset($resource->{$field}) ? ftResourceFilePath($resource->{$field}) : null;
         if ($path !== null) {
             unlink($path);
         }
     }
-    unset($res["resources"][$resourcesID]);
+    unset($res->resources->{$resourcesID});
     $file->writeClose(json_encode($res, $conf["settings"]["json_flags"]));
     //$file->close();
     $return["status"] = "success";
@@ -595,16 +616,16 @@ function fileUpdate($resourcesID, $name, $licenseType, $licenseAttribution) {
         return $return;
     }
     $file = new sharedFile($conf["dir"]["data"]."/resources/_index.json");
-    $json = $file->read();
-    $res = json_decode($json, true);
-    if (!$res["resources"][$resourcesID]) {
+    $res = ftResourceIndexRead($file);
+    $resource = isset($res->resources->{$resourcesID}) ? $res->resources->{$resourcesID} : null;
+    if (!($resource instanceof stdClass)) {
         $return["status"] = "fail";
         $return["code"] = 3;
         $return["string"] = "No valid resourcesID";
         $file->close();
         return $return;
     }
-    if (($res["resources"][$resourcesID]["creatorId"] != $_SESSION["ohv"]["user"]["id"]) && ($_SESSION["ohv"]["user"]["role"] != "admin")) {
+    if (($resource->creatorId != $_SESSION["ohv"]["user"]["id"]) && ($_SESSION["ohv"]["user"]["role"] != "admin")) {
         $return["status"] = "fail";
         $return["code"] = 4;
         $return["string"] = "Not permitted. It's not your resource and you're not an admin!";
@@ -612,15 +633,15 @@ function fileUpdate($resourcesID, $name, $licenseType, $licenseAttribution) {
         return $return;
     }
 
-    $res["resources"][$resourcesID]["name"] = $name;
-    $res["resources"][$resourcesID]["licenseType"] = $licenseType;
-    $res["resources"][$resourcesID]["licenseAttribution"] = $licenseAttribution;
+    $resource->name = $name;
+    $resource->licenseType = $licenseType;
+    $resource->licenseAttribution = $licenseAttribution;
 
     $file->writeClose(json_encode($res, $conf["settings"]["json_flags"]));
     $return["status"] = "success";
     $return["code"] = 0;
     $return["string"] = "Resource updated";
-    $return["resource"] = $res["resources"][$resourcesID];
+    $return["resource"] = $resource;
     return $return;
 }
 
@@ -1018,8 +1039,9 @@ function updateConfigFile($configstring, $baseVersion = null) {
     // Anything that does not decode to an object is refused before the file is
     // touched. It used to decode to null and be written back as a config
     // holding nothing but a timestamp — externalAuth and every setting gone.
-    $src = json_decode($configstring, true);
-    if (!is_array($src) || (count($src) > 0 && array_values($src) === $src)) {
+    // Decoded as objects, so that {} (an extension's settings) stays {}.
+    $src = json_decode($configstring);
+    if (!($src instanceof stdClass)) {
         $return["status"] = "fail";
         $return["code"] = 3;
         $return["string"] = "Config must be a JSON object.";
@@ -1030,14 +1052,14 @@ function updateConfigFile($configstring, $baseVersion = null) {
 
     // Compare-and-swap against the lastchanged we stamped on the previous write.
     // Without this, two admins in the settings dialog silently erase each other.
-    $current = json_decode($file->read(), true);
+    $current = json_decode($file->read());
     if ($baseVersion !== null && $baseVersion !== ""
-        && isset($current["lastchanged"]) && $current["lastchanged"] != $baseVersion) {
+        && isset($current->lastchanged) && $current->lastchanged != $baseVersion) {
         $file->close();
         $return["status"]   = "fail";
         $return["code"]     = 7;
         $return["string"]   = "Config was changed by someone else.";
-        $return["response"] = array("lastchanged" => $current["lastchanged"]);
+        $return["response"] = array("lastchanged" => $current->lastchanged);
         return $return;
     }
 
@@ -1046,14 +1068,14 @@ function updateConfigFile($configstring, $baseVersion = null) {
     // settings save — or a crafted request — can neither remove external
     // authentication nor switch on external settings.
     foreach (ftReservedConfigKeys() as $reservedKey) {
-        if (is_array($current) && array_key_exists($reservedKey, $current)) {
-            $src[$reservedKey] = $current[$reservedKey];
+        if (($current instanceof stdClass) && property_exists($current, $reservedKey)) {
+            $src->{$reservedKey} = $current->{$reservedKey};
         } else {
-            unset($src[$reservedKey]);
+            unset($src->{$reservedKey});
         }
     }
 
-    $src["lastchanged"] = round(microtime(true) * 1000);
+    $src->lastchanged = round(microtime(true) * 1000);
     $jsonsrc = json_encode($src,$conf["settings"]["json_flags"]);
     $file->writeClose($jsonsrc);
 
@@ -1074,7 +1096,7 @@ function updateConfigFile($configstring, $baseVersion = null) {
     // lastchanged is the compare-and-swap token for config.json itself;
     // version is the mtime the collaboration poll compares against.
     $return["response"] = array(
-        "lastchanged" => $src["lastchanged"],
+        "lastchanged" => $src->lastchanged,
         "version"     => @filemtime($conf["dir"]["data"]."/config.json")
     );
     return $return;
@@ -1833,7 +1855,7 @@ function fileDownloadFromUrl($url, $name, $licenseType, $licenseAttribution) {
         "created"    => (int)$cTime,
         "src"        => $filename,
         "type"       => "image",
-        "attributes" => [],
+        "attributes" => new stdClass(),
     ];
 
     if (!empty($licenseType)) {
@@ -1854,17 +1876,16 @@ function fileDownloadFromUrl($url, $name, $licenseType, $licenseAttribution) {
 
     // Save to _index.json
     $file = new sharedFile($conf["dir"]["data"]."/resources/_index.json");
-    $res = json_decode($file->read(), true);
-    if (!$res["resources-increment"]) { $res["resources-increment"] = 0; }
-    $res["resources-increment"]++;
-    $res["resources"][$res["resources-increment"]] = $newResource;
+    $res = ftResourceIndexRead($file);
+    $res->{"resources-increment"}++;
+    $res->resources->{$res->{"resources-increment"}} = $newResource;
     $file->writeClose(json_encode($res, $conf["settings"]["json_flags"]));
 
     return [
         "status"   => "success",
         "code"     => 0,
         "string"   => "Image downloaded and saved.",
-        "response" => ["resource" => $newResource, "resId" => $res["resources-increment"]],
+        "response" => ["resource" => $newResource, "resId" => $res->{"resources-increment"}],
     ];
 }
 
