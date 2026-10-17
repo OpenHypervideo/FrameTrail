@@ -668,25 +668,28 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 
 .annotationDisplay {
     display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 12px 16px;
+    flex-direction: column;
+    gap: 12px;
 }
 
+/* The whole width: the player, and the phone beside it */
 .annotationDisplayLayout {
-    flex: none;
+    container-type: inline-size;
     display: flex;
     align-items: center;
     gap: 10px;
+    padding: 10px 20px;
 }
 
-/* The player's proportions, scaled to 280px for a player of about 1600 × 1000px */
+/* The player in 16:9; its areas take their part of it as in a player of about 1600 × 900px */
 .annotationDisplayPlayer {
+    container-type: size;
+    flex: 1 1 0;
+    min-width: 0;
+    aspect-ratio: 16 / 9;
     display: flex;
     flex-direction: column;
     gap: 3px;
-    width: 280px;
-    height: 168px;
 }
 
 .annotationDisplayMiddle {
@@ -704,6 +707,7 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     border-radius: 3px;
     background: var(--primary-bg-color);
     color: var(--primary-fg-color);
+    opacity: 0.6;
 }
 
 .annotationDisplayArea {
@@ -725,17 +729,17 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 
 .annotationDisplayArea[data-area="top"][data-size="small"],
 .annotationDisplayArea[data-area="bottom"][data-size="small"] {
-    height: 28px;
+    height: max(24px, 8.5cqh);
 }
 
 .annotationDisplayArea[data-area="top"][data-size="medium"],
 .annotationDisplayArea[data-area="bottom"][data-size="medium"] {
-    height: 38px;
+    height: max(30px, 17cqh);
 }
 
 .annotationDisplayArea[data-area="top"][data-size="large"],
 .annotationDisplayArea[data-area="bottom"][data-size="large"] {
-    height: 54px;
+    height: max(40px, 40cqh);
 }
 
 .annotationDisplayArea[data-area="left"],
@@ -746,17 +750,17 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 
 .annotationDisplayArea[data-area="left"][data-size="small"],
 .annotationDisplayArea[data-area="right"][data-size="small"] {
-    width: 24px;
+    width: max(24px, 5.5cqw);
 }
 
 .annotationDisplayArea[data-area="left"][data-size="medium"],
 .annotationDisplayArea[data-area="right"][data-size="medium"] {
-    width: 70px;
+    width: 25cqw;
 }
 
 .annotationDisplayArea[data-area="left"][data-size="large"],
 .annotationDisplayArea[data-area="right"][data-size="large"] {
-    width: 98px;
+    width: 35cqw;
 }
 
 /* A small side area has room for the views' icons only (their names are in the tooltip) */
@@ -821,15 +825,16 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     color: var(--primary-fg-color);
 }
 
+/* The phone: a part of the layout's width, half as wide as high */
 .annotationDisplayPhone {
     flex: none;
     box-sizing: border-box;
     display: flex;
-    width: 60px;
-    height: 110px;
-    padding: 8px 4px;
+    width: 12cqw;
+    aspect-ratio: 1 / 2;
+    padding: 10px 5px;
     border: 2px solid var(--primary-bg-color);
-    border-radius: 8px;
+    border-radius: 10px;
 }
 
 .annotationDisplayPhone .annotationDisplayArea {
@@ -837,13 +842,15 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     min-width: 0;
 }
 
+/* Below the layout, the whole width */
 .annotationDisplayInfo {
-    flex: 1 1 180px;
-    min-width: 0;
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
     gap: 8px;
+}
+
+.annotationDisplayInfo .openLayoutEditorButton {
+    align-self: flex-start;
 }
 
 .annotationDisplayInfo .message {
