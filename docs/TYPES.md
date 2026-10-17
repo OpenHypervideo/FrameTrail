@@ -75,6 +75,7 @@ Overlay, annotation. Its src, if it has one, goes into `body.value`. Schema: [`a
 | `box.borderWidth` | number | ≥ 0 | `0` | Border width in pixels. 0 means no border. |
 | `box.borderColor` | string |  | `#000000` | CSS border colour. |
 | `box.shadow` | boolean |  | `false` | Draw a drop shadow. |
+| `autoSize` |  | `height` |  | On overlays: "height" makes the box as high as its content (title, text and card). The editor sets the height whenever the content or the width changes; only the width is set by hand. When shown, the content is never clipped, even where other fonts make it longer. Missing means the box keeps the size it was given. |
 
 ### `html`
 

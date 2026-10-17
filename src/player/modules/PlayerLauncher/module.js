@@ -224,6 +224,9 @@
     // Set up the on-video editor of freeform hotspot outlines
     FrameTrail.initModule('FreeformShapeEditor');
 
+    // Set up the on-video editor of text overlays
+    FrameTrail.initModule('TextInlineEditor');
+
     // Set up the edit API (instance.edit), before the extensions that use it
     FrameTrail.initModule('EditAPI');
 

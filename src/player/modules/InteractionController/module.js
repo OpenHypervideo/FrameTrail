@@ -111,12 +111,14 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
             }
 
             // Undo/Redo when ctrl+z / ctrl+shift+z (or cmd on Mac)
-            // Only when in edit mode and not focused on input/textarea/CodeMirror
+            // Only when in edit mode and not focused on a text field (input, textarea,
+            // contenteditable: Quill, CodeMirror), which has its own undo
             if ((evt.metaKey || evt.ctrlKey) && evt.keyCode == 90) {
                 // Check if we're in edit mode and not in an editable element
                 if (FrameTrail.getState('editMode') &&
                     evt.target.tagName !== 'INPUT' &&
                     evt.target.tagName !== 'TEXTAREA' &&
+                    !evt.target.isContentEditable &&
                     !evt.target.closest('.cm-editor')) {
 
                     if (evt.shiftKey) {
@@ -136,6 +138,7 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
                 if (FrameTrail.getState('editMode') &&
                     evt.target.tagName !== 'INPUT' &&
                     evt.target.tagName !== 'TEXTAREA' &&
+                    !evt.target.isContentEditable &&
                     !evt.target.closest('.cm-editor')) {
 
                     FrameTrail.module('UndoManager').redo();
@@ -144,8 +147,10 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
                 }
             }
 
+            // Keys typed into a text field are text (space, arrows), not player keys
             if (    evt.target.tagName === 'INPUT'
-                 || evt.target.tagName === 'TEXTAREA') {
+                 || evt.target.tagName === 'TEXTAREA'
+                 || evt.target.isContentEditable) {
 
                 return;
             }
@@ -415,8 +420,9 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
     /**
      * Escape clears the selection of the timeline that is being edited
      * (overlays, annotations, code snippets or transcript cues), unless something else owns
-     * the key: a text editor, an open dialog, the keyframe easing menu, or the
-     * freeform shape editor (drawing, or a selected point).
+     * the key: a text editor, an open dialog, the keyframe easing menu, the
+     * freeform shape editor (drawing, or a selected point), or text being edited on
+     * the video (which then ends).
      * @method escapeKey
      * @param {Event} evt
      */
@@ -431,6 +437,11 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
 
         var OverlayAnimationEditor = FrameTrail.module('OverlayAnimationEditor');
         if (OverlayAnimationEditor && OverlayAnimationEditor.isKeyframeMenuOpen()) {
+            return;
+        }
+
+        var TextInlineEditor = FrameTrail.module('TextInlineEditor');
+        if (TextInlineEditor && TextInlineEditor.handleEscape()) {
             return;
         }
 

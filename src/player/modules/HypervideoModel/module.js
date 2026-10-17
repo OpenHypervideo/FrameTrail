@@ -2140,6 +2140,11 @@
             FrameTrail.module('TranscriptsEditor').reset();
         }
 
+        // And text being edited on the video.
+        if (FrameTrail.module('TextInlineEditor')) {
+            FrameTrail.module('TextInlineEditor').stop({ discard: true });
+        }
+
         // Clear undo history when switching hypervideos
         FrameTrail.module('UndoManager').clear();
 

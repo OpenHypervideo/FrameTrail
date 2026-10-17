@@ -380,6 +380,8 @@ t=12.5,20&xywh=percent:18,22,47,40
 
 `xywh=percent:<left>,<top>,<width>,<height>`, in percent of the video frame. FrameTrail only writes and reads the `percent:` form. Values may be fractional.
 
+A text overlay with `attributes.autoSize: "height"` has a box as high as its content: the editor writes the height whenever the content or the width changes, so the stored box is what the author saw. Text is laid out on a stage 800 px wide, whatever the player's size, so the height that fits depends only on the content, the width and the video's aspect ratio. When shown, the content of such an overlay is never clipped, in case other fonts make it longer.
+
 ### Box motion (keyframes) and rotation
 
 An overlay's box can move, resize and rotate over its time span. Media Fragments can express one static rectangle per time range and no W3C or IIIF selector describes a moving region, so the motion is a FrameTrail extension on the overlay's selector:

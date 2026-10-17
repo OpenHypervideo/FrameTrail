@@ -139,6 +139,21 @@ FrameTrail.defineType(
                 },
 
                 /**
+                 * The element whose height is the height of my content (title, body and
+                 * card), for overlays whose height follows their content (see
+                 * Overlay.measureContentHeight).
+                 *
+                 * @method getContentFitRoot
+                 * @param {HTMLElement} resourceDetail
+                 * @return {HTMLElement}
+                 */
+                getContentFitRoot: function(resourceDetail) {
+
+                    return resourceDetail.querySelector('.resourceContent');
+
+                },
+
+                /**
                  * Several modules need me to render a thumb of myself.
                  *
                  * These thumbs have a special structure of HTMLElements, where several data-attributes carry the information needed.
@@ -207,6 +222,9 @@ FrameTrail.defineType(
                     optionsPanel.prepend(this.renderTextEditors(overlay));
                     optionsPanel.prepend(this.renderCardControls(overlay));
 
+                    // While the height follows the text, the Height input only shows it
+                    basicControls.controlsContainer.querySelector('.positionHeight').disabled = overlay.hasAutoHeight();
+
 
                     return basicControls;
 
@@ -241,13 +259,22 @@ FrameTrail.defineType(
                         + '    </div>'
                         + '</div>'
                         + '<div class="layoutRow">'
-                        + '    <div class="column-12">'
+                        + '    <div class="column-6">'
                         + '        <div class="checkboxRow">'
                         + '            <label class="switch">'
                         + '                <input class="textBoxCheckbox" type="checkbox" autocomplete="off"' + (box ? ' checked' : '') + '>'
                         + '                <span class="slider round"></span>'
                         + '            </label>'
                         + '            <label>' + labels['SettingsTextBox'] + '</label>'
+                        + '        </div>'
+                        + '    </div>'
+                        + '    <div class="column-6">'
+                        + '        <div class="checkboxRow">'
+                        + '            <label class="switch">'
+                        + '                <input class="textAutoHeightCheckbox" type="checkbox" autocomplete="off"' + (attrs.autoSize === 'height' ? ' checked' : '') + '>'
+                        + '                <span class="slider round"></span>'
+                        + '            </label>'
+                        + '            <label>' + labels['SettingsTextAutoHeight'] + '</label>'
                         + '        </div>'
                         + '    </div>'
                         + '</div>'
@@ -297,22 +324,58 @@ FrameTrail.defineType(
                         return overlay.overlayElement.querySelector('.resourceDetail .resourceContent');
                     };
 
-                    var registerUndo = function(before) {
+                    // A change of the content may change the box (auto height), so
+                    // undo restores both.
+                    var STATE_KEYS = ['attributes', 'position', 'keyframes'];
+
+                    var registerUndo = function(before, description) {
                         FrameTrail.module('OverlaysController').registerStateUndo(
                             overlay,
-                            labels['SidebarOverlays'] + ' ' + labels['SettingsTextBox'],
+                            labels['SidebarOverlays'] + ' ' + (description || labels['SettingsTextBox']),
                             before,
-                            overlay.snapshotState(['attributes']),
+                            overlay.snapshotState(STATE_KEYS),
                             { rerender: true }
                         );
                     };
+
+                    // The box follows the content while auto height is on
+                    var fitBox = function() {
+                        if (overlay.fitToContent()) {
+                            FrameTrail.module('OverlaysController').refreshMotionControls(overlay);
+                        }
+                    };
+
+                    // Auto height on / off; the Height input is not used while it is on
+                    var heightInput = function() {
+                        var controls = wrapper.closest('.controlsWrapper');
+                        return controls ? controls.querySelector('.positionHeight') : null;
+                    };
+                    var syncHeightInput = function() {
+                        var input = heightInput();
+                        if (input) { input.disabled = (attrs.autoSize === 'height'); }
+                    };
+                    wrapper.querySelector('.textAutoHeightCheckbox').addEventListener('change', function() {
+                        var before = overlay.snapshotState(STATE_KEYS);
+                        if (this.checked) {
+                            attrs.autoSize = 'height';
+                        } else {
+                            delete attrs.autoSize;
+                        }
+                        overlay.updateOverlayElement();
+                        overlay.scaleOverlayElement();
+                        fitBox();
+                        syncHeightInput();
+                        FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                        registerUndo(before, labels['SettingsTextAutoHeight']);
+                    });
 
                     // Title
                     var titleInput  = wrapper.querySelector('.textTitleInput'),
                         titleBefore = null;
                     titleInput.value = attrs.title || '';
+                    overlay._titleInput = titleInput;   // see refreshTextControls
                     titleInput.addEventListener('focus', function() {
-                        titleBefore = overlay.snapshotState(['attributes']);
+                        titleBefore = overlay.snapshotState(STATE_KEYS);
                     });
                     titleInput.addEventListener('input', function() {
                         var value = this.value,
@@ -335,23 +398,25 @@ FrameTrail.defineType(
                                 if (value) { titleElement.textContent = value; } else { titleElement.remove(); }
                             }
                         }
+                        fitBox();
                         overlay.contentChanged();
                         FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
                     });
                     titleInput.addEventListener('change', function() {
                         if (titleBefore) { registerUndo(titleBefore); }
-                        titleBefore = overlay.snapshotState(['attributes']);
+                        titleBefore = overlay.snapshotState(STATE_KEYS);
                     });
 
                     // Card style on / off
                     wrapper.querySelector('.textBoxCheckbox').addEventListener('change', function() {
-                        var before = overlay.snapshotState(['attributes']);
+                        var before = overlay.snapshotState(STATE_KEYS);
                         if (this.checked) {
                             attrs.box = { background: '#ffffff', titleColor: '#14161a', padding: 24, radius: 12, shadow: true };
                         } else {
                             delete attrs.box;
                         }
                         overlay.rerenderContent();
+                        fitBox();
                         FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
                         registerUndo(before);
                         wrapper.replaceWith(self.renderCardControls(overlay));
@@ -361,7 +426,7 @@ FrameTrail.defineType(
                     var fieldBefore = null;
                     wrapper.querySelectorAll('.textBoxField, .textBoxShadow').forEach(function(field) {
                         field.addEventListener('focus', function() {
-                            fieldBefore = overlay.snapshotState(['attributes']);
+                            fieldBefore = overlay.snapshotState(STATE_KEYS);
                         });
                         var apply = function() {
                             if (!attrs.box) { return; }
@@ -377,14 +442,15 @@ FrameTrail.defineType(
                             var content = getContent();
                             if (content) { self.applyCardStyle(content, attrs.box); }
                             overlay.scaleOverlayElement();
+                            fitBox();
                             FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
                         };
                         field.addEventListener('input', apply);
                         field.addEventListener('change', function() {
-                            var before = fieldBefore || overlay.snapshotState(['attributes']);
+                            var before = fieldBefore || overlay.snapshotState(STATE_KEYS);
                             apply();
                             registerUndo(before);
-                            fieldBefore = overlay.snapshotState(['attributes']);
+                            fieldBefore = overlay.snapshotState(STATE_KEYS);
                         });
                     });
 
@@ -411,26 +477,174 @@ FrameTrail.defineType(
 
 
                 /**
-                 * I render visual and code editors for text content
+                 * The fonts and font sizes the text editors offer: Quill's font and
+                 * size formats are limited to these (see registerQuillFormats).
+                 * @attribute quillFonts
+                 * @type Array
+                 */
+                quillFonts:     ['Arial', 'Arial Black', 'Courier', 'Courier New', 'Dosis', 'Lucida Console', 'Helvetica', 'Impact', 'Lucida Grande', 'Lucida Sans', 'Montserrat', 'Tahoma', 'Times', 'Times New Roman', 'TitilliumWeb', 'Verdana'],
+                quillFontSizes: ['8px', '9px', '10px', '11px', '12px', '13px', '14px', '15px', '16px', '17px', '18px', '20px', '22px', '26px', '28px', '30px', '32px', '34px', '36px', '38px', '40px', '46px', '50px', '60px', '70px'],
+
+
+                /**
+                 * I register Quill's font, size and align formats as inline styles
+                 * (not CSS classes), font and size limited to quillFonts and
+                 * quillFontSizes. Once per page.
+                 * @method registerQuillFormats
+                 */
+                registerQuillFormats: function() {
+
+                    if (Quill._ftFormatsRegistered) { return; }
+
+                    var FontAttributor = Quill.import('attributors/style/font');
+                    if (FontAttributor) {
+                        FontAttributor.whitelist = this.quillFonts;
+                        Quill.register(FontAttributor, true);
+                    }
+
+                    var SizeAttributor = Quill.import('attributors/style/size');
+                    if (SizeAttributor) {
+                        SizeAttributor.whitelist = this.quillFontSizes;
+                        Quill.register(SizeAttributor, true);
+                    }
+
+                    var AlignStyle = Quill.import('attributors/style/align');
+                    if (AlignStyle) {
+                        Quill.register(AlignStyle, true);
+                    }
+
+                    Quill._ftFormatsRegistered = true;
+
+                },
+
+
+                /**
+                 * I add a colour input for any colour to a Quill toolbar: it colours
+                 * the selection the editor had when the input was opened, and shows
+                 * the colour of the selection.
+                 * @method addHexColorInput
+                 * @param {HTMLElement} toolbar
+                 * @param {Quill} quill
+                 * @return {HTMLElement} the input
+                 */
+                addHexColorInput: function(toolbar, quill) {
+
+                    var hexSpan = document.createElement('span');
+                    hexSpan.className = 'ql-formats';
+                    var colorHexInput = document.createElement('input');
+                    colorHexInput.type = 'color';
+                    colorHexInput.title = 'Custom color (hex)';
+                    colorHexInput.className = 'ql-color-hex';
+                    colorHexInput.style.cssText = 'width:26px;height:26px;padding:0;border:none;cursor:pointer;background:none;';
+                    hexSpan.appendChild(colorHexInput);
+                    toolbar.appendChild(hexSpan);
+
+                    var savedQuillRange = null;
+                    colorHexInput.addEventListener('mousedown', function() {
+                        savedQuillRange = quill.getSelection();
+                    });
+                    colorHexInput.addEventListener('input', function() {
+                        if (savedQuillRange) {
+                            quill.setSelection(savedQuillRange);
+                        }
+                        quill.format('color', colorHexInput.value, 'user');
+                    });
+
+                    quill.on('selection-change', function(range) {
+                        if (!range) { return; }
+                        var format = quill.getFormat(range);
+                        if (typeof format.color === 'string') {
+                            colorHexInput.value = format.color;
+                        }
+                    });
+
+                    return colorHexInput;
+
+                },
+
+
+                /**
+                 * I return my text as HTML (attributes.text is stored HTML-escaped).
+                 * @method getTextHTML
+                 * @return {String}
+                 */
+                getTextHTML: function() {
+
+                    var unescapeHelper = document.createElement('div');
+                    unescapeHelper.innerHTML = this.resourceData.attributes.text || '';
+                    return unescapeHelper.textContent || '';
+
+                },
+
+
+                /**
+                 * I store HTML as my text (HTML-escaped, see getTextHTML).
+                 * @method setTextHTML
+                 * @param {String} html
+                 */
+                setTextHTML: function(html) {
+
+                    var escapeHelper = document.createElement('div');
+                    escapeHelper.appendChild(document.createTextNode(html));
+                    this.resourceData.attributes.text = escapeHelper.innerHTML;
+
+                },
+
+
+                /**
+                 * After the text of a text overlay was edited on the video, I bring the
+                 * panel's title field and HTML source up to date, in place: the panel
+                 * is not rendered anew, so a click that ended the editing still reaches
+                 * the control it was meant for.
+                 * @method refreshTextControls
+                 * @param {Overlay} overlay
+                 */
+                refreshTextControls: function(overlay) {
+
+                    var editor = overlay._sourceEditor,
+                        html   = this.getTextHTML();
+
+                    if (editor && editor.dom.isConnected && editor.state.doc.toString() !== html) {
+                        editor._ftSyncing = true;
+                        editor.dispatch({
+                            changes:     { from: 0, to: editor.state.doc.length, insert: html },
+                            annotations: window.FrameTrailCM6.Transaction.addToHistory.of(false)
+                        });
+                        editor._ftSyncing = false;
+                    }
+
+                    var titleInput = overlay._titleInput;
+                    if (titleInput && titleInput.isConnected) {
+                        titleInput.value = overlay.data.attributes.title || '';
+                    }
+
+                    window.oldTextContent = overlay.data.attributes.text;
+
+                },
+
+
+                /**
+                 * I render the text editors: for an annotation a visual editor (Quill)
+                 * and its HTML source (CodeMirror); for an overlay, whose text is edited
+                 * on the video (TextInlineEditor), only the HTML source, for markup the
+                 * visual editor does not offer, in its Advanced Options.
                  * @method renderTextEditors
                  * @param {Object} overlayOrAnnotation
                  * @return &#123; textContentEditorContainer: HTMLElement;
                  */
                 renderTextEditors: function(overlayOrAnnotation) {
 
-                    var self = this;
-                    
+                    var self = this,
+                        isOverlay = !!overlayOrAnnotation.overlayElement;
+
                     delete window.quillEditor;
                     delete window.htmlCodeEditor;
                     delete window.oldTextContent;
 
                     window.oldTextContent = overlayOrAnnotation.data.attributes.text;
 
-                    var activeFonts =     ['Arial', 'Arial Black', 'Courier', 'Courier New', 'Dosis', 'Lucida Console', 'Helvetica', 'Impact', 'Lucida Grande', 'Lucida Sans', 'Montserrat', 'Tahoma', 'Times', 'Times New Roman', 'TitilliumWeb', 'Verdana'],
-                        activeFontSizes = ['8px', '9px', '10px', '11px', '12px', '13px', '14px', '15px', '16px', '17px', '18px', '20px', '22px', '26px', '28px', '30px', '32px', '34px', '36px', '38px', '40px', '46px', '50px', '60px', '70px'];
-
                     /* Add Panels and Text Areas */
-                    
+
                     var textContentEditorContainer = document.createElement('div');
                     textContentEditorContainer.className = 'textContentEditorContainer';
 
@@ -448,51 +662,74 @@ FrameTrail.defineType(
                     var htmlEditorContent = document.createElement('div');
                     htmlEditorContent.className = 'textEditorContent htmlEditorContent';
 
-                    visualEditorTab.addEventListener('click', function() {
-                        htmlEditorTab.classList.remove('active');
-                        htmlEditorContent.style.display = 'none';
-                        visualEditorTab.classList.add('active');
-                        visualEditorContent.style.display = '';
-                        // Sync CodeMirror → Quill on switch to Visual tab
-                        if (window.htmlCodeEditor && window.quillEditor) {
-                            window.quillEditor.clipboard.dangerouslyPasteHTML(
-                                window.htmlCodeEditor.state.doc.toString()
-                            );
-                        }
-                    });
-                    visualEditorTab.click();
+                    if (isOverlay) {
 
-                    htmlEditorTab.addEventListener('click', function() {
-                        visualEditorTab.classList.remove('active');
-                        visualEditorContent.style.display = 'none';
-                        htmlEditorTab.classList.add('active');
-                        htmlEditorContent.style.display = '';
-                        // Sync Quill → CodeMirror on switch to HTML tab
-                        if (window.quillEditor && window.htmlCodeEditor) {
-                            var quillHtml = window.quillEditor.root.innerHTML;
-                            var doc = window.htmlCodeEditor.state.doc;
-                            window.htmlCodeEditor.dispatch({
-                                changes: { from: 0, to: doc.length, insert: quillHtml },
-                                annotations: CM6.Transaction.userEvent.of('setValue')
-                            });
-                        }
-                        if (window.htmlCodeEditor) {
-                            window.htmlCodeEditor.requestMeasure();
+                        // The text is edited on the video (TextInlineEditor); its HTML source
+                        // is an advanced option, open as long as it was left open
+                        textContentEditorContainer = document.createElement('details');
+                        textContentEditorContainer.className = 'advanced textSourceDetails';
+                        textContentEditorContainer.innerHTML = '<summary>' + this.labels['GenericAdvancedOptions'] + '</summary>'
+                            + '<div>'
+                            + '    <label>' + this.labels['SettingsHTMLEditor'] + ':</label>'
+                            + '</div>';
+                        textContentEditorContainer.querySelector('div').appendChild(htmlEditorContent);
+                        textContentEditorContainer.open = !!overlayOrAnnotation._sourceOpen;
+                        textContentEditorContainer.addEventListener('toggle', function() {
+                            overlayOrAnnotation._sourceOpen = textContentEditorContainer.open;
+                            // Laid out while closed: measure again when shown
+                            if (textContentEditorContainer.open && htmlCm6Wrapper._cm6view) {
+                                htmlCm6Wrapper._cm6view.requestMeasure();
+                            }
+                        });
 
-                        }
-                    });
+                    } else {
 
-                    textContentEditorContainer.append(visualEditorTab, htmlEditorTab, visualEditorContent, htmlEditorContent);
+                        visualEditorTab.addEventListener('click', function() {
+                            htmlEditorTab.classList.remove('active');
+                            htmlEditorContent.style.display = 'none';
+                            visualEditorTab.classList.add('active');
+                            visualEditorContent.style.display = '';
+                            // Sync CodeMirror → Quill on switch to Visual tab
+                            if (window.htmlCodeEditor && window.quillEditor) {
+                                window.quillEditor.clipboard.dangerouslyPasteHTML(
+                                    window.htmlCodeEditor.state.doc.toString()
+                                );
+                            }
+                        });
+                        visualEditorTab.click();
+
+                        htmlEditorTab.addEventListener('click', function() {
+                            visualEditorTab.classList.remove('active');
+                            visualEditorContent.style.display = 'none';
+                            htmlEditorTab.classList.add('active');
+                            htmlEditorContent.style.display = '';
+                            // Sync Quill → CodeMirror on switch to HTML tab
+                            if (window.quillEditor && window.htmlCodeEditor) {
+                                var quillHtml = window.quillEditor.root.innerHTML;
+                                var doc = window.htmlCodeEditor.state.doc;
+                                window.htmlCodeEditor.dispatch({
+                                    changes: { from: 0, to: doc.length, insert: quillHtml },
+                                    annotations: CM6.Transaction.userEvent.of('setValue')
+                                });
+                            }
+                            if (window.htmlCodeEditor) {
+                                window.htmlCodeEditor.requestMeasure();
+
+                            }
+                        });
+
+                        textContentEditorContainer.append(visualEditorTab, htmlEditorTab, visualEditorContent, htmlEditorContent);
+
+                    }
 
                     var textarea = document.createElement('textarea');
-                    textarea.textContent = overlayOrAnnotation.data.attributes.text;
+                    // An overlay shows its source at once, so it starts unescaped
+                    textarea.textContent = isOverlay ? this.getTextHTML() : overlayOrAnnotation.data.attributes.text;
                     htmlEditorContent.appendChild(textarea);
 
                     var visualEditorWrapper = document.createElement('div');
                     visualEditorWrapper.className = 'visualEditorWrapper';
                     visualEditorContent.appendChild(visualEditorWrapper);
-
-                    //textEditor.style.display = 'none';
 
                     /* Init CodeMirror 6 for Custom HTML */
 
@@ -506,6 +743,9 @@ FrameTrail.defineType(
                     var delayTimer;
                     var textBeforeEdit = overlayOrAnnotation.data.attributes.text || '';
                     var textChanged = false;
+                    // An overlay's box may follow its text (auto height): undo restores both
+                    var STATE_KEYS = ['attributes', 'position', 'keyframes'];
+                    var stateBeforeEdit = isOverlay ? overlayOrAnnotation.snapshotState(STATE_KEYS) : null;
 
                     window.htmlCodeEditor = new CM6.EditorView({
                         state: CM6.EditorState.create({
@@ -526,47 +766,53 @@ FrameTrail.defineType(
                                     focus: function() {
                                         textBeforeEdit = overlayOrAnnotation.data.attributes.text || '';
                                         textChanged = false;
+                                        if (isOverlay) { stateBeforeEdit = overlayOrAnnotation.snapshotState(STATE_KEYS); }
                                     },
                                     blur: function(evt, view) {
                                         var newText = overlayOrAnnotation.data.attributes.text || '';
                                         if (textChanged && textBeforeEdit !== newText) {
-                                            var isOverlay = !!overlayOrAnnotation.overlayElement;
-                                            var category = isOverlay ? 'overlays' : 'annotations';
-                                            var elementId = overlayOrAnnotation.data.created;
-                                            (function(id, oldText, newTxt, cat, labels) {
-                                                var findElement = function() {
-                                                    var arr = cat === 'overlays' ?
-                                                        FrameTrail.module('HypervideoModel').overlays :
-                                                        FrameTrail.module('HypervideoModel').annotations;
-                                                    for (var i = 0; i < arr.length; i++) {
-                                                        if (arr[i].data.created === id) { return arr[i]; }
-                                                    }
-                                                    return null;
-                                                };
-                                                FrameTrail.module('UndoManager').register({
-                                                    category: cat,
-                                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Text',
-                                                    undo: function() {
-                                                        var el = findElement();
-                                                        if (!el) return;
-                                                        el.data.attributes.text = oldText;
-                                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                                    },
-                                                    redo: function() {
-                                                        var el = findElement();
-                                                        if (!el) return;
-                                                        el.data.attributes.text = newTxt;
-                                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                                    }
-                                                });
-                                            })(elementId, textBeforeEdit, newText, category, self.labels);
+                                            if (isOverlay) {
+                                                FrameTrail.module('OverlaysController').registerStateUndo(
+                                                    overlayOrAnnotation,
+                                                    self.labels['SidebarOverlays'] + ' Text',
+                                                    stateBeforeEdit,
+                                                    overlayOrAnnotation.snapshotState(STATE_KEYS),
+                                                    { rerender: true }
+                                                );
+                                            } else {
+                                                (function(id, oldText, newTxt, labels) {
+                                                    var findElement = function() {
+                                                        var arr = FrameTrail.module('HypervideoModel').annotations;
+                                                        for (var i = 0; i < arr.length; i++) {
+                                                            if (arr[i].data.created === id) { return arr[i]; }
+                                                        }
+                                                        return null;
+                                                    };
+                                                    FrameTrail.module('UndoManager').register({
+                                                        category: 'annotations',
+                                                        description: labels['SidebarMyAnnotations'] + ' Text',
+                                                        undo: function() {
+                                                            var el = findElement();
+                                                            if (!el) return;
+                                                            el.data.attributes.text = oldText;
+                                                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                                        },
+                                                        redo: function() {
+                                                            var el = findElement();
+                                                            if (!el) return;
+                                                            el.data.attributes.text = newTxt;
+                                                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
+                                                        }
+                                                    });
+                                                })(overlayOrAnnotation.data.created, textBeforeEdit, newText, self.labels);
+                                            }
                                         }
                                         textBeforeEdit = null;
                                         textChanged = false;
                                     }
                                 }),
                                 CM6.EditorView.updateListener.of(function(update) {
-                                    if (!update.docChanged) { return; }
+                                    if (!update.docChanged || update.view._ftSyncing) { return; }
 
                                     var newHtml = update.state.doc.toString();
                                     textChanged = true;
@@ -576,12 +822,15 @@ FrameTrail.defineType(
                                     var escapedHtml = escapeHelper.innerHTML;
                                     overlayOrAnnotation.data.attributes.text = escapedHtml;
 
-                                    if (overlayOrAnnotation.overlayElement) {
+                                    if (isOverlay) {
 
                                         // Only the body: title, card style and license block stay
                                         var textDetail = overlayOrAnnotation.overlayElement.querySelector('.resourceDetail');
                                         (textDetail.querySelector('.textOverlayBody') || textDetail.querySelector('.resourceContent') || textDetail).innerHTML = newHtml;
-                                        if (overlayOrAnnotation.contentChanged) { overlayOrAnnotation.contentChanged(); }
+                                        if (overlayOrAnnotation.fitToContent()) {
+                                            FrameTrail.module('OverlaysController').refreshMotionControls(overlayOrAnnotation);
+                                        }
+                                        overlayOrAnnotation.contentChanged();
                                         FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
 
                                         if (window.oldTextContent != overlayOrAnnotation.data.attributes.text) {
@@ -628,33 +877,18 @@ FrameTrail.defineType(
                     });
                     htmlCm6Wrapper._cm6view = window.htmlCodeEditor;
 
-                    /* Init Quill Visual Editor */
-
-                    // Register style-based attributors once (inline styles, not CSS classes)
-                    if (!Quill._ftFormatsRegistered) {
-                        var FontAttributor = Quill.import('attributors/style/font');
-                        if (FontAttributor) {
-                            FontAttributor.whitelist = activeFonts;
-                            Quill.register(FontAttributor, true);
-                        }
-
-                        var SizeAttributor = Quill.import('attributors/style/size');
-                        if (SizeAttributor) {
-                            SizeAttributor.whitelist = activeFontSizes;
-                            Quill.register(SizeAttributor, true);
-                        }
-
-                        var AlignStyle = Quill.import('attributors/style/align');
-                        if (AlignStyle) {
-                            Quill.register(AlignStyle, true);
-                        }
-
-                        Quill._ftFormatsRegistered = true;
+                    if (isOverlay) {
+                        overlayOrAnnotation._sourceEditor = window.htmlCodeEditor;
+                        return textContentEditorContainer;
                     }
 
+                    /* Init Quill Visual Editor */
+
+                    this.registerQuillFormats();
+
                     var toolbarOptions = [
-                        [{ 'font': activeFonts }],
-                        [{ 'size': activeFontSizes }],
+                        [{ 'font': this.quillFonts }],
+                        [{ 'size': this.quillFontSizes }],
                         ['bold', 'italic', 'underline', 'link'],
                         [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                         [{ 'indent': '-1' }, { 'indent': '+1' }],
@@ -678,44 +912,11 @@ FrameTrail.defineType(
                     // Add hex color input to the toolbar
                     var qlToolbar = visualEditorWrapper.querySelector('.ql-toolbar');
                     if (qlToolbar) {
-                        var hexSpan = document.createElement('span');
-                        hexSpan.className = 'ql-formats';
-                        var colorHexInput = document.createElement('input');
-                        colorHexInput.type = 'color';
-                        colorHexInput.title = 'Custom color (hex)';
-                        colorHexInput.className = 'ql-color-hex';
-                        colorHexInput.style.cssText = 'width:26px;height:26px;padding:0;border:none;cursor:pointer;background:none;';
-                        hexSpan.appendChild(colorHexInput);
-                        qlToolbar.appendChild(hexSpan);
-                        var savedQuillRange = null;
-                        colorHexInput.addEventListener('mousedown', function() {
-                            savedQuillRange = window.quillEditor.getSelection();
-                        });
-                        colorHexInput.addEventListener('input', function() {
-                            if (savedQuillRange) {
-                                window.quillEditor.setSelection(savedQuillRange);
-                            }
-                            window.quillEditor.format('color', colorHexInput.value, 'user');
-                        });
+                        this.addHexColorInput(qlToolbar, window.quillEditor);
                     }
 
                     // Set initial content — text is stored HTML-escaped, so decode first
-                    // (same unescape pattern as renderContent)
-                    var quillInitHelper = document.createElement('div');
-                    quillInitHelper.innerHTML = overlayOrAnnotation.data.attributes.text || '';
-                    window.quillEditor.clipboard.dangerouslyPasteHTML(
-                        quillInitHelper.textContent || ''
-                    );
-
-                    // Quill → CodeMirror 6 sync
-                    // Sync color picker to current selection's color
-                    window.quillEditor.on('selection-change', function(range) {
-                        if (!range) { return; }
-                        var format = window.quillEditor.getFormat(range);
-                        if (typeof format.color === 'string') {
-                            colorHexInput.value = format.color;
-                        }
-                    });
+                    window.quillEditor.clipboard.dangerouslyPasteHTML(this.getTextHTML());
 
                     // Quill → CodeMirror 6 sync
                     window.quillEditor.on('text-change', function(delta, oldDelta, source) {

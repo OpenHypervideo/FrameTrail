@@ -1,0 +1,95 @@
+/* Text overlay edited on the video (TextInlineEditor) */
+
+/* The text takes the pointer; the box is neither dragged nor resized meanwhile
+   (Overlay.makeOverlayElementDraggable ignores presses on .inlineEditing content) */
+.overlayContainer .overlayElement.ui-draggable.inlineEditing .resourceDetail {
+    pointer-events: auto;
+    cursor: text;
+}
+
+.overlayContainer .overlayElement.ui-resizable.highlighted.inlineEditing .ui-resizable-handle,
+.mainContainer.editActive .overlayContainer .overlayElement.highlighted.inlineEditing .rotateHandle,
+.mainContainer.editActive .overlayContainer .overlayElement.highlighted.inlineEditing .keyframeToggle {
+    display: none !important;
+}
+
+/* Quill in place of the text: it keeps the text's own look (font, size, line
+   height, no padding or border), and grows with it */
+.overlayElement .resourceDetail .ql-container.ql-snow {
+    height: auto;
+    border: 0;
+    font-family: inherit;
+    font-size: inherit;
+}
+
+.overlayElement .resourceDetail .ql-editor {
+    height: auto;
+    padding: 0;
+    overflow: visible;
+    line-height: inherit;
+    text-align: inherit;
+}
+
+.overlayElement .resourceDetail .ql-editor.ql-blank::before {
+    left: 0;
+    right: 0;
+    color: inherit;
+    opacity: 0.55;
+}
+
+/* Links are edited in the toolbar: Quill's tooltip would be clipped by the box */
+.overlayElement .resourceDetail .ql-tooltip {
+    display: none !important;
+}
+
+.overlayElement .resourceDetail .textOverlayTitle[contenteditable] {
+    outline: none;
+    cursor: text;
+}
+
+/* The toolbar: a popover above (or below) the box. Editing palette, not the
+   theme's: it acts on the overlay, it is not part of the hypervideo. */
+.textInlineToolbar {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--editing-fg-color);
+    border-radius: var(--input-border-radius);
+    background: var(--editing-bg-color);
+    color: var(--editing-fg-color);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+    overflow: visible;
+    z-index: 10000;
+}
+
+.textInlineToolbar:not([popover]),
+.textInlineToolbar:popover-open {
+    display: flex;
+    flex-direction: column;
+    max-width: calc(100vw - 8px);
+}
+
+.textInlineToolbar .textInlineFormats.ql-toolbar.ql-snow {
+    border: 0;
+    padding: 4px 6px;
+}
+
+.textInlineToolbar .ql-snow.ql-toolbar .ql-formats {
+    margin-right: 8px;
+}
+
+.textInlineToolbar .textInlineLinkRow {
+    display: flex;
+    gap: 6px;
+    padding: 0 6px 6px;
+}
+
+.textInlineToolbar .textInlineLinkRow[hidden] {
+    display: none;
+}
+
+.textInlineToolbar .textInlineLinkRow input {
+    flex: 1;
+    min-width: 0;
+}

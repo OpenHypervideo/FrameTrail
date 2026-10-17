@@ -75,6 +75,21 @@ FrameTrail.defineType(
                 },
 
                 /**
+                 * I tell the aspect ratio (width / height) of my player, for overlays
+                 * that keep the shape of their media (see Overlay.readMediaRatio): the
+                 * embedded player is 16:9.
+                 *
+                 * @method getIntrinsicRatio
+                 * @param {HTMLElement} resourceDetail
+                 * @param {Function} callback  called with the ratio
+                 */
+                getIntrinsicRatio: function(resourceDetail, callback) {
+
+                    callback(16 / 9);
+
+                },
+
+                /**
                  * Several modules need me to render a thumb of myself.
                  *
                  * These thumbs have a special structure of HTMLElements, where several data-attributes carry the information needed by e.g. the {{#crossLink "ResourceManager"}}ResourceManager{{/crossLink}}.

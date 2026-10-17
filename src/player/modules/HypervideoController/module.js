@@ -1624,6 +1624,12 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         isPlaying = true;
 
+        // Text edited on the video ends when the video plays
+        var TextInlineEditor = FrameTrail.module('TextInlineEditor');
+        if (TextInlineEditor) {
+            TextInlineEditor.stop();
+        }
+
         OverlaysController.syncMedia();
         OverlayAnimator.syncAll();
 

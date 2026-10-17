@@ -191,6 +191,9 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
 
         teardown(entry);
 
+        // Held still while its text is edited on the video (see holdStill)
+        if (entry.held) { return; }
+
         var overlay = entry.overlay,
             data    = overlay.data,
             layer   = overlay.animationLayer,
@@ -602,7 +605,8 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
             clock:         null,
             boxAnim:       null,
             boxSuspended:  false,
-            ghost:         false
+            ghost:         false,
+            held:          false
         };
         overlay._animatorEntry = entry;
         entries.push(entry);
@@ -690,6 +694,26 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
     }
 
     /**
+     * While an overlay's text is edited on the video (TextInlineEditor), it
+     * stands still: its animations are removed (text reveals unsplit, the box
+     * where updateOverlayElement() puts it) and nothing is built until it is
+     * released, which rebuilds it.
+     * @method holdStill
+     * @param {Overlay} overlay
+     * @param {Boolean} held
+     */
+    function holdStill(overlay, held) {
+        var entry = getEntry(overlay);
+        if (!entry) { return; }
+        entry.held = !!held;
+        if (held) {
+            teardown(entry);
+        } else {
+            invalidate(overlay);
+        }
+    }
+
+    /**
      * I return the animation window of an overlay (absolute seconds), or null
      * when it has no transitions. Used for timeline tails and the preview.
      * @method getWindow
@@ -736,6 +760,7 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
         syncAll:         syncAll,
         checkSync:       checkSync,
         suspendBox:      suspendBox,
+        holdStill:       holdStill,
         getWindow:       getWindow,
         needsEngine:     needsEngine,
         isReducedMotion: isReducedMotion,

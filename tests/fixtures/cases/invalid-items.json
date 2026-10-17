@@ -923,6 +923,51 @@
             ]
         },
         {
+            "name": "text auto size width",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;",
+                        "autoSize": "width"
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/autoSize",
+                    "message": "must be one of \"height\""
+                }
+            ]
+        },
+        {
             "name": "counter with seven decimals",
             "schema": "content-item.schema.json",
             "data": {

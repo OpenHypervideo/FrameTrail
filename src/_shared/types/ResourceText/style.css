@@ -23,6 +23,12 @@
     padding-left: 20px;
 }
 
+/* Quill writes bullet lists as <ol><li data-list="bullet"> (inside its own
+   editor it draws the bullets itself) */
+.resourceDetail[data-type="text"] .textOverlayBody:not(.ql-container) li[data-list="bullet"] {
+    list-style-type: disc;
+}
+
 .resourceThumb[data-type="text"] .resourceTextPreview {
     position: absolute;
     top: 0px;
@@ -90,6 +96,12 @@
 .editPropertiesContainer .textEditorContent {
     border-top: 4px solid var(--primary-bg-color);
     height: calc(100% - 35px);
+}
+
+/* A text overlay's HTML source, inside its Advanced Options */
+.editPropertiesContainer .textSourceDetails .htmlEditorContent {
+    height: 200px;
+    border-top: 0;
 }
 
 .editPropertiesContainer .textEditorContent.visualEditorContent {
@@ -186,4 +198,24 @@
 /* Let a card's shadow show outside the overlay box (the card clips its text) */
 .resourceDetail[data-type="text"]:has(> .resourceContent.textOverlayCard) {
     overflow: visible;
+}
+
+/* Auto height (attributes.autoSize "height"): the content takes the height it
+   needs, which Overlay.measureContentHeight() reads, and is never clipped, even
+   where other fonts break the lines differently than when the box was fitted.
+   Empty text keeps one line, so the box can still be picked. */
+.overlayElement.autoHeight .resourceDetail[data-type="text"] {
+    overflow: visible;
+}
+
+.overlayElement.autoHeight .resourceDetail[data-type="text"] .resourceContent {
+    flex: none;
+}
+
+.overlayElement.autoHeight .resourceDetail[data-type="text"] .resourceContent:not(.textOverlayCard) {
+    overflow: visible;
+}
+
+.overlayElement.autoHeight .resourceDetail[data-type="text"] .textOverlayBody:empty {
+    min-height: 1lh;
 }

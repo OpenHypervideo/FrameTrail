@@ -48,6 +48,21 @@ FrameTrail.defineType(
 
                 },
 
+                /**
+                 * I tell the aspect ratio (width / height) of my player, for overlays
+                 * that keep the shape of their media (see Overlay.readMediaRatio): the
+                 * embedded player is 16:9.
+                 *
+                 * @method getIntrinsicRatio
+                 * @param {HTMLElement} resourceDetail
+                 * @param {Function} callback  called with the ratio
+                 */
+                getIntrinsicRatio: function(resourceDetail, callback) {
+
+                    callback(16 / 9);
+
+                },
+
                 renderThumb: function(id) {
 
                     var trueID,

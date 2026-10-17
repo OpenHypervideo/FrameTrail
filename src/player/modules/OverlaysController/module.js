@@ -481,6 +481,18 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     newOverlay.renderInDOM();
                     newOverlay.startEditing();
 
+                    // Text whose height follows it starts as high as it is, and again once
+                    // web fonts that are still loading have arrived
+                    newOverlay.fitToContent();
+                    if (newOverlay.hasAutoHeight() && document.fonts && document.fonts.status !== 'loaded') {
+                        document.fonts.ready.then(function() {
+                            if (newOverlay.overlayElement.isConnected && newOverlay.fitToContent()) {
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                refreshMotionControls(newOverlay);
+                            }
+                        });
+                    }
+
                     // Kinds that are made to move (e.g. the cursor) start with box motion on
                     if (tile && tile.motion) {
                         newOverlay.setMotionEnabled(true);
@@ -490,7 +502,25 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     stackTimelineView();
                     FrameTrail.module('TimelineController').refreshMinimap();
 
-                    registerAddUndo(newOverlay);
+                    // An empty Text is typed into at once; its add is registered when that ends
+                    var TextInlineEditor = FrameTrail.module('TextInlineEditor'),
+                        typedAtOnce      = !!(tile && tile.id === 'text' && TextInlineEditor
+                                              && TextInlineEditor.start(newOverlay, { isNew: true }));
+
+                    // An image, video or embedded player takes the shape of its media first,
+                    // so that undo and redo know the box it ends up with
+                    if (!tile && newOverlay.hasMediaRatio()) {
+                        newOverlay.readMediaRatio(function(ratio) {
+                            // Deleted meanwhile: its deletion is its only step
+                            if (!newOverlay.overlayElement.isConnected) { return; }
+                            if (ratio && newOverlay.fitToRatio(ratio, 'topLeft')) {
+                                refreshMotionControls(newOverlay);
+                            }
+                            registerAddUndo(newOverlay);
+                        });
+                    } else if (!typedAtOnce) {
+                        registerAddUndo(newOverlay);
+                    }
 
                     // Kinds whose shape is drawn (the freeform hotspot) start in draw mode
                     if (tile && tile.draw) {
@@ -514,9 +544,11 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
     /**
      * I return the tiles of the "Custom Overlay" gallery: one per overlay kind or
-     * variant, each with the data a dropped overlay starts with. The first four
-     * (Text, Custom HTML, Quiz, Hotspot) keep their long-standing defaults; Quiz
-     * and Hotspot pass no events, so newOverlay() adds the pausing onStart handler.
+     * variant, each with the data a dropped overlay starts with. Custom HTML,
+     * Quiz and Hotspot keep their long-standing defaults; Quiz and Hotspot pass no
+     * events, so newOverlay() adds the pausing onStart handler. The text tiles
+     * (Text, Card, Quote, Notification) have auto height: size[1] is only the
+     * height until their content is measured.
      *
      * @method getCustomOverlayTiles
      * @return {Array}
@@ -545,7 +577,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         return [
             {
                 id: 'text', type: 'text', icon: 'icon-doc-text', label: labels['ResourceCustomTextHTML'],
-                attributes: { "text": "" }, size: [30, 30]
+                attributes: { "text": "", "autoSize": "height" }, size: [30, 10]
             },
             {
                 id: 'html', type: 'html', icon: 'icon-file-code', label: labels['ResourceCustomHTML'],
@@ -577,7 +609,8 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     "title": labels['CustomOverlayCardTitle'],
                     "text": escapeHtml('<p><span style="font-size: 22px;">' + labels['CustomOverlayCardText'] + '</span></p>'),
                     "box": { "background": "#ffffff", "titleColor": "#14161a", "padding": 28, "radius": 14, "shadow": true },
-                    "animation": { "in": { "preset": "slideFromBottom" }, "out": { "preset": "fadeOut" } }
+                    "animation": { "in": { "preset": "slideFromBottom" }, "out": { "preset": "fadeOut" } },
+                    "autoSize": "height"
                 },
                 size: [34, 32], events: {}
             },
@@ -589,7 +622,8 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                         + '<p><span style="color: rgb(96, 102, 112); font-size: 18px;">— ' + labels['CustomOverlayQuoteAuthor'] + '</span></p>'
                     ),
                     "box": { "background": "#f4f2ee", "padding": 32, "radius": 6, "borderWidth": 0 },
-                    "animation": { "in": { "preset": "fadeIn", "duration": 600 }, "out": { "preset": "fadeOut" } }
+                    "animation": { "in": { "preset": "fadeIn", "duration": 600 }, "out": { "preset": "fadeOut" } },
+                    "autoSize": "height"
                 },
                 size: [40, 30], events: {}
             },
@@ -599,7 +633,8 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     "title": labels['CustomOverlayNotificationTitle'],
                     "text": escapeHtml('<p><span style="color: rgb(214, 218, 224); font-size: 20px;">' + labels['CustomOverlayNotificationText'] + '</span></p>'),
                     "box": { "background": "#1f2329", "titleColor": "#ffffff", "padding": 22, "radius": 16, "shadow": true },
-                    "animation": { "in": { "preset": "slideFromTop", "duration": 600, "ease": "springQuick" }, "out": { "preset": "slideToTop" } }
+                    "animation": { "in": { "preset": "slideFromTop", "duration": 600, "ease": "springQuick" }, "out": { "preset": "slideToTop" } },
+                    "autoSize": "height"
                 },
                 size: [34, 18], events: {}
             },
@@ -685,7 +720,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
 
     /**
-     * I add an overlay from its data (as FrameTrailSerializer.parseOverlay reads it, with created set) and show it — in the overlays editor ready for editing, in other modes only on the video and its timeline.
+     * I add an overlay from its data (as FrameTrailSerializer.parseOverlay reads it, with created set) and show it — in the overlays editor ready for editing, in other modes only on the video and its timeline. A box whose height follows its content is fitted to it.
      *
      * @method addOverlay
      * @param {Object} data
@@ -696,6 +731,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         var overlay = FrameTrail.module('HypervideoModel').newOverlay(data, true);
 
         overlay.renderInDOM();
+        overlay.fitToContent();
 
         if (FrameTrail.getState('editMode') === 'overlays') {
             overlay.startEditing();
@@ -711,7 +747,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
 
     /**
-     * I replace all data of an overlay (its type stays) and show the change, also in its properties controls when it is selected.
+     * I replace all data of an overlay (its type stays) and show the change, also in its properties controls when it is selected. A box whose height follows its content is fitted to it.
      *
      * @method replaceOverlayData
      * @param {Overlay} overlay
@@ -720,6 +756,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
     function replaceOverlayData(overlay, data) {
 
         overlay.replaceData(data);
+        overlay.fitToContent();
 
         if (FrameTrail.getState('editMode') === 'overlays') {
             stackTimelineView();
@@ -780,6 +817,12 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
      * @param {Overlay} overlay
      */
     function setOverlayInFocus(overlay) {
+
+        // Text edited on the video ends when something else is selected
+        var TextInlineEditor = FrameTrail.module('TextInlineEditor');
+        if (TextInlineEditor && TextInlineEditor.isEditing() && !TextInlineEditor.isEditing(overlay)) {
+            TextInlineEditor.stop();
+        }
 
         if (overlayInFocus) {
 
@@ -1453,6 +1496,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
         initController:         initController,
         updateStatesOfOverlays: updateStatesOfOverlays,
         registerStateUndo:      registerStateUndo,
+        registerAddUndo:        registerAddUndo,
         refreshPropertiesControls: refreshPropertiesControls,
         refreshMotionControls:  refreshMotionControls,
         selectOverlay:          selectOverlay,

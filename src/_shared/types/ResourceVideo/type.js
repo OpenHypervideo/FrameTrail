@@ -101,6 +101,28 @@ FrameTrail.defineType(
                 },
 
                 /**
+                 * I tell the aspect ratio (width / height) of my video, read from the
+                 * rendered <video> once its metadata is there, for overlays that keep
+                 * the shape of their media (see Overlay.readMediaRatio).
+                 *
+                 * @method getIntrinsicRatio
+                 * @param {HTMLElement} resourceDetail
+                 * @param {Function} callback  called with the ratio, or null when it is not known
+                 */
+                getIntrinsicRatio: function(resourceDetail, callback) {
+
+                    var video = resourceDetail.querySelector('video');
+                    if (!video) { callback(null); return; }
+
+                    var answer = function() {
+                        callback((video.videoWidth && video.videoHeight) ? video.videoWidth / video.videoHeight : null);
+                    };
+                    if (video.readyState >= 1) { answer(); return; }
+                    video.addEventListener('loadedmetadata', answer, { once: true });
+
+                },
+
+                /**
                  * Several modules need me to render a thumb of myself.
                  *
                  * These thumbs have a special structure of HTMLElements, where several data-attributes carry the information needed by e.g. the {{#crossLink "ResourceManager"}}ResourceManager{{/crossLink}}.

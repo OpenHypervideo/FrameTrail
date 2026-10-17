@@ -63,6 +63,29 @@ FrameTrail.defineType(
                 },
 
                 /**
+                 * I tell the aspect ratio (width / height) of my image, read from the
+                 * rendered <img>, for overlays that keep the shape of their media (see
+                 * Overlay.readMediaRatio).
+                 *
+                 * @method getIntrinsicRatio
+                 * @param {HTMLElement} resourceDetail
+                 * @param {Function} callback  called with the ratio, or null when it is not known
+                 */
+                getIntrinsicRatio: function(resourceDetail, callback) {
+
+                    var img = resourceDetail.querySelector('img');
+                    if (!img) { callback(null); return; }
+
+                    var answer = function() {
+                        callback((img.naturalWidth && img.naturalHeight) ? img.naturalWidth / img.naturalHeight : null);
+                    };
+                    if (img.complete) { answer(); return; }
+                    img.addEventListener('load', answer, { once: true });
+                    img.addEventListener('error', function() { callback(null); }, { once: true });
+
+                },
+
+                /**
                  * Several modules need me to render a thumb of myself.
                  *
                  * These thumbs have a special structure of HTMLElements, where several data-attributes carry the information needed by e.g. the {{#crossLink "ResourceManager"}}ResourceManager{{/crossLink}}.

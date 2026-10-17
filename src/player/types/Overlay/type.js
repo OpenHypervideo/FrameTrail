@@ -376,6 +376,11 @@ FrameTrail.defineType(
                  */
                 removeFromDOM: function () {
 
+                    var TextInlineEditor = FrameTrail.module('TextInlineEditor');
+                    if (TextInlineEditor && TextInlineEditor.isEditing(this)) {
+                        TextInlineEditor.stop({ discard: true });
+                    }
+
                     var OverlayAnimator = FrameTrail.module('OverlayAnimator');
                     if (OverlayAnimator) {
                         OverlayAnimator.detach(this);
@@ -583,6 +588,7 @@ FrameTrail.defineType(
                  * I apply a new box. Without box motion it becomes my position; with box
                  * motion it becomes (or updates) the keyframe at the playhead (clamped to
                  * my span, see editTime). Without rect.rotation my rotation is kept.
+                 * While my height follows my content, the height is measured anew.
                  * @method setRect
                  * @param {Object} rect { top, left, width, height } in percent, rotation? in degrees
                  */
@@ -604,6 +610,7 @@ FrameTrail.defineType(
 
                     this.updateOverlayElement();
                     this.scaleOverlayElement();
+                    this.fitToContent();
 
                 },
 
@@ -1200,6 +1207,228 @@ FrameTrail.defineType(
 
 
                 /* ---------------------------------------------------------- */
+                /*  Auto height (the box follows the content)                 */
+                /* ---------------------------------------------------------- */
+
+                /**
+                 * I tell whether my height follows my content: attributes.autoSize
+                 * "height", for types that say which element holds their content
+                 * (getContentFitRoot).
+                 * @method hasAutoHeight
+                 * @return {Boolean}
+                 */
+                hasAutoHeight: function () {
+
+                    return this.data.attributes.autoSize === 'height'
+                        && this.isStageScaledType()
+                        && typeof this.resourceItem.getContentFitRoot === 'function';
+
+                },
+
+                /**
+                 * I return the height (percent of the stage) my content needs in a box
+                 * widthPercent wide. My content is laid out on the virtual stage
+                 * (getScaleBase() px wide), so that is independent of the player size:
+                 * the box is widthPercent × scaleBase / 100 px wide there, and the
+                 * stage is scaleBase × stageHeight / stageWidth px high.
+                 * @method measureContentHeight
+                 * @param {Number} widthPercent
+                 * @return {Number|null} null when there is nothing to measure
+                 */
+                measureContentHeight: function (widthPercent) {
+
+                    var detail = this.getContentHost().querySelector('.resourceDetail'),
+                        root   = detail && this.resourceItem.getContentFitRoot(detail),
+                        stage  = this.stageSize(),
+                        base   = this.getScaleBase();
+
+                    if (!root || !stage.width || !stage.height || !(widthPercent > 0)) { return null; }
+
+                    this.overlayElement.classList.toggle('autoHeight', this.hasAutoHeight());
+
+                    var oldWidth = detail.style.width;
+                    detail.style.width = (widthPercent * base / 100) + 'px';
+                    var height = root.offsetHeight;
+                    detail.style.width = oldWidth;
+
+                    return height / (base * stage.height / stage.width) * 100;
+
+                },
+
+                /**
+                 * I make my box as high as my content (see measureContentHeight),
+                 * keeping its top edge: on a rotated box the centre moves along the
+                 * box's own y axis. A box that grows past the bottom of the stage moves
+                 * up. With box motion every keyframe gets the height its own width
+                 * needs. Only while my height follows my content (hasAutoHeight).
+                 * @method fitToContent
+                 * @return {Boolean} whether my box changed
+                 */
+                fitToContent: function () {
+
+                    if (!this.hasAutoHeight()) { return false; }
+
+                    var self    = this,
+                        stage   = this.stageSize(),
+                        changed = false;
+
+                    if (!stage.width || !stage.height) { return false; }
+
+                    var round = function(v) { return Math.round(v * 10000) / 10000; };
+
+                    var fit = function(left, top, width, height, rotation, clamp) {
+                        var measured = self.measureContentHeight(width);
+                        if (measured === null) { return null; }
+                        var h  = round(Math.min(100, measured)),
+                            dh = h - height;
+                        if (Math.abs(dh) < 0.0001) { return null; }
+                        var theta = (rotation || 0) * Math.PI / 180,
+                            shift = dh / 2 / 100 * stage.height,
+                            cx    = (left + width  / 2) / 100 * stage.width  - Math.sin(theta) * shift,
+                            cy    = (top  + height / 2) / 100 * stage.height + Math.cos(theta) * shift,
+                            nl    = cx / stage.width  * 100 - width / 2,
+                            nt    = cy / stage.height * 100 - h / 2;
+                        if (clamp && !theta && dh > 0 && nt + h > 100) {
+                            nt = Math.max(0, 100 - h);
+                        }
+                        return [round(nl), round(nt), width, h];
+                    };
+
+                    if (this.hasKeyframes()) {
+                        var kfs = this.data.keyframes.map(function(kf) {
+                            var box = fit(kf.xywh[0], kf.xywh[1], kf.xywh[2], kf.xywh[3], kf.r, false);
+                            if (box) { changed = true; }
+                            return { t: kf.t, xywh: box || kf.xywh.slice(), r: kf.r, ease: kf.ease };
+                        });
+                        if (changed) { this.setKeyframes(kfs); }
+                    } else {
+                        var p   = this.data.position,
+                            box = fit(p.left, p.top, p.width, p.height, this.data.rotation, true);
+                        if (box) {
+                            changed  = true;
+                            p.left   = box[0];
+                            p.top    = box[1];
+                            p.height = box[3];
+                            this.updateOverlayElement();
+                            this.scaleOverlayElement();
+                        }
+                    }
+
+                    return changed;
+
+                },
+
+
+                /* ---------------------------------------------------------- */
+                /*  Media aspect ratio (images, videos, embedded players)     */
+                /* ---------------------------------------------------------- */
+
+                /**
+                 * I tell whether my content has a shape of its own (an image, a video,
+                 * an embedded player) that my box keeps: on drop, on "Fit to media" and
+                 * when a corner is dragged.
+                 * @method hasMediaRatio
+                 * @return {Boolean}
+                 */
+                hasMediaRatio: function () {
+
+                    return typeof this.resourceItem.getIntrinsicRatio === 'function';
+
+                },
+
+                /**
+                 * I find out the aspect ratio (width / height) of my media, from my
+                 * rendered content. The callback gets null when it is not known within
+                 * a few seconds (e.g. a video that loads no metadata).
+                 * @method readMediaRatio
+                 * @param {Function} callback
+                 */
+                readMediaRatio: function (callback) {
+
+                    var detail   = this.getContentHost().querySelector('.resourceDetail'),
+                        finished = false,
+                        timer;
+
+                    var finish = function(ratio) {
+                        if (finished) { return; }
+                        finished = true;
+                        window.clearTimeout(timer);
+                        callback((ratio > 0 && isFinite(ratio)) ? ratio : null);
+                    };
+
+                    if (!detail || !this.hasMediaRatio()) { finish(null); return; }
+
+                    timer = window.setTimeout(function() { finish(null); }, 3000);
+                    this.resourceItem.getIntrinsicRatio(detail, finish);
+
+                },
+
+                /**
+                 * I give my box the aspect ratio of my media, keeping its width:
+                 * anchored at its top left corner (a box just dropped) or at its centre
+                 * (anything else, also with rotation). A box that would get higher than
+                 * the stage gets narrower instead. With box motion every keyframe box
+                 * is changed (around its centre).
+                 * @method fitToRatio
+                 * @param {Number} ratio width / height
+                 * @param {String} anchor 'topLeft' or 'center'
+                 * @return {Boolean} whether my box changed
+                 */
+                fitToRatio: function (ratio, anchor) {
+
+                    var stage = this.stageSize();
+                    if (!stage.width || !stage.height || !(ratio > 0)) { return false; }
+
+                    var aspect = stage.width / stage.height,
+                        round  = function(v) { return Math.round(v * 10000) / 10000; };
+
+                    var fit = function(left, top, width, height, around) {
+                        var w    = width,
+                            h    = width * aspect / ratio,
+                            maxH = (around === 'center') ? 100 : 100 - top;
+                        if (h > maxH && maxH > 0) {
+                            h = maxH;
+                            w = h * ratio / aspect;
+                        }
+                        if (around === 'center') {
+                            left += (width - w) / 2;
+                            top  += (height - h) / 2;
+                        }
+                        return [round(left), round(top), round(w), round(h)];
+                    };
+
+                    var same = function(a, b) {
+                        return a.every(function(v, i) { return Math.abs(v - b[i]) < 0.0001; });
+                    };
+
+                    if (this.hasKeyframes()) {
+                        var changed = false,
+                            kfs = this.data.keyframes.map(function(kf) {
+                                var box = fit(kf.xywh[0], kf.xywh[1], kf.xywh[2], kf.xywh[3], 'center');
+                                if (!same(box, kf.xywh)) { changed = true; }
+                                return { t: kf.t, xywh: box, r: kf.r, ease: kf.ease };
+                            });
+                        if (changed) { this.setKeyframes(kfs); }
+                        return changed;
+                    }
+
+                    var p   = this.data.position,
+                        box = fit(p.left, p.top, p.width, p.height, (anchor === 'topLeft' && !this.data.rotation) ? 'topLeft' : 'center');
+
+                    if (same(box, [p.left, p.top, p.width, p.height])) { return false; }
+
+                    p.left   = box[0];
+                    p.top    = box[1];
+                    p.width  = box[2];
+                    p.height = box[3];
+                    this.updateOverlayElement();
+                    this.scaleOverlayElement();
+                    return true;
+
+                },
+
+
+                /* ---------------------------------------------------------- */
                 /*  Undo snapshots                                            */
                 /* ---------------------------------------------------------- */
 
@@ -1356,6 +1585,7 @@ FrameTrail.defineType(
                     this.overlayElement.style.height = rect.height + '%';
                     this.overlayElement.style.rotate = rotation ? rotation + 'deg' : '';
                     this.overlayElement.style.zIndex = (this.data.attributes.zIndex != null) ? this.data.attributes.zIndex : '';
+                    this.overlayElement.classList.toggle('autoHeight', this.hasAutoHeight());
 
                     var _rdChild = this.overlayElement.querySelector('.resourceDetail');
                     if (_rdChild) {
@@ -1384,6 +1614,34 @@ FrameTrail.defineType(
 
 
                 /**
+                 * I tell whether my content is laid out on a virtual stage of fixed
+                 * width (text, html: getScaleBase() px wide, scaled to the real one),
+                 * so that it looks the same at every player size.
+                 * @method isStageScaledType
+                 * @return {Boolean}
+                 */
+                isStageScaledType: function() {
+
+                    return this.data.type == 'text' || this.data.type == 'html';
+
+                },
+
+
+                /**
+                 * I return the reading width my content is rendered at (see
+                 * scaleOverlayElement): the width of the virtual stage for text and
+                 * html, the minimum width of the content for the other scaled types.
+                 * @method getScaleBase
+                 * @return {Number} pixels
+                 */
+                getScaleBase: function() {
+
+                    return this.isStageScaledType() ? 800 : 400;
+
+                },
+
+
+                /**
                 * I scale the overlay element in case the space is too small
                 * (text overlays are always scaled to assure proper display)
                 * @method scaleOverlayElement
@@ -1394,11 +1652,29 @@ FrameTrail.defineType(
 
                         var elementToScale = this.overlayElement ? this.overlayElement.querySelector('.resourceDetail') : null,
                             wrapperElement = this.overlayElement,
-                            scaleBase = (this.data.type == 'text' || this.data.type == 'html') ? 800 : 400;
+                            scaleBase = this.getScaleBase();
 
                         if (!elementToScale) { return; }
 
-                        if (scaleBase / wrapperElement.offsetWidth < 1 && this.data.type != 'text' && this.data.type != 'html') {
+                        // Text and html are laid out on the virtual stage: a box W % wide is
+                        // W × scaleBase / 100 px there. Fractional widths keep that exact, so
+                        // lines break where measureContentHeight() measured them.
+                        if (this.isStageScaledType()) {
+                            var stageWidth = FrameTrail.module('ViewVideo').OverlayContainer.getBoundingClientRect().width,
+                                boxWidth   = parseFloat(window.getComputedStyle(wrapperElement).width);
+                            if (!stageWidth || !(boxWidth >= 0)) { return; }
+                            var stageScale = stageWidth / scaleBase;
+                            elementToScale.style.top             = '50%';
+                            elementToScale.style.left            = '50%';
+                            elementToScale.style.width           = boxWidth / stageScale + 'px';
+                            elementToScale.style.height          = wrapperElement.offsetHeight / stageScale + 'px';
+                            elementToScale.style.minHeight       = '';
+                            elementToScale.style.transformOrigin = '';
+                            elementToScale.style.transform       = 'translate(-50%, -50%) scale(' + stageScale + ')';
+                            return;
+                        }
+
+                        if (scaleBase / wrapperElement.offsetWidth < 1) {
                             elementToScale.style.top             = '';
                             elementToScale.style.left            = '';
                             elementToScale.style.height          = '';
@@ -1409,10 +1685,9 @@ FrameTrail.defineType(
                             return;
                         }
 
-                        var referenceWidth = (this.data.type == 'text' || this.data.type == 'html') ? FrameTrail.module('ViewVideo').OverlayContainer.offsetWidth : wrapperElement.offsetWidth;
-                            scale = referenceWidth / scaleBase,
+                        var scale    = wrapperElement.offsetWidth / scaleBase,
                             negScale = 1/scale,
-                            newWidth = (this.data.type == 'text' || this.data.type == 'html') ? wrapperElement.offsetWidth * negScale : scaleBase;
+                            newWidth = scaleBase;
 
                         elementToScale.style.top             = '50%';
                         elementToScale.style.left            = '50%';
@@ -1662,6 +1937,7 @@ FrameTrail.defineType(
 
                     // Clicking selects without moving the playhead; double-clicking the
                     // timeline element (or my ghost on the video) jumps into my span.
+                    // Double-clicking a text overlay on the video edits its text there.
                     this._editClickHandler = function select() {
                         OverlaysController.selectOverlay(self);
                     };
@@ -1673,7 +1949,13 @@ FrameTrail.defineType(
                     };
 
                     this._editDblClickHandlerOverlay = function jumpFromGhost(evt) {
-                        if (!self.ghostState || evt.target.closest('.ui-resizable-handle, .keyframeToggle, .rotateHandle, .freeformHandles')) { return; }
+                        if (evt.target.closest('.ui-resizable-handle, .keyframeToggle, .rotateHandle, .freeformHandles')) { return; }
+                        var TextInlineEditor = FrameTrail.module('TextInlineEditor');
+                        if (self.data.type === 'text' && TextInlineEditor) {
+                            TextInlineEditor.start(self, { point: { x: evt.clientX, y: evt.clientY } });
+                            return;
+                        }
+                        if (!self.ghostState) { return; }
                         FrameTrail.module('HypervideoController').currentTime = self.data.start + 0.01;
                     };
 
@@ -1694,6 +1976,11 @@ FrameTrail.defineType(
                  * @method stopEditing
                  */
                 stopEditing: function () {
+
+                    var TextInlineEditor = FrameTrail.module('TextInlineEditor');
+                    if (TextInlineEditor && TextInlineEditor.isEditing(this)) {
+                        TextInlineEditor.stop();
+                    }
 
                     FrameTrail.module('ViewVideo').hideTimelineSnapIndicator();
                     FrameTrail.module('OverlaysController').clearCanvasSnapLines();
@@ -2035,7 +2322,7 @@ FrameTrail.defineType(
                     this.overlayElement.classList.add('ui-draggable');
 
                     interact(el).draggable({
-                        ignoreFrom: '.ui-resizable-handle, .keyframeToggle, .rotateHandle, .freeformHandles',
+                        ignoreFrom: '.ui-resizable-handle, .keyframeToggle, .rotateHandle, .freeformHandles, .inlineEditing .resourceDetail',
                         listeners: {
                             start: function(e) {
 
@@ -2141,11 +2428,45 @@ FrameTrail.defineType(
                     var self = this,
                         stateBefore,
                         resizeEdges,
-                        rotated = null;
+                        rotated = null,
+                        autoHeight = false,
+                        mediaBox = null,
+                        freeBox = null;
+
+                    // A box with the shape of its media (hasMediaRatio) keeps it on corner
+                    // drags, unless Shift is held: freeBox follows the pointer, and the box
+                    // takes its size along the axis it grew most; the opposite corner stays.
+                    var keepShape = function(edges, parent) {
+                        var s     = mediaBox,
+                            ratio = s.width / s.height,
+                            w     = Math.max(5, freeBox.width),
+                            h     = Math.max(5, freeBox.height);
+                        if (w / h >= ratio) { h = w / ratio; } else { w = h * ratio; }
+                        var maxW = edges.left ? s.left + s.width  : parent.offsetWidth  - s.left,
+                            maxH = edges.top  ? s.top  + s.height : parent.offsetHeight - s.top;
+                        if (w > maxW) { w = maxW; h = w / ratio; }
+                        if (h > maxH) { h = maxH; w = h * ratio; }
+                        return {
+                            left:   edges.left ? s.left + s.width  - w : s.left,
+                            top:    edges.top  ? s.top  + s.height - h : s.top,
+                            width:  w,
+                            height: h
+                        };
+                    };
+
+                    // While the height follows the content, a drag changes the width only
+                    // and the top edge stays: the height is measured for the new width.
+                    var contentHeightPx = function(widthPx, parent) {
+                        var h = self.measureContentHeight(widthPx / parent.offsetWidth * 100);
+                        return (h === null) ? null : h / 100 * parent.offsetHeight;
+                    };
 
                     // A rotated box is resized in its own frame: the pointer delta is
                     // turned into the box's axes and the opposite corner stays put.
-                    var resizeRotated = function(target, edges) {
+                    var resizeRotated = function(target, edges, keepRatio) {
+                        if (autoHeight) {
+                            edges = { left: edges.left, right: edges.right, top: false, bottom: true };
+                        }
                         var parent = target.parentElement,
                             theta  = rotated.theta,
                             cos    = Math.cos(theta),
@@ -2155,9 +2476,14 @@ FrameTrail.defineType(
                             w0     = rotated.width,
                             h0     = rotated.height,
                             w      = Math.max(5, w0 + (edges.right ? lx : (edges.left ? -lx : 0))),
-                            h      = Math.max(5, h0 + (edges.bottom ? ly : (edges.top ? -ly : 0))),
-                            // anchor: the corner opposite the dragged one, relative to the centre
-                            ax0    = edges.left ? w0 / 2 : -w0 / 2,
+                            h      = autoHeight
+                                ? Math.max(5, contentHeightPx(w, parent) || h0)
+                                : Math.max(5, h0 + (edges.bottom ? ly : (edges.top ? -ly : 0)));
+                        if (keepRatio) {
+                            if (w / h >= w0 / h0) { h = w * h0 / w0; } else { w = h * w0 / h0; }
+                        }
+                        // anchor: the corner opposite the dragged one, relative to the centre
+                        var ax0    = edges.left ? w0 / 2 : -w0 / 2,
                             ay0    = edges.top  ? h0 / 2 : -h0 / 2,
                             ax     = edges.left ? w / 2  : -w / 2,
                             ay     = edges.top  ? h / 2  : -h / 2,
@@ -2193,6 +2519,7 @@ FrameTrail.defineType(
                                 FrameTrail.module('OverlaysController').selectOverlay(self);
 
                                 resizeEdges = e.edges;
+                                autoHeight  = self.hasAutoHeight();
 
                                 // Capture old state for undo
                                 stateBefore = self.snapshotState(['position', 'rotation', 'keyframes']);
@@ -2211,6 +2538,14 @@ FrameTrail.defineType(
                                     sumY:   0
                                 } : null;
 
+                                mediaBox = (self.hasMediaRatio() && e.target.offsetWidth && e.target.offsetHeight) ? {
+                                    left:   e.target.offsetLeft,
+                                    top:    e.target.offsetTop,
+                                    width:  e.target.offsetWidth,
+                                    height: e.target.offsetHeight
+                                } : null;
+                                freeBox = mediaBox ? Object.assign({}, mediaBox) : null;
+
                                 // Convert % positioning to px for interaction
                                 e.target.dataset.ftLeft   = e.target.offsetLeft;
                                 e.target.dataset.ftTop    = e.target.offsetTop;
@@ -2228,36 +2563,58 @@ FrameTrail.defineType(
                                 var newLeft, newTop, newWidth, newHeight;
                                 var parent = e.target.parentElement;
 
+                                if (freeBox) {
+                                    freeBox.left   += e.deltaRect.left;
+                                    freeBox.top    += e.deltaRect.top;
+                                    freeBox.width  += e.deltaRect.width;
+                                    freeBox.height += e.deltaRect.height;
+                                }
+
                                 if (rotated) {
 
                                     rotated.sumX += e.dx;
                                     rotated.sumY += e.dy;
-                                    var box = resizeRotated(e.target, resizeEdges || e.edges);
+                                    var box = resizeRotated(e.target, resizeEdges || e.edges, !!mediaBox && !e.shiftKey);
                                     newLeft   = box.left;
                                     newTop    = box.top;
                                     newWidth  = box.width;
                                     newHeight = box.height;
 
+                                } else if (mediaBox && !e.shiftKey) {
+
+                                    var kept = keepShape(resizeEdges || e.edges, parent);
+                                    newLeft   = kept.left;
+                                    newTop    = kept.top;
+                                    newWidth  = kept.width;
+                                    newHeight = kept.height;
+
+                                    FrameTrail.module('OverlaysController').snapCanvasResize(e.target, kept, resizeEdges || e.edges);
+
                                 } else {
 
                                     newLeft   = parseFloat(e.target.dataset.ftLeft)   + e.deltaRect.left;
-                                    newTop    = parseFloat(e.target.dataset.ftTop)    + e.deltaRect.top;
+                                    newTop    = parseFloat(e.target.dataset.ftTop)    + (autoHeight ? 0 : e.deltaRect.top);
                                     newWidth  = parseFloat(e.target.dataset.ftWidth)  + e.deltaRect.width;
-                                    newHeight = parseFloat(e.target.dataset.ftHeight) + e.deltaRect.height;
+                                    newHeight = parseFloat(e.target.dataset.ftHeight) + (autoHeight ? 0 : e.deltaRect.height);
 
                                     // Clamp to parent — follow the pointer 1:1, no live snapping.
                                     if (newLeft < 0)                        { newWidth  += newLeft;  newLeft = 0; }
                                     if (newTop  < 0)                        { newHeight += newTop;   newTop  = 0; }
                                     if (newLeft + newWidth  > parent.offsetWidth)  { newWidth  = parent.offsetWidth  - newLeft; }
-                                    if (newTop  + newHeight > parent.offsetHeight) { newHeight = parent.offsetHeight - newTop;  }
                                     if (newWidth  < 5) { newWidth  = 5; }
+                                    if (autoHeight) {
+                                        // As fitToContent() does: a box growing past the bottom moves up
+                                        newHeight = Math.min(parent.offsetHeight, contentHeightPx(newWidth, parent) || newHeight);
+                                        if (newTop + newHeight > parent.offsetHeight) { newTop = parent.offsetHeight - newHeight; }
+                                    }
+                                    if (newTop  + newHeight > parent.offsetHeight) { newHeight = parent.offsetHeight - newTop;  }
                                     if (newHeight < 5) { newHeight = 5; }
 
                                     // Only show the snap guide lines; snap the actual rect on release.
                                     FrameTrail.module('OverlaysController').snapCanvasResize(
                                         e.target,
                                         { left: newLeft, top: newTop, width: newWidth, height: newHeight },
-                                        e.edges
+                                        autoHeight ? { left: e.edges.left, right: e.edges.right } : e.edges
                                     );
 
                                 }
@@ -2296,12 +2653,25 @@ FrameTrail.defineType(
 
                                 // Snap-on-release: snap the moving edges, then re-clamp to parent + min size.
                                 // (Snap lines are axis aligned, so a rotated box is not snapped.)
+                                // (With auto height only the side edges; setRect() measures the height.)
                                 if (!rotated) {
-                                    var snappedRect = FrameTrail.module('OverlaysController').snapCanvasResize(
+                                    var snapEdges   = resizeEdges || e.edges || {},
+                                        snappedRect = FrameTrail.module('OverlaysController').snapCanvasResize(
                                         e.target,
                                         { left: finalLeft, top: finalTop, width: finalWidth, height: finalHeight },
-                                        resizeEdges || e.edges || {}
+                                        autoHeight ? { left: snapEdges.left, right: snapEdges.right } : snapEdges
                                     );
+                                    // A box keeping its shape takes the snapped size of one axis
+                                    if (mediaBox && !e.shiftKey) {
+                                        var ratio = mediaBox.width / mediaBox.height;
+                                        if (Math.abs(snappedRect.width - finalWidth) > 0.5) {
+                                            snappedRect.height = snappedRect.width / ratio;
+                                        } else {
+                                            snappedRect.width = snappedRect.height * ratio;
+                                        }
+                                        snappedRect.left = snapEdges.left ? finalLeft + finalWidth  - snappedRect.width  : finalLeft;
+                                        snappedRect.top  = snapEdges.top  ? finalTop  + finalHeight - snappedRect.height : finalTop;
+                                    }
                                     finalLeft   = snappedRect.left;
                                     finalTop    = snappedRect.top;
                                     finalWidth  = snappedRect.width;

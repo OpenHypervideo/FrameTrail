@@ -534,7 +534,8 @@ FrameTrail.defineType(
                 renderBasicPropertiesControls: function(overlay) {
 
                     var self = this,
-                        manualInputMode   = true;
+                        manualInputMode   = true,
+                        hasMediaRatio     = (typeof overlay.hasMediaRatio === 'function') && overlay.hasMediaRatio();
 
                     var controlsContainer = document.createElement('div');
                     controlsContainer.className = 'controlsWrapper';
@@ -602,6 +603,14 @@ FrameTrail.defineType(
                                             + '                    </div>'
                                             + '                </div>'
                                             + '            </div>'
+                                            + (hasMediaRatio
+                                                  ? '            <hr>'
+                                                  + '            <div class="layoutRow">'
+                                                  + '                <div class="column-12">'
+                                                  + '                    <button class="fitMediaButton"><span class="icon-resize-full-alt"></span> '+ this.labels['SettingsFitToMedia'] +'</button>'
+                                                  + '                </div>'
+                                                  + '            </div>'
+                                                  : '')
                                             + '            <hr>'
                                             + '            <div class="layoutRow">'
                                             + '                <div class="column-3">'
@@ -964,6 +973,26 @@ FrameTrail.defineType(
 
                         });
                     });
+
+                    // --- Fit to media: the box takes the shape of its image, video or player ---
+                    var fitMediaButton = controlsContainer.querySelector('.fitMediaButton');
+                    if (fitMediaButton) {
+                        fitMediaButton.addEventListener('click', function() {
+                            overlay.readMediaRatio(function(ratio) {
+                                if (!ratio) { return; }
+                                var before = overlay.snapshotState(['position', 'rotation', 'keyframes']);
+                                if (!overlay.fitToRatio(ratio, 'center')) { return; }
+                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
+                                FrameTrail.module('OverlaysController').registerStateUndo(
+                                    overlay,
+                                    self.labels['SidebarOverlays'] + ' ' + self.labels['SettingsFitToMedia'],
+                                    before,
+                                    overlay.snapshotState(['position', 'rotation', 'keyframes'])
+                                );
+                                FrameTrail.module('OverlaysController').refreshMotionControls(overlay);
+                            });
+                        });
+                    }
 
                     // --- Hover Effect Controls ---
                     var hoverControls = controlsContainer.querySelectorAll('.hoverStyleControl');

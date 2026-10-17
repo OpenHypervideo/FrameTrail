@@ -191,6 +191,7 @@
                         "radius": 14,
                         "shadow": true
                     },
+                    "autoSize": "height",
                     "animation": {
                         "in": {
                             "preset": "slideFromBottom"
