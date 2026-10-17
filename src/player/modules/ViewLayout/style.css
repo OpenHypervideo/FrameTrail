@@ -441,13 +441,13 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     font-size: 60px !important;
 }
 
-.layoutManager .playerWrapper .playerArea .schematicPlayerProgress {
+.layoutManager .schematicPlayerProgress {
     flex: 0 0 4px;
     background-color: var(--semi-transparent-fg-color);
     position: relative;
 }
 
-.layoutManager .playerWrapper .playerArea .schematicPlayerProgressFill {
+.layoutManager .schematicPlayerProgressFill {
     position: absolute;
     top: 0;
     left: 0;
@@ -456,7 +456,7 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     background-color: var(--primary-fg-color);
 }
 
-.layoutManager .playerWrapper .playerArea .schematicControls {
+.layoutManager .schematicControls {
     flex: 0 0 auto;
     display: flex;
     align-items: center;
@@ -465,17 +465,17 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     background-color: var(--secondary-bg-color);
 }
 
-.layoutManager .playerWrapper .playerArea .schematicControlsLeft {
+.layoutManager .schematicControlsLeft {
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.layoutManager .playerWrapper .playerArea .schematicControlsLeft .icon-play-1::before {
+.layoutManager .schematicControlsLeft .icon-play-1::before {
     font-size: 20px !important;
 }
 
-.layoutManager .playerWrapper .playerArea .schematicTimeBar {
+.layoutManager .schematicTimeBar {
     width: 40px;
     height: 6px;
     border-radius: 3px;
@@ -483,13 +483,13 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     opacity: 0.4;
 }
 
-.layoutManager .playerWrapper .playerArea .schematicControlsRight {
+.layoutManager .schematicControlsRight {
     display: flex;
     align-items: center;
     gap: 6px;
 }
 
-.layoutManager .playerWrapper .playerArea .schematicControlDot {
+.layoutManager .schematicControlDot {
     width: 14px;
     height: 14px;
     border-radius: 50%;
@@ -590,12 +590,35 @@ body > .contentViewTemplate .contentViewTemplateLabel {
    Laid out as the phone shows them: the tabs in a row above the views, which take the whole width. */
 
 .layoutManagerContainer .companionLayoutManager {
-    flex: 0 0 210px;
-    width: 210px;
+    position: relative;
+    flex: 0 0 280px;
+    width: 280px;
+    aspect-ratio: 9 / 19.5;
+    max-height: 100%;
+    align-self: center;
     margin-left: 12px;
-    padding: 14px 10px 26px;
+    padding: 14px 10px 38px;
     border-radius: 26px;
     align-items: stretch;
+}
+
+/* The power button. */
+
+.layoutManagerContainer .companionLayoutManager::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: 10px;
+    width: 18px;
+    height: 18px;
+    margin-left: -9px;
+    border: 1px solid var(--secondary-fg-color);
+    border-radius: 50%;
+    opacity: .4;
+}
+
+.companionLayoutManager .schematicPlayerProgress {
+    margin-top: 10px;
 }
 
 .companionLayoutManager .companionLayoutLabel {
