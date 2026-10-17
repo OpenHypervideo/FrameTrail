@@ -19,7 +19,8 @@
  *   the holder has unsaved changes (5), takeover; lastWriter names who wrote;
  * - personal API tokens: a token writes as its user and cannot manage the
  *   account (403);
- * - a session belongs to the data folder it was opened for;
+ * - a session belongs to the data folder it was opened for, also when its id
+ *   is sent under another folder's cookie name;
  * - a change of the video source changes the version of every annotation
  *   file it rewrites, so their owners' next saves do not undo it;
  * - tags: any signed-in user adds one, never over an existing id; only admins
@@ -286,6 +287,22 @@ describe('server contract (src/_server/)', () => {
         assert.equal(String(there.code), '0', 'the other folder must see no session: ' + JSON.stringify(there).slice(0, 200));
         const here = await a.post({ a: 'userCheckLogin' });
         assert.equal(String(here.code), '1', 'and the session goes on where it was opened');
+
+        // The client decides which id it sends under which cookie name: the id of this folder's session,
+        // sent under the other folder's name, must not be its user (Admin A, id 1) there either.
+        const cookieName = async (f) => {
+            const client = new Client(f);
+            await client.post({ a: 'userCheckLogin' });
+            return [...client.cookies.keys()].find((key) => key.startsWith('FTSESS'));
+        };
+        const ownName = await cookieName(folder), otherName = await cookieName(other);
+        assert.notEqual(ownName, otherName);
+        const replay = new Client(other);
+        replay.cookies.set(otherName, a.cookies.get(ownName));
+        const replayed = await replay.post({ a: 'userCheckLogin' });
+        assert.equal(String(replayed.code), '0', 'a session sent under another folder\'s cookie name must be no session there: ' + JSON.stringify(replayed).slice(0, 200));
+        const still = await a.post({ a: 'userCheckLogin' });
+        assert.equal(String(still.code), '1', 'and the session it was taken from goes on');
     });
 
     test('a change of the video source changes the version of every annotation file it rewrites', async () => {

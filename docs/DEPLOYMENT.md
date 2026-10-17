@@ -462,7 +462,7 @@ tar xzf frametrail-data.tar.gz
 ### Configuration
 
 Server-side config is in `src/_server/config.php`:
-- `$conf["dir"]["data"]` — Path to `_data` directory (default: `../_data`). Can be overridden by the client's `dataPath` init option — the PHP backend resolves the URL path to a filesystem path and validates it is within the server root (parent of `_server/`) and holds a `config.json`. It is resolved anew on every request. Each data directory has a session of its own: the session cookie is named from the host and the directory, so being signed in to one is not being signed in to another, and an account of one directory is never taken for the account with the same id in another.
+- `$conf["dir"]["data"]` — Path to `_data` directory (default: `../_data`). Can be overridden by the client's `dataPath` init option — the PHP backend resolves the URL path to a filesystem path and validates it is within the server root (parent of `_server/`) and holds a `config.json`. It is resolved anew on every request. Each data directory has a session of its own: the session cookie is named from the host and the directory, and every session is stamped with them, so being signed in to one is not being signed in to another, and an account of one directory is never taken for the account with the same id in another.
 
 Runtime config is in `_data/config.json`:
 - `userNeedsConfirmation` — Require admin approval for new accounts

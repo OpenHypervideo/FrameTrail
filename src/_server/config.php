@@ -42,26 +42,17 @@ if ($_dataPathInput !== null && $_serverRoot !== false) {
     }
 }
 
-// Scope the session cookie's *name* to this host and this data directory, not
-// just to the cookie's domain.
+// A session belongs to this host and this data directory: its scope, which names the session cookie and is stamped into every session (ftSessionBegin()).
 //
-// The host: a cookie set for a parent domain is sent to every subdomain under
-// it, and PHP takes the first value it sees — so on a platform that gives each
-// project its own subdomain, one project could otherwise plant a session id
-// that another one adopts.
+// The host: a cookie set for a parent domain is sent to every subdomain under it, and PHP takes the first value it sees — so on a platform that gives each project its own subdomain, one project could otherwise plant a session id that another one adopts.
 //
-// The data directory: several of them can be served from one host (dataPath),
-// each with its own users.json. One session for all of them would be the user
-// of one folder taken for the user with the same id in another — possibly an
-// admin there — and a folder that does not know the id would end the session
-// of all the others. A session belongs to the folder it was opened for.
+// The data directory: several of them can be served from one host (dataPath), each with its own users.json. One session for all of them would be the user of one folder taken for the user with the same id in another — possibly an admin there — and a folder that does not know the id would end the session of all the others. The cookie's name keeps the browser from sending one folder's session to another; the stamp keeps a client that does so on purpose from being let in.
 //
-// The name is derived, not configured, so nothing has to be kept in sync.
-// Note: a change of the name invalidates sessions in flight at upgrade time;
-// people are asked to sign in once more, and nothing else changes.
+// The scope is derived, not configured, so nothing has to be kept in sync. Note: a change of the name invalidates sessions in flight at upgrade time; people are asked to sign in once more, and nothing else changes.
 $_sessionScope = (isset($_SERVER['HTTP_HOST']) ? $_SERVER['HTTP_HOST'] : 'localhost')
                . '|' . ((realpath($conf["dir"]["data"]) !== false) ? realpath($conf["dir"]["data"]) : $conf["dir"]["data"]);
-session_name('FTSESS' . substr(sha1($_sessionScope), 0, 8));
+$conf["server"]["session_scope"] = sha1($_sessionScope);
+session_name('FTSESS' . substr($conf["server"]["session_scope"], 0, 8));
 
 // JSON response flags
 $conf["settings"]["json_flags"] = JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE;
@@ -87,12 +78,20 @@ require_once(__DIR__ . "/pairing.incl.php");
  * directory, which the block above decided (users.json, config.json).
  */
 function ftSessionBegin() {
+    global $conf;
 
     if (ftBearerEstablish()) {
         return;
     }
 
     session_start();
+
+    // The client decides which id it sends under which cookie name, and PHP keeps the sessions of every data directory in one store: an id from another directory, sent under this one's name, would make its user the user with the same id here. So a session that carries another scope than this request's — or none, though it holds something (written before sessions were stamped) — is set aside: this request goes on with a new, empty session, and the one it named stays as it was for the directory it belongs to (session_regenerate_id(false) writes it back unchanged before the id changes).
+    $scope = $conf["server"]["session_scope"];
+    if (isset($_SESSION["ftScope"]) ? $_SESSION["ftScope"] !== $scope : !empty($_SESSION)) {
+        session_regenerate_id(false);
+        $_SESSION = array();
+    }
 
     // One chokepoint, before anything has read $_SESSION. Every entry point
     // comes through here — the ajax dispatcher, the gated _data reader, the
@@ -106,6 +105,9 @@ function ftSessionBegin() {
     // cookie name are read from the config.json in $conf["dir"]["data"], which
     // the dataPath override decides.
     ftExternalSessionEnforce();
+
+    // After the enforcement, which may have emptied the session. Logins keep it: session_regenerate_id() keeps the data.
+    $_SESSION["ftScope"] = $scope;
 
 }
 
