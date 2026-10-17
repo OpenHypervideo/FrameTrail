@@ -24,7 +24,7 @@ The schemas follow JSON Schema draft 2020-12, restricted to a small subset (see 
 
 [`common.schema.json`](../schemas/common.schema.json) holds the definitions the others share: dates, creators, selectors, keyframes, the animation spec.
 
-Each schema's `$id` is `https://frametrail.org/schemas/1/<file>`. The `1` is the version of the data format. Additions that existing data does not need to change for — a new optional property, a new overlay type, a new animation preset — keep the number; a change to the meaning or shape of existing data gets a new one. The `$id`s are identifiers: the files live in this repository, and references between them are relative, so a validator loads the folder and never fetches anything.
+Each schema's `$id` is `https://frametrail.org/schemas/1/<file>`. The `1` is the version of the data format. Additions that existing data does not need to change for — a new optional property, a new overlay type, a new animation preset — keep the number; a change to the meaning or shape of existing data gets a new one. The `$id`s are identifiers: the files live in this repository, and references between them are relative, so a validator loads the folder and never fetches anything. The schemas of the latest release are also published at those URLs, listed at [frametrail.org/schemas/1](https://frametrail.org/schemas/1/), for tools that load schemas by URL.
 
 Any 2020-12 validator works. With [Ajv](https://ajv.js.org/) in Node:
 
@@ -61,6 +61,25 @@ validator.validate('hypervideo.schema.json', JSON.parse(fs.readFileSync('_data/h
 ```
 
 A name is resolved against `https://frametrail.org/schemas/1/`; a fragment selects a definition (`common.schema.json#/$defs/keyframe`). The player carries a copy of the schemas without titles and descriptions (`FrameTrailSchemas.js` in the same folder, written by `node scripts/bundle-schemas.mjs`) and validates what scripts and extensions give it to store. The same script writes [TYPES.md](TYPES.md), the reference of the item types: what each is for and the attributes it takes, from the descriptions in `schemas/attributes/`. The tests in [`tests/`](../tests/README.md) hold valid and invalid documents, with the errors expected for each, and the exact rules for messages, so that validators in other languages can be checked against the same fixtures.
+
+### Checking files in an editor
+
+FrameTrail does not write `$schema` into the files it stores. To have an editor check the files of a data folder and show the schemas' descriptions while you edit them, map the files to the published schemas. In VS Code, in `settings.json`:
+
+```json
+"json.schemas": [
+    { "fileMatch": ["**/_data/config.json"],                           "url": "https://frametrail.org/schemas/1/config.schema.json" },
+    { "fileMatch": ["**/_data/tagdefinitions.json"],                   "url": "https://frametrail.org/schemas/1/tagdefinitions.schema.json" },
+    { "fileMatch": ["**/_data/resources/_index.json"],                 "url": "https://frametrail.org/schemas/1/resources-index.schema.json" },
+    { "fileMatch": ["**/_data/hypervideos/_index.json"],               "url": "https://frametrail.org/schemas/1/hypervideos-index.schema.json" },
+    { "fileMatch": ["**/_data/hypervideos/*/hypervideo.json"],         "url": "https://frametrail.org/schemas/1/hypervideo.schema.json" },
+    { "fileMatch": ["**/_data/hypervideos/*/annotations/_index.json"], "url": "https://frametrail.org/schemas/1/annotations-index.schema.json" },
+    { "fileMatch": ["**/_data/hypervideos/*/annotations/*.json", "!**/annotations/_index.json"],
+      "url": "https://frametrail.org/schemas/1/annotation-file.schema.json" }
+]
+```
+
+Where a data folder has another name, put it in place of `_data`. JetBrains IDEs take the same mappings in Settings → Languages & Frameworks → Schemas and DTDs → JSON Schema Mappings.
 
 ## File Layout
 

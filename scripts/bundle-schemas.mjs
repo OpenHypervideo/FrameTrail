@@ -102,7 +102,7 @@ export function bundleSchemas() {
 /* ---------------------------------------------------------------------- */
 
 // The sentence that starts the standard part of an attribute schema's description; what comes before it is about the type.
-const STANDARD_PART = ' This schema describes ';
+export const STANDARD_PART = ' This schema describes ';
 
 const isObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 
@@ -161,7 +161,7 @@ function attributeTypesIn(schema) {
 const cell = (text) => String(text).replace(/\|/g, '\\|');
 const code = (value) => '`' + ((typeof value === 'string' && value !== '') ? value : JSON.stringify(value)) + '`';
 
-function firstSentence(text) {
+export function firstSentence(text) {
     const m = /^(.*?[.!?])(?:\s+(?=[A-Z])|$)/.exec(text);
     return m ? m[1] : text;
 }

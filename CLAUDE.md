@@ -303,6 +303,7 @@ git checkout main
 git tag v2.0.0
 git push origin v2.0.0
 # CI creates the GitHub Release automatically
+node scripts/publish-schemas.mjs ../FrameTrail-Website/schemas/1   # then commit and deploy the website
 ```
 
 ### Branching Model
@@ -370,7 +371,7 @@ The stored format is documented in [docs/DATA-MODEL.md](docs/DATA-MODEL.md) and 
 - **Item identity on load:** `parseContents` / `parseAnnotationFile` de-duplicate `created` per collection (annotations per creator) by moving the later item on by 1 ms (`dedupeCreated`).
 - **Cross-hypervideo rule:** `HypervideoSettingsDialog` is also opened from the overview for any hypervideo. Anything it does to items must act on the edited one (`isLoadedHypervideo()` decides live data vs stored data), never on the loaded one. Shortening a duration deletes/truncates that hypervideo's overlays and code snippets — live for the loaded one, otherwise via `cutContents()` on the JSON the dialog writes — and never touches annotations (they belong to their authors).
 - **`convertToDatabaseFormat(id, purpose)`** builds the model from `hypervideos[id]` (meta, config, clips, chapters, subtitles — where the settings dialog edits them) and its `hypervideoData`; only when `id` is the open hypervideo does it take live overlays, code snippets, global events, custom CSS and the `ViewLayout` content views. `purpose: 'export'` turns Transcript views into CustomHTML; nothing in FrameTrail uses it any more — exports are bundles, which carry the subtitles, so they keep Transcript views like saves.
-- **Namespace:** `http://frametrail.org/ns/` stays HTTP (it is an identifier). The JSON-LD context document is `https://frametrail.org/ns/context.jsonld`, maintained in the FrameTrail-Website repository (`ns/`) together with the namespace page.
+- **Namespace:** `http://frametrail.org/ns/` stays HTTP (it is an identifier). The JSON-LD context document is `https://frametrail.org/ns/context.jsonld`, maintained in the FrameTrail-Website repository (`ns/`) together with the namespace page. The schemas are served at their `$id`s, `https://frametrail.org/schemas/1/`: `scripts/publish-schemas.mjs` copies them byte for byte into that repository's `schemas/1/` (never edited there) and writes its `index.html`, from main after a release. A published schema stays published; a new format version gets `/schemas/2/` beside it.
 
 ## Server Configuration
 
