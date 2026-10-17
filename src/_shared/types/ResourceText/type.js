@@ -244,7 +244,9 @@ FrameTrail.defineType(
                     var self   = this,
                         labels = this.labels,
                         attrs  = overlay.data.attributes,
-                        box    = attrs.box;
+                        box    = attrs.box,
+                        // The switches' texts are labels of their own, so they name their inputs to toggle them.
+                        idPrefix = 'textCard-' + Math.random().toString(36).slice(2, 10);
 
                     var colorValue = function(value, fallback) {
                         return (/^#[0-9a-fA-F]{6}$/.test(value || '')) ? value : fallback;
@@ -262,19 +264,19 @@ FrameTrail.defineType(
                         + '    <div class="column-6">'
                         + '        <div class="checkboxRow">'
                         + '            <label class="switch">'
-                        + '                <input class="textBoxCheckbox" type="checkbox" autocomplete="off"' + (box ? ' checked' : '') + '>'
+                        + '                <input id="' + idPrefix + '-box" class="textBoxCheckbox" type="checkbox" autocomplete="off"' + (box ? ' checked' : '') + '>'
                         + '                <span class="slider round"></span>'
                         + '            </label>'
-                        + '            <label>' + labels['SettingsTextBox'] + '</label>'
+                        + '            <label for="' + idPrefix + '-box">' + labels['SettingsTextBox'] + '</label>'
                         + '        </div>'
                         + '    </div>'
                         + '    <div class="column-6">'
                         + '        <div class="checkboxRow">'
                         + '            <label class="switch">'
-                        + '                <input class="textAutoHeightCheckbox" type="checkbox" autocomplete="off"' + (attrs.autoSize === 'height' ? ' checked' : '') + '>'
+                        + '                <input id="' + idPrefix + '-autoHeight" class="textAutoHeightCheckbox" type="checkbox" autocomplete="off"' + (attrs.autoSize === 'height' ? ' checked' : '') + '>'
                         + '                <span class="slider round"></span>'
                         + '            </label>'
-                        + '            <label>' + labels['SettingsTextAutoHeight'] + '</label>'
+                        + '            <label for="' + idPrefix + '-autoHeight">' + labels['SettingsTextAutoHeight'] + '</label>'
                         + '        </div>'
                         + '    </div>'
                         + '</div>'
@@ -310,10 +312,10 @@ FrameTrail.defineType(
                             + '        <label>&nbsp;</label>'
                             + '        <div class="checkboxRow">'
                             + '            <label class="switch">'
-                            + '                <input class="textBoxShadow" type="checkbox" autocomplete="off"' + (box.shadow ? ' checked' : '') + '>'
+                            + '                <input id="' + idPrefix + '-shadow" class="textBoxShadow" type="checkbox" autocomplete="off"' + (box.shadow ? ' checked' : '') + '>'
                             + '                <span class="slider round"></span>'
                             + '            </label>'
-                            + '            <label>' + labels['SettingsTextBoxShadow'] + '</label>'
+                            + '            <label for="' + idPrefix + '-shadow">' + labels['SettingsTextBoxShadow'] + '</label>'
                             + '        </div>'
                             + '    </div>'
                             + '</div>'

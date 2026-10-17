@@ -799,9 +799,11 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
     /* ------------------------------------------------------------------ */
 
     function switchRow(name, label, checked, disabled, hint) {
+        // The text is a label of its own, so it names the input to toggle it.
+        var id = name + '-' + Math.random().toString(36).slice(2, 10);
         return '<div class="checkboxRow">'
-             + '<label class="switch"><input type="checkbox" name="' + name + '"' + (checked ? ' checked' : '') + (disabled ? ' disabled' : '') + '><span class="slider round"></span></label>'
-             + '<label' + (disabled ? ' style="opacity: 0.4;"' : '') + '>' + label + (hint ? ' <small>(' + hint + ')</small>' : '') + '</label>'
+             + '<label class="switch"><input type="checkbox" name="' + name + '" id="' + id + '"' + (checked ? ' checked' : '') + (disabled ? ' disabled' : '') + '><span class="slider round"></span></label>'
+             + '<label for="' + id + '"' + (disabled ? ' style="opacity: 0.4;"' : '') + '>' + label + (hint ? ' <small>(' + hint + ')</small>' : '') + '</label>'
              + '</div>';
     }
 

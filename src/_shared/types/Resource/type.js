@@ -616,10 +616,10 @@ FrameTrail.defineType(
                                             + '                <div class="column-3">'
                                             + '                    <div class="checkboxRow">'
                                             + '                        <label class="switch">'
-                                            + '                            <input class="hoverStyleCheckbox" type="checkbox" autocomplete="off" '+ (overlay.data.attributes.hoverStyle ? 'checked' : '') +'>'
+                                            + '                            <input id="HoverStyle" class="hoverStyleCheckbox" type="checkbox" autocomplete="off" '+ (overlay.data.attributes.hoverStyle ? 'checked' : '') +'>'
                                             + '                            <span class="slider round"></span>'
                                             + '                        </label>'
-                                            + '                        <label>'+ this.labels['SettingsHoverEffect'] +'</label>'
+                                            + '                        <label for="HoverStyle">'+ this.labels['SettingsHoverEffect'] +'</label>'
                                             + '                    </div>'
                                             + '                </div>'
                                             + '                <div class="column-3 hoverStyleControl">'
@@ -1721,9 +1721,11 @@ FrameTrail.defineType(
                             column.className = 'column-' + (field.column || 12);
 
                             if (field.type === 'switch') {
+                                // The text is a label of its own, so it names the input to toggle it.
+                                var id = field.key + '-' + Math.random().toString(36).slice(2, 10);
                                 column.innerHTML = '<div class="checkboxRow">'
-                                    + '<label class="switch"><input type="checkbox" autocomplete="off"' + (value ? ' checked' : '') + '><span class="slider round"></span></label>'
-                                    + '<label>' + self.labels[field.labelKey] + '</label>'
+                                    + '<label class="switch"><input type="checkbox" id="' + id + '" autocomplete="off"' + (value ? ' checked' : '') + '><span class="slider round"></span></label>'
+                                    + '<label for="' + id + '">' + self.labels[field.labelKey] + '</label>'
                                     + '</div>';
                                 control = column.querySelector('input');
                             } else {

@@ -2679,7 +2679,9 @@ FrameTrail.defineType(
 
                     var self = this,
                         contentViewData = this.contentViewData,
-                        editingUI = document.createElement('div');
+                        editingUI = document.createElement('div'),
+                        // The switches' texts are labels of their own, so they name their inputs to toggle them.
+                        idPrefix = 'contentView-' + Math.random().toString(36).slice(2, 10);
                     editingUI.className = 'contentViewEditingUI';
                     editingUI.innerHTML = '    <div class="layoutRow">'
                                     +'        <div class="generic column-4">'
@@ -2698,8 +2700,8 @@ FrameTrail.defineType(
                                     +'            <input type="text" class="contentViewData" data-property="cssClass" value="'+ contentViewData.cssClass +'" placeholder="('+ self.labels['GenericOptional'] +')">'
                                     +'        </div>'
                                     +'        <div class="generic column-2">'
-                                    +'            <label>'+ self.labels['SettingsStartCollapsed'] +':</label>'
-                                    +'            <div class="checkboxRow"><label class="switch"><input type="checkbox" class="contentViewData" data-property="initClosed" '+ (contentViewData.initClosed ? 'checked' : '') +'><span class="slider round"></span></label></div>'
+                                    +'            <label for="'+ idPrefix +'-initClosed">'+ self.labels['SettingsStartCollapsed'] +':</label>'
+                                    +'            <div class="checkboxRow"><label class="switch"><input type="checkbox" id="'+ idPrefix +'-initClosed" class="contentViewData" data-property="initClosed" '+ (contentViewData.initClosed ? 'checked' : '') +'><span class="slider round"></span></label></div>'
                                     +'        </div>'
                                     +'    </div>'
                                     +'    <hr>'
@@ -2783,10 +2785,10 @@ FrameTrail.defineType(
                                     +'        <div class="custom-select"><select class="contentViewData" data-property="transcriptSource" aria-label="'+ self.labels['SettingsTranscriptSource'] +'"></select></div>'
                                     +'        <div class="checkboxRow">'
                                     +'            <label class="switch" style="display: inline-block;">'
-                                    +'                <input type="checkbox" id="showTranscriptSearch" class="contentViewData" data-property="showTranscriptSearch" autocomplete="off" '+ (contentViewData.showTranscriptSearch ? 'checked' : '') +'>'
+                                    +'                <input type="checkbox" id="'+ idPrefix +'-showTranscriptSearch" class="contentViewData" data-property="showTranscriptSearch" autocomplete="off" '+ (contentViewData.showTranscriptSearch ? 'checked' : '') +'>'
                                     +'                <span class="slider round"></span>'
                                     +'            </label>'
-                                    +'            <label for="showTranscriptSearch">'+ self.labels['SettingsTranscriptSearch'] +'</label>'
+                                    +'            <label for="'+ idPrefix +'-showTranscriptSearch">'+ self.labels['SettingsTranscriptSearch'] +'</label>'
                                     +'        </div>'
                                     +'    </div>'
                                     +'    <div class="typeSpecific '+ (contentViewData.type == 'Timelines' ? 'active' : '') +'" data-type="Timelines">'

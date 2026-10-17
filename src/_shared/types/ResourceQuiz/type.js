@@ -818,22 +818,25 @@ FrameTrail.defineType(
                     var container = document.createElement('div');
                     container.className = 'quizOutcomeControls';
 
+                    // The switches' texts are labels of their own, so they name their inputs to toggle them.
+                    var idPrefix = outcomeName + '-' + Math.random().toString(36).slice(2, 10);
+
                     var html = '<div class="checkboxRow">'
                         + '    <label class="switch">'
-                        + '        <input class="outcomeShowTextCheckbox" type="checkbox" autocomplete="off" '+ (outcome.showText ? 'checked="checked"' : '') +'>'
+                        + '        <input id="'+ idPrefix +'-showText" class="outcomeShowTextCheckbox" type="checkbox" autocomplete="off" '+ (outcome.showText ? 'checked="checked"' : '') +'>'
                         + '        <span class="slider round"></span>'
                         + '    </label>'
-                        + '    <label>'+ this.labels['GenericShowText'] +'</label>'
+                        + '    <label for="'+ idPrefix +'-showText">'+ this.labels['GenericShowText'] +'</label>'
                         + '    <input type="text" class="outcomeShowTextInput '+ (outcome.showText ? 'active' : '') +'">'
                         + '</div>';
 
                     if (jumpDirection) {
                         html += '<div class="checkboxRow">'
                             + '    <label class="switch">'
-                            + '        <input class="outcomeJumpCheckbox" type="checkbox" autocomplete="off" '+ (outcome[jumpProperty] ? 'checked="checked"' : '') +'>'
+                            + '        <input id="'+ idPrefix +'-jump" class="outcomeJumpCheckbox" type="checkbox" autocomplete="off" '+ (outcome[jumpProperty] ? 'checked="checked"' : '') +'>'
                             + '        <span class="slider round"></span>'
                             + '    </label>'
-                            + '    <label>'+ jumpLabel +'</label>'
+                            + '    <label for="'+ idPrefix +'-jump">'+ jumpLabel +'</label>'
                             + '    <input type="text" class="outcomeJumpInput" '+ (outcome[jumpProperty] ? '' : 'disabled="disabled"') +' value="'+ (outcome[jumpProperty] || 20) +'">'
                             + '    <span>'+ this.labels['GenericSeconds'] +'</span>'
                             + '</div>';
@@ -841,10 +844,10 @@ FrameTrail.defineType(
 
                     html += '<div class="checkboxRow">'
                         + '    <label class="switch">'
-                        + '        <input class="outcomeResumeCheckbox" type="checkbox" autocomplete="off" '+ (outcome.resumePlayback ? 'checked="checked"' : '') +'>'
+                        + '        <input id="'+ idPrefix +'-resume" class="outcomeResumeCheckbox" type="checkbox" autocomplete="off" '+ (outcome.resumePlayback ? 'checked="checked"' : '') +'>'
                         + '        <span class="slider round"></span>'
                         + '    </label>'
-                        + '    <label>'+ this.labels['GenericContinuePlayback'] +'</label>'
+                        + '    <label for="'+ idPrefix +'-resume">'+ this.labels['GenericContinuePlayback'] +'</label>'
                         + '</div>';
 
                     container.innerHTML = html;
