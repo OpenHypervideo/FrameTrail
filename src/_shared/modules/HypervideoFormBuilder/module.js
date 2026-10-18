@@ -4,7 +4,7 @@
 
 /**
  * I am the HypervideoFormBuilder. I provide shared form HTML generation
- * for hypervideo dialogs (new and edit).
+ * for hypervideo dialogs (new and edit), and form controls the editors share.
  *
  * @class HypervideoFormBuilder
  * @static
@@ -144,6 +144,60 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
         return html;
     }
 
+    /**
+     * I create a no-code "action preset" picker: a select element which inserts
+     * ready-made JavaScript for common actions into a CodeMirror 6 editor
+     * (the overlay actions, the hypervideo events).
+     *
+     * @method renderActionPresetPicker
+     * @param {Function} getEditorView Function returning the target CM6 EditorView
+     * @return HTMLElement
+     */
+    function renderActionPresetPicker(getEditorView) {
+        var labels = getLabels();
+
+        var presets = [
+            { label: labels['ActionPresetPause'],            code: 'hypervideo.pause();' },
+            { label: labels['ActionPresetPlay'],             code: 'hypervideo.play();' },
+            { label: labels['ActionPresetJumpToTime'],       code: 'hypervideo.currentTime = 10; // ' + labels['ActionPresetJumpToTimeHint'] },
+            { label: labels['ActionPresetJumpToHypervideo'], code: "window.location.hash = 'hypervideo=HYPERVIDEO_ID'; // " + labels['ActionPresetJumpToHypervideoHint'] },
+            { label: labels['ActionPresetShowMessage'],      code: "window.alert('" + labels['ActionPresetShowMessageDefault'] + "');" }
+        ];
+
+        var wrapper = document.createElement('div');
+        wrapper.className = 'custom-select actionPresetPicker';
+
+        var select = document.createElement('select');
+        var optionsHTML = '<option value="" disabled selected style="display:none;">'+ labels['ActionPresetInsert'] +'</option>';
+        for (var i = 0; i < presets.length; i++) {
+            optionsHTML += '<option value="'+ i +'">'+ presets[i].label +'</option>';
+        }
+        select.innerHTML = optionsHTML;
+
+        select.addEventListener('change', function() {
+            var preset = presets[parseInt(this.value, 10)];
+            this.value = '';
+            if (!preset) { return; }
+
+            var editorView = getEditorView();
+            if (!editorView) { return; }
+
+            var doc = editorView.state.doc,
+                insert = preset.code + '\n';
+
+            if (doc.length > 0 && doc.sliceString(doc.length - 1) !== '\n') {
+                insert = '\n' + insert;
+            }
+
+            editorView.dispatch({ changes: { from: doc.length, insert: insert } });
+            editorView.focus();
+        });
+
+        wrapper.appendChild(select);
+
+        return wrapper;
+    }
+
     // Export public interface
     return {
 
@@ -153,7 +207,10 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
 
         // Form generation
         generateSettingsRow: generateSettingsRow,
-        generateVideoSourceSection: generateVideoSourceSection
+        generateVideoSourceSection: generateVideoSourceSection,
+
+        // Form controls
+        renderActionPresetPicker: renderActionPresetPicker
 
     };
 

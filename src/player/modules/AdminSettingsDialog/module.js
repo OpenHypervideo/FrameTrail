@@ -130,7 +130,6 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
             'UserLogin', 'UserLogout', 'VideoJumpTime',
             'AnnotationOpen', 'AnnotationAdd', 'AnnotationChange', 'AnnotationDelete',
             'OverlayAdd', 'OverlayChange', 'OverlayDelete',
-            'CodeSnippetAdd', 'CodeSnippetDelete',
             'EditStart', 'EditSave', 'EditEnd'
         ];
 

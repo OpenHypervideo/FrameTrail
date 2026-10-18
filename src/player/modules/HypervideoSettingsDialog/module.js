@@ -3,7 +3,8 @@
  */
 
 /**
- * I am the HypervideoSettingsDialog. I provide a dialog for editing hypervideo-specific settings.
+ * I am the HypervideoSettingsDialog. I provide a dialog for editing hypervideo-specific settings,
+ * and, in its Advanced Options, the hypervideo's events (JavaScript run on onReady, onPlay, onPause, onEnded).
  *
  * @class HypervideoSettingsDialog
  * @static
@@ -12,6 +13,9 @@
 FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
     var labels = FrameTrail.module('Localization').labels;
+
+    // The hypervideo events edited in the Advanced Options (globalEvents in hypervideo.json).
+    var EVENT_NAMES = ['onReady', 'onPlay', 'onPause', 'onEnded'];
 
     // Live references into the currently open dialog, so the collabState
     // listener can refresh presence without rebuilding anything.
@@ -258,7 +262,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
      * changes, so nothing is marked unsaved (a duration change ends with the
      * hypervideo reloaded from what was written). Any other hypervideo has no
      * live items and must not touch the loaded one's: I return the cuts, and
-     * the dialog applies them to the hypervideo.json it writes (cutContents).
+     * the dialog applies them to the hypervideo.json it writes (applyToStored).
      *
      * @method applyDurationChange
      * @param {String} hypervideoID
@@ -297,9 +301,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         if (outOfRangeItems.overlays.length) {
             FrameTrail.module('OverlaysController').overlayInFocus = null;
         }
-        if (outOfRangeItems.codeSnippets.length) {
-            FrameTrail.module('CodeSnippetsController').codeSnippetInFocus = null;
-        }
 
         outOfRangeItems.overlays.forEach(function(cut) {
             var index = dataIndex(database.overlays, cut.created);
@@ -323,7 +324,6 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 index    = dataIndex(snippets, cut.created),
                 snippet  = liveItem(HypervideoModel.codeSnippets, cut.created);
             if (snippet) {
-                snippet.removeFromDOM();
                 HypervideoModel.codeSnippets.splice(HypervideoModel.codeSnippets.indexOf(snippet), 1);
             }
             if (index > -1) { snippets.splice(index, 1); }
@@ -336,15 +336,16 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
     }
 
     /**
-     * I apply the cuts applyDurationChange returned for a hypervideo that is
-     * not loaded in the editor to the hypervideo.json this dialog writes.
+     * I apply what this dialog changes in a hypervideo that is not loaded in
+     * the editor to the hypervideo.json it writes: the cuts applyDurationChange
+     * returned and the events edited in the Advanced Options.
      *
-     * @method cutContents
+     * @method applyToStored
      * @param {Object} hypervideoJSON
-     * @param {Object} cuts
+     * @param {Object} changes { cuts, globalEvents }, each null when unchanged
      * @return {Object} the new hypervideo.json
      */
-    function cutContents(hypervideoJSON, cuts) {
+    function applyToStored(hypervideoJSON, changes) {
 
         var Serializer = window.FrameTrailSerializer,
             model      = Serializer.parseHypervideo(hypervideoJSON);
@@ -359,8 +360,14 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             });
         }
 
-        model.overlays     = apply(model.overlays, cuts.overlays);
-        model.codeSnippets = apply(model.codeSnippets, cuts.codeSnippets);
+        if (changes.cuts) {
+            model.overlays     = apply(model.overlays, changes.cuts.overlays);
+            model.codeSnippets = apply(model.codeSnippets, changes.cuts.codeSnippets);
+        }
+
+        if (changes.globalEvents) {
+            model.globalEvents = changes.globalEvents;
+        }
 
         return Serializer.serializeHypervideo(model);
     }
@@ -484,6 +491,22 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                         + '        <div class="posterFrameList"></div>'
                         + '        <input type="hidden" name="posterFrame" value="'+ (hypervideo.posterFrame || '') +'">'
                         + '    </div>'
+                        + '    <hr>'
+                        + '    <details class="hypervideoAdvancedOptions">'
+                        + '        <summary>'+ labels['GenericAdvancedOptions'] +'</summary>'
+                        + '        <label>'+ labels['SettingsEvents'] +'</label>'
+                        + '        <div class="message active">'+ labels['MessageHypervideoEvents'] +'</div>'
+                        + '        <div class="hypervideoEventTabs">'
+                        + '            <ul>'
+                        + EVENT_NAMES.map(function(eventName) {
+                              return '            <li><a href="#HypervideoEvent-'+ eventName +'">'+ eventName +'</a></li>';
+                          }).join('')
+                        + '            </ul>'
+                        + EVENT_NAMES.map(function(eventName) {
+                              return '        <div id="HypervideoEvent-'+ eventName +'" data-eventname="'+ eventName +'"></div>';
+                          }).join('')
+                        + '        </div>'
+                        + '    </details>'
                         + '    <div class="message error"></div>'
                         + '</form>';
         var EditHypervideoForm = _efw.firstElementChild;
@@ -563,6 +586,100 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                 posterInput.value = resource ? resource.src : '';
             }
         });
+
+        // The events, edited in the Advanced Options: for the hypervideo loaded
+        // in the editor its live ones, for any other the stored ones.
+        var currentEvents = isLoadedHypervideo(thisID)
+                ? FrameTrail.module('HypervideoModel').events
+                : window.FrameTrailSerializer.parseHypervideo(hypervideo.hypervideoData).globalEvents;
+        if (!currentEvents || typeof currentEvents !== 'object' || Array.isArray(currentEvents)) {
+            currentEvents = {};
+        }
+
+        var eventEditors = {};
+
+        (function() {
+            var CM6     = window.FrameTrailCM6,
+                tabs    = EditHypervideoForm.querySelector('.hypervideoEventTabs'),
+                canTest = isLoadedHypervideo(thisID);
+
+            EVENT_NAMES.forEach(function(eventName) {
+                var panel      = tabs.querySelector('[data-eventname="'+ eventName +'"]'),
+                    cm6Wrapper = document.createElement('div');
+
+                cm6Wrapper.className = 'cm6-wrapper';
+                cm6Wrapper.style.height = '200px';
+                panel.appendChild(cm6Wrapper);
+
+                var eventEditor = new CM6.EditorView({
+                    state: CM6.EditorState.create({
+                        doc: currentEvents[eventName] || '',
+                        extensions: [
+                            CM6.oneDark,
+                            CM6.lineNumbers(),
+                            CM6.highlightActiveLine(),
+                            CM6.highlightActiveLineGutter(),
+                            CM6.drawSelection(),
+                            CM6.history(),
+                            CM6.keymap.of([].concat(CM6.defaultKeymap, CM6.historyKeymap)),
+                            CM6.EditorView.lineWrapping,
+                            CM6.StreamLanguage.define(CM6.legacyModes.javascript),
+                            window.FrameTrailCM6Linters.js,
+                            CM6.lintGutter()
+                        ]
+                    }),
+                    parent: cm6Wrapper
+                });
+                cm6Wrapper._cm6view = eventEditor;
+                eventEditors[eventName] = eventEditor;
+
+                cm6Wrapper.insertAdjacentElement('beforebegin', formBuilder.renderActionPresetPicker(function() {
+                    return eventEditor;
+                }));
+
+                // Only the loaded hypervideo has a player to try the code on.
+                if (canTest) {
+                    var testButton = document.createElement('button');
+                    testButton.type = 'button';
+                    testButton.style.marginTop = '6px';
+                    testButton.textContent = labels['SettingsTestCode'];
+                    testButton.addEventListener('click', function() {
+                        try {
+                            var testRun = new Function('FrameTrail', 'hypervideo', eventEditor.state.doc.toString());
+                            testRun(FrameTrail, FrameTrail.module('HypervideoController'));
+                        } catch (exception) {
+                            alert(labels['MessageCodeContainsErrors'] +': '+ exception.message);
+                        }
+                    });
+                    panel.appendChild(testButton);
+                }
+            });
+
+            FTTabs(tabs, {
+                activate: function(event, ui) {
+                    var cm6Wrapper = ui.newPanel.querySelector('.cm6-wrapper');
+                    if (cm6Wrapper && cm6Wrapper._cm6view) { cm6Wrapper._cm6view.requestMeasure(); }
+                }
+            });
+
+            // The editors were made while the Advanced Options were closed.
+            EditHypervideoForm.querySelector('.hypervideoAdvancedOptions').addEventListener('toggle', function() {
+                EVENT_NAMES.forEach(function(eventName) { eventEditors[eventName].requestMeasure(); });
+            });
+        })();
+
+        // The events as edited, or null when none of them changed (so a file is
+        // not rewritten with empty ones). Other keys of the stored object stay.
+        function editedEvents() {
+            var changed = false,
+                events  = Object.assign({}, currentEvents);
+            EVENT_NAMES.forEach(function(eventName) {
+                var code = eventEditors[eventName].state.doc.toString();
+                if (code !== (currentEvents[eventName] || '')) { changed = true; }
+                events[eventName] = code;
+            });
+            return changed ? events : null;
+        }
 
         // Handle upload new video resource button
         EditHypervideoForm.querySelector('.uploadNewVideoResource').addEventListener('click', function() {
@@ -661,14 +778,18 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             }
         }
 
-        // Cuts of a shorter duration still to apply to the hypervideo.json
-        // written below (only for a hypervideo not loaded in the editor).
-        var pendingContentCuts = null;
+        // Cuts of a shorter duration and edited events still to apply to the
+        // hypervideo.json written below (only for a hypervideo not loaded in the
+        // editor; the loaded one's are changed live, which the file is made from).
+        var pendingContentCuts  = null,
+            pendingStoredEvents = null;
 
         // The hypervideo.json this dialog writes.
         function hypervideoJSON() {
             var json = FrameTrail.module('Database').convertToDatabaseFormat(thisID);
-            return pendingContentCuts ? cutContents(json, pendingContentCuts) : json;
+            return (pendingContentCuts || pendingStoredEvents)
+                ? applyToStored(json, { cuts: pendingContentCuts, globalEvents: pendingStoredEvents })
+                : json;
         }
 
         // A write of the loaded hypervideo waits for a save of the editor in flight.
@@ -700,7 +821,8 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             // Only called when saving - apply changes to database
             var DatabaseEntry = FrameTrail.module('Database').hypervideos[thisID];
 
-            pendingContentCuts = null;
+            pendingContentCuts  = null;
+            pendingStoredEvents = null;
 
             DatabaseEntry.name = EditHypervideoForm.querySelector('input[name="name"]').value;
 
@@ -776,6 +898,15 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
             }
 
             // Subtitles are not changed here (the transcripts edit mode does that): the entry keeps its list.
+
+            var newEvents = editedEvents();
+            if (newEvents) {
+                if (isLoadedHypervideo(thisID)) {
+                    FrameTrail.module('HypervideoModel').events = newEvents;
+                } else {
+                    pendingStoredEvents = newEvents;
+                }
+            }
         }
 
         var hypervideoDialogCtrl;

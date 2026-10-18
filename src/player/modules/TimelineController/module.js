@@ -5,7 +5,7 @@
 /**
  * I am the TimelineController.
  * I manage shared timeline functionality including zoom, scroll synchronization,
- * time ruler, and minimap across all timeline types (overlays, annotations, code snippets).
+ * time ruler, and minimap across all timeline types (overlays, annotations, chapters, transcripts).
  *
  * @class TimelineController
  * @static
@@ -101,7 +101,6 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
         // Register all timelines
         registerTimeline(ViewVideo.OverlayTimeline);
         registerTimeline(ViewVideo.AnnotationTimeline);
-        registerTimeline(ViewVideo.CodeSnippetTimeline);
         registerTimeline(ViewVideo.ChapterTimeline);
         registerTimeline(ViewVideo.TranscriptTimeline);
 
@@ -110,10 +109,9 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
         controlsContainer.className = 'timelineControlsContainer';
 
         // DOM order in playerContainer is:
-        //   codeSnippetTimeline > overlayTimeline > playerProgress > controls > annotationTimeline
-        // Insert before codeSnippetTimeline so controls appear above all timelines
-        var cst = ViewVideo.CodeSnippetTimeline;
-        cst.insertAdjacentElement('beforebegin', controlsContainer);
+        //   chapterTimeline > transcriptTimeline > overlayTimeline > playerProgress > controls > annotationTimeline
+        // Insert before chapterTimeline so controls appear above all timelines
+        ViewVideo.ChapterTimeline.insertAdjacentElement('beforebegin', controlsContainer);
 
         // Create UI elements
         createZoomControls();
@@ -991,8 +989,6 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
                     '',
                     []
                 );
-            case 'codesnippets':
-                return HypervideoModel.codeSnippets || [];
             case 'chapters':
                 return HypervideoModel.chapters || [];
             default:

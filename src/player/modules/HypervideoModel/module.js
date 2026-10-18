@@ -45,9 +45,6 @@
         annotations             = [],
 
         unsavedOverlays         = false,
-        unsavedCodeSnippets     = false,
-        unsavedEvents           = false,
-        unsavedCustomCSS        = false,
         unsavedAnnotations      = false,
         unsavedChapters         = false,
         unsavedLayout           = false,
@@ -405,34 +402,6 @@
     };
 
     /**
-     * I remove all data of a code snippet from the model and from the database.
-     *
-     * I am called from {{#crossLink "CodeSnippetsController/deleteCodeSnippet:method"}}CodeSnippetsController/deleteCodeSnippet{{/crossLink}}.
-     *
-     * @method removeCodeSnippet
-     * @param {CodeSnippet} codeSnippet
-     */
-    function removeCodeSnippet(codeSnippet) {
-
-        var idx,
-            codesnippetData = codeSnippet.data;
-
-        idx = codeSnippets.indexOf(codeSnippet);
-        codeSnippets.splice(idx, 1);
-
-        idx = FrameTrail.module('Database').codeSnippets.timebasedEvents.indexOf(codeSnippet.data);
-        FrameTrail.module('Database').codeSnippets.timebasedEvents.splice(idx, 1);
-
-        newUnsavedChange('codeSnippets');
-
-        FrameTrail.triggerEvent('userAction', {
-            action: 'CodeSnippetDelete',
-            codesnippet: codesnippetData
-        });
-
-    };
-
-    /**
      * I remove a chapter from the model and from the database.
      *
      * I am called from {{#crossLink "ChaptersController/deleteChapter:method"}}ChaptersController/deleteChapter{{/crossLink}}.
@@ -589,56 +558,6 @@
             return newOverlayObj;
 
     };
-
-    /**
-     * I create a new {{#crossLink "CodeSnippet"}}code snippet{{/crossLink}}.
-     *
-     * I am called from {{#crossLink "CodeSnippetsController/makeTimelineDroppable:method"}}CodeSnippetsController{{/crossLink}}.
-     *
-     * @method newCodeSnippet
-     * @param {} protoData
-     * @param {Boolean} skipUndo - If true, skip undo registration (used during undo/redo restore)
-     * @return CodeSnippet
-     */
-    function newCodeSnippet(protoData, skipUndo) {
-
-        var newCodeSnippetObj,
-            newData;
-
-            // Check if protoData already has 'created' timestamp (restoring from undo)
-            if (protoData.created) {
-                // Restoring from saved data - use as-is
-                newData = JSON.parse(JSON.stringify(protoData));
-            } else {
-                newData = {
-                                "name":         protoData.name,
-                                "creator":      FrameTrail.getState('username'),
-                                "creatorId":    FrameTrail.module('UserManagement').userID,
-                                "created":      Date.now(),
-                                "snippet":      protoData.snippet,
-                                "start":        protoData.start,
-                                "attributes":   {}
-                            };
-            }
-
-
-            FrameTrail.module('Database').codeSnippets.timebasedEvents.push(newData);
-            newCodeSnippetObj = FrameTrail.newObject('CodeSnippet', newData)
-            codeSnippets.push(newCodeSnippetObj);
-
-            newUnsavedChange('codeSnippets');
-
-            var codesnippetData = newData;
-
-            FrameTrail.triggerEvent('userAction', {
-                action: 'CodeSnippetAdd',
-                codesnippet: codesnippetData
-            });
-
-            return newCodeSnippetObj;
-
-    };
-
 
     /**
      * I create a new {{#crossLink "Chapter"}}chapter{{/crossLink}}.
@@ -916,7 +835,8 @@
     /**
      * Updates the {{#crossLinks "HypervideoModel/events:attribute"}}attribute events{{/crossLinks}}
      * and the respective Database value.
-     * I am called from {{#crossLink "CodeSnippetsController/initEditOptions:method"}}CodeSnippetsController{{/crossLink}}.
+     * I am called from the {{#crossLink "HypervideoSettingsDialog"}}HypervideoSettingsDialog{{/crossLink}},
+     * whose save writes them (with the rest of the hypervideo), so nothing is marked unsaved.
      *
      * @method updateEvents
      * @return Object of Events
@@ -929,32 +849,7 @@
         database.codeSnippets.globalEvents = eventObject;
         events = eventObject;
 
-        newUnsavedChange('events');
-
         return events;
-
-    };
-
-
-    /**
-     * Updates the {{#crossLinks "HypervideoModel/customCSS:attribute"}}attribute customCSS{{/crossLinks}}
-     * and the respective Database value.
-     * I am called from {{#crossLink "CodeSnippetsController/initEditOptions:method"}}CodeSnippetsController{{/crossLink}}.
-     *
-     * @method updateCustomCSS
-     * @return String
-     * @private
-     */
-    function updateCustomCSS(cssString) {
-
-        var database = FrameTrail.module('Database');
-
-        database.codeSnippets.customCSS = cssString;
-        customCSS = cssString;
-
-        newUnsavedChange('customCSS');
-
-        return cssString;
 
     };
 
@@ -1159,7 +1054,7 @@
 
     /**
      * I serve the purpose to set markers (both visually and in my data model),
-     * in which categories (overlays, annotations, codeSnippets) the user has unsaved changes.
+     * in which categories (overlays, annotations, chapters, …) the user has unsaved changes.
      *
      * @method newUnsavedChange
      * @param {String} category
@@ -1169,18 +1064,6 @@
         if (category === 'overlays') {
 
             unsavedOverlays = true;
-
-        } else if (category === 'codeSnippets') {
-
-            unsavedCodeSnippets = true;
-
-        } else if (category === 'events') {
-
-            unsavedEvents = true;
-
-        } else if (category === 'customCSS') {
-
-            unsavedCustomCSS = true;
 
         } else if (category === 'annotations') {
 
@@ -1349,9 +1232,6 @@
         window.clearTimeout(autoSaveTimeout);
 
         unsavedOverlays     = false;
-        unsavedCodeSnippets = false;
-        unsavedEvents       = false;
-        unsavedCustomCSS    = false;
         unsavedChapters     = false;
         unsavedLayout       = false;
         unsavedSubtitles    = false;
@@ -1391,7 +1271,7 @@
     /**
      * I am the central function for saving changes back to the server.
      *
-     * I save only, what is necessary (overlays, annotations, codeSnippets).
+     * I save only, what is necessary (the hypervideo, annotations).
      *
      * When all saving requests to the server have completed, I check all their responses.
      * If there where any errors I display them and abort. Otherwise I reset the
@@ -1500,8 +1380,7 @@
                     FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateSaving']);
                 }
 
-                var hypervideoDirty = !!(unsavedOverlays || unsavedCodeSnippets
-                    || unsavedEvents || unsavedCustomCSS || unsavedChapters || unsavedLayout
+                var hypervideoDirty = !!(unsavedOverlays || unsavedChapters || unsavedLayout
                     || unsavedSubtitles || unsavedConfig || Object.keys(pendingSubtitles).length),
                     Collaboration   = FrameTrail.module('Collaboration');
 
@@ -1580,9 +1459,6 @@
                 if (result.failed) return;
                 if (result.part === 'hypervideo') {
                     unsavedOverlays     = false;
-                    unsavedCodeSnippets = false;
-                    unsavedEvents       = false;
-                    unsavedCustomCSS    = false;
                     unsavedChapters     = false;
                     unsavedLayout       = false;
                     unsavedSubtitles    = false;
@@ -1717,9 +1593,6 @@
             }
 
             unsavedOverlays     = false;
-            unsavedCodeSnippets = false;
-            unsavedEvents       = false;
-            unsavedCustomCSS    = false;
             unsavedAnnotations  = false;
             unsavedChapters     = false;
             unsavedLayout       = false;
@@ -1797,9 +1670,6 @@
         window.clearTimeout(autoSaveTimeout);
 
         unsavedOverlays     = false;
-        unsavedCodeSnippets = false;
-        unsavedEvents       = false;
-        unsavedCustomCSS    = false;
         unsavedAnnotations  = false;
         unsavedChapters     = false;
         unsavedLayout       = false;
@@ -2114,7 +1984,7 @@
                 FrameTrail.module('AnnotationsController').initController();
             }
 
-            var stillUnsaved = !!(unsavedOverlays || unsavedCodeSnippets || unsavedEvents || unsavedCustomCSS
+            var stillUnsaved = !!(unsavedOverlays
                 || unsavedChapters || unsavedLayout || unsavedSubtitles || unsavedConfig || Object.keys(pendingSubtitles).length);
 
             var Collaboration = FrameTrail.module('Collaboration');
@@ -2382,7 +2252,7 @@
         get codeSnippets()        { return getCodeSnippets() },
 
         /**
-         * Get or set the global event handlers for the hypervideo.
+         * Get or set the global event handlers for the hypervideo (set by the hypervideo settings dialog, whose save writes them).
          * @type Object
          * @attribute events
          * @param {Object} eventObject
@@ -2391,13 +2261,12 @@
         set events(eventObject)   { return updateEvents(eventObject)  },
 
         /**
-         * Get or set the global custom CSS code for the hypervideo.
+         * The hypervideo's own CSS. Deprecated: still applied, but not edited any more (the instance's custom.css is the place for CSS).
          * @type String
          * @attribute customCSS
-         * @param {String} cssString
+         * @readOnly
          */
         get customCSS()           { return customCSS                  },
-        set customCSS(cssString)  { return updateCustomCSS(cssString) },
 
         // /**
         //  * The annotation sets of the hypervideo (fetched via {{#crossLink "HypervideoModel/getAnnotationSets:method"}}getAnnotationSets(){{/crossLinks}}).
@@ -2532,9 +2401,6 @@
 
         removeOverlay:          removeOverlay,
         newOverlay:             newOverlay,
-
-        removeCodeSnippet:      removeCodeSnippet,
-        newCodeSnippet:         newCodeSnippet,
 
         removeChapter:          removeChapter,
         newChapter:             newChapter,

@@ -78,7 +78,6 @@ CSS_FILES=(
 
     # Type styles (remaining player types)
     "player/types/Subtitle/style.css"
-    "player/types/CodeSnippet/style.css"
     "player/types/ContentView/style.css"
 
     # Module styles

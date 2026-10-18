@@ -1177,9 +1177,9 @@ FrameTrail.defineType(
                             });
                             cm6Wrapper._cm6view = overlayEventEditor;
 
-                            var CodeSnippetsController = FrameTrail.module('CodeSnippetsController');
-                            if (CodeSnippetsController) {
-                                cm6Wrapper.insertAdjacentElement('beforebegin', CodeSnippetsController.renderActionPresetPicker(function() {
+                            var HypervideoFormBuilder = FrameTrail.module('HypervideoFormBuilder');
+                            if (HypervideoFormBuilder) {
+                                cm6Wrapper.insertAdjacentElement('beforebegin', HypervideoFormBuilder.renderActionPresetPicker(function() {
                                     return cm6Wrapper._cm6view;
                                 }));
                             }

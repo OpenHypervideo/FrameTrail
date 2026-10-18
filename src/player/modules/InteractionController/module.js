@@ -419,7 +419,7 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
 
     /**
      * Escape clears the selection of the timeline that is being edited
-     * (overlays, annotations, code snippets or transcript cues), unless something else owns
+     * (overlays, annotations or transcript cues), unless something else owns
      * the key: a text editor, an open dialog, the keyframe easing menu, the
      * freeform shape editor (drawing, or a selected point), or text being edited on
      * the video (which then ends).
@@ -456,9 +456,6 @@ FrameTrail.defineModule('InteractionController', function(FrameTrail){
                 break;
             case 'annotations':
                 FrameTrail.module('AnnotationsController').annotationInFocus = null;
-                break;
-            case 'codesnippets':
-                FrameTrail.module('CodeSnippetsController').codeSnippetInFocus = null;
                 break;
             case 'transcripts':
                 FrameTrail.module('TranscriptsEditor').selectCue(null);

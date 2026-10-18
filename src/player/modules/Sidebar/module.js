@@ -52,7 +52,6 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
                    + '                <button class="editMode" data-editmode="preview"><span class="icon-eye"></span><span class="editModeLabel">'+ labels['SidebarPreview'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="layout"><span class="icon-website"></span><span class="editModeLabel">'+ labels['SidebarLayoutEditor'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="overlays"><span class="icon-object-ungroup"></span><span class="editModeLabel">'+ labels['SidebarOverlays'] +'</span></button>'
-                   + '                <button class="editMode" data-editmode="codesnippets"><span class="icon-code"></span><span class="editModeLabel">'+ labels['SidebarCustomCode'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="chapters"><span class="icon-list-bullet"></span><span class="editModeLabel">'+ labels['SidebarChapters'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="transcripts"><span class="icon-doc-text"></span><span class="editModeLabel">'+ labels['SidebarTranscripts'] +'</span></button>'
                    + '                <button class="editMode" data-editmode="annotations"><span class="icon-annotations"></span><span class="editModeLabel">'+ labels['SidebarMyAnnotations'] +'<span class="icon-user"></span></button>'
@@ -890,16 +889,15 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
     /**
      * I am called from the {{#crossLink "HypervideoModel/newUnsavedChange:method"}}HypervideoModel/newUnsavedChange(){{/crossLink}}.
      *
-     * I mark the categories (overlays, annotations, codeSnippets), which have unsaved changes inside them.
+     * I mark the categories (overlays, annotations, chapters, …), which have unsaved changes inside them.
      *
      * @method newUnsavedChange
      * @param {String} category
      */
     function newUnsavedChange(category) {
 
-        // camelCase not valid in attributes; subtitles are edited in the transcripts mode
-        var editMode = (category == 'codeSnippets' || category == 'events' || category == 'customCSS') ? 'codesnippets'
-                     : (category == 'subtitles') ? 'transcripts' : category,
+        // subtitles are edited in the transcripts mode
+        var editMode = (category == 'subtitles') ? 'transcripts' : category,
             button   = domElement.querySelector('button[data-editmode="'+ editMode +'"]');
 
         // Hypervideo settings have no edit mode, nor does an extension whose mode failed to load.
@@ -944,7 +942,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
      * has always worked. "preview" writes nothing. Extensions' edit modes that
      * edit the hypervideo are added by addEditModeButton().
      */
-    var LOCK_GATED_EDIT_MODES = ['layout', 'overlays', 'codesnippets', 'chapters', 'transcripts'];
+    var LOCK_GATED_EDIT_MODES = ['layout', 'overlays', 'chapters', 'transcripts'];
 
 
     function isLockGatedMode(editMode) {

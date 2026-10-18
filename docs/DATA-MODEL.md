@@ -293,7 +293,8 @@ The overview shows the hypervideos as a grid or, when `config.json` has `overvie
 - **`config.layoutArea`** — the content views around the video, in four areas, and those of a phone paired with the player in `areaCompanion` ([docs/PAIRING.md](PAIRING.md)): never shown in the player itself; medium views are laid out like the right area's, a large collection shows the annotations at full size in a swipeable row that follows the playback, and a small view is shown (and saved) as medium; empty or missing means the phone shows no views. A content view is told apart by `type`: `TimedContent` (a collection of annotations, filtered by `collectionFilter`), `CustomHTML`, `Transcript` (built from the subtitles of `transcriptSource`; empty, or a language without subtitles, means the first subtitles), `Timelines` and `Chapters`. A transcript view is stored as a transcript; only an export that has to stand alone may turn it into `CustomHTML`.
 - **`chapters`** — `{ start, title }`, ordered by `start`. A chapter has no other identity than its `start`, which is unique within the hypervideo.
 - **`subtitles`** — one WebVTT file per language in the `subtitles/` folder next to the file, named `<srclang>.vtt`. The editor shows them as transcripts (the Transcripts edit mode), in Transcript views and as captions; cue times are on the video's timeline (a clip with an in point starts later than 0). It keeps what it does not change in a file (header, NOTE, STYLE and REGION blocks, cue ids and settings, line endings) and writes cues in the order of their start. A speaker is a voice tag at the start of a cue (`<v Ada>Hello`); `config.captionsVisible` turns captions on from the start.
-- **`globalEvents`** and **`customCSS`** — JavaScript run on player events and CSS for this hypervideo. Event code is the body of a function called with `FrameTrail` (the instance) and `hypervideo` (its HypervideoController).
+- **`globalEvents`** — JavaScript run on player events, edited in the hypervideo settings (Advanced Options). Event code is the body of a function called with `FrameTrail` (the instance) and `hypervideo` (its HypervideoController).
+- **`customCSS`** — deprecated: CSS for this hypervideo. It is still applied while the hypervideo is shown, but FrameTrail no longer edits it; CSS belongs in the instance's `custom.css`.
 
 ### `annotations/_index.json` and `annotations/<userId>.json`
 
@@ -349,7 +350,7 @@ Overlays and code snippets (in `hypervideo.json` → `contents`) and annotations
 | `frametrail:type` | Lives in | Target selector | Notes |
 |-------------------|----------|-----------------|-------|
 | `Overlay` | `hypervideo.json` → `contents` | time span and box | shown over the video; may move (keyframes) and rotate; `frametrail:events` |
-| `CodeSnippet` | `hypervideo.json` → `contents` | a point in time `t=<start>` | body is `TextualBody`, `frametrail:type` `codesnippet`, `format` `text/javascript`, the code in `value` |
+| `CodeSnippet` | `hypervideo.json` → `contents` | a point in time `t=<start>` | body is `TextualBody`, `frametrail:type` `codesnippet`, `format` `text/javascript`, the code in `value`; FrameTrail has no editor for them, they run when written into the file |
 | `Annotation` | `annotations/<userId>.json` | time span | shown in timelines and content views; `frametrail:uri`, `frametrail:graphdata` |
 
 ### Resource types

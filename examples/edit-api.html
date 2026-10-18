@@ -5,7 +5,7 @@
   Requirements: a build in ../build/ (bash scripts/build.sh). Works opened from the filesystem (file://) or served from any static web server; the hypervideo has no video file, so nothing is fetched.
 
   Demonstrates edit (docs/EXTENDING.md, "Editing the Hypervideo"), used by an extension the page registers itself:
-  - list, get, add, update and remove of overlays, code snippets, annotations and chapters
+  - list, get, add, update and remove of overlays, annotations and chapters
   - setLayout, setSubtitles, setConfig and getHypervideo
   - getInfo, getUser, permission and listHypervideos
   - a transaction: several changes as one undo step
@@ -175,12 +175,6 @@
                 patch: { target: { selector: { value: 't=14,22&xywh=percent:40,40,30,15' } } },
                 id:    function(item) { return item.created; },
                 check: function(item) { return item.target.selector.value.indexOf('t=14,22') === 0; }
-            },
-            codeSnippets: {
-                data:  { body: { 'frametrail:type': 'codesnippet', 'frametrail:name': 'Log', 'value': 'console.log("at 30 s");' }, target: { selector: { value: 't=30' } } },
-                patch: { body: { value: 'console.log("still at 30 s");' } },
-                id:    function(item) { return item.created; },
-                check: function(item) { return item.body.value.indexOf('still') !== -1; }
             },
             annotations: {
                 data:  { body: text, target: { selector: { value: 't=20,30' } } },

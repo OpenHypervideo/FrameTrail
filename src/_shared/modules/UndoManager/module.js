@@ -24,7 +24,6 @@ FrameTrail.defineModule('UndoManager', function(FrameTrail){
     var categoryToEditMode = {
         'overlays': 'overlays',
         'annotations': 'annotations',
-        'codeSnippets': 'codesnippets',
         'chapters': 'chapters',
         'subtitles': 'transcripts',
         'layout': 'layout'

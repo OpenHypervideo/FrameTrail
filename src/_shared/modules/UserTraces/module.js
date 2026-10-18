@@ -134,16 +134,6 @@ FrameTrail.defineModule('UserTraces', function(FrameTrail){
                 case 'OverlayDelete':
                     attributes.overlay = evt.detail.overlay;
                     break;
-                case 'CodeSnippetAdd':
-                    attributes.codesnippet = evt.detail.codesnippet;
-                    break;
-                case 'CodeSnippetChange':
-                    attributes.codesnippet = evt.detail.codesnippet;
-                    attributes.changes = evt.detail.changes;
-                    break;
-                case 'CodeSnippetDelete':
-                    attributes.codesnippet = evt.detail.codesnippet;
-                    break;
                 case 'EditStart':
                     //
                     break;

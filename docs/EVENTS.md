@@ -58,7 +58,7 @@ Events are dispatched as `CustomEvent`s; payload fields are on `evt.detail`.
 
 The full set of `evt.detail.action` values dispatched by FrameTrail:
 
-`UserLogin`, `UserLogout`, `VideoJumpTime`, `AnnotationOpen`, `AnnotationAdd`, `AnnotationChange`, `AnnotationDelete`, `OverlayAdd`, `OverlayChange`, `OverlayDelete`, `CodeSnippetAdd`, `CodeSnippetDelete`, `EditStart`, `EditSave`, `EditEnd`
+`UserLogin`, `UserLogout`, `VideoJumpTime`, `AnnotationOpen`, `AnnotationAdd`, `AnnotationChange`, `AnnotationDelete`, `OverlayAdd`, `OverlayChange`, `OverlayDelete`, `EditStart`, `EditSave`, `EditEnd`
 
 These are also the options offered for `config.userTracesStartAction` / `config.userTracesEndAction` in the administration dialog. Two caveats if you compare action names against stored traces:
 

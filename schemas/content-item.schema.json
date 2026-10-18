@@ -501,7 +501,7 @@
             }
         },
         "codeSnippet": {
-            "description": "A code snippet: JavaScript run when playback reaches a point in time.",
+            "description": "A code snippet: JavaScript run when playback reaches a point in time. FrameTrail has no editor for code snippets; they run when written into hypervideo.json.",
             "type": "object",
             "required": ["type", "frametrail:type", "creator", "created", "target", "body"],
             "properties": {

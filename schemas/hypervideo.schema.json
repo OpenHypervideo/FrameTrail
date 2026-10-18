@@ -676,7 +676,7 @@
             ]
         },
         "customCSS": {
-            "description": "CSS for this hypervideo.",
+            "description": "Deprecated. CSS for this hypervideo, applied while it is shown. FrameTrail no longer edits it: CSS belongs in the instance's custom.css.",
             "type": "string",
             "default": ""
         },

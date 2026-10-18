@@ -61,7 +61,7 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
         SIDE_PANEL_MAX_WIDTH = 800,
 
         // Edit modes FrameTrail has itself: an edit panel cannot take their names.
-        BUILT_IN_EDIT_MODES = ['preview', 'layout', 'overlays', 'codesnippets', 'chapters', 'transcripts', 'annotations', 'audio', 'map', 'settings'];
+        BUILT_IN_EDIT_MODES = ['preview', 'layout', 'overlays', 'chapters', 'transcripts', 'annotations', 'audio', 'map', 'settings'];
 
     var loadState       = 'idle',   // 'idle' | 'loading' | 'done'
         waiting         = [],

@@ -68,7 +68,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '                    </div>'
                         + '                </div>'
                         + '            </div>'
-                        + '            <div class="codeSnippetTimeline timeline"></div>'
                         + '            <div class="chapterTimeline timeline"></div>'
                         + '            <div class="transcriptTimeline timeline"></div>'
                         + '            <div class="overlayTimeline timeline"></div>'
@@ -162,8 +161,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         OverlayTimeline             = domElement.querySelector('.overlayTimeline'),
         OverlayContainer            = domElement.querySelector('.overlayContainer'),
-
-        CodeSnippetTimeline         = domElement.querySelector('.codeSnippetTimeline'),
 
         ChapterTimeline             = domElement.querySelector('.chapterTimeline'),
 
@@ -775,7 +772,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         });
 
         var editMode = FrameTrail.getState('editMode');
-        if ((editMode == 'overlays' || editMode == 'annotations' || editMode == 'codesnippets')) {
+        if ((editMode == 'overlays' || editMode == 'annotations')) {
             var _tabs = EditPropertiesContainer.querySelector('.ui-tabs');
             if (_tabs) { FTTabs(_tabs, 'refresh'); } // Phase 2 bridge
         }
@@ -1136,9 +1133,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             case 'audio':
                 enterAudioMode();
                 break;
-            case 'codesnippets':
-                enterCodeSnippetMode();
-                break;
             case 'chapters':
                 enterChapterMode();
                 break;
@@ -1301,17 +1295,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
      */
     function enterAudioMode() {
         initEditMode();
-    }
-
-    /**
-     * I am called when the app enters the editMode "codesnippets"
-     * @method enterCodeSnippetMode
-     */
-    function enterCodeSnippetMode() {
-        initEditMode();
-        CodeSnippetTimeline.classList.add('editable');
-
-        EditPropertiesContainer.setAttribute('data-editmode', 'codesnippets');
     }
 
     /**
@@ -2150,12 +2133,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
          */
         get OverlayTimeline()   { return OverlayTimeline  },
 
-        /**
-         * I contain the CodeSnippetTimeline element.
-         * @attribute CodeSnippetTimeline
-         * @type HTMLElement
-         */
-        get CodeSnippetTimeline()  { return CodeSnippetTimeline  },
         get ChapterTimeline()      { return ChapterTimeline      },
         get TranscriptTimeline()   { return TranscriptTimeline   },
 

@@ -444,7 +444,7 @@ editPanel: {
 }
 ```
 
-A mode that edits the hypervideo (the default) follows the rules of layout, overlays, custom code and chapters: it is offered to admins and the hypervideo's owner only, entering it claims the collaboration lock, and while another editor holds that lock the video area is blocked. Set `editsHypervideo: false` for a mode that does not write to the hypervideo; like annotations, it is then open to everyone editing. The names of FrameTrail's own modes (`preview`, `layout`, `overlays`, `codesnippets`, `chapters`, `transcripts`, `annotations`) cannot be used. While the mode is active, `.mainContainer` carries `data-edit-mode="<name>"`.
+A mode that edits the hypervideo (the default) follows the rules of layout, overlays, chapters and transcripts: it is offered to admins and the hypervideo's owner only, entering it claims the collaboration lock, and while another editor holds that lock the video area is blocked. Set `editsHypervideo: false` for a mode that does not write to the hypervideo; like annotations, it is then open to everyone editing. The names of FrameTrail's own modes (`preview`, `layout`, `overlays`, `chapters`, `transcripts`, `annotations`) cannot be used. While the mode is active, `.mainContainer` carries `data-edit-mode="<name>"`.
 
 **`transcriber`**: makes the transcript of the open hypervideo's video, for instance with a speech recognition service. FrameTrail's Transcripts editor then offers it as a button (the slot's `label`, default "Generate transcript"), both for a new transcript and to replace one; the result becomes the subtitles of its language, as one undo step, written with the next save. The slot has no element of its own; when several extensions have one, the first loaded that is offered for the open hypervideo is used.
 
@@ -513,7 +513,6 @@ edit.remove('overlays', overlay.created);
 | Kind | What it is | Referred to by |
 |------|------------|----------------|
 | `overlays` | overlays, as W3C items | their `created` |
-| `codeSnippets` | code snippets, as W3C items | their `created` |
 | `annotations` | annotations of every user, as W3C items | their `created` (the user's own), or `{ creator, created }` |
 | `chapters` | `{ start, title }` | their `start` (seconds) |
 | `contentViews` | the content views of the layout areas | — (set per area) |
@@ -539,7 +538,7 @@ Reading works whenever a hypervideo is open; `getUser()`, `permission()` and `li
 
 | Method | Does |
 |--------|------|
-| `add(kind, data)` | adds an overlay, code snippet, annotation or chapter and returns it as stored |
+| `add(kind, data)` | adds an overlay, annotation or chapter and returns it as stored |
 | `update(kind, ref, patch)` | changes one with a JSON Merge Patch ([RFC 7386](https://www.rfc-editor.org/rfc/rfc7386)) on its stored form: objects are merged, `null` removes a property, everything else is replaced. Returns it as stored |
 | `remove(kind, ref)` | removes one and returns it as it was |
 | `setLayout(area, contentViews)` | replaces the content views of a layout area: `'top'`, `'bottom'`, `'left'`, `'right'`, `'companion'` (the views of a paired phone) (or `'areaTop'`, …) |
@@ -561,7 +560,7 @@ try {
 
 `e.code` is `'invalid'` (with `e.errors`), `'notFound'` (no such thing, or no hypervideo open) or `'notAllowed'` (see below); an async transaction that is stopped rejects with `'stopped'` (see [Undo and Transactions](#undo-and-transactions)).
 
-Writes need the permissions the editor needs: edit mode; for overlays, code snippets, chapters, content views, subtitles and settings an admin or the hypervideo's creator, and no collaboration lock held by someone else (writing claims the lock, as the editors that write the hypervideo do); annotations only in the user's own collection. `permission(kind)` tells beforehand, for instance to offer only what the user may do. An item of a type the player cannot show (such as the legacy `button`) is listed and kept, but not changed.
+Writes need the permissions the editor needs: edit mode; for overlays, chapters, content views, subtitles and settings an admin or the hypervideo's creator, and no collaboration lock held by someone else (writing claims the lock, as the editors that write the hypervideo do); annotations only in the user's own collection. `permission(kind)` tells beforehand, for instance to offer only what the user may do. An item of a type the player cannot show (such as the legacy `button`) is listed and kept, but not changed.
 
 ### Undo and Transactions
 
@@ -643,7 +642,7 @@ Edit `src/_shared/styles/variables.css`:
 
 ```css
 .frametrail-body[data-frametrail-theme="mytheme"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="codesnippets"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], .extensionEditMode),
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], [data-edit-mode="transcripts"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
     .loadingScreen,
     .userLoginOverlay,
@@ -798,7 +797,7 @@ FrameTrail.addEventListener('myCustomEvent', function(event) {
 
 ### Hypervideo Global Events
 
-Users can add JavaScript that runs at specific lifecycle points via the `globalEvents` field in `hypervideo.json`:
+Users can add JavaScript that runs at specific lifecycle points via the `globalEvents` field in `hypervideo.json`, edited in the hypervideo settings (Advanced Options):
 
 ```json
 {

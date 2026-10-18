@@ -81,7 +81,7 @@
 /* Autohide: overlay controls on top of the video so no empty space remains.
    Active in player mode and preview mode, but not in real edit modes.
    Classes are set on the target element (.frametrail-body), not body. */
-.autohideControls .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]):not([data-edit-mode="transcripts"]):not(.extensionEditMode) .playerContainer .controls {
+.autohideControls .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]):not([data-edit-mode="transcripts"]):not(.extensionEditMode) .playerContainer .controls {
     position: absolute;
     bottom: 0;
     left: 0;
@@ -90,7 +90,7 @@
     transition: visibility 0.4s, opacity 0.4s;
 }
 
-.autohideControls .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]):not([data-edit-mode="transcripts"]):not(.extensionEditMode) .playerContainer .playerProgress {
+.autohideControls .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]):not([data-edit-mode="transcripts"]):not(.extensionEditMode) .playerContainer .playerProgress {
     position: absolute;
     bottom: 40px;
     left: 0;
@@ -110,8 +110,8 @@
     transition: visibility 0.4s, opacity 0.4s;
 }
 
-.userinactive .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]):not([data-edit-mode="transcripts"]):not(.extensionEditMode) .playerContainer .controls,
-.userinactive .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="codesnippets"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]):not([data-edit-mode="transcripts"]):not(.extensionEditMode) .playerContainer .playerProgress {
+.userinactive .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]):not([data-edit-mode="transcripts"]):not(.extensionEditMode) .playerContainer .controls,
+.userinactive .mainContainer:not([data-edit-mode="overlays"]):not([data-edit-mode="annotations"]):not([data-edit-mode="layout"]):not([data-edit-mode="chapters"]):not([data-edit-mode="transcripts"]):not(.extensionEditMode) .playerContainer .playerProgress {
     display: block;
     visibility: hidden;
     opacity: 0;
@@ -391,34 +391,16 @@
     display: none;
 }
 
-/* Code Snippets */
-
-.playerContainer .codeSnippetTimeline {
-    position: relative;
-    width: 100%;
-    height: 0px;
-    background: var(--secondary-bg-color);
-    z-index: 2;
-    pointer-events: none;
-    overflow: hidden;
-    display: none;
-}
-
 /* Show each timeline when it has the editable class (set by enter*Mode functions) */
 .playerContainer .annotationTimeline.editable,
-.playerContainer .overlayTimeline.editable,
-.playerContainer .codeSnippetTimeline.editable {
+.playerContainer .overlayTimeline.editable {
     display: block;
     overflow: visible;
 }
 
 /* Only show each timeline in its corresponding edit mode */
 .editActive[data-edit-mode="overlays"] .playerContainer .annotationTimeline,
-.editActive[data-edit-mode="overlays"] .playerContainer .codeSnippetTimeline,
-.editActive[data-edit-mode="codesnippets"] .playerContainer .annotationTimeline,
-.editActive[data-edit-mode="codesnippets"] .playerContainer .overlayTimeline,
-.editActive[data-edit-mode="annotations"] .playerContainer .overlayTimeline,
-.editActive[data-edit-mode="annotations"] .playerContainer .codeSnippetTimeline {
+.editActive[data-edit-mode="annotations"] .playerContainer .overlayTimeline {
     display: none !important;
     height: 0 !important;
     min-height: 0 !important;
@@ -878,7 +860,7 @@
     display: flex;
 }
 
-.editActive[data-edit-mode="overlays"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="codesnippets"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="annotations"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="chapters"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="transcripts"] .hypervideoContainer .infoAreaRight, .editActive.extensionEditMode .hypervideoContainer .infoAreaRight {
+.editActive[data-edit-mode="overlays"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="annotations"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="chapters"] .hypervideoContainer .infoAreaRight, .editActive[data-edit-mode="transcripts"] .hypervideoContainer .infoAreaRight, .editActive.extensionEditMode .hypervideoContainer .infoAreaRight {
     flex: 0 0 580px;
 }
 
@@ -979,13 +961,6 @@
 
 .editingOptions .resourceThumb .resourceTitle {
     display: block;
-}
-
-.editingOptions .executeEventCode {
-    position: absolute;
-    right: 12px;
-    bottom: 18px;
-    background-color: #eaeaef;
 }
 
 /* Edit Properties Container */
@@ -1195,7 +1170,7 @@
    EDITING UI
    =========================================== */
 
-.playerContainer .annotationTimeline.editable, .playerContainer .overlayTimeline.editable, .playerContainer .codeSnippetTimeline.editable, .playerContainer .audioTimeline.editable {
+.playerContainer .annotationTimeline.editable, .playerContainer .overlayTimeline.editable, .playerContainer .audioTimeline.editable {
     min-height: 20px;
     height: 40px;
     background-color: transparent;
@@ -1267,45 +1242,6 @@
     overflow: hidden;
     text-overflow: ellipsis;
     display: block;
-}
-
-/* Code Snippet timeline element styles */
-
-.playerContainer .codeSnippetTimeline.editable .timelineElement {
-    width: 20px;
-    margin-left: -10px;
-}
-
-.playerContainer .codeSnippetTimeline.editable .timelineElement:before {
-    border-top: 4px solid rgba(160, 170, 175, 0.8);
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    content: "";
-    left: 5px;
-    position: absolute;
-    bottom: -4px;
-    width: 2px;
-}
-
-.playerContainer .codeSnippetTimeline.editable .timelineElement:after {
-    border-bottom: 4px solid rgba(160, 170, 175, 0.8);
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    content: "";
-    left: 5px;
-    position: absolute;
-    top: -4px;
-    width: 2px;
-}
-
-.playerContainer .codeSnippetTimeline.editable .timelineElement.brushed:before, .playerContainer .codeSnippetTimeline.editable .timelineElement.brushed:after {
-    border-top-color: rgba(160, 163, 163, 1);
-    border-bottom-color: rgba(160, 163, 163, 1);
-}
-
-.playerContainer .codeSnippetTimeline.editable .timelineElement.highlighted:before, .playerContainer .codeSnippetTimeline.editable .timelineElement.highlighted:after {
-    border-top-color: #f8f8f8 !important;
-    border-bottom-color: #f8f8f8 !important;
 }
 
 /* ===========================================

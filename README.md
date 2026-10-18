@@ -51,7 +51,7 @@ FrameTrail works in three modes with different capabilities.
 | | Server mode | Local folder mode | In-memory mode |
 |---|---|---|---|
 | **Requirements** | PHP 7.4+ | Chrome or Edge | Any modern browser |
-| **Edit hypervideos** (overlays, annotations, code snippets, layout) | ✓ | ✓ | ✓ |
+| **Edit hypervideos** (overlays, annotations, chapters, transcripts, layout) | ✓ | ✓ | ✓ |
 | **Persistent saves** | ✓ | ✓ | — (Export) |
 | **Manage hypervideos** (add / delete) | ✓ | ✓ | — |
 | **Manage resources** (add / delete) | ✓ | ✓ | — |

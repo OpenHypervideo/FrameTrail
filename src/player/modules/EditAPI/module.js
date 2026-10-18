@@ -6,13 +6,13 @@
 /**
  * I am the EditAPI, whose edit object is published as `edit` on a FrameTrail instance: the documented way for extensions and scripts to read and change the open hypervideo (see docs/EXTENDING.md, "Editing the Hypervideo").
  *
- * I speak the stored format: overlays, code snippets and annotations as the W3C items of docs/DATA-MODEL.md, chapters, content views and the hypervideo's config as they are written to hypervideo.json. What I return is what a save writes. What I am given is validated against the schemas in schemas/ (with FrameTrailSchema) before anything changes, and refused with `{ path, message }` errors.
+ * I speak the stored format: overlays and annotations as the W3C items of docs/DATA-MODEL.md, chapters, content views and the hypervideo's config as they are written to hypervideo.json. What I return is what a save writes. What I am given is validated against the schemas in schemas/ (with FrameTrailSchema) before anything changes, and refused with `{ path, message }` errors.
  *
  * I also tell what a script needs to know around that data: the open hypervideo's id, video and time (getInfo), who changes are made as (getUser), whether a change is allowed now (permission), and the installation's hypervideos (listHypervideos).
  *
  * Writes go through the same model and controller functions as edits made in the editor, so the video, the timelines and the content views follow, the changes are saved by the normal save (and autosave), and each write is an undo step. A transaction makes several writes one undo step, and takes them all back when it fails. While an async transaction is open, the editor is busy (state editBusy): editing by hand and undo wait, other writes are refused, and the user can stop it.
  *
- * The permissions are the editor's: writes only in edit mode; overlays, code snippets, chapters, content views, subtitles and settings only for an admin or the hypervideo's creator, and not while someone else holds the hypervideo's collaboration lock; annotations only in the user's own collection.
+ * The permissions are the editor's: writes only in edit mode; overlays, chapters, content views, subtitles and settings only for an admin or the hypervideo's creator, and not while someone else holds the hypervideo's collaboration lock; annotations only in the user's own collection.
  *
  * @class EditAPI
  * @static
@@ -72,25 +72,6 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
             actionKey:  'overlay'
         },
 
-        codeSnippets: {
-            name:       'code snippet',
-            itemType:   'CodeSnippet',
-            schema:     'content-item.schema.json#/$defs/codeSnippet',
-            category:   'codeSnippets',
-            label:      'SidebarCustomCode',
-            hypervideo: true,
-            timeSpan:   false,
-            items:      function() { return FrameTrail.module('HypervideoModel').codeSnippets; },
-            data:       function() { return FrameTrail.module('Database').codeSnippets.timebasedEvents || []; },
-            parse:      function(item) { return Serializer.parseCodeSnippet(item); },
-            serialize:  function(data, context) { return Serializer.serializeCodeSnippet(data, context); },
-            add:        function(data) { return FrameTrail.module('CodeSnippetsController').addCodeSnippet(data); },
-            replace:    function(live, data) { FrameTrail.module('CodeSnippetsController').replaceCodeSnippetData(live, data); },
-            remove:     function(live) { FrameTrail.module('CodeSnippetsController').deleteCodeSnippet(live, true); },
-            action:     'CodeSnippetChange',
-            actionKey:  'codesnippet'
-        },
-
         annotations: {
             name:       'annotation',
             itemType:   'Annotation',
@@ -115,7 +96,6 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     // The kinds list() and get() know, and whether changing them needs the hypervideo's creator or an admin.
     var KINDS = {
         overlays:     { hypervideo: true },
-        codeSnippets: { hypervideo: true },
         annotations:  { hypervideo: false },
         chapters:     { hypervideo: true },
         contentViews: { hypervideo: true },
@@ -312,7 +292,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
             errors = [],
             type   = isObject(item.body) ? item.body['frametrail:type'] : undefined;
 
-        if (kind !== 'codeSnippets' && typeof type === 'string'
+        if (typeof type === 'string'
                 && !FrameTrail.type('Resource' + type.charAt(0).toUpperCase() + type.slice(1))) {
             errors.push({ path: '/body/frametrail:type', message: 'is not a type this player can show' });
         }
@@ -389,7 +369,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
 
     }
 
-    // The live object (Overlay, CodeSnippet, Annotation) of an item, by created and, for annotations, creator.
+    // The live object (Overlay, Annotation) of an item, by created and, for annotations, creator.
     function findLive(kind, millis, creatorId) {
 
         var items = ITEM_KINDS[kind].items();
@@ -493,7 +473,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     }
 
     /**
-     * I return all things of a kind: 'overlays', 'codeSnippets', 'annotations' (everyone's, as W3C items), 'chapters' (`{ start, title }`), 'contentViews' (of all layout areas, top, bottom, left, right and companion — a paired phone's; `{ area }` picks one) or 'subtitles' (`{ src, srclang }`).
+     * I return all things of a kind: 'overlays', 'annotations' (everyone's, as W3C items), 'chapters' (`{ start, title }`), 'contentViews' (of all layout areas, top, bottom, left, right and companion — a paired phone's; `{ area }` picks one) or 'subtitles' (`{ src, srclang }`).
      *
      * @method list
      * @param {String} kind
@@ -512,7 +492,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
                 return matches(filter, {
                     start:   data.start,
                     end:     (data.end !== undefined) ? data.end : data.start,
-                    type:    (kind === 'codeSnippets') ? 'codesnippet' : data.type,
+                    type:    data.type,
                     creator: data.creatorId
                 });
             }).map(function(data) {
@@ -547,7 +527,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
 
         } else {
 
-            throw editError('invalid', 'Unknown kind "' + kind + '"; one of overlays, codeSnippets, annotations, chapters, contentViews, subtitles');
+            throw editError('invalid', 'Unknown kind "' + kind + '"; one of overlays, annotations, chapters, contentViews, subtitles');
 
         }
 
@@ -556,7 +536,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     }
 
     /**
-     * I return one thing, or null when there is none: an overlay or code snippet by its created (ISO text), one of the user's annotations by its created or anyone's by `{ creator, created }`, a chapter by its start (seconds), subtitles by their language (`{ src, srclang, vtt }`, the WebVTT text in vtt). Content views have no identity; list them.
+     * I return one thing, or null when there is none: an overlay by its created (ISO text), one of the user's annotations by its created or anyone's by `{ creator, created }`, a chapter by its start (seconds), subtitles by their language (`{ src, srclang, vtt }`, the WebVTT text in vtt). Content views have no identity; list them.
      *
      * @method get
      * @param {String} kind
@@ -648,7 +628,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     }
 
     /**
-     * I tell whether the user may change a kind of thing now ('overlays', 'codeSnippets', 'annotations', 'chapters', 'contentViews', 'subtitles', 'config'), so a script can offer only what it may do: { allowed: true }, or { allowed: false, code, message } with what a write would throw. Asking claims nothing; a write claims the collaboration lock.
+     * I tell whether the user may change a kind of thing now ('overlays', 'annotations', 'chapters', 'contentViews', 'subtitles', 'config'), so a script can offer only what it may do: { allowed: true }, or { allowed: false, code, message } with what a write would throw. Asking claims nothing; a write claims the collaboration lock.
      *
      * @method permission
      * @param {String} kind
@@ -1081,12 +1061,12 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
             return editError('invalid', 'Subtitles are set per language, with setSubtitles(lang, vttText)');
         }
 
-        return editError('invalid', 'Unknown kind "' + kind + '"; one of overlays, codeSnippets, annotations, chapters');
+        return editError('invalid', 'Unknown kind "' + kind + '"; one of overlays, annotations, chapters');
 
     }
 
     /**
-     * I add an overlay, code snippet, annotation (W3C items) or chapter (`{ start, title }`) and return it as stored. For items I fill in what is fixed — type, frametrail:type, creator, created, the target's type and source, the selector's type — so the body and `target.selector.value` (with keyframes or rotation, if any) are what is needed.
+     * I add an overlay, annotation (W3C items) or chapter (`{ start, title }`) and return it as stored. For items I fill in what is fixed — type, frametrail:type, creator, created, the target's type and source, the selector's type — so the body and `target.selector.value` (with keyframes or rotation, if any) are what is needed.
      *
      * @method add
      * @param {String} kind

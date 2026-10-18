@@ -131,7 +131,7 @@ FrameTrail.defineModule('ModuleName', function(FrameTrail) {
 | `OverlayAnimationEditor` | Animation tab of the overlay properties panel, keyframe easing menu |
 | `SubtitlesController` | Captions on the video and the CC button's languages (native text tracks where the player cannot go fullscreen itself) |
 | `TranscriptsEditor` | The "transcripts" edit mode: the cues of a language as a list and as blocks on the transcript timeline (moved and resized there), editing, uploading (WebVTT, SubRip), deleting (asking what becomes of the Transcript views showing it), generating through an extension's `transcriber` |
-| `CodeSnippetsController` | Code snippet execution at timestamps |
+| `CodeSnippetsController` | Code snippet execution at timestamps (snippets have no editor), the hypervideo's deprecated CSS |
 | `InteractionController` | Drag/drop, resize for editing |
 | `TimelineController` | Timeline UI and scrubbing |
 | `Interface` | Main UI coordinator |
@@ -191,7 +191,7 @@ Slots: a side panel (`.sidePanel`, docked right of `.mainContainer`, which narro
 
 Around the data it tells what scripts would otherwise read from modules: `getInfo()` (the open id, `Database.sourcePathOf()`, `HypervideoModel.offsetIn` / `duration`), `getUser()` (`UserManagement`), `permission(kind)` (the check every write makes, `refusalOf()`, without claiming the collaboration lock) and `listHypervideos()` (`Database.hypervideos`; the open one as `getHypervideo()` has it).
 
-Writes go through the controllers, which act in any edit mode: `OverlaysController.addOverlay()` / `replaceOverlayData()` / `deleteOverlay()`, the same for annotations and code snippets, `ChaptersController.addChapter()` / `setChapterData()` / `deleteChapter()`, `ViewLayout.setContentViews()`, `HypervideoModel.setSubtitles()` (which also tells an open `TranscriptsEditor`) / `setConfig()`. Outside an item's own editor it is shown but not made editable, and the timeline is not stacked. Items are found by `created` (annotations by creator and `created`), chapters by `start`; both are kept unique.
+Writes go through the controllers, which act in any edit mode: `OverlaysController.addOverlay()` / `replaceOverlayData()` / `deleteOverlay()`, the same for annotations, `ChaptersController.addChapter()` / `setChapterData()` / `deleteChapter()`, `ViewLayout.setContentViews()`, `HypervideoModel.setSubtitles()` (which also tells an open `TranscriptsEditor`) / `setConfig()`. Outside an item's own editor it is shown but not made editable, and the timeline is not stacked. Items are found by `created` (annotations by creator and `created`), chapters by `start`; both are kept unique.
 
 Each write keeps an undo command; a single write registers it, a transaction collects them and registers one group (`UndoManager.registerGroup()`), or runs their undo in reverse when it fails.
 
@@ -472,12 +472,12 @@ Themes are defined in `src/_shared/styles/variables.css` using two scoping layer
 }
 ```
 
-**Layer 2 — per-theme selectors:** Each theme targets the sub-contexts that should be themed (main content, loading screen, login overlay, titlebar, layout editor). Edit modes like `annotations`, `overlays`, and `codesnippets` are excluded so the editor UI falls back to the base (classic) palette's known-good contrast:
+**Layer 2 — per-theme selectors:** Each theme targets the sub-contexts that should be themed (main content, loading screen, login overlay, titlebar, layout editor). Edit modes like `annotations`, `overlays`, and `chapters` are excluded so the editor UI falls back to the base (classic) palette's known-good contrast:
 
 ```css
 .frametrail-body[data-frametrail-theme="bright"] :is(
     .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"],
-                        [data-edit-mode="codesnippets"], [data-edit-mode="annotations"]),
+                        [data-edit-mode="annotations"], [data-edit-mode="chapters"]),
     .loadingScreen, .userLoginOverlay, .titlebar:not(.editActive), .sidePanel:not(.editActive), .layoutEditor
 ),
 .themeItem[data-theme="bright"] {
