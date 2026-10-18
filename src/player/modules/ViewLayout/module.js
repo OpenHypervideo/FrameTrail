@@ -26,7 +26,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
      * and reach me via FrameTrail.module('ViewLayout').generateSchematic().
      *
      * @method generateSchematic
-     * @param {String} type - ContentView type ('TimedContent', 'CustomHTML', 'Transcript', 'Timelines', 'Chapters')
+     * @param {String} type - ContentView type ('TimedContent', 'Transcript', 'Chapters', 'Timelines', 'CustomHTML')
      * @param {String} size - 'small', 'medium' or 'large'
      * @param {String} axis - 'x' for the top/bottom areas, 'y' for left/right
      * @param {Boolean} thumbnail - Draw a single representative item instead of a full set
@@ -173,10 +173,10 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     // with (the palette, the Display tab of an annotation's properties) and the size the palette offers them in.
     var VIEW_TYPES = [
         { type: 'TimedContent', icon: 'icon-docs',        label: 'GenericAnnotationCollection', size: 'medium' },
-        { type: 'CustomHTML',   icon: 'icon-file-code',   label: 'GenericCustomHTML',           size: 'medium' },
         { type: 'Transcript',   icon: 'icon-doc-text',    label: 'GenericTextTranscript',       size: 'large'  },
+        { type: 'Chapters',     icon: 'icon-list-bullet', label: 'SettingsChapters',            size: 'small'  },
         { type: 'Timelines',    icon: 'icon-tasks',       label: 'GenericTimelines',            size: 'large'  },
-        { type: 'Chapters',     icon: 'icon-list-bullet', label: 'SettingsChapters',            size: 'small'  }
+        { type: 'CustomHTML',   icon: 'icon-file-code',   label: 'GenericCustomHTML',           size: 'medium' }
     ];
 
     var configLayoutArea,
