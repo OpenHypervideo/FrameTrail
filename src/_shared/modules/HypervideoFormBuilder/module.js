@@ -50,13 +50,12 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
     }
 
     /**
-     * Generate the settings row HTML: the name, and with the extended settings the player option(s).
-     * Subtitles and whether captions show from the start are set in the transcripts edit mode.
+     * Generate the settings row HTML: the name.
+     * Subtitles and whether captions show from the start are set in the transcripts edit mode,
+     * whether the controls hide when inactive and the poster frame in the Advanced Options of the hypervideo settings.
      * @method generateSettingsRow
      * @param {Object} options - {
-     *   name: '',
-     *   autohideControls: false,
-     *   showExtendedSettings: false
+     *   name: ''
      * }
      * @return {String} HTML string
      */
@@ -64,8 +63,6 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
         var labels = getLabels();
         options = options || {};
         var name = options.name || '';
-        var autohideControls = options.autohideControls || false;
-        var showExtendedSettings = options.showExtendedSettings || false;
 
         var html = '<div class="layoutRow">'
                  // Row 1: Name (full width)
@@ -74,14 +71,6 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
                  + '        <input type="text" name="name" placeholder="'+ labels['SettingsHypervideoName'] +'" value="'+ name +'">'
                  + '    </div>'
                  + '</div>';
-
-        if (showExtendedSettings) {
-            html += '<div class="layoutRow" style="margin-top: 7px;">'
-                 + '    <div class="column-12">'
-                 + '        <div class="checkboxRow"><label class="switch"><input type="checkbox" name="config[autohideControls]" id="autohideControls" '+ (autohideControls ? 'checked' : '') +'><span class="slider round"></span></label><label for="autohideControls">'+ labels['SettingsAutohideControls'] +'</label></div>'
-                 + '    </div>'
-                 + '</div>';
-        }
 
         return html;
     }

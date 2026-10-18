@@ -4,7 +4,8 @@
 
 /**
  * I am the HypervideoSettingsDialog. I provide a dialog for editing hypervideo-specific settings,
- * and, in its Advanced Options, the hypervideo's events (JavaScript run on onReady, onPlay, onPause, onEnded).
+ * and, in its Advanced Options, whether the controls hide when inactive, the poster frame and the
+ * hypervideo's events (JavaScript run on onReady, onPlay, onPause, onEnded).
  *
  * @class HypervideoSettingsDialog
  * @static
@@ -472,9 +473,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         var _efw = document.createElement('div');
         _efw.innerHTML = '<form method="POST" class="editHypervideoForm">'
                         + formBuilder.generateSettingsRow({
-                                name: hypervideo.name || '',
-                                autohideControls: autohideControls,
-                                showExtendedSettings: true
+                                name: hypervideo.name || ''
                             })
                         + '    <hr>'
                         + formBuilder.generateVideoSourceSection({
@@ -485,15 +484,21 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                                 isEditMode: true
                             })
                         + '    <hr>'
-                        + '    <div class="posterFrameSection">'
-                        + '        <label>'+ labels['SettingsPosterFrame'] +'</label>'
-                        + '        <div class="message active">'+ labels['MessagePosterFrame'] +'</div>'
-                        + '        <div class="posterFrameList"></div>'
-                        + '        <input type="hidden" name="posterFrame" value="'+ (hypervideo.posterFrame || '') +'">'
-                        + '    </div>'
-                        + '    <hr>'
                         + '    <details class="hypervideoAdvancedOptions">'
                         + '        <summary>'+ labels['GenericAdvancedOptions'] +'</summary>'
+                        + '        <div class="layoutRow">'
+                        + '            <div class="column-12">'
+                        + '                <div class="checkboxRow"><label class="switch"><input type="checkbox" name="config[autohideControls]" id="autohideControls" '+ (autohideControls ? 'checked' : '') +'><span class="slider round"></span></label><label for="autohideControls">'+ labels['SettingsAutohideControls'] +'</label></div>'
+                        + '            </div>'
+                        + '        </div>'
+                        + '        <hr>'
+                        + '        <div class="posterFrameSection">'
+                        + '            <label>'+ labels['SettingsPosterFrame'] +'</label>'
+                        + '            <div class="message active">'+ labels['MessagePosterFrame'] +'</div>'
+                        + '            <div class="posterFrameList"></div>'
+                        + '            <input type="hidden" name="posterFrame" value="'+ (hypervideo.posterFrame || '') +'">'
+                        + '        </div>'
+                        + '        <hr>'
                         + '        <label>'+ labels['SettingsEvents'] +'</label>'
                         + '        <div class="message active">'+ labels['MessageHypervideoEvents'] +'</div>'
                         + '        <div class="hypervideoEventTabs">'

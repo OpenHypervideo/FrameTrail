@@ -611,7 +611,7 @@ There is no Custom Code edit mode (overlay actions cover running code).
 
 - **Code snippets** (`CodeSnippet` items in `hypervideo.json` → `contents`) have no UI and are not a kind of the Edit API: they run when written into the file. `CodeSnippetsController` only compiles them (`initController()`) and runs them at their time (`updateStatesOfCodeSnippets()`); the type has no DOM. Imports, the settings dialog's duration cut and the phone's stripped bundle still handle them.
 - **A hypervideo's `customCSS`** is deprecated: still applied (by `CodeSnippetsController`, in one `style.FrameTrailCustomCSS` element that the next hypervideo replaces), never edited; `HypervideoModel.customCSS` is read-only. CSS belongs in the instance's `custom.css` (Administration → Global CSS).
-- **`globalEvents`** (onReady, onPlay, onPause, onEnded) are edited in the hypervideo settings dialog's Advanced Options (see the cross-hypervideo rule). The action preset picker of those editors and of the overlay actions is `HypervideoFormBuilder.renderActionPresetPicker()`.
+- **`globalEvents`** (onReady, onPlay, onPause, onEnded) are edited in the hypervideo settings dialog's Advanced Options (see the cross-hypervideo rule), below the "Auto-hide controls" switch (`config.autohideControls`) and the poster frame. The action preset picker of those editors and of the overlay actions is `HypervideoFormBuilder.renderActionPresetPicker()`.
 
 ## Editor Selection
 
