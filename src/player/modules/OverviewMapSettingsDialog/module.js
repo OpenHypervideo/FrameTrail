@@ -105,12 +105,8 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
 
         var size = options.size || 22;
 
-        // .overviewMapPreview marks this as a pin standing on the dialog's own
-        // ground rather than on a background image, which is what the canvas's
-        // inverted pin palette assumes — see the preview block in
-        // ViewOverviewMap/style.css.
         var preview = document.createElement('div');
-        preview.className = 'overviewMap overviewMapPreview'
+        preview.className = 'overviewMap'
                           + ((options.animation && options.animation !== 'none') ? ' pinAnimation-' + options.animation : '')
                           + ((options.style === 'icon') ? ' pinStyle-icon' : '');
 
