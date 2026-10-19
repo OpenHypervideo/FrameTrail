@@ -1044,6 +1044,43 @@
     pointer-events: none;
 }
 
+/* The progress bar around the video while a ring is shown (placeCircularProgress in module.js): along the inner edge
+   of the video's block, in the colours of the one below the video; its dash is set there, in pixels. It comes before
+   the ring's container in the document at the same z-index, so where its wider hit line meets a thumbnail, the
+   thumbnail takes the click. */
+
+.hypervideoContainer .videoContainer .circularProgress {
+    position: absolute;
+    display: none;
+    overflow: visible;
+    z-index: 30;
+    pointer-events: none;
+}
+
+.hypervideoContainer .videoContainer .circularProgress.active {
+    display: block;
+}
+
+.hypervideoContainer .videoContainer .circularProgress path {
+    fill: none;
+    stroke-linejoin: miter;
+    stroke-linecap: butt;
+}
+
+.hypervideoContainer .videoContainer .circularProgress .circularProgressTrack {
+    stroke: var(--semi-transparent-fg-color);
+}
+
+.hypervideoContainer .videoContainer .circularProgress .circularProgressRange {
+    stroke: var(--primary-fg-color);
+}
+
+.hypervideoContainer .videoContainer .circularProgress .circularProgressHit {
+    stroke: transparent;
+    pointer-events: stroke;
+    cursor: pointer;
+}
+
 .hypervideoContainer .videoContainer .areaCircularContainer.closed {
     display: none;
 }

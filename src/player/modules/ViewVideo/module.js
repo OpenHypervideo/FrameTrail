@@ -38,6 +38,11 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '                <div class="videoContainer">'
                         // The circular area: a ring of thumbnails around the video, in the space the video gets (see adjustHypervideo).
                         + '                    <div class="circularVideoBackdrop"></div>'
+                        + '                    <svg class="circularProgress" aria-hidden="true">'
+                        + '                        <path class="circularProgressTrack"></path>'
+                        + '                        <path class="circularProgressRange"></path>'
+                        + '                        <path class="circularProgressHit"></path>'
+                        + '                    </svg>'
                         + '                    <div class="areaCircularContainer layoutArea" data-area="areaCircular">'
                         + '                        <div class="layoutAreaTabs"></div>'
                         + '                        <div class="layoutAreaContent"></div>'
@@ -165,6 +170,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         AreaCircularContainer       = domElement.querySelector('.areaCircularContainer'),
         CircularVideoBackdrop       = domElement.querySelector('.circularVideoBackdrop'),
+        CircularProgress            = domElement.querySelector('.circularProgress'),
 
         AnnotationTimeline          = domElement.querySelector('.annotationTimeline'),
 
@@ -946,6 +952,109 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
 
 
+    // The progress bar around the video while the ring is shown: along the inner edge of the video's block,
+    // clockwise from its bottom-left corner, as the ring's slots run (FrameTrailRingLayout.progressTrack), and a
+    // way to seek. Its line is an open path: Firefox draws a closed four-sided path as a rectangle, whose dashes
+    // start at its top-left corner.
+    var CIRCULAR_PROGRESS_THICKNESS = 4,
+        circularProgressTrack       = null,
+        circularProgressLength      = 0,
+        circularProgressFraction    = 0;
+
+    /**
+     * I place the progress bar around the video for a ring (ViewLayout.circularGeometry, mode 'ring'), or hide
+     * it (null: no ring, or the strip).
+     *
+     * @method placeCircularProgress
+     * @param {Object|null} ring
+     */
+    function placeCircularProgress(ring) {
+
+        CircularProgress.classList.toggle('active', !!ring);
+        circularProgressTrack = null;
+        if (!ring) { return; }
+
+        var thickness = CIRCULAR_PROGRESS_THICKNESS,
+            track     = window.FrameTrailRingLayout.progressTrack(ring.box, thickness),
+            hitWidth  = thickness + 6,
+            pad       = hitWidth / 2,
+            // The last side runs on by half the thickness, to fill the corner where the bar starts.
+            path      = 'M ' + pad + ' ' + (pad + track.h) + ' V ' + pad + ' H ' + (pad + track.w) + ' V ' + (pad + track.h) + ' H ' + (pad - thickness / 2);
+
+        circularProgressTrack  = track;
+        circularProgressLength = 2 * (track.w + track.h) + thickness / 2;
+        CircularProgress.style.left   = (track.x - pad) + 'px';
+        CircularProgress.style.top    = (track.y - pad) + 'px';
+        CircularProgress.style.width  = (track.w + 2 * pad) + 'px';
+        CircularProgress.style.height = (track.h + 2 * pad) + 'px';
+        CircularProgress.querySelectorAll('path').forEach(function(element) {
+            element.setAttribute('d', path);
+            element.style.strokeWidth = (element.classList.contains('circularProgressHit') ? hitWidth : thickness) + 'px';
+        });
+        CircularProgress.querySelector('.circularProgressRange').style.strokeDasharray = circularProgressLength + 'px ' + circularProgressLength + 'px';
+        updateCircularProgress(circularProgressFraction);
+
+    }
+
+    /**
+     * I fill the progress bar around the video up to a fraction of the video's time (0 to 1). Called with the
+     * progress bar below the video (HypervideoController.updateProgressBar).
+     *
+     * @method updateCircularProgress
+     * @param {Number} fraction
+     */
+    function updateCircularProgress(fraction) {
+        circularProgressFraction = Math.max(0, Math.min(1, fraction || 0));
+        CircularProgress.querySelector('.circularProgressRange').style.strokeDashoffset = (circularProgressLength * (1 - circularProgressFraction)) + 'px';
+    }
+
+    // Seeking on the progress bar around the video, as on the one below it: on press and while dragging.
+    (function() {
+
+        var hitPath  = CircularProgress.querySelector('.circularProgressHit'),
+            dragging = false,
+            fromTime = 0;
+
+        function seek(evt) {
+            if (!circularProgressTrack) { return 0; }
+            var rect            = VideoContainer.getBoundingClientRect(),
+                fraction        = window.FrameTrailRingLayout.fractionAt(circularProgressTrack, evt.clientX - rect.left, evt.clientY - rect.top),
+                HypervideoModel = FrameTrail.module('HypervideoModel'),
+                value           = Math.round(fraction * HypervideoModel.duration * 100) / 100;
+            updateCircularProgress(fraction);
+            FrameTrail.module('HypervideoController').currentTime = HypervideoModel.offsetIn + value;
+            return value;
+        }
+
+        hitPath.addEventListener('pointerdown', function(evt) {
+            hitPath.setPointerCapture(evt.pointerId);
+            dragging = true;
+            fromTime = FrameTrail.module('HypervideoController').currentTime;
+            seek(evt);
+            evt.preventDefault();
+        });
+
+        hitPath.addEventListener('pointermove', function(evt) {
+            if (dragging) { seek(evt); }
+        });
+
+        hitPath.addEventListener('pointerup', function(evt) {
+            if (!dragging) { return; }
+            dragging = false;
+            FrameTrail.triggerEvent('userAction', {
+                action:   'VideoJumpTime',
+                fromTime: fromTime,
+                toTime:   seek(evt)
+            });
+        });
+
+        hitPath.addEventListener('pointercancel', function() {
+            dragging = false;
+        });
+
+    })();
+
+
     /**
      * I re-adjust the CSS of the main video and its container (without surrounding elements).
      * I try to fill the available space to fit the video elements.
@@ -1082,6 +1191,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         AreaCircularContainer.style.top    = strip ? ring.strip.y + 'px' : '';
         AreaCircularContainer.style.width  = strip ? ring.strip.w + 'px' : '';
         AreaCircularContainer.style.height = strip ? ring.strip.h + 'px' : '';
+        placeCircularProgress((ring && !strip) ? ring : null);
         VideoContainer.classList.toggle('hasCircularArea', !!ring);
 
         // Captions are player chrome, not video-anchored content, so they must
@@ -2112,6 +2222,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         toggleSidebarOpen:              toggleSidebarOpen,
         adjustLayout:                   adjustLayout,
         adjustHypervideo:               adjustHypervideo,
+        updateCircularProgress:         updateCircularProgress,
         toggleNativeFullscreenState:    toggleNativeFullscreenState,
         switchInfoTab:                  switchInfoTab,
 

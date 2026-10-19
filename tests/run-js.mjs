@@ -1588,6 +1588,20 @@ describe('FrameTrailRingLayout', () => {
                                RingLayout.layout({ width: 1094, height: 740, aspect: A, count: 24, size: 'medium' }), 'gap 0 is no gap');
     });
 
+    test('the progress bar lies inside the video\'s block, along its edge, and runs clockwise from its bottom-left corner', () => {
+        const box = { x: 100, y: 50, w: 400, h: 200 };
+        assert.deepStrictEqual(RingLayout.progressTrack(box, 4), { x: 102, y: 52, w: 396, h: 196 }, 'its outer edge on the block\'s edge');
+        const near = (a, b) => Math.abs(a - b) < EPS, P = 2 * (400 + 200);
+        assert.ok(near(RingLayout.fractionAt(box, 100, 250), 0), 'the bottom-left corner is the start');
+        assert.ok(near(RingLayout.fractionAt(box, 90, 150), 100 / P), 'up the left side first');
+        assert.ok(near(RingLayout.fractionAt(box, 100, 50), 200 / P), 'the top-left corner');
+        assert.ok(near(RingLayout.fractionAt(box, 300, 40), 400 / P), 'the middle of the top');
+        assert.ok(near(RingLayout.fractionAt(box, 520, 150), 700 / P), 'down the right side');
+        assert.ok(near(RingLayout.fractionAt(box, 300, 260), 1000 / P), 'back along the bottom');
+        assert.ok(near(RingLayout.fractionAt(box, 101, 252), 1199 / P), 'and ends where it started');
+        assert.ok(near(RingLayout.fractionAt(box, 300, 140), 400 / P), 'a point inside goes to the nearest side');
+    });
+
     test('the same hypervideo has the same rings at every player size', () => {
         for (const { width, height, size, count, ring } of layouts) {
             const twice = RingLayout.layout({ width: 2 * width, height: 2 * height, aspect: A, count, size });

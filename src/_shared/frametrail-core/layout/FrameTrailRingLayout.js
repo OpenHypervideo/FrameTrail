@@ -213,14 +213,59 @@
         return out;
     }
 
+    /**
+     * I give the line of the progress bar around the video's block (box, from layout()): inside the block, its
+     * outer edge on the block's edge, so the gap to the ring stays clear. The bar runs clockwise from the
+     * block's bottom-left corner, up its left side first, as the ring's slots do. A rect.
+     *
+     * @method progressTrack
+     * @param {Object} box
+     * @param {Number} thickness
+     * @return {Object}
+     */
+    function progressTrack(box, thickness) {
+        var inset = thickness / 2;
+        return { x: box.x + inset, y: box.y + inset, w: box.w - 2 * inset, h: box.h - 2 * inset };
+    }
+
+    /**
+     * I tell how far along the progress bar (a track from progressTrack()) the point nearest to (x, y) is,
+     * from 0 at the bottom-left corner, clockwise, to 1 back there.
+     *
+     * @method fractionAt
+     * @param {Object} track
+     * @param {Number} x
+     * @param {Number} y
+     * @return {Number}
+     */
+    function fractionAt(track, x, y) {
+        var x0 = track.x, y0 = track.y, x1 = track.x + track.w, y1 = track.y + track.h,
+            w = track.w, h = track.h,
+            cx = Math.max(x0, Math.min(x1, x)),
+            cy = Math.max(y0, Math.min(y1, y)),
+            sides = [
+                { distance: Math.hypot(x - x0, y - cy), along: y1 - cy },              // left, upwards
+                { distance: Math.hypot(x - cx, y - y0), along: h + (cx - x0) },        // top, rightwards
+                { distance: Math.hypot(x - x1, y - cy), along: h + w + (cy - y0) },    // right, downwards
+                { distance: Math.hypot(x - cx, y - y1), along: 2 * h + w + (x1 - cx) } // bottom, leftwards
+            ],
+            nearest = sides[0];
+        for (var i = 1; i < sides.length; i++) {
+            if (sides[i].distance < nearest.distance) { nearest = sides[i]; }
+        }
+        return (w + h > 0) ? Math.max(0, Math.min(1, nearest.along / (2 * (w + h)))) : 0;
+    }
+
     return {
 
-        STEPS:       STEPS,
+        STEPS:         STEPS,
 
-        capacity:    capacity,
-        layout:      layout,
-        placeByTime: placeByTime,
-        strip:       strip
+        capacity:      capacity,
+        fractionAt:    fractionAt,
+        layout:        layout,
+        placeByTime:   placeByTime,
+        progressTrack: progressTrack,
+        strip:         strip
 
     };
 

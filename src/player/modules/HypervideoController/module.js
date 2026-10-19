@@ -174,7 +174,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             });
 
             videoElement.addEventListener('ended', function() {
-                
+
+                showEnd();
                 FrameTrail.triggerEvent('ended', {});
 
                 if (HypervideoModel.events.onEnded) {
@@ -363,6 +364,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                         case 0:
                             // ended
                             _pause();
+                            showEnd();
                             break;
                         case 1:
                             // playing
@@ -554,8 +556,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 });
 
                 window.player_vimeo[lastVimeoPlayerID].on('ended', function() {
-                    
+
                     _pause();
+                    showEnd();
                     FrameTrail.triggerEvent('ended', {});
 
                     if (HypervideoModel.events.onEnded) {
@@ -1223,6 +1226,19 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         if (sliderHandle.parentElement) {
             sliderHandle.parentElement.setAttribute('aria-valuenow', Math.round(value * 100) / 100);
         }
+        // The progress bar around the video, while the circular area shows a ring.
+        ViewVideo.updateCircularProgress(pct / 100);
+    };
+
+    /**
+     * I show the progress bars at the end, when the video has ended: the last time update can come a little before
+     * it (a YouTube player reports the end before its time reaches the duration), which would leave them short.
+     *
+     * @method showEnd
+     * @private
+     */
+    function showEnd() {
+        updateProgressBar(sliderMax);
     };
 
 
