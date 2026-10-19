@@ -714,6 +714,7 @@ window.FrameTrail_L10n['en'] = {
     "SettingsQuizQuestionLabel": "Question",
     "SettingsQuizRatingScale": "Scale (number of steps)",
     "SettingsQuizTypeLabel": "Question Type",
+    "SettingsRingGap": "Gap (px)",
     "SettingsSelectColorTheme": "Select Color Theme",
     "SettingsSelectContents": "Select contents",
     "SettingsStartCollapsed": "Start collapsed",

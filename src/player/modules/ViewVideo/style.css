@@ -1018,12 +1018,13 @@
 }
 
 /* The circular area: a ring of thumbnails around the video (ViewLayout.circularGeometry, adjustHypervideo in
-   module.js). While it is shown, the video container is on the player's background and only the block the video
-   sits in (.circularVideoBackdrop) takes the video's. It lies above the start overlay, so its thumbnails can be
-   clicked before the first play; everywhere else a click goes through to the overlay. */
+   module.js). While it is shown, the video container has the background of the other layout areas' views and
+   only the block the video sits in (.circularVideoBackdrop) takes the video's. The area's own container lies over
+   the video, so it stays transparent; it is above the start overlay, so its thumbnails can be clicked before the
+   first play, and everywhere else a click goes through to the overlay. */
 
 .hypervideoContainer .videoContainer.hasCircularArea {
-    background: none;
+    background: var(--secondary-bg-color);
 }
 
 .hypervideoContainer .videoContainer .circularVideoBackdrop {

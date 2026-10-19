@@ -145,7 +145,8 @@
                     },
                     "onClickContentItem": "",
                     "filterAspect": "creatorId",
-                    "zoomControls": false
+                    "zoomControls": false,
+                    "ringGap": 12
                 }
             ]
         }

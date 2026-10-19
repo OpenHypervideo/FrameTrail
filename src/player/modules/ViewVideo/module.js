@@ -1065,7 +1065,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         _video.style.width = scaledWidth + 'px';
 
         // With a ring the video sits in the middle of its block (in a strip, above the thumbnails), and only that
-        // block takes the video's background colour; the ring is on the player's.
+        // block takes the video's background colour; the ring is on the layout areas' background.
+        var strip = !!ring && ring.mode == 'strip';
         if (ring) {
             Hypervideo.style.left = (ring.video.x + ring.video.w / 2) + 'px';
             Hypervideo.style.top  = (ring.video.y + ring.video.h / 2) + 'px';
@@ -1073,14 +1074,14 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             CircularVideoBackdrop.style.top    = ring.box.y + 'px';
             CircularVideoBackdrop.style.width  = ring.box.w + 'px';
             CircularVideoBackdrop.style.height = ring.box.h + 'px';
-            AreaCircularContainer.style.top    = (ring.mode == 'strip') ? ring.strip.y + 'px' : '';
-            AreaCircularContainer.style.height = (ring.mode == 'strip') ? ring.strip.h + 'px' : '';
         } else {
             Hypervideo.style.left = '';
             Hypervideo.style.top  = '';
-            AreaCircularContainer.style.top    = '';
-            AreaCircularContainer.style.height = '';
         }
+        AreaCircularContainer.style.left   = strip ? ring.strip.x + 'px' : '';
+        AreaCircularContainer.style.top    = strip ? ring.strip.y + 'px' : '';
+        AreaCircularContainer.style.width  = strip ? ring.strip.w + 'px' : '';
+        AreaCircularContainer.style.height = strip ? ring.strip.h + 'px' : '';
         VideoContainer.classList.toggle('hasCircularArea', !!ring);
 
         // Captions are player chrome, not video-anchored content, so they must

@@ -14,6 +14,9 @@
  * another shape). Slots are in spiral order: ring 1 starts left of the video's bottom row and runs
  * clockwise (up, right, down, left), ending in its bottom-left corner; ring 2 starts left of that corner.
  *
+ * A gap (pixels) lies between the cells, between the ring and the inner block, and between the ring and
+ * the space's edges.
+ *
  * @class FrameTrailRingLayout
  * @static
  */
@@ -58,20 +61,32 @@
         return cells;
     }
 
-    function fitFor(W, H, A, across, count, minShare, cellRatio) {
+    // The width of a cell for a pitch (the space across cells span, divided by them) less the gap; a gap may
+    // take at most three quarters of the pitch.
+    function cellWidth(pitch, gap) {
+        return Math.max(pitch / 4, pitch - gap);
+    }
+
+    function fitFor(W, H, A, across, count, minShare, cellRatio, gap) {
         var U = Math.min(W, H * A),
-            cw0 = U / across,
+            pitch = U / across,
+            cw0 = pitch - gap,
             ch0 = cw0 * cellRatio,
-            totalCols = Math.max(3, Math.round(W / cw0)),
-            totalRows = Math.max(3, Math.round(H / ch0)),
-            cw = W / totalCols,
-            ch = H / totalRows;
+            Wg = W - 2 * gap,
+            Hg = H - 2 * gap;
+
+        if (cw0 < pitch / 4 || !(Wg > 0) || !(Hg > 0)) { return null; }
+
+        var totalCols = Math.max(3, Math.round((Wg + gap) / (cw0 + gap))),
+            totalRows = Math.max(3, Math.round((Hg + gap) / (ch0 + gap))),
+            cw = (Wg - (totalCols - 1) * gap) / totalCols,
+            ch = (Hg - (totalRows - 1) * gap) / totalRows;
 
         for (var k = 1; 2 * k < Math.min(totalCols, totalRows); k++) {
             var cols = totalCols - 2 * k,
                 rows = totalRows - 2 * k,
-                bw = cols * cw,
-                bh = rows * ch,
+                bw = cols * cw + (cols - 1) * gap,
+                bh = rows * ch + (rows - 1) * gap,
                 vw = Math.min(bw, bh * A),
                 vh = vw / A;
             if (vw < minShare * U) { return null; }
@@ -84,18 +99,21 @@
 
     /**
      * I lay out a ring of count thumbnails in a space of width x height, around a video of the given aspect
-     * ratio (width / height); size is 'small' or 'medium'. I return null when they do not fit (the caller
-     * shows a strip), else { across, rings, cols, rows, count, cell: { w, h }, box: rect, video: rect,
-     * slots: [{ x, y, w, h, ring, c, r }] } with box the inner block, video the video fitted into it.
+     * ratio (width / height); size is 'small' or 'medium', gap the pixels between the thumbnails and between
+     * them and the video's block (default 0). I return null when they do not fit (the caller shows a strip),
+     * else { across, rings, cols, rows, count, gap, cell: { w, h }, box: rect, video: rect,
+     * slots: [{ x, y, w, h, ring, c, r }] } with slots the thumbnails, box the inner block, video the video
+     * fitted into it.
      *
      * @method layout
-     * @param {Object} opts { width, height, aspect, count, size, minVideoShare?, cellRatio? }
+     * @param {Object} opts { width, height, aspect, count, size, gap?, minVideoShare?, cellRatio? }
      * @return {Object|null}
      */
     function layout(opts) {
         var W = opts.width,
             H = opts.height,
             A = opts.aspect || 16 / 9,
+            gap = Math.max(0, opts.gap || 0),
             count = Math.max(1, opts.count || 0),
             minShare = (opts.minVideoShare != null) ? opts.minVideoShare : MIN_VIDEO_SHARE,
             cellRatio = opts.cellRatio || CELL_RATIO,
@@ -105,18 +123,20 @@
         if (!(W > 0) || !(H > 0)) { return null; }
 
         for (var i = 0; i < steps.length && !fit; i++) {
-            fit = fitFor(W, H, A, steps[i], count, minShare, cellRatio);
+            fit = fitFor(W, H, A, steps[i], count, minShare, cellRatio, gap);
         }
         if (!fit) { return null; }
 
         var k = fit.rings,
-            x0 = k * fit.cw,
-            y0 = k * fit.ch,
+            stepX = fit.cw + gap,
+            stepY = fit.ch + gap,
+            x0 = gap + k * stepX,
+            y0 = gap + k * stepY,
             slots = [];
 
         for (var j = 1; j <= k; j++) {
             ringCells(fit.cols, fit.rows, j).forEach(function(cell) {
-                slots.push({ x: x0 + cell[0] * fit.cw, y: y0 + cell[1] * fit.ch, w: fit.cw, h: fit.ch, ring: j, c: cell[0], r: cell[1] });
+                slots.push({ x: gap + (cell[0] + k) * stepX, y: gap + (cell[1] + k) * stepY, w: fit.cw, h: fit.ch, ring: j, c: cell[0], r: cell[1] });
             });
         }
 
@@ -126,6 +146,7 @@
             cols:   fit.cols,
             rows:   fit.rows,
             count:  opts.count || 0,
+            gap:    gap,
             cell:   { w: fit.cw, h: fit.ch },
             box:    { x: x0, y: y0, w: fit.bw, h: fit.bh },
             video:  { x: x0 + (fit.bw - fit.vw) / 2, y: y0 + (fit.bh - fit.vh) / 2, w: fit.vw, h: fit.vh },
@@ -134,30 +155,33 @@
     }
 
     /**
-     * I lay out the strip that stands in for the ring on narrow players: one row of cells below the video,
-     * the video and the strip centred together. { cell, box, video, strip } (rects).
+     * I lay out the strip that stands in for the ring on narrow players: one row of cells a gap below the
+     * video and a gap from the space's sides and bottom, the video and the strip centred together.
+     * { cell, gap, box, video, strip } (rects).
      *
      * @method strip
-     * @param {Object} opts { width, height, aspect, size, cellRatio? }
+     * @param {Object} opts { width, height, aspect, size, gap?, cellRatio? }
      * @return {Object}
      */
     function strip(opts) {
         var W = opts.width,
             H = opts.height,
             A = opts.aspect || 16 / 9,
+            gap = Math.max(0, opts.gap || 0),
             across = (STEPS[opts.size] || STEPS.medium)[0],
             U = Math.min(W, H * A),
-            cw = U / across,
+            cw = cellWidth(U / across, gap),
             ch = cw * (opts.cellRatio || CELL_RATIO),
-            vw = Math.min(W, (H - ch) * A),
+            vw = Math.min(W, (H - ch - 2 * gap) * A),
             vh = vw / A,
-            top = (H - vh - ch) / 2;
+            top = (H - vh - ch - 2 * gap) / 2;
 
         return {
             cell:  { w: cw, h: ch },
+            gap:   gap,
             box:   { x: 0, y: top, w: W, h: vh },
             video: { x: (W - vw) / 2, y: top, w: vw, h: vh },
-            strip: { x: 0, y: top + vh, w: W, h: ch }
+            strip: { x: gap, y: top + vh + gap, w: W - 2 * gap, h: ch }
         };
     }
 

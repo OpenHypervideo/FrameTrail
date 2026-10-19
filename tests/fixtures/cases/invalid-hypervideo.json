@@ -656,6 +656,32 @@
             ]
         },
         {
+            "name": "ring with a negative gap",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Lecture"
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaCircular": [
+                            {
+                                "type": "TimedContent",
+                                "ringGap": -2
+                            }
+                        ]
+                    }
+                },
+                "clips": []
+            },
+            "errors": [
+                {
+                    "path": "/config/layoutArea/areaCircular/0/ringGap",
+                    "message": "must be >= 0"
+                }
+            ]
+        },
+        {
             "name": "chapter without start",
             "schema": "hypervideo.schema.json",
             "data": {

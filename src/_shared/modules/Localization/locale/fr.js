@@ -714,6 +714,7 @@ window.FrameTrail_L10n['fr'] = {
     "SettingsQuizQuestionLabel": "Question",
     "SettingsQuizRatingScale": "Échelle (nombre de niveaux)",
     "SettingsQuizTypeLabel": "Type de question",
+    "SettingsRingGap": "Espacement (px)",
     "SettingsSelectColorTheme": "Sélectionner un thème de couleur",
     "SettingsSelectContents": "Sélectionner les contenus",
     "SettingsStartCollapsed": "Démarrer replié",

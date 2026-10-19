@@ -85,7 +85,14 @@
                         "showTranscriptSearch": { "description": "Not used by this view." },
                         "html": { "description": "Not used by this view." },
                         "filterAspect": { "description": "Not used by this view." },
-                        "zoomControls": { "description": "Not used by this view." }
+                        "zoomControls": { "description": "Not used by this view." },
+                        "ringGap": {
+                            "description": "In the circular area only: the pixels between the thumbnails of the ring around the video, between them and the video's block, and between the ring and the player's edges (its sides, the top and the controls). On narrow players it is the space around and between the thumbnails of the row below the video.",
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 100,
+                            "default": 6
+                        }
                     }
                 },
                 {
@@ -170,7 +177,8 @@
                         "transcriptSource": { "description": "Not used by this view." },
                         "showTranscriptSearch": { "description": "Not used by this view." },
                         "filterAspect": { "description": "Not used by this view." },
-                        "zoomControls": { "description": "Not used by this view." }
+                        "zoomControls": { "description": "Not used by this view." },
+                        "ringGap": { "description": "Not used by this view." }
                     }
                 },
                 {
@@ -263,7 +271,8 @@
                             "default": ""
                         },
                         "filterAspect": { "description": "Not used by this view." },
-                        "zoomControls": { "description": "Not used by this view." }
+                        "zoomControls": { "description": "Not used by this view." },
+                        "ringGap": { "description": "Not used by this view." }
                     }
                 },
                 {
@@ -345,6 +354,7 @@
                             "type": "boolean",
                             "default": false
                         },
+                        "ringGap": { "description": "Not used by this view." },
                         "transcriptSource": { "description": "Not used by this view." },
                         "showTranscriptSearch": { "description": "Not used by this view." },
                         "html": { "description": "Not used by this view." },
@@ -425,7 +435,8 @@
                         "html": { "description": "Not used by this view." },
                         "onClickContentItem": { "description": "Not used by this view." },
                         "filterAspect": { "description": "Not used by this view." },
-                        "zoomControls": { "description": "Not used by this view." }
+                        "zoomControls": { "description": "Not used by this view." },
+                        "ringGap": { "description": "Not used by this view." }
                     }
                 }
             ]

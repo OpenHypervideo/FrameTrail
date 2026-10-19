@@ -157,6 +157,18 @@ FrameTrail.defineType(
 
 
                 /**
+                 * The pixels between the thumbnails of the circular area, between them and the video, and around them (contentViewData.ringGap, 0 to 100, default 6).
+                 *
+                 * @method ringGap
+                 * @return {Number}
+                 */
+                ringGap: function() {
+                    var gap = this.contentViewData.ringGap;
+                    return (typeof gap === 'number' && isFinite(gap)) ? Math.max(0, Math.min(100, gap)) : 6;
+                },
+
+
+                /**
                  * I move a phone's large collection by one annotation (step 1: the next, -1: the previous).
                  *
                  * @method slideBy
@@ -407,9 +419,10 @@ FrameTrail.defineType(
                             var crossedLargeBoundary =
                                 (this.previousContentSize == 'large') != (this.contentViewData.contentSize == 'large');
 
-                            // The ring's slots depend on the number of thumbnails and their size, and so does the room the video has.
+                            // The ring's slots depend on the number of thumbnails, their size and the gap, and so does the room the video has.
                             if ( self.isCircularArea()
-                                && (this.previousContentSize != this.contentViewData.contentSize || !self._groupsEqual(old_contentGroups, new_contentGroups)) ) {
+                                && (this.previousContentSize != this.contentViewData.contentSize || !self._groupsEqual(old_contentGroups, new_contentGroups)
+                                    || (self.ringGeometry && self.ringGeometry.gap != self.ringGap())) ) {
                                 self._scheduleRingLayout();
                             }
 
@@ -2291,7 +2304,8 @@ FrameTrail.defineType(
                         scrollContainer  = self.contentViewContainer.querySelector('.contentViewScroll'),
                         containerElement = self.contentViewContainer.querySelector('.contentViewContents'),
                         containerWidth   = scrollContainer.offsetWidth,
-                        gap              = 4,
+                        strip            = self.isStrip(),
+                        gap              = strip ? self.ringGap() : 4,
                         scale            = containerWidth / videoDuration;
 
                     // Helper: total pixel width of a group (items + gaps between them)
@@ -2379,7 +2393,8 @@ FrameTrail.defineType(
 
                     // --- Phase 3: Right-to-left sweep — clamp groups within container ---
 
-                    var rightBoundary = containerWidth - 2 * gap;
+                    // The circular area's strip is inset by its gap already (FrameTrailRingLayout.strip).
+                    var rightBoundary = containerWidth - (strip ? 0 : 2 * gap);
 
                     for (var i = groups.length - 1; i >= 0; i--) {
                         var group = groups[i];
@@ -2413,10 +2428,11 @@ FrameTrail.defineType(
 
                 /**
                  * I lay out the ring around the video for a space of width × height and a video of the aspect ratio
-                 * (width / height): FrameTrailRingLayout's slots for my thumbnails (contentGroups), or the strip below
-                 * the video where the player is narrow or they do not fit around it. I keep the result (layoutRing
-                 * places the thumbnails by it), mark my area .ring or .strip, give it the cell width as
-                 * --circular-cell-width, and return it, with mode 'ring' or 'strip'; null when there is no room.
+                 * (width / height): FrameTrailRingLayout's slots for my thumbnails (contentGroups) with my gap (ringGap),
+                 * or the strip below the video where the player is narrow or they do not fit around it. I keep the
+                 * result (layoutRing places the thumbnails by it), mark my area .ring or .strip, give it the cell width
+                 * and the gap as --circular-cell-width and --circular-gap, and return it, with mode 'ring' or 'strip';
+                 * null when there is no room.
                  *
                  * @method computeRingGeometry
                  * @param {Number} width
@@ -2430,7 +2446,7 @@ FrameTrail.defineType(
                     var Ring     = window.FrameTrailRingLayout,
                         count    = this.contentGroups.length,
                         size     = (this.contentViewData.contentSize == 'small') ? 'small' : 'medium',
-                        options  = { width: width, height: height, aspect: aspect, count: count, size: size },
+                        options  = { width: width, height: height, aspect: aspect, count: count, size: size, gap: this.ringGap() },
                         geometry = (narrow || !(width > 0) || !(height > 0)) ? null : Ring.layout(options),
                         mode     = geometry ? 'ring' : 'strip';
 
@@ -2455,6 +2471,7 @@ FrameTrail.defineType(
                     container.classList.toggle('ring', mode == 'ring');
                     container.classList.toggle('strip', mode == 'strip');
                     container.style.setProperty('--circular-cell-width', geometry.cell.w + 'px');
+                    container.style.setProperty('--circular-gap', geometry.gap + 'px');
 
                     this._updateRingTitles(size == 'small' || geometry.cell.w < 120);
 
@@ -2484,7 +2501,7 @@ FrameTrail.defineType(
                  * I place my thumbnails into the slots of the ring around the video (computeRingGeometry): each where
                  * its time is on the spiral, which starts left of the video's bottom row and runs clockwise (the mid
                  * time of its group, as in distributeElements), packed in time order when they crowd
-                 * (FrameTrailRingLayout.placeByTime). When the slots were laid out for another number or size of
+                 * (FrameTrailRingLayout.placeByTime). When the slots were laid out for another number, size or gap of
                  * thumbnails, I have the video adjusted first, which lays out the ring again and comes back here.
                  *
                  * @method layoutRing
@@ -2498,7 +2515,7 @@ FrameTrail.defineType(
 
                     if (!geometry || geometry.mode != 'ring') { return; }
 
-                    if (geometry.count != groups.length || geometry.size != size) {
+                    if (geometry.count != groups.length || geometry.size != size || geometry.gap != self.ringGap()) {
                         if (!self._ringRelayout) {
                             self._ringRelayout = true;
                             FrameTrail.module('ViewVideo').adjustHypervideo();
@@ -2965,6 +2982,13 @@ FrameTrail.defineType(
                                     +'                <div '+ (contentViewData.contentSize == 'medium' ? 'class="active"' : '') +' data-value="medium">'+ self.labels['SettingsContentViewMedium'] +'</div>'
                                     + (circular ? '' : '                <div '+ (contentViewData.contentSize == 'large' ? 'class="active"' : '') +' data-value="large">'+ self.labels['SettingsContentViewLarge'] +'</div>')
                                     +'            </div>'
+                                    + (circular ?
+                                     '            <div class="layoutRow">'
+                                    +'                <div class="column-4">'
+                                    +'                    <label for="'+ idPrefix +'-ringGap">'+ self.labels['SettingsRingGap'] +':</label>'
+                                    +'                    <input type="number" id="'+ idPrefix +'-ringGap" class="contentViewData" data-property="ringGap" min="0" max="100" step="1" value="'+ self.ringGap() +'">'
+                                    +'                </div>'
+                                    +'            </div>' : '')
                                     +'        </div>'
                                     +'    </div>'
                                     +'    <hr>'
@@ -3390,6 +3414,10 @@ FrameTrail.defineType(
                         var newValue;
                         if ( el.tagName === 'INPUT' && el.type === 'checkbox' ) {
                             newValue = el.checked;
+                        } else if ( el.tagName === 'INPUT' && el.type === 'number' ) {
+                            var number = Number(el.value);
+                            newValue = (el.value === '' || isNaN(number)) ? undefined
+                                     : Math.min(Number(el.max || Infinity), Math.max(Number(el.min || -Infinity), number));
                         } else if ( el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' ) {
                             newValue = el.value;
                             if ( el.getAttribute('data-property').indexOf('collectionFilter') != -1 && el.getAttribute('data-property') != 'collectionFilter-text' ) {

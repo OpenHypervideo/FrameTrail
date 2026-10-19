@@ -258,7 +258,8 @@
                         "areaCircular": [
                             {
                                 "type": "TimedContent",
-                                "contentSize": "small"
+                                "contentSize": "small",
+                                "ringGap": 30
                             }
                         ]
                     }

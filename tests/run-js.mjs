@@ -1555,6 +1555,39 @@ describe('FrameTrailRingLayout', () => {
         assert.equal(RingLayout.layout({ width: 0, height: 740, aspect: A, count: 1, size: 'medium' }), null);
     });
 
+    test('a gap lies between the thumbnails, between them and the video, and around the ring', () => {
+        const near = (a, b) => Math.abs(a - b) < EPS,
+              apart = (a, b) => Math.max(b.x - (a.x + a.w), a.x - (b.x + b.w), b.y - (a.y + a.h), a.y - (b.y + b.h));
+        let tried = 0;
+        for (const [width, height] of SPACES) {
+            for (const size of SIZES) {
+                for (const gap of [4, 30]) {
+                    const ring = RingLayout.layout({ width, height, aspect: A, count: 24, size, gap });
+                    if (!ring) { continue; }
+                    tried++;
+                    ring.slots.forEach((slot, i) => {
+                        if (i > 0) { assert.ok(near(apart(ring.slots[i - 1], slot), gap), 'neighbours on the spiral are the gap apart'); }
+                        assert.ok(apart(slot, ring.box) >= gap - EPS, 'slot ' + i + ' is the gap away from the video\'s block');
+                    });
+                    assert.ok(near(Math.min(...ring.slots.map((slot) => apart(slot, ring.box))), gap), 'the inner ring is the gap away from it');
+                    assert.ok(near(Math.min(...ring.slots.map((slot) => slot.x)), gap) && near(Math.min(...ring.slots.map((slot) => slot.y)), gap), 'the gap at the left and the top');
+                    assert.ok(near(Math.max(...ring.slots.map((slot) => slot.x + slot.w)), width - gap), 'at the right');
+                    assert.ok(near(Math.max(...ring.slots.map((slot) => slot.y + slot.h)), height - gap), 'and at the bottom');
+                    assert.ok(ring.video.x >= ring.box.x - EPS && ring.video.x + ring.video.w <= ring.box.x + ring.box.w + EPS, 'the video is in its block');
+                    const ratio = ring.cell.h / ring.cell.w;
+                    assert.ok(ratio >= 0.7 * 0.85 && ratio <= 0.7 * 1.15, 'cell ratio ' + ratio);
+                }
+                const s = RingLayout.strip({ width, height, aspect: A, size, gap: 30 });
+                assert.ok(near(s.video.y + s.video.h + 30, s.strip.y), 'the strip is the gap below the video');
+                assert.ok(s.strip.y + s.strip.h <= height - 30 + EPS, 'and above the bottom');
+                assert.ok(near(s.strip.x, 30) && near(s.strip.x + s.strip.w, width - 30), 'and from the sides');
+            }
+        }
+        assert.ok(tried >= 10, tried + ' layouts with a gap');
+        assert.deepStrictEqual(RingLayout.layout({ width: 1094, height: 740, aspect: A, count: 24, size: 'medium', gap: 0 }),
+                               RingLayout.layout({ width: 1094, height: 740, aspect: A, count: 24, size: 'medium' }), 'gap 0 is no gap');
+    });
+
     test('the same hypervideo has the same rings at every player size', () => {
         for (const { width, height, size, count, ring } of layouts) {
             const twice = RingLayout.layout({ width: 2 * width, height: 2 * height, aspect: A, count, size });

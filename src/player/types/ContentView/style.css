@@ -104,7 +104,7 @@
 
 /* Content View Item Sizes */
 
-.layoutArea[data-area="areaTop"] .collectionElement, .layoutArea[data-area="areaBottom"] .collectionElement, .layoutArea[data-area="areaCircular"].strip .collectionElement {
+.layoutArea[data-area="areaTop"] .collectionElement, .layoutArea[data-area="areaBottom"] .collectionElement {
     top: 4px;
     height: calc(100% - 8px);
 }
@@ -372,14 +372,29 @@
 }
 
 /* The circular area: one collection, as a ring of thumbnails around the video (.ring, placed into their cells by
-   layoutRing in type.js; the 2px borders in the player's colour are the gaps between them) or, where the player
-   is narrow or they do not fit, a strip below the video (.strip, laid out like the bottom area, its thumbnails as
-   wide as a ring's cells). Both lie on the player's background. */
+   layoutRing in type.js) or, where the player is narrow or they do not fit, a strip below the video (.strip, laid
+   out like the bottom area, its thumbnails as wide as a ring's cells). The container lies over the video and stays
+   transparent: the background of the other areas' views is the video container's (ViewVideo/style.css). The
+   space between the thumbnails is the view's gap (ringGap; --circular-gap, set in type.js), so they have no border
+   of their own: the active one is framed inside. */
 
 .layoutArea[data-area="areaCircular"] .contentViewContainer {
     top: 0px;
     height: 100%;
     background: none;
+}
+
+.layoutArea[data-area="areaCircular"] .collectionElement {
+    border: none;
+}
+
+.layoutArea[data-area="areaCircular"] .collectionElement.active::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 2px solid var(--primary-fg-color);
+    pointer-events: none;
+    z-index: 11;
 }
 
 .layoutArea[data-area="areaCircular"].ring .layoutAreaContent,
@@ -408,8 +423,15 @@
     pointer-events: auto;
 }
 
+.layoutArea[data-area="areaCircular"].strip .contentViewContainer .contentViewContents {
+    padding-left: 0;
+}
+
 .layoutArea[data-area="areaCircular"].strip .collectionElement {
-    width: calc(var(--circular-cell-width) - 4px);
+    top: 0;
+    height: 100%;
+    width: var(--circular-cell-width);
+    margin-right: var(--circular-gap);
 }
 
 .layoutArea[data-area="areaCircular"].compact .collectionElement .resourceTitle {
