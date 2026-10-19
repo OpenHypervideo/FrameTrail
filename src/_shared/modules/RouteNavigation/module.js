@@ -146,22 +146,23 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
     }
 
     /**
-     * I return the value of a hash parameter.
+     * I return the value of a hash parameter: '' for one without a value,
+     * such as "#overview" as setHashVariables writes it, and undefined for
+     * one that is not there. I read the hash the way setHashVariables does.
      * @method getHashVariable
      * @param {String} variable
-     * @return String
+     * @return String|undefined
      * @private
      */
     function getHashVariable(variable) {
 
-        var hash = window.location.hash.substring(1),
-            vars = hash.split("&"),
-            pair;
+        var parts = window.location.hash.substring(1).split('&');
 
-        for (var i = 0; i < vars.length; i++) {
-            pair = vars[i].split("=");
-            if (pair[0] == variable) {
-                return pair[1];
+        for (var i = 0; i < parts.length; i++) {
+            var eq  = parts[i].indexOf('='),
+                key = (eq === -1) ? parts[i] : parts[i].substring(0, eq);
+            if (key === variable) {
+                return (eq === -1) ? '' : parts[i].substring(eq + 1);
             }
         }
 
