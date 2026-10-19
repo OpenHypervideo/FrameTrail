@@ -460,6 +460,7 @@ FrameTrail.defineModule('Titlebar', function(FrameTrail){
                 folderIndicator.addEventListener('click', function() {
                     // Another folder or file replaces everything open: unsaved changes are decided about first.
                     FrameTrail.module('HypervideoModel').confirmUnsaved({
+                        reload: true,
                         proceed: function() {
                             FrameTrail.module('StorageManager').openStorageDialog({ closable: true }).then(function() {
                                 // Clear hash so we reload to overview, not a hypervideo ID from the old folder

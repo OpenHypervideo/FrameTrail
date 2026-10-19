@@ -20,15 +20,8 @@ FrameTrail.defineModule('HypervideoPicker', function(FrameTrail){
      *
      * @method openPicker
      * @param {Function} callback Function called with hypervideoID when a hypervideo is selected
-     * @param {Object} options Optional. `exclude` is a list of hypervideo IDs
-     *                         to leave out of the list (e.g. ones already
-     *                         placed on the overview map).
      */
-    function openPicker(callback, options) {
-
-        var exclude = (options && Array.isArray(options.exclude))
-                        ? options.exclude.map(String)
-                        : [];
+    function openPicker(callback) {
 
         var hypervideos = FrameTrail.module('Database').hypervideos,
             currentHypervideoID = FrameTrail.module('RouteNavigation').hypervideoID;
@@ -44,7 +37,6 @@ FrameTrail.defineModule('HypervideoPicker', function(FrameTrail){
 
         // Render hypervideo thumbs
         for (var id in hypervideos) {
-            if (exclude.indexOf(String(id)) !== -1) continue;
 
             // One entry with incomplete data used to take the whole picker
             // with it: this loop runs before the dialog is opened, so a

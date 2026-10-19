@@ -63,6 +63,12 @@
         // migrates itself the first time somebody edits the map.
         overviewMapMigrated = false,
 
+        // Set when a map change could not be written because nothing here
+        // can be (a guest on a server, download and static mode, a page file
+        // not saved into itself yet): the change is only in this page and
+        // leaves with Export. See hasUnexportedOverviewMap.
+        overviewMapUnexported = false,
+
         // Compare-and-swap token for custom.css. Unlike hypervideo.json and
         // config.json, plain CSS has nowhere to carry a version, so we only
         // learn it from the server's reply to our own writes.
@@ -73,10 +79,14 @@
      * I normalize whatever an index file (or a legacy config) holds into the
      * shape the rest of the app expects.
      *
-     * Markers are keyed by hypervideo ID rather than listed, so a placement can
-     * be looked up, replaced or dropped without scanning, and the same
-     * hypervideo cannot end up on the map twice. Old data stored an array, and
-     * PHP re-encodes an empty object as [], so both have to be accepted here.
+     * Markers are keyed by hypervideo ID rather than listed, so a hypervideo's
+     * placements can be looked up, replaced or dropped without scanning, and
+     * everything that selects or renumbers hypervideos (export, import, a
+     * deletion) handles their pins by the key. A hypervideo placed more than
+     * once has a list of pins, one placed once the pin itself — the shape
+     * kept here, so a map written back changes only what was edited. Old data
+     * stored an array of markers naming their hypervideo, and PHP re-encodes
+     * an empty object as [], so both have to be accepted here.
      *
      * @method normalizeOverviewMap
      * @param {Object} raw
@@ -89,34 +99,43 @@
                 ? JSON.parse(JSON.stringify(raw))
                 : {};
 
-        var markers = {};
+        var pins = {};
+
+        function isPin(value) {
+            return !!value && typeof value === 'object' && !Array.isArray(value);
+        }
+
+        function add(hypervideoID, pin) {
+            var id = String(hypervideoID);
+            (pins[id] = pins[id] || []).push(pin);
+        }
 
         if (Array.isArray(map.markers)) {
 
+            // A hypervideo listed twice was placed twice.
             map.markers.forEach(function(marker) {
-                if (!marker || marker.hypervideoID == null) return;
-                markers[String(marker.hypervideoID)] = {
-                    x:    marker.x,
-                    y:    marker.y,
-                    size: marker.size
-                };
+                if (!isPin(marker) || marker.hypervideoID == null) return;
+                var pin = Object.assign({}, marker);
+                delete pin.hypervideoID;
+                add(marker.hypervideoID, pin);
             });
 
         } else if (map.markers && typeof map.markers === 'object') {
 
             Object.keys(map.markers).forEach(function(hypervideoID) {
-                var marker = map.markers[hypervideoID];
-                if (!marker || typeof marker !== 'object') return;
-                markers[String(hypervideoID)] = {
-                    x:    marker.x,
-                    y:    marker.y,
-                    size: marker.size
-                };
+                var entry = map.markers[hypervideoID];
+                (Array.isArray(entry) ? entry : [entry]).forEach(function(pin) {
+                    if (isPin(pin)) add(hypervideoID, pin);
+                });
             });
 
         }
 
-        map.markers = markers;
+        map.markers = {};
+
+        Object.keys(pins).forEach(function(hypervideoID) {
+            map.markers[hypervideoID] = (pins[hypervideoID].length === 1) ? pins[hypervideoID][0] : pins[hypervideoID];
+        });
 
         return map;
 
@@ -136,6 +155,15 @@
      * @private
      */
     function adoptOverviewMap(raw) {
+
+        // Changes nothing could write are only in this object: reading the
+        // library again (a hypervideo's settings saved, Refresh) must not take
+        // them back. Once the storage can be written (the page saved into its
+        // file, an export folder adopted), what it holds is what was exported.
+        if (overviewMapUnexported) {
+            if (overviewMap && !FrameTrail.module('StorageManager').canSave()) return;
+            overviewMapUnexported = false;
+        }
 
         var fromIndex = !!(raw && typeof raw === 'object' && !Array.isArray(raw)),
             next      = normalizeOverviewMap(fromIndex ? raw : (config && config.overviewMap));
@@ -1801,6 +1829,10 @@
      *     { success: true, version: <mtime> }
      * or
      *     { failed: 'overviewMap', error: ..., code: ... }
+     * or, where nothing can be written (StorageManager.canSave() is false),
+     *     { inMemory: true }
+     * — nothing was written, the change is in this page only and leaves
+     * with Export (hasUnexportedOverviewMap).
      *
      * In server mode this is a narrow write: the backend replaces only the
      * "overviewMap" key of the index under that file's lock, so it cannot
@@ -1815,7 +1847,18 @@
 
         var map = getOverviewMap();
 
+        // A guest on a server, download and static mode: as with the rest of
+        // the work there, the change stays in memory until it is exported.
+        // The server would refuse the write, the download adapter keeps it
+        // nowhere that outlives the page.
+        if (!FrameTrail.module('StorageManager').canSave()) {
+            overviewMapUnexported = true;
+            callback.call(window, { inMemory: true });
+            return;
+        }
+
         function done(result) {
+            if (result.success) overviewMapUnexported = false;
             // A data directory that still carries the map in config.json
             // migrates the first time somebody edits it: the index is now the
             // source of truth, so the legacy copy has to go or the next reader
@@ -1914,6 +1957,40 @@
         });
 
     };
+
+
+    /**
+     * Whether the overview map has changes that only this page holds:
+     * made where nothing could write them (saveOverviewMap answered
+     * inMemory), and nothing can write here still. Leaving the page loses
+     * them; Export (and "Save to this file") takes them along.
+     *
+     * Once the storage can be written (the page saved into its file, an
+     * export folder adopted, a guest who signed in), the next map change
+     * writes the whole map, these changes with it.
+     *
+     * @method hasUnexportedOverviewMap
+     * @return {Boolean}
+     */
+    function hasUnexportedOverviewMap() {
+
+        return overviewMapUnexported && !FrameTrail.module('StorageManager').canSave();
+
+    }
+
+
+    /**
+     * The user discarded the map's unexported changes (the page reloads
+     * next): I forget that there are any, so that nothing asks about them
+     * again. The map in memory still shows them until the reload.
+     *
+     * @method discardOverviewMapChanges
+     */
+    function discardOverviewMapChanges() {
+
+        overviewMapUnexported = false;
+
+    }
 
 
     /**
@@ -2565,6 +2642,8 @@
         saveConfig:            saveConfig,
         saveGlobalCSS:         saveGlobalCSS,
         saveOverviewMap:       saveOverviewMap,
+        hasUnexportedOverviewMap:  hasUnexportedOverviewMap,
+        discardOverviewMapChanges: discardOverviewMapChanges,
         buildHypervideoIndex:  buildHypervideoIndex,
 
         //TODO only shortcut for now

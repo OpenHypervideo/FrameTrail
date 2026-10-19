@@ -263,12 +263,15 @@ A video entry may still carry `subtitles` (file names keyed by language) from ea
         "backgroundColor": "#2f3139",
         "fit": "contain",                              // or "cover"
         "lastchanged": 1788942480663,                  // compare-and-swap token, milliseconds
-        "markers": { "9": { "x": 0.371, "y": 0.182, "size": 6.08 } }
+        "markers": {
+            "9": { "x": 0.371, "y": 0.182, "size": 6.08 },                       // one pin
+            "1": [ { "x": 0.2, "y": 0.6, "size": 6 }, { "x": 0.8, "y": 0.3 } ]   // placed twice
+        }
     }
 }
 ```
 
-The overview shows the hypervideos as a grid or, when `config.json` has `overviewMode: "map"`, as pins on the map's background. Marker `x`/`y` are the pin's centre in 0–1 of the background image, `size` its diameter in percent of the stage width; a hypervideo without a marker is not on the map. The map is content, so it lives here rather than in the settings.
+The overview shows the hypervideos as a grid or, when `config.json` has `overviewMode: "map"`, as pins on the map's background. Markers are keyed by hypervideo id; a marker is one pin, or a list of pins for a hypervideo placed more than once (FrameTrail writes a single pin as the pin itself, never as a list of one). A pin's `x`/`y` are its centre in 0–1 of the background image, `size` its diameter in percent of the stage width; a hypervideo without a marker is not on the map. The map is content, so it lives here rather than in the settings.
 
 ### `hypervideos/<id>/hypervideo.json`
 

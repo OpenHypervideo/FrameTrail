@@ -1704,17 +1704,19 @@
      * @param {Object} options
      * @param {Function} options.proceed  called with 'clean', 'saved' or 'discarded'
      * @param {Function} [options.cancel] called when things stay as they are (Cancel, Export, closing the dialog, a save that did not go through)
+     * @param {Boolean} [options.reload] the page reloads next: the overview map's changes that only this page holds (Database.hasUnexportedOverviewMap) are asked about too — anything else leaves them where they are
      */
     function confirmUnsaved(options) {
 
         var proceed = options.proceed,
-            cancel  = options.cancel || function() {};
+            cancel  = options.cancel || function() {},
+            mapToo  = !!options.reload && FrameTrail.module('Database').hasUnexportedOverviewMap();
 
         if (FrameTrail.module('EditAPI')) {
             FrameTrail.module('EditAPI').stop(true);
         }
 
-        if (!FrameTrail.getState('unsavedChanges')) {
+        if (!FrameTrail.getState('unsavedChanges') && !mapToo) {
             proceed('clean');
             return;
         }
@@ -1765,6 +1767,7 @@
                         decided = true;
                         confirmDialogCtrl.close();
                         discardUnsaved();
+                        if (mapToo) FrameTrail.module('Database').discardOverviewMapChanges();
                         proceed('discarded');
                     }
                 },

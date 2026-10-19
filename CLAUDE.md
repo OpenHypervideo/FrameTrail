@@ -429,17 +429,19 @@ The overview can present hypervideos as a grid or as pins on a background image.
     "backgroundColor": "#2f3139",
     "fit": "contain",                                   // or "cover"
     "lastchanged": 1788942480663,                       // compare-and-swap token
-    "markers": { "9": { "x": 0.371, "y": 0.182, "size": 6.08 } }   // keyed by hypervideoID
+    "markers": { "9": { "x": 0.371, "y": 0.182, "size": 6.08 },    // keyed by hypervideoID: one pin,
+                 "1": [ { "x": 0.2, "y": 0.6 }, { "x": 0.8, "y": 0.3 } ] }   // or a list when placed more than once
 }
 ```
 
-`x`/`y` are normalized image coordinates of the pin's **centre**; `size` is the pin diameter as a percentage of stage width.
+`x`/`y` are normalized image coordinates of the pin's **centre**; `size` is the pin diameter as a percentage of stage width. A hypervideo can be placed more than once ("Place hypervideo" always adds a pin): its marker is then a list, written back as the pin itself once only one is left (`Database.normalizeOverviewMap()`, `ViewOverviewMap.getPins()` / `setPins()`). Keys stay hypervideo ids, so export selection, import remapping and pruning deleted hypervideos handle all of a hypervideo's pins at once. On the canvas a pin is named `<hypervideoID>/<index>` (`pinKey()`; elements, drag, resize, the card, "Remove from map" = that pin only); every pin carries `data-hypervideoid`.
 
 Why the index rather than `config.json`, where it used to live: the map is part of the library, its coordinates are meaningless without the background they were placed against, and putting it in the config forced marker editing to take the `settings` lock — so arranging the map blocked every other admin's settings dialog, and every save rewrote a file the settings dialog also owned.
 
 - **Writing:** `Database.saveOverviewMap()` → PHP action `overviewMapChange` (`hypervideos.php`), which replaces **only** the `overviewMap` key under the index file's lock. `hypervideoAdd`/`Clone`/`Delete` touch `hypervideos` and the increment, so the two can never clobber each other. Compare-and-swap is on `overviewMap.lastchanged`, returning code 7 like the other guarded writes.
 - **Locking:** map editing claims the **`library`** collaboration scope, which already guards `_index.json`. It is claimed only by `ViewOverviewMap.setMapEditing(true)` (the sidebar's "Edit map" toggle) — *not* by the global edit mode.
 - **Saving:** every change (drag, resize, add, remove, settings) auto-saves via a short debounce. There is no dirty flag, no save button and no discard prompt.
+- **Who:** `ViewOverviewMap.mayEditMap()` = edit mode + `userRole === 'admin'` (a guest is one), not whether it can be written. Where nothing can be written (`StorageManager.canSave()` false: a guest on a server, download, static, a page file not yet saved into itself) `saveOverviewMap()` writes nothing and answers `{ inMemory: true }`: the change stays in `Database.overviewMap` and leaves with the project's Export ("Save to this file" too). `Database.hasUnexportedOverviewMap()` says so (badges on the map button and the overview's Export, the `beforeunload` prompt, `confirmUnsaved({ reload: true })` for callers that reload the page); `adoptOverviewMap()` keeps the in-memory map on library reloads while it holds such changes.
 - **Settings:** background / fit / colour are edited in `OverviewMapSettingsDialog`, opened from map editing. `AdminSettingsDialog` only owns the grid/map mode cards.
 - **Back-compat:** a `_data` directory whose map is still in `config.overviewMap` (markers as an array) is adopted on load and migrated to the index on the first map save, which then drops the legacy key.
 

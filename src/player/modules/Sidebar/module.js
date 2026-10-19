@@ -85,7 +85,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         CollaborationInfoVideo    = videoContainer.querySelector('.collaborationInfo'),
         CollaborationInfoOverview = overviewContainer.querySelector('.collaborationInfo');
 
-    var _resourcesItemHandler = null;
+    var _resourcesItemHandler = null,
+        mapSaveFailed         = false;
 
 
     /**
@@ -725,6 +726,8 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         MapEditButton.classList.toggle('active', editing);
         MapEditButton.classList.toggle('collabLocked', locked && !editing);
 
+        updateOverviewMapUnsaved();
+
     }
 
 
@@ -740,7 +743,25 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
      */
     function setOverviewMapSaveFailed(flag) {
 
-        if (MapEditButton) MapEditButton.classList.toggle('unsavedChanges', !!flag);
+        mapSaveFailed = !!flag;
+        updateOverviewMapUnsaved();
+
+    }
+
+
+    /**
+     * I mark the map's changes that are not written anywhere: a failed
+     * write, or changes made where nothing can be written, which leave with
+     * the project's Export (Database.hasUnexportedOverviewMap).
+     *
+     * @method updateOverviewMapUnsaved
+     */
+    function updateOverviewMapUnsaved() {
+
+        var unexported = FrameTrail.module('Database').hasUnexportedOverviewMap();
+
+        if (MapEditButton) MapEditButton.classList.toggle('unsavedChanges', mapSaveFailed || unexported);
+        ProjectExportButton.classList.toggle('unsavedChanges', unexported);
 
     }
 
@@ -883,6 +904,9 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
             SaveButton.classList.remove('unsavedChanges');
             ExportButton.classList.remove('unsavedChanges');
         }
+
+        // The map button is one of those edit mode buttons, but the map's changes are not the hypervideo's.
+        updateOverviewMapUnsaved();
 
     };
 
@@ -1466,6 +1490,7 @@ FrameTrail.defineModule('Sidebar', function(FrameTrail){
         mayUseEditMode:  mayUseEditMode,
 
         setOverviewMapSaveFailed:   setOverviewMapSaveFailed,
+        updateOverviewMapUnsaved:   updateOverviewMapUnsaved,
         refreshOverviewMapControls: updateOverviewMapControls,
 
         /**

@@ -39,13 +39,15 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
 
     /**
      * I reload the page for a setting that needs it (language, grid or map) —
-     * once the user decided about unsaved changes of the open hypervideo.
+     * once the user decided about unsaved changes of the open hypervideo
+     * and of the overview map.
      * Kept, the setting is saved and takes effect at the next reload.
      * @method reloadForSettings
      * @private
      */
     function reloadForSettings() {
         FrameTrail.module('HypervideoModel').confirmUnsaved({
+            reload: true,
             proceed: function() {
                 window.location.reload();
             }

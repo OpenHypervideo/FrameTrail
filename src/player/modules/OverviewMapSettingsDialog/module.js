@@ -572,21 +572,28 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
             map.pinIcon         = sanitizeIconClass(selectedPinIcon);
             map.pinAnimation    = selectedPinAnimation;
 
-            FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateSaving']);
+            if (FrameTrail.module('StorageManager').canSave()) {
+                FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateSaving']);
+            }
 
             database.saveOverviewMap(function(result) {
 
                 FrameTrail.module('InterfaceModal').hideMessage(500);
 
-                if (!result || !result.success) {
+                if (!result || !(result.success || result.inMemory)) {
                     FrameTrail.module('InterfaceModal').showErrorMessage(labels['MessageOverviewMapSaveFailed']);
                     FrameTrail.module('InterfaceModal').hideMessage(4000);
                     console.error('FrameTrail: could not save the overview map settings:', result && result.error);
                     return;
                 }
 
-                var Collaboration = FrameTrail.module('Collaboration');
-                if (Collaboration) {
+                var Collaboration = FrameTrail.module('Collaboration'),
+                    Sidebar       = FrameTrail.module('Sidebar');
+
+                if (result.inMemory) {
+                    // Nothing here can write it: kept in memory, marked for Export.
+                    if (Sidebar && Sidebar.updateOverviewMapUnsaved) Sidebar.updateOverviewMapUnsaved();
+                } else if (Collaboration) {
                     Collaboration.acknowledgeVersion(result.version, 'library', 'global');
                 }
 

@@ -705,7 +705,8 @@
      * @private
      */
     function beforeUnload(evt) {
-        if (FrameTrail.getState('unsavedChanges')) {
+        var Database = FrameTrail.module('Database');
+        if (FrameTrail.getState('unsavedChanges') || (Database && Database.hasUnexportedOverviewMap())) {
             evt.preventDefault();
             evt.returnValue = '';
         }

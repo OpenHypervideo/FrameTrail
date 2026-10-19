@@ -251,6 +251,66 @@
             ]
         },
         {
+            "name": "map pin of a hypervideo placed twice without y",
+            "schema": "hypervideos-index.schema.json",
+            "data": {
+                "hypervideo-increment": 2,
+                "hypervideos": {
+                    "1": "./1",
+                    "2": "./2"
+                },
+                "overviewMap": {
+                    "background": "map.svg",
+                    "backgroundColor": "#2f3139",
+                    "fit": "contain",
+                    "lastchanged": 1788942480663,
+                    "markers": {
+                        "1": [
+                            {
+                                "x": 0.2,
+                                "y": 0.6
+                            },
+                            {
+                                "x": 0.8
+                            }
+                        ]
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/overviewMap/markers/1/1/y",
+                    "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "map marker as an empty list of pins",
+            "schema": "hypervideos-index.schema.json",
+            "data": {
+                "hypervideo-increment": 2,
+                "hypervideos": {
+                    "1": "./1",
+                    "2": "./2"
+                },
+                "overviewMap": {
+                    "background": "map.svg",
+                    "backgroundColor": "#2f3139",
+                    "fit": "contain",
+                    "lastchanged": 1788942480663,
+                    "markers": {
+                        "1": []
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/overviewMap/markers/1",
+                    "message": "must have at least 1 item"
+                }
+            ]
+        },
+        {
             "name": "hypervideos as a list of ids",
             "schema": "hypervideos-index.schema.json",
             "data": {

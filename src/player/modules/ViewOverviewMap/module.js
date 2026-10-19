@@ -34,7 +34,10 @@
  * the global edit mode: the lock is what stops two people dragging the same
  * pins, and it should only be held by somebody who is actually arranging the
  * map. Every change is written immediately, so there is no dirty state to
- * reconcile and nothing to lose to a mistimed refresh.
+ * reconcile and nothing to lose to a mistimed refresh — except where nothing
+ * can be written (a guest on a server, download and static mode): there the
+ * changes stay in memory and leave with Export, like the rest of the work
+ * (Database.hasUnexportedOverviewMap).
  *
  * @class ViewOverviewMap
  * @static
@@ -104,7 +107,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         Popup           = null,
         Toolbar         = null,     // .overviewMapToolbar — shown while editing
 
-        MarkerElements  = {},       // hypervideoID -> pin element
+        MarkerElements  = {},       // pin key (see pinKey) -> pin element
         openHandler     = null,     // set by ViewOverview.create()
 
         editModeActive  = false,    // the global edit mode
@@ -121,7 +124,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         layoutRetries   = 0,
         layoutMemo      = null,
 
-        popupHypervideoID = null,
+        popupPinKey     = null,     // the pin whose card is open
         documentListenersBound = false;
 
 
@@ -149,15 +152,86 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
 
     /**
-     * I return the marker entry for a hypervideo, or null.
+     * I return a hypervideo's pins: its marker entry is one pin or, for a
+     * hypervideo placed more than once, a list of them. The pins are the
+     * stored objects, so changing one changes the map.
      *
-     * @method getMarkerData
+     * @method getPins
      * @param {String} hypervideoID
+     * @return {Array}
+     */
+    function getPins(hypervideoID) {
+
+        var entry = getMapData().markers[String(hypervideoID)];
+
+        if (Array.isArray(entry)) return entry;
+
+        return entry ? [entry] : [];
+
+    }
+
+
+    /**
+     * I store a hypervideo's pins in the shape its entry is written in: no
+     * entry for none, the pin itself for one, the list for more.
+     *
+     * @method setPins
+     * @param {String} hypervideoID
+     * @param {Array} pins
+     */
+    function setPins(hypervideoID, pins) {
+
+        var markers = getMapData().markers,
+            id      = String(hypervideoID);
+
+        if (!pins.length) {
+            delete markers[id];
+        } else {
+            markers[id] = (pins.length === 1) ? pins[0] : pins;
+        }
+
+    }
+
+
+    /**
+     * A pin is named by its hypervideo and its place in that hypervideo's
+     * list: "<hypervideoID>/<index>". Indices move up when a pin before them
+     * is removed, which is why the pins are rendered again after a removal.
+     *
+     * @method pinKey
+     * @param {String} hypervideoID
+     * @param {Number} index
+     * @return {String}
+     */
+    function pinKey(hypervideoID, index) {
+
+        return String(hypervideoID) + '/' + index;
+
+    }
+
+
+    /**
+     * @method hypervideoOfPin
+     * @param {String} key
+     * @return {String}
+     */
+    function hypervideoOfPin(key) {
+
+        return key.slice(0, key.lastIndexOf('/'));
+
+    }
+
+
+    /**
+     * I return the pin a key names, or null.
+     *
+     * @method getPin
+     * @param {String} key
      * @return {Object|null}
      */
-    function getMarkerData(hypervideoID) {
+    function getPin(key) {
 
-        return getMapData().markers[String(hypervideoID)] || null;
+        return getPins(hypervideoOfPin(key))[parseInt(key.slice(key.lastIndexOf('/') + 1), 10)] || null;
 
     }
 
@@ -267,8 +341,9 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
     /**
      * I decide whether the current user may re-arrange the map right now.
      *
-     * The map is instance-wide and the server only lets admins write it, so
-     * this is deliberately stricter than the gate on the per-hypervideo
+     * The map is instance-wide and only admins may change it (a guest is
+     * one: their changes stay in memory, see saveMap), so this is
+     * deliberately stricter than the gate on the per-hypervideo
      * edit/delete buttons. Everything that shows or enables a map editing
      * control has to ask me and nothing else — a control that is offered on a
      * looser test than the action behind it accepts is a button that silently
@@ -289,14 +364,16 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      * everything canEditMap() asks except the mode and the lock, so the
      * "Edit map" toggle itself can be offered before either is settled.
      *
+     * Not whether the change can be written: where it cannot, the map is
+     * arranged in memory and exported, as a hypervideo is edited there.
+     *
      * @method mayEditMap
      * @return {Boolean}
      */
     function mayEditMap() {
 
         return !!FrameTrail.getState('editMode')
-            && FrameTrail.module('UserManagement').userRole === 'admin'
-            && FrameTrail.module('StorageManager').canSave();
+            && FrameTrail.module('UserManagement').userRole === 'admin';
 
     }
 
@@ -436,7 +513,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         documentListenersBound = true;
 
         document.addEventListener('keydown', function(evt) {
-            if (evt.key === 'Escape' && popupHypervideoID !== null) {
+            if (evt.key === 'Escape' && popupPinKey !== null) {
                 closePopup();
             }
         });
@@ -579,10 +656,10 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      */
     function layoutMarkers(stageW) {
 
-        Object.keys(MarkerElements).forEach(function(hypervideoID) {
+        Object.keys(MarkerElements).forEach(function(key) {
 
-            var element = MarkerElements[hypervideoID],
-                data    = getMarkerData(hypervideoID);
+            var element = MarkerElements[key],
+                data    = getPin(key);
 
             if (!element || !data) return;
 
@@ -719,13 +796,13 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
         if (!MapRoot) return;
 
-        var database = FrameTrail.module('Database'),
-            reopenID = popupHypervideoID;
+        var database  = FrameTrail.module('Database'),
+            reopenKey = popupPinKey;
 
         closePopup();
 
-        Object.keys(MarkerElements).forEach(function(hypervideoID) {
-            var element = MarkerElements[hypervideoID];
+        Object.keys(MarkerElements).forEach(function(key) {
+            var element = MarkerElements[key];
             // Each corner handle is its own interactable; unset them all before
             // dropping the pin, matching Overlay/type.js:748.
             element.querySelectorAll('.ui-resizable-handle').forEach(function(handle) {
@@ -754,67 +831,76 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             // Dangling entries are pruned on the next save.
             if (!hypervideo) return;
 
-            var marker = document.createElement('div');
-            marker.className = 'overviewMapMarker';
-            marker.setAttribute('data-hypervideoid', hypervideoID);
-            marker.setAttribute('data-name', hypervideo.name || '');
+            getPins(hypervideoID).forEach(function(pin, index) {
 
-            // Everything the pin looks like lives on an inner element, and
-            // everything it IS — the anchor point, the hit area, the resize
-            // handles — stays on the pin itself. That split is what lets the
-            // animations transform the pin's appearance without dragging the
-            // title label round with it, without clobbering the centring
-            // translate, and without moving the resize handles out from under
-            // the cursor while the map is being arranged.
-            var markerBody = document.createElement('div');
-            markerBody.className = 'overviewMapMarkerBody';
+                var key    = pinKey(hypervideoID, index),
+                    marker = document.createElement('div');
+                marker.className = 'overviewMapMarker';
+                // Every pin of a hypervideo carries its id: the search filter and
+                // the zoom animations find a hypervideo's pins by it. The key
+                // finds the same pin again after the pins were rendered anew.
+                marker.setAttribute('data-hypervideoid', hypervideoID);
+                marker.setAttribute('data-pin', key);
+                marker.setAttribute('data-name', hypervideo.name || '');
 
-            if (pinStyle === 'icon') {
-                // A child span rather than an icon class on the body: the
-                // font's rule renders the glyph through ::before, which the
-                // body would then have no way to also use for anything else.
-                var markerIcon = document.createElement('span');
-                markerIcon.className = 'overviewMapMarkerIcon ' + pinIcon;
-                markerBody.append(markerIcon);
-            } else if (hypervideo.thumb) {
-                markerBody.style.backgroundImage = 'url(' + FrameTrail.module('RouteNavigation').getResourceURL(hypervideo.thumb) + ')';
-            }
+                // Everything the pin looks like lives on an inner element, and
+                // everything it IS — the anchor point, the hit area, the resize
+                // handles — stays on the pin itself. That split is what lets the
+                // animations transform the pin's appearance without dragging the
+                // title label round with it, without clobbering the centring
+                // translate, and without moving the resize handles out from under
+                // the cursor while the map is being arranged.
+                var markerBody = document.createElement('div');
+                markerBody.className = 'overviewMapMarkerBody';
 
-            marker.append(markerBody);
+                if (pinStyle === 'icon') {
+                    // A child span rather than an icon class on the body: the
+                    // font's rule renders the glyph through ::before, which the
+                    // body would then have no way to also use for anything else.
+                    var markerIcon = document.createElement('span');
+                    markerIcon.className = 'overviewMapMarkerIcon ' + pinIcon;
+                    markerBody.append(markerIcon);
+                } else if (hypervideo.thumb) {
+                    markerBody.style.backgroundImage = 'url(' + FrameTrail.module('RouteNavigation').getResourceURL(hypervideo.thumb) + ')';
+                }
 
-            if (hypervideoID == activeID) {
-                marker.classList.add('activeHypervideo');
-            }
+                marker.append(markerBody);
 
-            var markerLabel = document.createElement('div');
-            markerLabel.className = 'overviewMapMarkerLabel';
-            markerLabel.textContent = hypervideo.name || '';
-            marker.append(markerLabel);
+                if (hypervideoID == activeID) {
+                    marker.classList.add('activeHypervideo');
+                }
 
-            (function(id, element) {
-                element.addEventListener('click', function(evt) {
-                    evt.preventDefault();
-                    // Must not reach the canvas handler, which closes the popup.
-                    evt.stopPropagation();
+                var markerLabel = document.createElement('div');
+                markerLabel.className = 'overviewMapMarkerLabel';
+                markerLabel.textContent = hypervideo.name || '';
+                marker.append(markerLabel);
 
-                    // mouseup at the end of a drag or resize also produces a
-                    // click on the pin. Without this the card would pop open
-                    // every time the pin is moved.
-                    if (element._ftSuppressClick) {
-                        element._ftSuppressClick = false;
-                        return;
-                    }
+                (function(key, element) {
+                    element.addEventListener('click', function(evt) {
+                        evt.preventDefault();
+                        // Must not reach the canvas handler, which closes the popup.
+                        evt.stopPropagation();
 
-                    openPopup(id);
-                });
-            })(hypervideoID, marker);
+                        // mouseup at the end of a drag or resize also produces a
+                        // click on the pin. Without this the card would pop open
+                        // every time the pin is moved.
+                        if (element._ftSuppressClick) {
+                            element._ftSuppressClick = false;
+                            return;
+                        }
 
-            if (editable) {
-                makeMarkerEditable(marker, hypervideoID);
-            }
+                        openPopup(key);
+                    });
+                })(key, marker);
 
-            MapStage.append(marker);
-            MarkerElements[hypervideoID] = marker;
+                if (editable) {
+                    makeMarkerEditable(marker, key);
+                }
+
+                MapStage.append(marker);
+                MarkerElements[key] = marker;
+
+            });
 
         });
 
@@ -828,8 +914,8 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         var overview = FrameTrail.module('ViewOverview');
         if (overview && overview.applySearchFilter) overview.applySearchFilter();
 
-        if (reopenID && MarkerElements[reopenID]) {
-            openPopup(reopenID);
+        if (reopenKey && MarkerElements[reopenKey]) {
+            openPopup(reopenKey);
         }
 
     }
@@ -858,7 +944,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
             if (placed) return;
             if (known.indexOf(hypervideoID) !== -1) return;
-            if (getMarkerData(hypervideoID)) return;
+            if (getPins(hypervideoID).length) return;
 
             placeMarker(hypervideoID);
             placed = true;
@@ -874,8 +960,8 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
 
     /**
-     * I put a hypervideo on the canvas at the first spot that is not already
-     * taken.
+     * I put a pin of a hypervideo on the canvas at the first spot that is not
+     * already taken — another one, if it is on the map already.
      *
      * Everything used to be dropped at dead centre, which meant the second pin
      * landed exactly underneath the first — indistinguishable from the button
@@ -885,7 +971,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      *
      * @method placeMarker
      * @param {String} hypervideoID
-     * @return {Object} the new marker entry
+     * @return {String} the new pin's key
      */
     function placeMarker(hypervideoID) {
 
@@ -904,11 +990,11 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             y = Math.max(0.05, Math.min(0.95, 0.5 + Math.sin(angle) * radius));
         }
 
-        var marker = { x: x, y: y, size: MARKER_DEFAULT_SIZE };
+        var pins = getPins(hypervideoID).concat([{ x: x, y: y, size: MARKER_DEFAULT_SIZE }]);
 
-        getMapData().markers[String(hypervideoID)] = marker;
+        setPins(hypervideoID, pins);
 
-        return marker;
+        return pinKey(hypervideoID, pins.length - 1);
 
     }
 
@@ -921,11 +1007,10 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      */
     function isSpotTaken(x, y) {
 
-        var markers = getMapData().markers;
-
-        return Object.keys(markers).some(function(hypervideoID) {
-            var marker = markers[hypervideoID];
-            return Math.abs(marker.x - x) < 0.04 && Math.abs(marker.y - y) < 0.04;
+        return Object.keys(getMapData().markers).some(function(hypervideoID) {
+            return getPins(hypervideoID).some(function(pin) {
+                return Math.abs(pin.x - x) < 0.04 && Math.abs(pin.y - y) < 0.04;
+            });
         });
 
     }
@@ -964,12 +1049,13 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      * For the latter reason its data-hypervideoid attribute is removed.
      *
      * @method openPopup
-     * @param {String} hypervideoID
+     * @param {String} key  the pin's (see pinKey)
      */
-    function openPopup(hypervideoID) {
+    function openPopup(key) {
 
-        var database   = FrameTrail.module('Database'),
-            hypervideo = database.hypervideos[hypervideoID];
+        var hypervideoID = hypervideoOfPin(key),
+            database     = FrameTrail.module('Database'),
+            hypervideo   = database.hypervideos[hypervideoID];
 
         if (!hypervideo) return;
 
@@ -985,7 +1071,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
         // Forking is for everyone editing; the rest is for the admin and the owner.
         if (editMode && FrameTrail.module('StorageManager').canSave()) {
-            card.append(buildCardOptions(hypervideoID, admin, admin || owner));
+            card.append(buildCardOptions(key, admin, admin || owner));
         }
 
         card.addEventListener('click', function(evt) {
@@ -996,14 +1082,14 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             // Animate from the pin, never from the card: the card is detached
             // immediately and would measure 0x0 by the time ViewOverview reads
             // its rect inside a later requestAnimationFrame.
-            if (openHandler) openHandler(hypervideoID, MarkerElements[hypervideoID] || null);
+            if (openHandler) openHandler(hypervideoID, MarkerElements[key] || null);
         });
 
         Popup.innerHTML = '';
         Popup.append(card);
         Popup.classList.add('open');
 
-        popupHypervideoID = hypervideoID;
+        popupPinKey = key;
         positionPopup();
 
     }
@@ -1013,14 +1099,15 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      * I build the edit / fork / delete / remove-from-map buttons for a card.
      *
      * @method buildCardOptions
-     * @param {String} hypervideoID
+     * @param {String} key  the pin's (see pinKey)
      * @param {Boolean} admin
      * @param {Boolean} mayEdit  admin or owner: settings and deletion
      * @return {HTMLElement}
      */
-    function buildCardOptions(hypervideoID, admin, mayEdit) {
+    function buildCardOptions(key, admin, mayEdit) {
 
-        var options = document.createElement('div');
+        var hypervideoID = hypervideoOfPin(key),
+            options      = document.createElement('div');
         options.className = 'hypervideoOptions';
 
         if (mayEdit) {
@@ -1059,10 +1146,11 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             evt.preventDefault();
             evt.stopPropagation();
             closePopup();
-            // Drop the placement too, so deleting from the map does not leave
-            // a dangling entry behind.
+            // Drop its pins too, so deleting from the map does not leave
+            // dangling entries behind.
             if (canEditMap()) {
-                removeMarker(hypervideoID);
+                setPins(hypervideoID, []);
+                scheduleMapSave();
             }
             FrameTrail.module('HypervideoSettingsDialog').openDeleteDialog(hypervideoID);
         });
@@ -1077,7 +1165,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
                 evt.preventDefault();
                 evt.stopPropagation();
                 closePopup();
-                removeMarker(hypervideoID);
+                removePin(key);
                 renderMarkers();
             });
             options.append(removeButton);
@@ -1096,9 +1184,9 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      */
     function positionPopup() {
 
-        if (popupHypervideoID === null || !Popup.classList.contains('open')) return;
+        if (popupPinKey === null || !Popup.classList.contains('open')) return;
 
-        var marker = MarkerElements[popupHypervideoID];
+        var marker = MarkerElements[popupPinKey];
         if (!marker) { closePopup(); return; }
 
         var rootRect   = MapRoot.getBoundingClientRect(),
@@ -1132,7 +1220,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
         Popup.classList.remove('open');
         Popup.innerHTML = '';
-        popupHypervideoID = null;
+        popupPinKey = null;
 
     }
 
@@ -1152,9 +1240,9 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      *
      * @method makeMarkerEditable
      * @param {HTMLElement} marker
-     * @param {String} hypervideoID
+     * @param {String} key  the pin's (see pinKey)
      */
-    function makeMarkerEditable(marker, hypervideoID) {
+    function makeMarkerEditable(marker, key) {
 
         marker.classList.add('editable');
         marker.classList.add('ui-resizable');
@@ -1166,7 +1254,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             var handle = document.createElement('div');
             handle.className = 'ui-resizable-handle ui-resizable-' + dir;
             marker.appendChild(handle);
-            makeHandleResizable(handle, marker, hypervideoID);
+            makeHandleResizable(handle, marker, key);
         });
 
         interact(marker).draggable({
@@ -1177,7 +1265,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
                     marker.classList.add('dragging');
                 },
                 move: function(evt) {
-                    var data = getMarkerData(hypervideoID);
+                    var data = getPin(key);
                     if (!data) return;
 
                     marker._ftSuppressClick = true;
@@ -1218,15 +1306,15 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
      * @method makeHandleResizable
      * @param {HTMLElement} handle
      * @param {HTMLElement} marker
-     * @param {String} hypervideoID
+     * @param {String} key  the pin's (see pinKey)
      */
-    function makeHandleResizable(handle, marker, hypervideoID) {
+    function makeHandleResizable(handle, marker, key) {
 
         var grabOffset = 0;
 
         function pointerRadius(clientX, clientY) {
 
-            var data = getMarkerData(hypervideoID);
+            var data = getPin(key);
             if (!data) return null;
 
             var stageRect = MapStage.getBoundingClientRect(),
@@ -1251,7 +1339,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
                     grabOffset = (radius === null) ? 0 : radius - (marker.offsetWidth / 2);
                 },
                 move: function(evt) {
-                    var data = getMarkerData(hypervideoID);
+                    var data = getPin(key);
                     if (!data) return;
 
                     marker._ftSuppressClick = true;
@@ -1285,14 +1373,18 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
 
     /**
-     * I remove a hypervideo's placement without touching the hypervideo.
+     * I remove one pin without touching the hypervideo or its other pins.
+     * The keys of the pins after it change: render the pins again.
      *
-     * @method removeMarker
-     * @param {String} hypervideoID
+     * @method removePin
+     * @param {String} key
      */
-    function removeMarker(hypervideoID) {
+    function removePin(key) {
 
-        delete getMapData().markers[String(hypervideoID)];
+        var hypervideoID = hypervideoOfPin(key),
+            pin          = getPin(key);
+
+        setPins(hypervideoID, getPins(hypervideoID).filter(function(other) { return other !== pin; }));
 
         scheduleMapSave();
 
@@ -1301,7 +1393,8 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
     /**
      * I open the hypervideo picker so an admin can place an existing
-     * hypervideo that is not on the map yet.
+     * hypervideo. It lists all of them: one that is on the map already gets
+     * another pin.
      *
      * @method addHypervideo
      */
@@ -1319,26 +1412,22 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             return;
         }
 
-        var placed = Object.keys(getMapData().markers);
-
         if (!FrameTrail.module('HypervideoPicker')) {
             FrameTrail.initModule('HypervideoPicker');
         }
 
         FrameTrail.module('HypervideoPicker').openPicker(function(hypervideoID) {
 
-            if (getMarkerData(hypervideoID)) return;
-
-            placeMarker(hypervideoID);
+            var key = placeMarker(hypervideoID);
             scheduleMapSave();
             renderMarkers();
 
             // Say where it landed. Without this the only evidence that the
             // picker did anything is a new pin somewhere on a canvas the user
             // was not looking at.
-            openPopup(String(hypervideoID));
+            openPopup(key);
 
-        }, { exclude: placed });
+        });
 
     }
 
@@ -1456,16 +1545,26 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             // exact binary expansion and the file grows unreadable. Six decimals
             // of a normalized coordinate is well under a pixel on any image
             // anyone will use as a map.
-            var marker = mapData.markers[hypervideoID];
-            marker.x    = roundCoordinate(marker.x);
-            marker.y    = roundCoordinate(marker.y);
-            marker.size = roundCoordinate(marker.size);
+            getPins(hypervideoID).forEach(function(pin) {
+                pin.x    = roundCoordinate(pin.x);
+                pin.y    = roundCoordinate(pin.y);
+                pin.size = roundCoordinate(pin.size);
+            });
 
         });
 
         database.saveOverviewMap(function(result) {
 
             var Collaboration = FrameTrail.module('Collaboration');
+
+            // Nothing here can write it: kept in memory, marked for Export.
+            if (result && result.inMemory) {
+                setSaveFailed(false);
+                var Sidebar = FrameTrail.module('Sidebar');
+                if (Sidebar && Sidebar.updateOverviewMapUnsaved) Sidebar.updateOverviewMapUnsaved();
+                if (done) done();
+                return;
+            }
 
             if (result && result.success) {
                 setSaveFailed(false);
@@ -1644,16 +1743,6 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
 
     /**
-     * @method getMarkerElement
-     * @param {String} hypervideoID
-     * @return {HTMLElement|null}
-     */
-    function getMarkerElement(hypervideoID) {
-        return MarkerElements[hypervideoID] || null;
-    }
-
-
-    /**
      * @method isEmpty
      * @return {Boolean}
      */
@@ -1677,7 +1766,6 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         renderMarkers:      renderMarkers,
         layout:             layout,
         closePopup:         closePopup,
-        getMarkerElement:   getMarkerElement,
         toggleEditMode:     toggleEditMode,
         setMapEditing:      setMapEditing,
         isMapEditing:       isMapEditing,

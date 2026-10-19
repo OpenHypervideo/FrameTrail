@@ -2,5 +2,24 @@
     "hypervideo-increment": 1,
     "hypervideos": {
         "1": "./1"
+    },
+    "overviewMap": {
+        "backgroundColor": "#2f3139",
+        "fit": "contain",
+        "lastchanged": 1788942480663,
+        "markers": {
+            "1": [
+                {
+                    "x": 0.3,
+                    "y": 0.4,
+                    "size": 6
+                },
+                {
+                    "x": 0.7,
+                    "y": 0.6,
+                    "size": 8
+                }
+            ]
+        }
     }
 }

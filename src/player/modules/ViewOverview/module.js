@@ -28,6 +28,9 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
         animationElement      = null,
         lastSelectedThumb     = null,
+        // The map pin (its data-pin key) a hypervideo was last opened from:
+        // the way back leads there, also for a hypervideo with several pins.
+        openedFromPin         = null,
 
         MapModule             = null;
 
@@ -131,8 +134,12 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
             el.classList.remove('activeHypervideo');
         });
 
-        var element = getElementForHypervideo(hypervideoID);
-        if (element) element.classList.add('activeHypervideo');
+        if (!hypervideoID) return;
+
+        // A hypervideo placed on the map more than once has a pin per place.
+        domElement.querySelectorAll('[data-hypervideoid="' + hypervideoID + '"]').forEach(function(el) {
+            el.classList.add('activeHypervideo');
+        });
 
     }
 
@@ -387,6 +394,7 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
                     // Store reference to source element for animation
                     lastSelectedThumb = sourceElement;
+                    openedFromPin     = (sourceElement && sourceElement.dataset && sourceElement.dataset.pin) || null;
 
                     if ( FrameTrail.module('RouteNavigation').hypervideoID == newHypervideoID ) {
 
@@ -642,8 +650,10 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
         // Function to find thumb and perform animation
         function findThumbAndAnimate() {
-            // Find the element representing this hypervideo: a grid thumb or a map pin
-            var thumbElement = getElementForHypervideo(hypervideoID),
+            // Find the element representing this hypervideo: a grid thumb or a
+            // map pin, the one it was opened from if it has several
+            var thumbElement = (openedFromPin && domElement.querySelector('[data-hypervideoid="' + hypervideoID + '"][data-pin="' + openedFromPin + '"]:not(.filteredOut)'))
+                             || getElementForHypervideo(hypervideoID),
                 thumbRect    = thumbElement ? thumbElement.getBoundingClientRect() : null;
 
             var notReady = !thumbElement || thumbRect.width === 0 || thumbRect.height === 0;
@@ -812,8 +822,14 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
 
                 // A refreshList() between the click and this frame can leave
                 // lastSelectedThumb pointing at a detached node, which would
-                // measure 0x0.
-                if (thumbToAnimate && !thumbToAnimate.isConnected) thumbToAnimate = null;
+                // measure 0x0. A map pin is found again by its key: a
+                // hypervideo placed more than once returns to the pin it was
+                // opened from, not to its first.
+                if (thumbToAnimate && !thumbToAnimate.isConnected) {
+                    thumbToAnimate = thumbToAnimate.dataset.pin
+                                   ? domElement.querySelector('[data-pin="' + thumbToAnimate.dataset.pin + '"]:not(.filteredOut)')
+                                   : null;
+                }
 
                 if (!thumbToAnimate) {
                     // Find the element for the active hypervideo (grid thumb or map pin)
