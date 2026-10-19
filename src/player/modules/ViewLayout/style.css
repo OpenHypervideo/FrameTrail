@@ -663,11 +663,13 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 
 /* The ring: the circular area (layoutArea.areaCircular), a frame of thumbnails around the video. Empty it is a
    thin dashed frame; with its view, a band one cell of the ring's grid wide (RING_SCHEMATIC in module.js), drawn
-   by the view's schematic, with the video inside. */
+   by the view's schematic, with the video inside, as far from the cells as they are from each other
+   (--schematic-ring-gap, see ContentView/style.css). */
 
 .layoutEditor .playerWrapper .playerArea .circularLayoutArea {
     flex: 1 1 auto;
     min-height: 0;
+    --schematic-ring-gap: 5px;
 }
 
 .layoutEditor .circularLayoutArea > .layoutAreaTabs {
@@ -701,7 +703,8 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 }
 
 .layoutEditor .playerWrapper .playerArea .circularLayoutArea[data-size] > .schematicVideoArea {
-    inset: calc(100% / var(--ring-rows)) calc(100% / var(--ring-cols));
+    inset: calc(2 * var(--schematic-ring-gap) + (100% - 2 * var(--schematic-ring-gap)) / var(--ring-rows))
+           calc(2 * var(--schematic-ring-gap) + (100% - 2 * var(--schematic-ring-gap)) / var(--ring-cols));
 }
 
 .layoutEditor .layoutArea.circularLayoutArea .contentViewPreview {

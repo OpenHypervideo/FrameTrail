@@ -1151,22 +1151,32 @@
     margin-bottom: 2px;
 }
 
-/* The ring (circular area): cells in the outer row and column of a grid, around the video */
+/* The ring (circular area): cells in the outer row and column of a grid, around the video. Half the space between
+   them (--schematic-ring-gap) is each cell's margin, the other half the grid's padding, so it is the same between
+   the cells, around them and towards the video. The Layout Editor sets it in ViewLayout/style.css. */
+
+.contentViewOptionThumb .schematicRing {
+    --schematic-ring-gap: 2px;
+}
+
+.contentViewOptionThumb .schematicRing[data-size="small"] {
+    --schematic-ring-gap: 1px;
+}
 
 :is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicPreview.schematicRing {
     display: grid;
-    padding: 0;
+    padding: var(--schematic-ring-gap);
 }
 
 :is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicRing .schematicCard[data-size] {
     float: none;
     width: auto;
     height: auto;
-    margin: 1px;
+    margin: var(--schematic-ring-gap);
 }
 
 :is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicRing .schematicRingVideo {
-    margin: 1px;
+    margin: var(--schematic-ring-gap);
     background: var(--video-background-color);
 }
 

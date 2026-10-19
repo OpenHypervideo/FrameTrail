@@ -43,6 +43,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         if (axis === 'ring' && type === 'TimedContent') {
             var ring = RING_SCHEMATIC[size] || RING_SCHEMATIC.medium;
             schematic.classList.add('schematicRing');
+            schematic.setAttribute('data-size', size);
             schematic.style.gridTemplateColumns = 'repeat(' + ring.cols + ', 1fr)';
             schematic.style.gridTemplateRows = 'repeat(' + ring.rows + ', 1fr)';
             for (var r = 1; r <= ring.rows; r++) {
