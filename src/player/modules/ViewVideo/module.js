@@ -1101,6 +1101,10 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             adjustHypervideo();
         } else if (viewMode != 'resources') {
             domElement.classList.remove('active');
+            var HypervideoController = FrameTrail.module('HypervideoController');
+            if (viewMode === 'overview' && HypervideoController && HypervideoController.isPlaying) {
+                HypervideoController.pause();
+            }
         }
 
     };
