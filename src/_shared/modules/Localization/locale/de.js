@@ -412,7 +412,7 @@ window.FrameTrail_L10n['de'] = {
     "MessageHypervideoEvents": "JavaScript, das ausgeführt wird, wenn dieses Hypervideo bereit ist, abgespielt, pausiert oder beendet wird. Der Code kann \"FrameTrail\" (den Player) und \"hypervideo\" (seine Wiedergabe, z. B. hypervideo.pause()) verwenden.",
     "MessageKeyframeMarker": "Keyframe – Klicken für Übergang oder zum Löschen, Ziehen zum Verschieben",
     "MessageLayoutEditorCompanion": "Ansichten, die ein mit dem Player gekoppeltes Smartphone zeigt. Ohne Ansichten zeigt das Smartphone nichts.",
-    "MessageLayoutEditorDropContentViews": "Füge Inhalte per Drag & Drop zu den Inhaltsbereichen hinzu",
+    "MessageLayoutEditorDropContentViews": "Füge Inhalte per Drag & Drop zu den Inhaltsbereichen unten hinzu",
     "MessageNewResourceName": "Gib einen Namen an",
     "MessageOverviewMap": "Ziehe die Pins, um Hypervideos auf dem Hintergrundbild zu platzieren. Änderungen werden sofort gespeichert.",
     "MessageOverviewMapCrop": "Mit „Füllend“ füllt das Bild die gesamte Fläche und seine Ränder werden beschnitten. Wie viel beschnitten wird, hängt vom Fensterformat der Betrachter ab.",

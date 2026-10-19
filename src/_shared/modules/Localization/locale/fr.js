@@ -412,7 +412,7 @@ window.FrameTrail_L10n['fr'] = {
     "MessageHypervideoEvents": "JavaScript exécuté lorsque cette hypervidéo est prête, démarre, est mise en pause ou se termine. Le code peut utiliser \"FrameTrail\" (le lecteur) et \"hypervideo\" (sa lecture, p. ex. hypervideo.pause()).",
     "MessageKeyframeMarker": "Image clé – cliquer pour la transition ou pour supprimer, glisser pour déplacer",
     "MessageLayoutEditorCompanion": "Vues affichées sur un téléphone couplé au lecteur. Sans vue, le téléphone n'affiche rien.",
-    "MessageLayoutEditorDropContentViews": "Glisser-déposer des vues de contenu dans les zones de mise en page",
+    "MessageLayoutEditorDropContentViews": "Glisser-déposer des vues de contenu dans les zones de mise en page ci-dessous",
     "MessageNewResourceName": "Saisir un nom pour la nouvelle ressource",
     "MessageOverviewMap": "Faites glisser les épingles pour placer les hypervidéos sur l'image de fond. Les modifications sont enregistrées au fur et à mesure.",
     "MessageOverviewMapCrop": "Avec « Remplir », l’image occupe toute la zone et ses bords sont rognés. La partie rognée dépend de la forme de la fenêtre de chaque spectateur.",
