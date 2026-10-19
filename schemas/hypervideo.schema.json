@@ -542,6 +542,13 @@
                             "type": "array",
                             "items": { "$ref": "#/$defs/contentView" },
                             "default": []
+                        },
+                        "areaCircular": {
+                            "description": "One collection (TimedContent) shown as a grid of annotation thumbnails in rings around the video, clockwise in time from the cell left of the video's bottom edge; the video shrinks to make room for more rings. Small or medium; a large view is shown, and saved, as medium. A view of another type is not shown. At 768 px player width or less, and when the thumbnails do not fit around the video, they form a row below the video instead. Empty or missing: no ring.",
+                            "type": "array",
+                            "items": { "$ref": "#/$defs/contentView" },
+                            "maxItems": 1,
+                            "default": []
                         }
                     }
                 },

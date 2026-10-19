@@ -134,6 +134,7 @@ JS_FILES=(
 
     # Serialization (pure, no FrameTrail instance; before AnimationLibrary and Database)
     "_shared/frametrail-core/serialization/FrameTrailKeyframes.js"
+    "_shared/frametrail-core/layout/FrameTrailRingLayout.js"
     "_shared/frametrail-core/serialization/FrameTrailSerializer.js"
     "_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js"
     "_shared/frametrail-core/serialization/FrameTrailLint.js"

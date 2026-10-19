@@ -2,8 +2,8 @@
  * FrameTrail's tests: the fixtures in tests/fixtures/ against the JSON Schemas
  * in schemas/ (with FrameTrailSchema), through FrameTrailSerializer and
  * FrameTrailLint, plus unit tests of FrameTrailSchema, FrameTrailSerializer,
- * FrameTrailHTMLFormat, FrameTrailLint, FrameTrailKeyframes, FrameTrailWebVTT
- * and FrameTrailPairing, the pairing broker contract against the stub in
+ * FrameTrailHTMLFormat, FrameTrailLint, FrameTrailKeyframes, FrameTrailWebVTT,
+ * FrameTrailRingLayout and FrameTrailPairing, the pairing broker contract against the stub in
  * scripts/pairing-broker.mjs, and the storage adapters of a local folder and
  * a project file against an in-memory File System Access API.
  * No dependencies, Node 20 or later:
@@ -35,6 +35,7 @@ const FIXTURES = path.join(ROOT, 'tests', 'fixtures');
 const Schema     = require('../src/_shared/frametrail-core/schema/FrameTrailSchema.js');
 const Serializer = require('../src/_shared/frametrail-core/serialization/FrameTrailSerializer.js');
 const Keyframes  = require('../src/_shared/frametrail-core/serialization/FrameTrailKeyframes.js');
+const RingLayout = require('../src/_shared/frametrail-core/layout/FrameTrailRingLayout.js');
 const HTMLFormat = require('../src/_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js');
 const Lint       = require('../src/_shared/frametrail-core/serialization/FrameTrailLint.js');
 const WebVTT     = require('../src/_shared/frametrail-core/serialization/FrameTrailWebVTT.js');
@@ -1472,6 +1473,120 @@ describe('FrameTrailKeyframes', () => {
     test('every ease the schemas allow exists', () => {
         const eases = readJSON(path.join(ROOT, 'schemas', 'common.schema.json')).$defs.ease.enum;
         assert.deepStrictEqual(eases.filter((ease) => !Keyframes.hasEase(ease)), []);
+    });
+
+});
+
+describe('FrameTrailRingLayout', () => {
+
+    const A      = 16 / 9,
+          EPS    = 1e-6,
+          SPACES = [[1094, 740], [1440, 815], [900, 500], [1920, 975], [700, 900]],
+          COUNTS = [1, 7, 24, 60, 120],
+          SIZES  = ['small', 'medium'];
+
+    // Every layout of the spaces, counts and sizes that fits
+    const layouts = SPACES.flatMap(([width, height]) => SIZES.flatMap((size) => COUNTS.map((count) => ({
+        width, height, size, count, ring: RingLayout.layout({ width, height, aspect: A, count, size })
+    })))).filter((entry) => entry.ring);
+
+    const overlap = (a, b) => a.x < b.x + b.w - EPS && b.x < a.x + a.w - EPS && a.y < b.y + b.h - EPS && b.y < a.y + a.h - EPS;
+
+    test('there are slots for every item, as many as the rings hold', () => {
+        assert.ok(layouts.length >= SPACES.length * SIZES.length * 3, 'most of them fit');
+        for (const { count, ring } of layouts) {
+            assert.equal(ring.slots.length, RingLayout.capacity(ring.cols, ring.rows, ring.rings));
+            assert.ok(ring.slots.length >= count, count + ' items, ' + ring.slots.length + ' slots');
+        }
+    });
+
+    test('the slots run clockwise on one spiral from the cell left of the video\'s bottom row', () => {
+        for (const { ring } of layouts) {
+            assert.deepStrictEqual([ring.slots[0].c, ring.slots[0].r], [-1, ring.rows - 1]);
+            for (let i = 1; i < ring.slots.length; i++) {
+                const a = ring.slots[i - 1], b = ring.slots[i];
+                assert.equal(Math.abs(a.c - b.c) + Math.abs(a.r - b.r), 1, 'slot ' + i + ' is next to the one before');
+            }
+            for (let j = 1; j <= ring.rings; j++) {
+                const last = ring.slots.filter((slot) => slot.ring === j).pop();
+                assert.deepStrictEqual([last.c, last.r], [-j, ring.rows - 1 + j], 'ring ' + j + ' ends in its bottom-left corner');
+            }
+        }
+    });
+
+    test('the slots stay inside the space, off the video and off each other', () => {
+        for (const { width, height, ring } of layouts) {
+            ring.slots.forEach((slot, i) => {
+                assert.ok(slot.x >= -EPS && slot.y >= -EPS && slot.x + slot.w <= width + EPS && slot.y + slot.h <= height + EPS, 'slot ' + i + ' is inside');
+                assert.ok(!overlap(slot, ring.video), 'slot ' + i + ' is off the video');
+                for (let k = i + 1; k < ring.slots.length; k++) {
+                    assert.ok(!overlap(slot, ring.slots[k]), 'slots ' + i + ' and ' + k + ' do not overlap');
+                }
+            });
+        }
+    });
+
+    test('the grid fills the space edge to edge, the video is centred, the cells stay thumbnail-shaped', () => {
+        for (const { width, height, ring } of layouts) {
+            const near = (a, b) => Math.abs(a - b) < EPS;
+            assert.ok(near(Math.min(...ring.slots.map((slot) => slot.x)), 0));
+            assert.ok(near(Math.min(...ring.slots.map((slot) => slot.y)), 0));
+            assert.ok(near(Math.max(...ring.slots.map((slot) => slot.x + slot.w)), width));
+            assert.ok(near(Math.max(...ring.slots.map((slot) => slot.y + slot.h)), height));
+            assert.ok(near(ring.video.x + ring.video.w / 2, width / 2) && near(ring.video.y + ring.video.h / 2, height / 2), 'the video is centred');
+            const ratio = ring.cell.h / ring.cell.w;
+            assert.ok(ratio >= 0.7 * 0.85 && ratio <= 0.7 * 1.15, 'cell ratio ' + ratio);
+        }
+    });
+
+    test('the video keeps its shape and at least half its ringless width; more items never mean bigger cells', () => {
+        for (const { width, height, ring } of layouts) {
+            assert.ok(Math.abs(ring.video.w / ring.video.h - A) < EPS);
+            assert.ok(ring.video.w >= 0.5 * Math.min(width, height * A) - EPS);
+        }
+        for (const [width, height] of SPACES) {
+            for (const size of SIZES) {
+                const across = COUNTS.map((count) => RingLayout.layout({ width, height, aspect: A, count, size }))
+                                     .filter(Boolean).map((ring) => ring.across);
+                assert.deepStrictEqual(across, [...across].sort((a, b) => a - b), width + '×' + height + ' ' + size);
+            }
+        }
+        assert.equal(RingLayout.layout({ width: 1094, height: 740, aspect: A, count: 1000, size: 'medium' }), null);
+        assert.equal(RingLayout.layout({ width: 0, height: 740, aspect: A, count: 1, size: 'medium' }), null);
+    });
+
+    test('the same hypervideo has the same rings at every player size', () => {
+        for (const { width, height, size, count, ring } of layouts) {
+            const twice = RingLayout.layout({ width: 2 * width, height: 2 * height, aspect: A, count, size });
+            assert.deepStrictEqual([twice.across, twice.rings, twice.cols, twice.rows], [ring.across, ring.rings, ring.cols, ring.rows]);
+            assert.ok(Math.abs(twice.video.w - 2 * ring.video.w) < EPS);
+        }
+    });
+
+    test('placeByTime puts items where their time is and packs them when crowded', () => {
+        const range = (n) => Array.from({ length: n }, (_, i) => i);
+        assert.deepStrictEqual(RingLayout.placeByTime([13.5, 60.5, 111.5, 141.5, 161.5, 187.5, 205.5], 215.24, 24), [1, 6, 12, 15, 18, 20, 22], 'sparse: like a clock');
+        assert.deepStrictEqual(RingLayout.placeByTime(range(10).map((i) => i * 0.1), 1, 10), range(10), 'a full track');
+        assert.deepStrictEqual(RingLayout.placeByTime([9, 9.5, 9.9], 10, 10), [7, 8, 9], 'crowding at the end is pulled back');
+        const police = [12, 12.5, 13, 13.5, 14, 60.5, 111, 111.5, 112, 141, 141.5, 142, 142.5, 143, 161.5, 187, 187.5, 188, 204, 204.5, 205, 205.5, 206, 206.5];
+        assert.deepStrictEqual(RingLayout.placeByTime(police, 215.24, 24), range(24), '24 items on 24 slots');
+        const on26 = RingLayout.placeByTime(police, 215.24, 26);
+        assert.ok(on26.every((slot, i) => slot >= 0 && slot < 26 && (i === 0 || slot > on26[i - 1])), 'strictly increasing: ' + on26);
+        assert.equal(RingLayout.placeByTime([1, 2, 3], 10, 2), null, 'more items than slots');
+        assert.deepStrictEqual(RingLayout.placeByTime([5, 1, 3], 0, 6), [0, 1, 2], 'without a duration: in order');
+    });
+
+    test('the strip stands below the video, both centred together, across the whole width', () => {
+        for (const [width, height] of SPACES) {
+            for (const size of SIZES) {
+                const s = RingLayout.strip({ width, height, aspect: A, size });
+                assert.ok(Math.abs(s.video.y + s.video.h - s.strip.y) < EPS);
+                assert.ok(Math.abs((height - s.video.h - s.strip.h) / 2 - s.video.y) < EPS);
+                assert.equal(s.strip.x, 0);
+                assert.equal(s.strip.w, width);
+                assert.ok(Math.abs(s.video.w / s.video.h - A) < EPS);
+            }
+        }
     });
 
 });

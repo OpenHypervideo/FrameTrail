@@ -127,6 +127,26 @@
                         "text": ""
                     }
                 }
+            ],
+            "areaCircular": [
+                {
+                    "type": "TimedContent",
+                    "name": "Ring",
+                    "description": "",
+                    "icon": "",
+                    "cssClass": "",
+                    "contentSize": "medium",
+                    "initClosed": false,
+                    "collectionFilter": {
+                        "tags": [],
+                        "types": [],
+                        "users": [],
+                        "text": ""
+                    },
+                    "onClickContentItem": "",
+                    "filterAspect": "creatorId",
+                    "zoomControls": false
+                }
             ]
         }
     },

@@ -62,7 +62,7 @@
     bottom: 8px;
 }
 
-.layoutArea[data-area="areaTop"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaBottom"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaLeft"][data-size="small"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaRight"][data-size="small"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaLeft"][data-size="medium"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaRight"][data-size="medium"] .collectionElement .resourcePreviewButton {
+.layoutArea[data-area="areaTop"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaBottom"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaCircular"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaLeft"][data-size="small"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaRight"][data-size="small"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaLeft"][data-size="medium"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaRight"][data-size="medium"] .collectionElement .resourcePreviewButton {
     display: none !important;
 }
 
@@ -104,7 +104,7 @@
 
 /* Content View Item Sizes */
 
-.layoutArea[data-area="areaTop"] .collectionElement, .layoutArea[data-area="areaBottom"] .collectionElement {
+.layoutArea[data-area="areaTop"] .collectionElement, .layoutArea[data-area="areaBottom"] .collectionElement, .layoutArea[data-area="areaCircular"].strip .collectionElement {
     top: 4px;
     height: calc(100% - 8px);
 }
@@ -300,7 +300,8 @@
 }
 
 .layoutArea[data-area="areaTop"] .contentViewContainer .contentViewScrollbar,
-.layoutArea[data-area="areaBottom"] .contentViewContainer .contentViewScrollbar {
+.layoutArea[data-area="areaBottom"] .contentViewContainer .contentViewScrollbar,
+.layoutArea[data-area="areaCircular"].strip .contentViewContainer .contentViewScrollbar {
     left: 0px;
     right: 0px;
     bottom: 0px;
@@ -308,7 +309,8 @@
 }
 
 .layoutArea[data-area="areaTop"] .contentViewContainer .contentViewScrollbarThumb,
-.layoutArea[data-area="areaBottom"] .contentViewContainer .contentViewScrollbarThumb {
+.layoutArea[data-area="areaBottom"] .contentViewContainer .contentViewScrollbarThumb,
+.layoutArea[data-area="areaCircular"].strip .contentViewContainer .contentViewScrollbarThumb {
     top: 0px;
     height: 100%;
 }
@@ -328,7 +330,8 @@
 }
 
 .layoutArea[data-area="areaTop"] .contentViewContainer .contentViewScroll,
-.layoutArea[data-area="areaBottom"] .contentViewContainer .contentViewScroll {
+.layoutArea[data-area="areaBottom"] .contentViewContainer .contentViewScroll,
+.layoutArea[data-area="areaCircular"].strip .contentViewContainer .contentViewScroll {
     overflow-x: auto;
     overflow-y: hidden;
 }
@@ -350,7 +353,8 @@
    --scrollbar-size (set in type.js) holds the space it actually takes (0 wherever the
    rules above hide it), so the contents can always keep their full size. */
 .layoutArea[data-area="areaTop"] .contentViewContainer .contentViewContents,
-.layoutArea[data-area="areaBottom"] .contentViewContainer .contentViewContents {
+.layoutArea[data-area="areaBottom"] .contentViewContainer .contentViewContents,
+.layoutArea[data-area="areaCircular"].strip .contentViewContainer .contentViewContents {
     display: flex;
     flex-wrap: nowrap;
     align-items: stretch;
@@ -361,9 +365,55 @@
 }
 
 .layoutArea[data-area="areaTop"] .collectionElement,
-.layoutArea[data-area="areaBottom"] .collectionElement {
+.layoutArea[data-area="areaBottom"] .collectionElement,
+.layoutArea[data-area="areaCircular"].strip .collectionElement {
     float: none;
     flex-shrink: 0;
+}
+
+/* The circular area: one collection, as a ring of thumbnails around the video (.ring, placed into their cells by
+   layoutRing in type.js; the 2px borders in the player's colour are the gaps between them) or, where the player
+   is narrow or they do not fit, a strip below the video (.strip, laid out like the bottom area, its thumbnails as
+   wide as a ring's cells). Both lie on the player's background. */
+
+.layoutArea[data-area="areaCircular"] .contentViewContainer {
+    top: 0px;
+    height: 100%;
+    background: none;
+}
+
+.layoutArea[data-area="areaCircular"].ring .layoutAreaContent,
+.layoutArea[data-area="areaCircular"].ring .contentViewContainer,
+.layoutArea[data-area="areaCircular"].ring .contentViewContainer .contentViewScroll,
+.layoutArea[data-area="areaCircular"].ring .contentViewContainer .contentViewContents {
+    position: absolute;
+    inset: 0;
+    width: auto;
+    height: auto;
+    padding: 0;
+    overflow: visible;
+}
+
+.layoutArea[data-area="areaCircular"].ring .contentViewScrollbar {
+    display: none;
+}
+
+.layoutArea[data-area="areaCircular"].ring .collectionElement {
+    float: none;
+    margin: 0;
+    pointer-events: auto;
+}
+
+.layoutArea[data-area="areaCircular"].strip .contentViewContainer {
+    pointer-events: auto;
+}
+
+.layoutArea[data-area="areaCircular"].strip .collectionElement {
+    width: calc(var(--circular-cell-width) - 4px);
+}
+
+.layoutArea[data-area="areaCircular"].compact .collectionElement .resourceTitle {
+    display: none;
 }
 
 .layoutArea[data-area="areaTop"] .contentViewContainer[data-size="large"] .contentViewContents,
@@ -1077,6 +1127,25 @@
 :is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicCard.vertical[data-size="large"] {
     height: calc(100% - 4px);
     margin-bottom: 2px;
+}
+
+/* The ring (circular area): cells in the outer row and column of a grid, around the video */
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicPreview.schematicRing {
+    display: grid;
+    padding: 0;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicRing .schematicCard[data-size] {
+    float: none;
+    width: auto;
+    height: auto;
+    margin: 1px;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicRing .schematicRingVideo {
+    margin: 1px;
+    background: var(--video-background-color);
 }
 
 /* CustomHTML */

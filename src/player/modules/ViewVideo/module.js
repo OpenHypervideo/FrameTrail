@@ -36,6 +36,12 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '                    <div class="layoutAreaContent"></div>'
                         + '                </div>'
                         + '                <div class="videoContainer">'
+                        // The circular area: a ring of thumbnails around the video, in the space the video gets (see adjustHypervideo).
+                        + '                    <div class="circularVideoBackdrop"></div>'
+                        + '                    <div class="areaCircularContainer layoutArea" data-area="areaCircular">'
+                        + '                        <div class="layoutAreaTabs"></div>'
+                        + '                        <div class="layoutAreaContent"></div>'
+                        + '                    </div>'
                         + '                    <div class="hypervideo">'
                         + '                        <video class="video nocolor" '+ ((!!document.fullscreenEnabled) ? 'playsinline webkit-playsinline' : '') +' disablePictureInPicture></video>'
                         + '                        <div class="overlayContainer"></div>'
@@ -156,6 +162,9 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         // On a phone (the companion state) the companion area's views are all there is, laid out in the right area's place.
         AreaCompanionContainer      = FrameTrail.getState('companion') ? AreaRightContainer : domElement.querySelector('.areaCompanionContainer'),
+
+        AreaCircularContainer       = domElement.querySelector('.areaCircularContainer'),
+        CircularVideoBackdrop       = domElement.querySelector('.circularVideoBackdrop'),
 
         AnnotationTimeline          = domElement.querySelector('.annotationTimeline'),
 
@@ -461,6 +470,16 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         var centerEl = document.createElement('div');
         centerEl.className = 'schematicCenter';
         centerEl.innerHTML = '<span class="icon-play-1"></span>';
+        // The ring around the video is toggled on the video itself.
+        if (FrameTrail.getState('hv_config_areaCircularVisible')) {
+            centerEl.classList.add('schematicRing');
+            if (!AreaCircularContainer.classList.contains('closed')) centerEl.classList.add('active');
+            centerEl.addEventListener('click', function() {
+                AreaCircularContainer.classList.toggle('closed');
+                this.classList.toggle('active');
+                window.setTimeout(function() { adjustHypervideo(); }, 250);
+            });
+        }
         middleRow.appendChild(centerEl);
 
         if (hasRight) {
@@ -500,7 +519,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         var hasAny = FrameTrail.getState('hv_config_areaTopVisible')
                   || FrameTrail.getState('hv_config_areaBottomVisible')
                   || FrameTrail.getState('hv_config_areaLeftVisible')
-                  || FrameTrail.getState('hv_config_areaRightVisible');
+                  || FrameTrail.getState('hv_config_areaRightVisible')
+                  || FrameTrail.getState('hv_config_areaCircularVisible');
         layoutAreasButton.style.display = hasAny ? '' : 'none';
     }
 
@@ -1001,9 +1021,29 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         var videoWidth = (_video.videoWidth) ? _video.videoWidth : 1920;
         var videoHeight = (_video.videoHeight) ? _video.videoHeight : 1080;
 
+        // The ring around the video (the circular area) fills the space; the video goes into the block it leaves.
+        // Controls that hide themselves lie over the bottom of the player, so there the ring ends above them.
+        var ringHeight = _vcH;
+        if (FrameTrail.getState('hv_config_autohideControls') && !inEditMode && FrameTrail.getState('editMode') != 'layout') {
+            [PlayerProgress, Controls].forEach(function(element) {
+                if (!element.offsetHeight) { return; }
+                ringHeight = Math.min(ringHeight, element.getBoundingClientRect().top - VideoContainer.getBoundingClientRect().top);
+            });
+        }
+        var ring = FrameTrail.module('ViewLayout')
+            ? FrameTrail.module('ViewLayout').circularGeometry(VideoContainer.offsetWidth, ringHeight, videoWidth / videoHeight, isMobileWidth)
+            : null;
+
         var scaledWidth, scaledHeight, ratio;
 
-        if (videoFit == 'cover') {
+        if (ring) {
+
+            // The ring's letterbox: 'cover' would push the video under the thumbnails.
+            ratio = Math.min(ring.box.w / videoWidth, ring.box.h / videoHeight);
+            scaledWidth = videoWidth * ratio;
+            scaledHeight = videoHeight * ratio;
+
+        } else if (videoFit == 'cover') {
 
             ratio = Math.max(VideoContainer.offsetWidth / videoWidth, _vcH / videoHeight);
             scaledWidth = videoWidth * ratio;
@@ -1023,6 +1063,25 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         _video.style.height = scaledHeight + 'px';
         _video.style.width = scaledWidth + 'px';
+
+        // With a ring the video sits in the middle of its block (in a strip, above the thumbnails), and only that
+        // block takes the video's background colour; the ring is on the player's.
+        if (ring) {
+            Hypervideo.style.left = (ring.video.x + ring.video.w / 2) + 'px';
+            Hypervideo.style.top  = (ring.video.y + ring.video.h / 2) + 'px';
+            CircularVideoBackdrop.style.left   = ring.box.x + 'px';
+            CircularVideoBackdrop.style.top    = ring.box.y + 'px';
+            CircularVideoBackdrop.style.width  = ring.box.w + 'px';
+            CircularVideoBackdrop.style.height = ring.box.h + 'px';
+            AreaCircularContainer.style.top    = (ring.mode == 'strip') ? ring.strip.y + 'px' : '';
+            AreaCircularContainer.style.height = (ring.mode == 'strip') ? ring.strip.h + 'px' : '';
+        } else {
+            Hypervideo.style.left = '';
+            Hypervideo.style.top  = '';
+            AreaCircularContainer.style.top    = '';
+            AreaCircularContainer.style.height = '';
+        }
+        VideoContainer.classList.toggle('hasCircularArea', !!ring);
 
         // Captions are player chrome, not video-anchored content, so they must
         // stay inside the visible container even when 'cover' scales .hypervideo
@@ -1201,6 +1260,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         AreaBottomDetails.style.display = 'none';
         AreaLeftContainer.style.display = 'none';
         AreaRightContainer.style.display = 'none';
+        AreaCircularContainer.style.display = 'none';
 
         layoutAreasButton.style.display = 'none';
         layoutAreasPanel.classList.remove('active');
@@ -1244,6 +1304,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         toggleConfig_areaBottomVisible(FrameTrail.getState('hv_config_areaBottomVisible'));
         toggleConfig_areaLeftVisible(FrameTrail.getState('hv_config_areaLeftVisible'));
         toggleConfig_areaRightVisible(FrameTrail.getState('hv_config_areaRightVisible'));
+        toggleConfig_areaCircularVisible(FrameTrail.getState('hv_config_areaCircularVisible'));
 
         toggleConfig_overlaysVisible(FrameTrail.getState('hv_config_overlaysVisible'));
 
@@ -1423,6 +1484,22 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             AreaRightContainer.style.display = 'none';
         }
         updateLayoutAreasButtonVisibility();
+    };
+
+    /**
+     * I am called when the global state "hv_config_areaCircularVisible" changes: whether there is a ring of
+     * thumbnails around the video (see ViewLayout.circularGeometry). It changes the room the video has.
+     *
+     * @method toggleConfig_areaCircularVisible
+     * @param {Boolean} newState
+     * @param {Boolean} oldState
+     */
+    function toggleConfig_areaCircularVisible(newState, oldState) {
+        AreaCircularContainer.style.display = (newState == true) ? '' : 'none';
+        updateLayoutAreasButtonVisibility();
+        if (FrameTrail.getState('viewMode') == 'video') {
+            adjustHypervideo();
+        }
     };
 
     /**
@@ -2021,6 +2098,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             hv_config_areaBottomVisible:            toggleConfig_areaBottomVisible,
             hv_config_areaLeftVisible:              toggleConfig_areaLeftVisible,
             hv_config_areaRightVisible:             toggleConfig_areaRightVisible,
+            hv_config_areaCircularVisible:          toggleConfig_areaCircularVisible,
             hv_config_autohideControls:             toggleConfig_autohideControls,
             hv_config_overlaysVisible:              toggleConfig_overlaysVisible,
             hv_config_slidingMode:                  toggleConfig_slidingMode,
@@ -2186,6 +2264,13 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
          * @type HTMLElement
          */
         get AreaCompanionContainer() { return AreaCompanionContainer },
+
+        /**
+         * I contain the AreaCircularContainer element: the ring of thumbnails around the video, inside the VideoContainer.
+         * @attribute AreaCircularContainer
+         * @type HTMLElement
+         */
+        get AreaCircularContainer()  { return AreaCircularContainer },
 
         /**
          * I contain the AnnotationTimeline element.

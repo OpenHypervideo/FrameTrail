@@ -57,8 +57,12 @@ FrameTrail.defineType(
                 contentViewData.transcriptSource       = contentViewData.transcriptSource || "";
                 contentViewData.showTranscriptSearch   = contentViewData.showTranscriptSearch || false;
                 // A phone has no room for the narrow strip that "small" is: its views are medium at the least.
-                contentViewData.contentSize            = contentViewData.contentSize || (whichArea == 'companion' ? "medium" : "small");
+                // The ring around the video (circular) holds thumbnails only: small or medium.
+                contentViewData.contentSize            = contentViewData.contentSize || ((whichArea == 'companion' || whichArea == 'circular') ? "medium" : "small");
                 if (whichArea == 'companion' && contentViewData.contentSize == 'small') {
+                    contentViewData.contentSize = 'medium';
+                }
+                if (whichArea == 'circular' && contentViewData.contentSize == 'large') {
                     contentViewData.contentSize = 'medium';
                 }
                 contentViewData.onClickContentItem     = contentViewData.onClickContentItem || "";
@@ -88,7 +92,7 @@ FrameTrail.defineType(
                 contentViewData:    null,
                 contentCollection: null,
                 contentGroups: null,
-                _AREA_KEYS: { top: 'Top', bottom: 'Bottom', left: 'Left', right: 'Right', companion: 'Companion' },
+                _AREA_KEYS: { top: 'Top', bottom: 'Bottom', left: 'Left', right: 'Right', companion: 'Companion', circular: 'Circular' },
 
 
                 /**
@@ -118,7 +122,7 @@ FrameTrail.defineType(
 
 
                 /**
-                 * Whether my collection runs horizontally: in the top and bottom areas, and as a phone's large collection.
+                 * Whether my collection runs horizontally: in the top and bottom areas, as a phone's large collection, and as the circular area's strip.
                  *
                  * @method isHorizontalArea
                  * @param {String} [size]
@@ -126,7 +130,29 @@ FrameTrail.defineType(
                  * @return {Boolean}
                  */
                 isHorizontalArea: function(size, type) {
-                    return this.whichArea == 'top' || this.whichArea == 'bottom' || this.isSlideshow(size, type);
+                    return this.whichArea == 'top' || this.whichArea == 'bottom' || this.isSlideshow(size, type) || this.isStrip();
+                },
+
+
+                /**
+                 * Whether I am in the circular area: a ring of thumbnails around the video (see layoutRing).
+                 *
+                 * @method isCircularArea
+                 * @return {Boolean}
+                 */
+                isCircularArea: function() {
+                    return this.whichArea == 'circular';
+                },
+
+
+                /**
+                 * Whether I am the circular area's strip: its thumbnails in a row below the video, where the player is narrow or they do not fit around it (see computeRingGeometry). The strip is laid out like the bottom area.
+                 *
+                 * @method isStrip
+                 * @return {Boolean}
+                 */
+                isStrip: function() {
+                    return this.isCircularArea() && !!this.ringGeometry && this.ringGeometry.mode == 'strip';
                 },
 
 
@@ -380,6 +406,12 @@ FrameTrail.defineType(
 
                             var crossedLargeBoundary =
                                 (this.previousContentSize == 'large') != (this.contentViewData.contentSize == 'large');
+
+                            // The ring's slots depend on the number of thumbnails and their size, and so does the room the video has.
+                            if ( self.isCircularArea()
+                                && (this.previousContentSize != this.contentViewData.contentSize || !self._groupsEqual(old_contentGroups, new_contentGroups)) ) {
+                                self._scheduleRingLayout();
+                            }
 
                             if ( crossedLargeBoundary || !self._groupsEqual(old_contentGroups, new_contentGroups) ) {
 
@@ -702,7 +734,7 @@ FrameTrail.defineType(
                         });
                     }
 
-                    if ( self.isVerticalArea() ) {
+                    if ( self.isVerticalArea() || self.isCircularArea() ) {
                         collectionElement.addEventListener('click', function() {
                             if ( self.contentViewData.contentSize == 'small' || self.contentViewData.contentSize == 'medium' ) {
                                 var _btn = this.querySelector('.resourcePreviewButton');
@@ -1247,6 +1279,12 @@ FrameTrail.defineType(
                     //console.log(HypervideoDuration);
 
                     if (!self.contentViewContainer.classList.contains('active')) {
+                        return;
+                    }
+
+                    // The ring places its thumbnails itself; its strip is laid out like the bottom area.
+                    if (self.isCircularArea() && !self.isStrip()) {
+                        self.layoutRing();
                         return;
                     }
 
@@ -1812,7 +1850,7 @@ FrameTrail.defineType(
                  * @return {HTMLElement} previewElement
                  */
                 generateSchematicPreview: function() {
-                    var axis = this.isHorizontalArea() ? 'x' : 'y';
+                    var axis = this.isCircularArea() ? 'ring' : (this.isHorizontalArea() ? 'x' : 'y');
                     return _generateSchematic(this.contentViewData.type, this.contentViewData.contentSize, axis);
                 },
 
@@ -2374,6 +2412,187 @@ FrameTrail.defineType(
 
 
                 /**
+                 * I lay out the ring around the video for a space of width × height and a video of the aspect ratio
+                 * (width / height): FrameTrailRingLayout's slots for my thumbnails (contentGroups), or the strip below
+                 * the video where the player is narrow or they do not fit around it. I keep the result (layoutRing
+                 * places the thumbnails by it), mark my area .ring or .strip, give it the cell width as
+                 * --circular-cell-width, and return it, with mode 'ring' or 'strip'; null when there is no room.
+                 *
+                 * @method computeRingGeometry
+                 * @param {Number} width
+                 * @param {Number} height
+                 * @param {Number} aspect
+                 * @param {Boolean} narrow
+                 * @return {Object|null}
+                 */
+                computeRingGeometry: function(width, height, aspect, narrow) {
+
+                    var Ring     = window.FrameTrailRingLayout,
+                        count    = this.contentGroups.length,
+                        size     = (this.contentViewData.contentSize == 'small') ? 'small' : 'medium',
+                        options  = { width: width, height: height, aspect: aspect, count: count, size: size },
+                        geometry = (narrow || !(width > 0) || !(height > 0)) ? null : Ring.layout(options),
+                        mode     = geometry ? 'ring' : 'strip';
+
+                    if (!geometry && width > 0 && height > 0) {
+                        geometry = Ring.strip(options);
+                    }
+                    if (!geometry || !(geometry.video.h > 0)) {
+                        this.clearRingGeometry();
+                        return null;
+                    }
+
+                    if (!this.ringGeometry || this.ringGeometry.mode != mode) {
+                        this._resetRingPositions();
+                    }
+
+                    geometry.mode  = mode;
+                    geometry.count = count;
+                    geometry.size  = size;
+                    this.ringGeometry = geometry;
+
+                    var container = this.getLayoutAreaContainer();
+                    container.classList.toggle('ring', mode == 'ring');
+                    container.classList.toggle('strip', mode == 'strip');
+                    container.style.setProperty('--circular-cell-width', geometry.cell.w + 'px');
+
+                    this._updateRingTitles(size == 'small' || geometry.cell.w < 120);
+
+                    return geometry;
+
+                },
+
+
+                /**
+                 * I forget the ring's layout (computeRingGeometry), when it is not shown: its thumbnails go back
+                 * into the flow, and my area is neither ring nor strip.
+                 *
+                 * @method clearRingGeometry
+                 */
+                clearRingGeometry: function() {
+
+                    if (!this.ringGeometry) { return; }
+
+                    this.ringGeometry = null;
+                    this._resetRingPositions();
+                    this.getLayoutAreaContainer().classList.remove('ring', 'strip');
+
+                },
+
+
+                /**
+                 * I place my thumbnails into the slots of the ring around the video (computeRingGeometry): each where
+                 * its time is on the spiral, which starts left of the video's bottom row and runs clockwise (the mid
+                 * time of its group, as in distributeElements), packed in time order when they crowd
+                 * (FrameTrailRingLayout.placeByTime). When the slots were laid out for another number or size of
+                 * thumbnails, I have the video adjusted first, which lays out the ring again and comes back here.
+                 *
+                 * @method layoutRing
+                 */
+                layoutRing: function() {
+
+                    var self     = this,
+                        geometry = self.ringGeometry,
+                        groups   = self.contentGroups || [],
+                        size     = (self.contentViewData.contentSize == 'small') ? 'small' : 'medium';
+
+                    if (!geometry || geometry.mode != 'ring') { return; }
+
+                    if (geometry.count != groups.length || geometry.size != size) {
+                        if (!self._ringRelayout) {
+                            self._ringRelayout = true;
+                            FrameTrail.module('ViewVideo').adjustHypervideo();
+                            self._ringRelayout = false;
+                        }
+                        return;
+                    }
+
+                    var HypervideoModel = FrameTrail.module('HypervideoModel'),
+                        offsetIn        = HypervideoModel.offsetIn || 0,
+                        elements        = [],
+                        times           = [];
+
+                    groups.forEach(function(group) {
+                        var element = self.getContentViewElementFromContentItem(group.representative);
+                        if (!element) { return; }
+                        var end = group.items[0].data.end;
+                        group.items.forEach(function(item) {
+                            if (item.data.end > end) { end = item.data.end; }
+                        });
+                        elements.push(element);
+                        times.push((group.items[0].data.start + end) / 2 - offsetIn);
+                    });
+
+                    var slots = window.FrameTrailRingLayout.placeByTime(times, HypervideoModel.duration || 0, geometry.slots.length);
+                    if (!slots) { return; }
+
+                    elements.forEach(function(element, i) {
+                        var slot = geometry.slots[slots[i]];
+                        element.style.position = 'absolute';
+                        element.style.left     = slot.x + 'px';
+                        element.style.top      = slot.y + 'px';
+                        element.style.width    = slot.w + 'px';
+                        element.style.height   = slot.h + 'px';
+                        element.setAttribute('data-slot', slots[i]);
+                    });
+
+                },
+
+
+                // The ring (layoutRing) and the strip (distributeElements) each position the thumbnails inline: when
+                // the one gives way to the other, they start from the flow again.
+                _resetRingPositions: function() {
+                    var contents = this.contentViewContainer.querySelector('.contentViewContents');
+                    if (contents) { contents.style.width = ''; }
+                    this._slides().forEach(function(element) {
+                        ['position', 'left', 'top', 'width', 'height'].forEach(function(property) {
+                            element.style[property] = '';
+                        });
+                        element.removeAttribute('data-slot');
+                    });
+                },
+
+
+                // Thumbnails too small for their titles (.compact hides them) name themselves in a tooltip instead,
+                // as in the small top and bottom areas.
+                _updateRingTitles: function(compact) {
+                    var self = this;
+                    self.getLayoutAreaContainer().classList.toggle('compact', compact);
+                    (self.contentGroups || []).forEach(function(group) {
+                        var element = self.getContentViewElementFromContentItem(group.representative),
+                            thumb   = element && element.querySelector('.resourceThumb');
+                        if (!thumb) { return; }
+                        var titleElement = thumb.querySelector('.resourceTitle'),
+                            title = (titleElement && titleElement.textContent)
+                                 || (group.representative.resourceItem.resourceData && group.representative.resourceItem.resourceData.name)
+                                 || '';
+                        if (compact && title) {
+                            thumb.setAttribute('data-tooltip-top', title);
+                            thumb.setAttribute('data-tooltip-variant', 'resourceTitle');
+                        } else {
+                            thumb.removeAttribute('data-tooltip-top');
+                            thumb.removeAttribute('data-tooltip-variant');
+                        }
+                    });
+                },
+
+
+                // A change of my thumbnails can add or take away a ring, and with it change the room the video has:
+                // the video is adjusted once in the next frame, which lays out the ring again.
+                _scheduleRingLayout: function() {
+                    var self = this;
+                    if (self._ringFrame) { return; }
+                    self._ringFrame = window.requestAnimationFrame(function() {
+                        self._ringFrame = null;
+                        var ViewVideo = FrameTrail.module('ViewVideo');
+                        if (ViewVideo && FrameTrail.getState('viewMode') == 'video') {
+                            ViewVideo.adjustHypervideo();
+                        }
+                    });
+                },
+
+
+                /**
                  * I update the slider for the current contentCollection
                  *
                  * If param details is set to true, I update the details' slider
@@ -2386,6 +2605,11 @@ FrameTrail.defineType(
                     var self = this,
                         slideAxis    = self.isHorizontalArea() ? 'x' : 'y',
                         sliderParent = (details) ? self.contentViewDetailsContainer : self.contentViewContainer;
+
+                    // The ring shows all its thumbnails at once: there is nothing to scroll.
+                    if ( self.isCircularArea() && !self.isStrip() ) {
+                        return;
+                    }
 
                     if ( self.contentCollection.length == 0
                         || ( self.isVerticalArea() && self.contentViewData.contentSize == 'large')
@@ -2697,7 +2921,9 @@ FrameTrail.defineType(
                         contentViewData = this.contentViewData,
                         editingUI = document.createElement('div'),
                         // The switches' texts are labels of their own, so they name their inputs to toggle them.
-                        idPrefix = 'contentView-' + Math.random().toString(36).slice(2, 10);
+                        idPrefix = 'contentView-' + Math.random().toString(36).slice(2, 10),
+                        // The ring around the video holds one collection of thumbnails: small or medium.
+                        circular = self.isCircularArea();
                     editingUI.className = 'contentViewEditingUI';
                     editingUI.innerHTML = '    <div class="layoutRow">'
                                     +'        <div class="generic column-4">'
@@ -2725,10 +2951,11 @@ FrameTrail.defineType(
                                     +'        <div class="contentViewData optionCards column-6" data-property="type" data-value="'+ contentViewData.type +'">'
                                     +'            <label>'+ self.labels['GenericType'] +':</label>'
                                     +'            <div '+ (contentViewData.type == 'TimedContent' ? 'class="active"' : '') +' data-value="TimedContent">'+ self.labels['GenericAnnotationCollection'] +'</div>'
-                                    +'            <div '+ (contentViewData.type == 'Transcript' ? 'class="active"' : '') +' data-value="Transcript">'+ self.labels['GenericTextTranscript'] +'</div>'
+                                    + (circular ? '' :
+                                     '            <div '+ (contentViewData.type == 'Transcript' ? 'class="active"' : '') +' data-value="Transcript">'+ self.labels['GenericTextTranscript'] +'</div>'
                                     +'            <div '+ (contentViewData.type == 'Chapters' ? 'class="active"' : '') +' data-value="Chapters">'+ self.labels['SettingsChapters'] +'</div>'
                                     +'            <div '+ (contentViewData.type == 'Timelines' ? 'class="active"' : '') +' data-value="Timelines">'+ self.labels['GenericTimelines'] +'</div>'
-                                    +'            <div '+ (contentViewData.type == 'CustomHTML' ? 'class="active"' : '') +' data-value="CustomHTML">'+ self.labels['GenericCustomHTML'] +'</div>'
+                                    +'            <div '+ (contentViewData.type == 'CustomHTML' ? 'class="active"' : '') +' data-value="CustomHTML">'+ self.labels['GenericCustomHTML'] +'</div>')
                                     +'        </div>'
                                     +'        <div class="generic column-6">'
                                     +'            <div class="contentViewData optionCards" data-property="contentSize" data-value="'+ contentViewData.contentSize +'">'
@@ -2736,7 +2963,7 @@ FrameTrail.defineType(
                                     // A phone has no "small" (see the constructor).
                                     + ((self.whichArea == 'companion') ? '' : '                <div '+ (contentViewData.contentSize == 'small' ? 'class="active"' : '') +' data-value="small">'+ self.labels['SettingsContentViewSmall'] +'</div>')
                                     +'                <div '+ (contentViewData.contentSize == 'medium' ? 'class="active"' : '') +' data-value="medium">'+ self.labels['SettingsContentViewMedium'] +'</div>'
-                                    +'                <div '+ (contentViewData.contentSize == 'large' ? 'class="active"' : '') +' data-value="large">'+ self.labels['SettingsContentViewLarge'] +'</div>'
+                                    + (circular ? '' : '                <div '+ (contentViewData.contentSize == 'large' ? 'class="active"' : '') +' data-value="large">'+ self.labels['SettingsContentViewLarge'] +'</div>')
                                     +'            </div>'
                                     +'        </div>'
                                     +'    </div>'
@@ -2837,7 +3064,7 @@ FrameTrail.defineType(
                         var thatType = optionEl.getAttribute('data-value');
                         var thumbWrapper = document.createElement('div');
                         thumbWrapper.className = 'contentViewOptionThumb optionCardThumb';
-                        thumbWrapper.appendChild(_generateSchematic(thatType, 'medium', 'x', false, 3));
+                        thumbWrapper.appendChild(_generateSchematic(thatType, 'medium', circular ? 'ring' : 'x', false, 3));
                         var labelSpan = document.createElement('span');
                         labelSpan.textContent = optionEl.textContent;
                         optionEl.innerHTML = '';
@@ -2847,15 +3074,16 @@ FrameTrail.defineType(
 
                     function refreshSizeThumbs(type) {
                         editingUI.querySelector('.contentViewData[data-property="contentSize"]').querySelectorAll(':scope > div[data-value]').forEach(function(optionEl) {
-                            var thatSize = optionEl.getAttribute('data-value');
+                            var thatSize = optionEl.getAttribute('data-value'),
+                                axis = circular ? 'ring' : (self.isHorizontalArea(thatSize, type) ? 'x' : 'y');
                             var existingThumb = optionEl.querySelector('.contentViewOptionThumb');
                             if (existingThumb) {
                                 existingThumb.innerHTML = '';
-                                existingThumb.appendChild(_generateSchematic(type, thatSize, self.isHorizontalArea(thatSize, type) ? 'x' : 'y', true));
+                                existingThumb.appendChild(_generateSchematic(type, thatSize, axis, true));
                             } else {
                                 var thumbWrapper = document.createElement('div');
                                 thumbWrapper.className = 'contentViewOptionThumb optionCardThumb';
-                                thumbWrapper.appendChild(_generateSchematic(type, thatSize, self.isHorizontalArea(thatSize, type) ? 'x' : 'y', true));
+                                thumbWrapper.appendChild(_generateSchematic(type, thatSize, axis, true));
                                 var labelSpan = document.createElement('span');
                                 labelSpan.textContent = optionEl.textContent;
                                 optionEl.innerHTML = '';

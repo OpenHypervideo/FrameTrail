@@ -525,7 +525,7 @@ A `created` is the ISO 8601 text an item carries (`"2026-10-07T09:36:45.127Z"`).
 | Method | Returns |
 |--------|---------|
 | `getHypervideo()` | the hypervideo as its `hypervideo.json` would be saved now (annotations live in their own files) |
-| `list(kind, filter)` | all things of a kind. `filter` is a function, or an object: `{ from, to }` (things whose time overlaps the span), `{ type }` (the body's `frametrail:type`), `{ creator }` (the creator's id), `{ area: 'top' }` (content views of one layout area; `'companion'` is a paired phone's, [PAIRING.md](PAIRING.md)) |
+| `list(kind, filter)` | all things of a kind. `filter` is a function, or an object: `{ from, to }` (things whose time overlaps the span), `{ type }` (the body's `frametrail:type`), `{ creator }` (the creator's id), `{ area: 'top' }` (content views of one layout area; `'companion'` is a paired phone's, [PAIRING.md](PAIRING.md), `'circular'` the ring around the video) |
 | `get(kind, ref)` | one thing, or `null` |
 | `getInfo()` | `{ id, video, start, end, duration }`: the open hypervideo's id, its video (what items target; `null` for an empty timeline) and where its time runs. Item times are seconds of the video, from `start` (the clip's in point) to `end`; `duration` and `end` are `null` until the video has told its length |
 | `getUser()` | who changes are made as, the creator of what `add` makes: `{ id, name, role, guest }` (`role` is `'admin'` or `'user'`, `guest` means editing without an account), or `null` when nobody is signed in |
@@ -541,7 +541,7 @@ Reading works whenever a hypervideo is open; `getUser()`, `permission()` and `li
 | `add(kind, data)` | adds an overlay, annotation or chapter and returns it as stored |
 | `update(kind, ref, patch)` | changes one with a JSON Merge Patch ([RFC 7386](https://www.rfc-editor.org/rfc/rfc7386)) on its stored form: objects are merged, `null` removes a property, everything else is replaced. Returns it as stored |
 | `remove(kind, ref)` | removes one and returns it as it was |
-| `setLayout(area, contentViews)` | replaces the content views of a layout area: `'top'`, `'bottom'`, `'left'`, `'right'`, `'companion'` (the views of a paired phone) (or `'areaTop'`, …) |
+| `setLayout(area, contentViews)` | replaces the content views of a layout area: `'top'`, `'bottom'`, `'left'`, `'right'`, `'companion'` (the views of a paired phone), `'circular'` (the ring of thumbnails around the video: one collection, `TimedContent`, small or medium) (or `'areaTop'`, …) |
 | `setSubtitles(lang, vttText)` | sets the subtitles of a language to a WebVTT text, or removes them (`null`). The file is written with the next save |
 | `setConfig(patch)` | changes the hypervideo's settings (its `config`, without `layoutArea`) with a JSON Merge Patch. The theme is not one of them: it is the instance's (`config.json` → `theme`), and a patch naming `theme` is refused |
 

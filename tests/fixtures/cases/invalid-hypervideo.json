@@ -626,6 +626,36 @@
             ]
         },
         {
+            "name": "circular area with two views",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Lecture"
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaCircular": [
+                            {
+                                "type": "TimedContent",
+                                "contentSize": "medium"
+                            },
+                            {
+                                "type": "TimedContent",
+                                "contentSize": "small"
+                            }
+                        ]
+                    }
+                },
+                "clips": []
+            },
+            "errors": [
+                {
+                    "path": "/config/layoutArea/areaCircular",
+                    "message": "must have at most 1 item"
+                }
+            ]
+        },
+        {
             "name": "chapter without start",
             "schema": "hypervideo.schema.json",
             "data": {

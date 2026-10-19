@@ -741,6 +741,27 @@
     opacity: 0.4;
 }
 
+/* The ring around the video: the video's frame is its toggle */
+.playerContainer .controls .layoutAreasSchematic .schematicCenter.schematicRing {
+    box-sizing: border-box;
+    border: 6px solid var(--semi-transparent-fg-color);
+    outline: 1px dashed var(--primary-fg-color);
+    outline-offset: -1px;
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 150ms, border-color 150ms;
+}
+
+.playerContainer .controls .layoutAreasSchematic .schematicCenter.schematicRing:hover {
+    opacity: 0.85;
+}
+
+.playerContainer .controls .layoutAreasSchematic .schematicCenter.schematicRing.active {
+    border-color: var(--secondary-fg-color);
+    outline-color: transparent;
+    opacity: 1;
+}
+
 .playerContainer .controls .layoutAreasSchematic .schematicArea {
     background: var(--semi-transparent-fg-color);
     border: 1px dashed var(--primary-fg-color);
@@ -994,6 +1015,40 @@
     border-bottom: 0px solid var(--primary-bg-color);
     overflow: hidden;
     transition: width 200ms linear;
+}
+
+/* The circular area: a ring of thumbnails around the video (ViewLayout.circularGeometry, adjustHypervideo in
+   module.js). While it is shown, the video container is on the player's background and only the block the video
+   sits in (.circularVideoBackdrop) takes the video's. It lies above the start overlay, so its thumbnails can be
+   clicked before the first play; everywhere else a click goes through to the overlay. */
+
+.hypervideoContainer .videoContainer.hasCircularArea {
+    background: none;
+}
+
+.hypervideoContainer .videoContainer .circularVideoBackdrop {
+    position: absolute;
+    display: none;
+    background: var(--video-background-color);
+}
+
+.hypervideoContainer .videoContainer.hasCircularArea .circularVideoBackdrop {
+    display: block;
+}
+
+.hypervideoContainer .videoContainer .areaCircularContainer {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none;
+}
+
+.hypervideoContainer .videoContainer .areaCircularContainer.closed {
+    display: none;
+}
+
+.hypervideoContainer .videoContainer .areaCircularContainer .layoutAreaTabs {
+    display: none;
 }
 
 .hypervideoContainer .videoContainer .hypervideo {

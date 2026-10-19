@@ -247,6 +247,26 @@
             }
         },
         {
+            "name": "hypervideo with a ring of annotations around the video",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Lecture"
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaCircular": [
+                            {
+                                "type": "TimedContent",
+                                "contentSize": "small"
+                            }
+                        ]
+                    }
+                },
+                "clips": []
+            }
+        },
+        {
             "name": "empty config.json",
             "schema": "config.schema.json",
             "data": {}

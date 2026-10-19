@@ -99,6 +99,11 @@
             "id": "cue-outside-video",
             "severity": "warning",
             "description": "Subtitle cues start at or after the end of the video: the subtitles may belong to another video. Reported once per language. Checked only for a clip without an out point (a trimmed video's subtitles go on after the out point)."
+        },
+        {
+            "id": "circular-view-unshown",
+            "severity": "warning",
+            "description": "The circular area (config.layoutArea.areaCircular) holds a view that is not shown as stored: only one collection (TimedContent) is shown there. A view of another type is ignored, and a large one is shown as medium."
         }
     ];
 
@@ -604,6 +609,21 @@
                         + ' at or after the end of the video (' + n(data.info.end) + ' s), the first at ' + n(late[0].start) + ' s.');
                 }
             });
+
+        },
+
+        'circular-view-unshown': function(data, report) {
+
+            var layout = isObject(data.hypervideo.config) && isObject(data.hypervideo.config.layoutArea) ? data.hypervideo.config.layoutArea : {},
+                view   = Array.isArray(layout.areaCircular) ? layout.areaCircular[0] : null;
+
+            if (!isObject(view)) { return; }
+
+            if (view.type !== undefined && view.type !== 'TimedContent') {
+                report({ kind: 'hypervideo' }, 'The ring around the video holds a ' + view.type + ' view, which it does not show: only a collection of annotations (TimedContent) is shown there.');
+            } else if (view.contentSize === 'large') {
+                report({ kind: 'hypervideo' }, 'The ring around the video holds a large view; it is shown, and saved, as medium.');
+            }
 
         }
 

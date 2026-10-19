@@ -124,6 +124,42 @@
             ]
         },
         {
+            "name": "a ring around the video that holds another view than a collection",
+            "patch": [
+                {
+                    "op": "add",
+                    "path": "/hypervideo/config/layoutArea/areaCircular",
+                    "value": [{ "type": "CustomHTML", "html": "<p>About</p>" }]
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "circular-view-unshown",
+                    "severity": "warning",
+                    "kind": "hypervideo",
+                    "message": "The ring around the video holds a CustomHTML view, which it does not show: only a collection of annotations (TimedContent) is shown there."
+                }
+            ]
+        },
+        {
+            "name": "a large collection in the ring around the video",
+            "patch": [
+                {
+                    "op": "add",
+                    "path": "/hypervideo/config/layoutArea/areaCircular",
+                    "value": [{ "type": "TimedContent", "contentSize": "large" }]
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "circular-view-unshown",
+                    "severity": "warning",
+                    "kind": "hypervideo",
+                    "message": "The ring around the video holds a large view; it is shown, and saved, as medium."
+                }
+            ]
+        },
+        {
             "name": "only the rules asked for",
             "rules": ["chapter-order", "missing-license"],
             "patch": [

@@ -36,10 +36,13 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
         'bottom':    'bottom',    'areaBottom':    'bottom',
         'left':      'left',      'areaLeft':      'left',
         'right':     'right',     'areaRight':     'right',
-        'companion': 'companion', 'areaCompanion': 'companion'
+        'companion': 'companion', 'areaCompanion': 'companion',
+        'circular':  'circular',  'areaCircular':  'circular'
     };
 
-    var AREA_KEYS = { 'top': 'areaTop', 'bottom': 'areaBottom', 'left': 'areaLeft', 'right': 'areaRight', 'companion': 'areaCompanion' };
+    var AREA_KEYS = { 'top': 'areaTop', 'bottom': 'areaBottom', 'left': 'areaLeft', 'right': 'areaRight', 'companion': 'areaCompanion', 'circular': 'areaCircular' };
+
+    var AREA_NAMES = 'top, bottom, left, right, companion, circular';
 
     var validator        = null,
         viewRefreshTimer = null,
@@ -473,7 +476,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     }
 
     /**
-     * I return all things of a kind: 'overlays', 'annotations' (everyone's, as W3C items), 'chapters' (`{ start, title }`), 'contentViews' (of all layout areas, top, bottom, left, right and companion — a paired phone's; `{ area }` picks one) or 'subtitles' (`{ src, srclang }`).
+     * I return all things of a kind: 'overlays', 'annotations' (everyone's, as W3C items), 'chapters' (`{ start, title }`), 'contentViews' (of all layout areas, top, bottom, left, right, companion — a paired phone's — and circular — the ring around the video; `{ area }` picks one) or 'subtitles' (`{ src, srclang }`).
      *
      * @method list
      * @param {String} kind
@@ -509,10 +512,10 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
 
         } else if (kind === 'contentViews') {
 
-            var areas = (isObject(filter) && filter.area !== undefined) ? [AREAS[filter.area]] : ['top', 'bottom', 'left', 'right', 'companion'];
+            var areas = (isObject(filter) && filter.area !== undefined) ? [AREAS[filter.area]] : ['top', 'bottom', 'left', 'right', 'companion', 'circular'];
 
             if (!areas[0]) {
-                throw editError('invalid', 'Unknown layout area "' + filter.area + '"; one of top, bottom, left, right, companion');
+                throw editError('invalid', 'Unknown layout area "' + filter.area + '"; one of ' + AREA_NAMES);
             }
 
             result = [];
@@ -1114,7 +1117,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     /* ------------------------------------------------------------------ */
 
     /**
-     * I replace the content views of a layout area ('top', 'bottom', 'left', 'right', 'companion', or 'areaTop', …) and return them as stored.
+     * I replace the content views of a layout area ('top', 'bottom', 'left', 'right', 'companion', 'circular', or 'areaTop', …) and return them as stored. The circular area takes one collection (TimedContent), small or medium.
      *
      * @method setLayout
      * @param {String} area
@@ -1128,7 +1131,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
         var whichArea = AREAS[area];
 
         if (!whichArea) {
-            throw editError('invalid', 'Unknown layout area "' + area + '"; one of top, bottom, left, right, companion');
+            throw editError('invalid', 'Unknown layout area "' + area + '"; one of ' + AREA_NAMES);
         }
 
         if (!Array.isArray(contentViews)) {
@@ -1142,6 +1145,19 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
                 errors.push({ path: '/' + index + e.path, message: e.message });
             });
         });
+
+        // The ring around the video shows one collection of thumbnails.
+        if (whichArea === 'circular' && !errors.length) {
+            if (contentViews.length > 1) {
+                errors.push({ path: '', message: 'the circular area holds one view' });
+            }
+            if (contentViews.length && contentViews[0].type !== 'TimedContent') {
+                errors.push({ path: '/0/type', message: 'the circular area shows a collection (TimedContent) only' });
+            }
+            if (contentViews.length && contentViews[0].contentSize === 'large') {
+                errors.push({ path: '/0/contentSize', message: 'the circular area has no large size: small or medium' });
+            }
+        }
 
         if (errors.length) {
             throw editError('invalid', 'Invalid content views', errors);

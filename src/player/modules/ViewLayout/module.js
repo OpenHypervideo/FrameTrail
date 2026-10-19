@@ -28,7 +28,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
      * @method generateSchematic
      * @param {String} type - ContentView type ('TimedContent', 'Transcript', 'Chapters', 'Timelines', 'CustomHTML')
      * @param {String} size - 'small', 'medium' or 'large'
-     * @param {String} axis - 'x' for the top/bottom areas, 'y' for left/right
+     * @param {String} axis - 'x' for the top/bottom areas, 'y' for left/right, 'ring' for the circular area
      * @param {Boolean} thumbnail - Draw a single representative item instead of a full set
      * @param {Number} maxCards - Optional upper bound on the number of items drawn
      * @return {HTMLElement}
@@ -37,6 +37,31 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         var isHorizontal = (axis === 'x'),
             schematic = document.createElement('div');
         schematic.className = 'schematicPreview';
+
+        // The ring is the point of the circular area, so it is drawn whole even as a thumbnail: the cells of a
+        // grid's outer row and column around a video.
+        if (axis === 'ring' && type === 'TimedContent') {
+            var ring = RING_SCHEMATIC[size] || RING_SCHEMATIC.medium;
+            schematic.classList.add('schematicRing');
+            schematic.style.gridTemplateColumns = 'repeat(' + ring.cols + ', 1fr)';
+            schematic.style.gridTemplateRows = 'repeat(' + ring.rows + ', 1fr)';
+            for (var r = 1; r <= ring.rows; r++) {
+                for (var c = 1; c <= ring.cols; c++) {
+                    if (r > 1 && r < ring.rows && c > 1 && c < ring.cols) { continue; }
+                    var cell = document.createElement('div');
+                    cell.className = 'schematicCard' + ((c === 1 && r === ring.rows - 1) ? ' active' : '');
+                    cell.setAttribute('data-size', size);
+                    cell.style.gridArea = r + ' / ' + c;
+                    cell.innerHTML = '<div class="schematicThumb"></div>';
+                    schematic.appendChild(cell);
+                }
+            }
+            var ringVideo = document.createElement('div');
+            ringVideo.className = 'schematicRingVideo';
+            ringVideo.style.gridArea = '2 / 2 / ' + ring.rows + ' / ' + ring.cols;
+            schematic.appendChild(ringVideo);
+            return schematic;
+        }
 
         switch (type) {
 
@@ -160,14 +185,25 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     // ViewVideo's element names (Area<cap>Container). The companion area holds the views shown on a phone paired
     // with the player (see PairingHost); in the player its container stays hidden, the layout editor shows it as
     // a phone. On the phone (the companion state) it is the only area with views, and its container is the right
-    // area's (ViewVideo.AreaCompanionContainer), so its views are laid out like the right area's.
+    // area's (ViewVideo.AreaCompanionContainer), so its views are laid out like the right area's. The circular
+    // area shows one collection as a ring of thumbnails around the video (see circularGeometry); its container is
+    // inside ViewVideo's .videoContainer, the space the video gets after the other areas. An optional area is
+    // written only once it is stored or has a view (see getLayoutAreaData).
     var AREAS = [
         { name: 'top',       key: 'areaTop',       cap: 'Top'       },
         { name: 'bottom',    key: 'areaBottom',    cap: 'Bottom'    },
         { name: 'left',      key: 'areaLeft',      cap: 'Left'      },
         { name: 'right',     key: 'areaRight',     cap: 'Right'     },
-        { name: 'companion', key: 'areaCompanion', cap: 'Companion' }
+        { name: 'companion', key: 'areaCompanion', cap: 'Companion', optional: true },
+        { name: 'circular',  key: 'areaCircular',  cap: 'Circular',  optional: true }
     ];
+
+    // The ring's schematic (generateSchematic): a grid of cols × rows cells per size. ViewLayout/style.css insets
+    // the Layout Editor's video by one cell of the same grid (--ring-cols, --ring-rows).
+    var RING_SCHEMATIC = {
+        small:  { cols: 10, rows: 8 },
+        medium: { cols: 6,  rows: 5 }
+    };
 
     // The types of content view, in the order of the layout editor's palette: the icon and label they are shown
     // with (the palette, the Display tab of an annotation's properties) and the size the palette offers them in.
@@ -182,7 +218,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     var configLayoutArea,
 
         // The content views of each area, by its name.
-        contentViews        = { top: [], bottom: [], left: [], right: [], companion: [] },
+        contentViews        = { top: [], bottom: [], left: [], right: [], companion: [], circular: [] },
 
         managedAnnotations  = [],
         managedOverlays     = [],
@@ -195,7 +231,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         for (var i = 0; i < AREAS.length; i++) {
             if (AREAS[i].name === whichArea) { return AREAS[i]; }
         }
-        throw new Error('whichArea is string top/bottom/left/right/companion');
+        throw new Error('whichArea is string top/bottom/left/right/companion/circular');
     }
 
     function allContentViews() {
@@ -213,6 +249,44 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     function showsCompanionArea() {
         var config = FrameTrail.module('Database').config;
         return !!(config && config.pairingBrokerURL) || contentViews.companion.length > 0;
+    }
+
+    // The view the ring around the video shows: the circular area's first, if it is a collection (TimedContent).
+    function circularView() {
+        var view = contentViews.circular[0];
+        return (view && view.contentViewData.type === 'TimedContent') ? view : null;
+    }
+
+
+    /**
+     * I return the geometry of the ring around the video for a space of width × height and a video of the aspect
+     * ratio (width / height): FrameTrailRingLayout's, laid out by the circular view (ContentView.computeRingGeometry),
+     * with mode 'ring', or 'strip' where the player is narrow or the thumbnails do not fit around the video. Null
+     * when there is no ring: no circular collection, its area closed (the layout areas panel, "Start collapsed"),
+     * no thumbnails, or an editing mode that hides the layout areas (the Preview and the Layout Editor keep it).
+     *
+     * @method circularGeometry
+     * @param {Number} width
+     * @param {Number} height
+     * @param {Number} aspect
+     * @param {Boolean} narrow
+     * @return {Object|null}
+     */
+    function circularGeometry(width, height, aspect, narrow) {
+
+        var view      = circularView(),
+            container = FrameTrail.module('ViewVideo').AreaCircularContainer,
+            editMode  = FrameTrail.getState('editMode'),
+            shown     = view && container && !container.classList.contains('closed') && view.contentGroups.length > 0
+                        && (!editMode || editMode === 'preview' || editMode === 'layout');
+
+        if (!shown) {
+            if (view) { view.clearRingGeometry(); }
+            return null;
+        }
+
+        return view.computeRingGeometry(width, height, aspect, narrow);
+
     }
 
     function create() {
@@ -233,6 +307,10 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         if (contentViews.companion.length) {
             contentViews.companion[0].activateContentView();
         }
+        // The ring shows the first view only (see circularView).
+        if (contentViews.circular.length) {
+            contentViews.circular[0].activateContentView();
+        }
 
         updateLayoutAreaVisibility();
 
@@ -251,6 +329,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         // On the phone the right area's container holds the companion area's views.
         FrameTrail.changeState('hv_config_areaRightVisible', (contentViews.right.length != 0)
             || (!!FrameTrail.getState('companion') && contentViews.companion.length != 0));
+        FrameTrail.changeState('hv_config_areaCircularVisible', !FrameTrail.getState('companion') && !!circularView());
 
     }
 
@@ -371,7 +450,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
      * I replace the content views of a layout area with new ones made from their data, and return the data of the ones I removed. In the layout editor the preview follows.
      *
      * @method setContentViews
-     * @param {String} whichArea - top, bottom, left, right or companion
+     * @param {String} whichArea - top, bottom, left, right, companion or circular
      * @param {Array} contentViewsData
      * @return {Array}
      */
@@ -399,7 +478,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             // The other editors hide the layout areas; a change of an area's visibility must not show it.
             var ViewVideo = FrameTrail.module('ViewVideo');
             [ViewVideo.AreaTopContainer, ViewVideo.AreaTopDetails, ViewVideo.AreaBottomContainer,
-             ViewVideo.AreaBottomDetails, ViewVideo.AreaLeftContainer, ViewVideo.AreaRightContainer].forEach(function(element) {
+             ViewVideo.AreaBottomDetails, ViewVideo.AreaLeftContainer, ViewVideo.AreaRightContainer,
+             ViewVideo.AreaCircularContainer].forEach(function(element) {
                 if (element) { element.style.display = 'none'; }
             });
         }
@@ -626,8 +706,12 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             '                        <div class="layoutAreaContent"></div>' +
             '                    </div>' +
             '                    <div class="playerArea">' +
-            '                        <div class="schematicVideoArea">' +
-            '                            <span class="icon-play-1"></span>' +
+            '                        <div data-area="areaCircular" class="layoutArea circularLayoutArea">' +
+            '                            <div class="layoutAreaTabs"></div>' +
+            '                            <div class="layoutAreaContent" data-tooltip-top="'+ labels['MessageLayoutEditorCircular'] +'"></div>' +
+            '                            <div class="schematicVideoArea">' +
+            '                                <span class="icon-play-1"></span>' +
+            '                            </div>' +
             '                        </div>' +
             '                        <div class="schematicPlayerProgress">' +
             '                            <div class="schematicPlayerProgressFill"></div>' +
@@ -797,7 +881,24 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                     })(whichArea, JSON.parse(JSON.stringify(templateContentViewData)));
                 }
         };
-        domElement.querySelectorAll('.layoutEditor .layoutAreaContent').forEach(function(el) { interact(el).dropzone(dropzoneOpts); });
+        domElement.querySelectorAll('.layoutEditor .layoutArea:not(.circularLayoutArea) > .layoutAreaContent').forEach(function(el) { interact(el).dropzone(dropzoneOpts); });
+
+        // The ring takes one collection (TimedContent), and nothing while it has one.
+        var circularContent = domElement.querySelector('.circularLayoutArea > .layoutAreaContent');
+        if (circularContent) {
+            interact(circularContent).dropzone(Object.assign({}, dropzoneOpts, {
+                accept: '.contentViewTemplate[data-type="TimedContent"]',
+                checker: function(dragEvent, event, dropped) {
+                    return dropped && !contentViews.circular.length;
+                },
+                ondropactivate: function(e) {
+                    if (!contentViews.circular.length) { e.target.classList.add('droppableActive'); }
+                },
+                ondragenter: function(e) {
+                    if (!contentViews.circular.length) { e.target.classList.add('droppableHover'); }
+                }
+            }));
+        }
         }());
 
         AREAS.forEach(function(area) {
@@ -811,8 +912,9 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         updateHiddenTabs();
 
-        // Make preview tabs sortable within each layout area
+        // Make preview tabs sortable within each layout area (the ring has one view, and no tabs)
         AREAS.forEach(function(area) {
+            if (area.name === 'circular') { return; }
             var cfg = { area: area.name, key: area.key };
             var previewArea   = domElement.querySelector('.layoutEditor [data-area="' + cfg.key + '"]');
             var tabsContainer = previewArea ? previewArea.querySelector('.layoutAreaTabs') : null;
@@ -870,10 +972,10 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     /**
      * I make the Display tab of an annotation's properties: the layout areas around the video (and the paired
      * phone, where the Layout Editor shows it) with their views, each area in proportion to its size in the
-     * player (an empty one a thin strip, as in the Layout Editor), the views that show the annotation marked, then
-     * which views these are, or why it is shown nowhere, and the button to the Layout Editor. Editing hides the
-     * areas, so this is where an author sees where an annotation will appear. refresh() draws it again, after a
-     * change of the annotation's tags or of the layout.
+     * player (an empty one a thin strip, as in the Layout Editor), the ring around the video where there is one,
+     * the views that show the annotation marked, then which views these are, or why it is shown nowhere, and the
+     * button to the Layout Editor. Editing hides the areas, so this is where an author sees where an annotation
+     * will appear. refresh() draws it again, after a change of the annotation's tags or of the layout.
      *
      * @method renderAnnotationDisplay
      * @param {Annotation} annotation
@@ -897,9 +999,11 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                 canShow = false,   // whether any view shows annotations at all
                 areas   = {};
 
-            ['top', 'left', 'right', 'bottom', 'companion'].forEach(function(name) {
+            ['top', 'left', 'right', 'bottom', 'companion', 'circular'].forEach(function(name) {
 
                 if (name === 'companion' && !showsCompanionArea()) { return; }
+                // No empty ring: it would only add a frame around the video.
+                if (name === 'circular' && !contentViews.circular.length) { return; }
 
                 var area   = areaByName(name),
                     areaEl = document.createElement('div');
@@ -948,7 +1052,14 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             video.className  = 'annotationDisplayVideo';
             video.innerHTML  = '<span class="icon-play-1"></span>';
 
-            middle.append(areas.left, video, areas.right);
+            // The ring frames the video: its view in the frame's top band, the video inside.
+            if (areas.circular) {
+                areas.circular.title = labels['LayoutAreaCircularTitle'];
+                areas.circular.appendChild(video);
+                middle.append(areas.left, areas.circular, areas.right);
+            } else {
+                middle.append(areas.left, video, areas.right);
+            }
             player.append(areas.top, middle, areas.bottom);
             layout.appendChild(player);
 
@@ -1002,24 +1113,31 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
 
     /**
-     * I return the data of all ContentViews in all LayoutAreas: what a save writes as config.layoutArea. The
-     * companion area is there once it has been stored or has a view, so a hypervideo that never had one is
-     * written as it was.
+     * I return the data of all ContentViews in all LayoutAreas: what a save writes as config.layoutArea. An
+     * optional area (the companion and the circular area) is there once it has been stored or has a view, so a
+     * hypervideo that never had one is written as it was. Keys I do not know, such as the areas of a later
+     * version, are carried over as they were stored.
      *
      * @method getLayoutAreaData
      * @return {Object} layoutAreaData
      */
     function getLayoutAreaData() {
 
-        var layoutAreaData = {};
+        var stored = configLayoutArea || {},
+            layoutAreaData = {};
 
         AREAS.forEach(function(area) {
-            if (area.name === 'companion' && !contentViews.companion.length && !Array.isArray((configLayoutArea || {}).areaCompanion)) {
+            if (area.optional && !contentViews[area.name].length && !Array.isArray(stored[area.key])) {
                 return;
             }
             layoutAreaData[area.key] = contentViews[area.name].map(function(contentView) {
                 return contentView.contentViewData;
             });
+        });
+
+        Object.keys(stored).forEach(function(key) {
+            var known = AREAS.some(function(area) { return area.key === key; });
+            if (!known) { layoutAreaData[key] = stored[key]; }
         });
 
         return layoutAreaData;
@@ -1206,6 +1324,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         updateHiddenTabs: updateHiddenTabs,
 
         getLayoutAreaData: getLayoutAreaData,
+
+        circularGeometry: circularGeometry,
 
     };
 
