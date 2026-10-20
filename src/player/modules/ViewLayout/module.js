@@ -971,12 +971,113 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
 
     /**
-     * I make the Display tab of an annotation's properties: the layout areas around the video (and the paired
-     * phone, where the Layout Editor shows it) with their views, each area in proportion to its size in the
-     * player (an empty one a thin strip, as in the Layout Editor), the ring around the video where there is one,
-     * the views that show the annotation marked, then which views these are, or why it is shown nowhere, and the
-     * button to the Layout Editor. Editing hides the areas, so this is where an author sees where an annotation
-     * will appear. refresh() draws it again, after a change of the annotation's tags or of the layout.
+     * I draw one area of the layout diagram (see renderLayoutDiagram): its views as chips, each an icon and a name,
+     * the area as large as the player has it (the size of its active view, see ContentView.resizeLayoutArea), or a
+     * thin strip (.empty) where it has no views. I call onView(contentView, viewElement, viewName, areaElement, area)
+     * for every view, for the caller to mark it.
+     *
+     * @method renderDiagramArea
+     * @param {String} name
+     * @param {Function} onView
+     * @return {HTMLElement}
+     */
+    function renderDiagramArea(name, onView) {
+
+        var area   = areaByName(name),
+            views  = contentViews[name],
+            areaEl = document.createElement('div');
+
+        areaEl.className = 'layoutDiagramArea' + (views.length ? '' : ' empty');
+        areaEl.setAttribute('data-area', name);
+
+        if (views.length) {
+            var container = FrameTrail.module('ViewVideo')['Area' + area.cap + 'Container'];
+            areaEl.setAttribute('data-size', (container && container.getAttribute('data-size')) || views[0].contentViewData.contentSize);
+        }
+
+        views.forEach(function(contentView) {
+            var data     = contentView.contentViewData,
+                viewType = viewTypeOf(data.type),
+                viewName = data.name || (viewType ? labels[viewType.label] : data.type),
+                viewEl   = document.createElement('div'),
+                iconEl   = document.createElement('span'),
+                nameEl   = document.createElement('span');
+
+            viewEl.className = 'layoutDiagramView';
+            viewEl.title = viewName;
+            iconEl.className = viewType ? viewType.icon : '';
+            nameEl.className = 'layoutDiagramViewName';
+            nameEl.textContent = viewName;
+            viewEl.append(iconEl, nameEl);
+            areaEl.appendChild(viewEl);
+
+            if (onView) { onView(contentView, viewEl, viewName, areaEl, area); }
+        });
+
+        return areaEl;
+
+    }
+
+
+    /**
+     * I draw the layout areas around the video as a diagram in 16:9: the top area, the left one, the video and the
+     * right one, the bottom one, each in proportion to its size in a player of about 1600 × 900px, with its views as
+     * chips (see renderDiagramArea). Where the circular area has a view, that view is the ring: a band around the
+     * video as thick as in the player, its name in the top band; with options.live, the strip below the video where
+     * the player shows one instead (where it is narrow, or the thumbnails do not fit around the video).
+     *
+     * The Display tab of an annotation's properties draws the areas without views as thin strips (options.unused
+     * 'strip'), as the Layout Editor does; the layout areas panel in the player's controls, which opens and closes
+     * the areas, leaves them out ('hide') and draws the player as it is (options.live). options.onView is passed on
+     * to every area.
+     *
+     * @method renderLayoutDiagram
+     * @param {Object} options { unused: 'strip' | 'hide', live: Boolean, onView: Function }
+     * @return {Object} { element, areas }: the diagram, and the elements of its areas by name
+     */
+    function renderLayoutDiagram(options) {
+
+        options = options || {};
+
+        var areas   = {},
+            diagram = document.createElement('div'),
+            middle  = document.createElement('div'),
+            video   = document.createElement('div');
+
+        ['top', 'left', 'right', 'bottom', 'circular'].forEach(function(name) {
+            // No empty ring: it would only add a frame around the video.
+            if (!contentViews[name].length && (name === 'circular' || options.unused === 'hide')) { return; }
+            areas[name] = renderDiagramArea(name, options.onView);
+        });
+
+        diagram.className = 'layoutDiagram';
+        middle.className  = 'layoutDiagramMiddle';
+        video.className   = 'layoutDiagramVideo';
+        video.innerHTML   = '<span class="icon-play-1"></span>';
+
+        if (areas.circular) {
+            var ring = circularView();
+            areas.circular.title = labels['LayoutAreaCircularTitle'];
+            if (options.live && ring && (ring.isStrip() || FrameTrail.getState('viewSize')[0] <= 768)) {
+                areas.circular.classList.add('strip');
+            }
+            areas.circular.appendChild(video);
+        }
+
+        middle.append.apply(middle, [areas.left, areas.circular || video, areas.right].filter(Boolean));
+        diagram.append.apply(diagram, [areas.top, middle, areas.bottom].filter(Boolean));
+
+        return { element: diagram, areas: areas };
+
+    }
+
+
+    /**
+     * I make the Display tab of an annotation's properties: the layout diagram (see renderLayoutDiagram) with the
+     * views that show the annotation marked, the paired phone beside it where the Layout Editor shows it, then which
+     * views these are, or why it is shown nowhere, and the button to the Layout Editor. Editing hides the areas, so
+     * this is where an author sees where an annotation will appear. refresh() draws it again, after a change of the
+     * annotation's tags or of the layout.
      *
      * @method renderAnnotationDisplay
      * @param {Annotation} annotation
@@ -987,88 +1088,30 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         var element = document.createElement('div');
         element.className = 'annotationDisplay';
 
-        // An area's size, as the player has it: that of its active view (see ContentView.resizeLayoutArea).
-        function areaSize(area) {
-            var container = FrameTrail.module('ViewVideo')['Area' + area.cap + 'Container'],
-                size      = container && container.getAttribute('data-size');
-            return size || contentViews[area.name][0].contentViewData.contentSize;
-        }
-
         function refresh() {
 
             var shownIn = [],
-                canShow = false,   // whether any view shows annotations at all
-                areas   = {};
+                canShow = false;   // whether any view shows annotations at all
 
-            ['top', 'left', 'right', 'bottom', 'companion', 'circular'].forEach(function(name) {
-
-                if (name === 'companion' && !showsCompanionArea()) { return; }
-                // No empty ring: it would only add a frame around the video.
-                if (name === 'circular' && !contentViews.circular.length) { return; }
-
-                var area   = areaByName(name),
-                    areaEl = document.createElement('div');
-
-                areaEl.className = 'annotationDisplayArea' + (contentViews[name].length ? '' : ' empty');
-                areaEl.setAttribute('data-area', name);
-                if (contentViews[name].length) { areaEl.setAttribute('data-size', areaSize(area)); }
-
-                contentViews[name].forEach(function(contentView) {
-                    var data     = contentView.contentViewData,
-                        viewType = viewTypeOf(data.type),
-                        viewName = data.name || (viewType ? labels[viewType.label] : data.type),
-                        shows    = contentView.showsAnnotation(annotation),
-                        viewEl   = document.createElement('div'),
-                        iconEl   = document.createElement('span'),
-                        nameEl   = document.createElement('span');
-
-                    if (data.type === 'TimedContent' || data.type === 'Timelines') { canShow = true; }
-
-                    viewEl.className = 'annotationDisplayView' + (shows ? ' shows' : '');
-                    viewEl.title = viewName;
-                    iconEl.className = viewType ? viewType.icon : '';
-                    nameEl.className = 'annotationDisplayViewName';
-                    nameEl.textContent = viewName;
-                    viewEl.append(iconEl, nameEl);
-                    areaEl.appendChild(viewEl);
-
-                    if (shows) {
-                        areaEl.classList.add('shows');
-                        shownIn.push(viewName + ' (' + labels['LayoutArea' + area.cap] + ')');
-                    }
-                });
-
-                areas[name] = areaEl;
-
-            });
-
-            var layout = document.createElement('div'),
-                player = document.createElement('div'),
-                middle = document.createElement('div'),
-                video  = document.createElement('div');
-
-            layout.className = 'annotationDisplayLayout';
-            player.className = 'annotationDisplayPlayer';
-            middle.className = 'annotationDisplayMiddle';
-            video.className  = 'annotationDisplayVideo';
-            video.innerHTML  = '<span class="icon-play-1"></span>';
-
-            // The ring frames the video: its view in the frame's top band, the video inside.
-            if (areas.circular) {
-                areas.circular.title = labels['LayoutAreaCircularTitle'];
-                areas.circular.appendChild(video);
-                middle.append(areas.left, areas.circular, areas.right);
-            } else {
-                middle.append(areas.left, video, areas.right);
+            function onView(contentView, viewEl, viewName, areaEl, area) {
+                var type = contentView.contentViewData.type;
+                if (type === 'TimedContent' || type === 'Timelines') { canShow = true; }
+                if (contentView.showsAnnotation(annotation)) {
+                    viewEl.classList.add('shows');
+                    areaEl.classList.add('shows');
+                    shownIn.push(viewName + ' (' + labels['LayoutArea' + area.cap] + ')');
+                }
             }
-            player.append(areas.top, middle, areas.bottom);
-            layout.appendChild(player);
 
-            if (areas.companion) {
+            var layout = document.createElement('div');
+            layout.className = 'annotationDisplayLayout';
+            layout.appendChild(renderLayoutDiagram({ unused: 'strip', onView: onView }).element);
+
+            if (showsCompanionArea()) {
                 var phone = document.createElement('div');
                 phone.className = 'annotationDisplayPhone';
                 phone.title = labels['LayoutAreaCompanionTitle'];
-                phone.appendChild(areas.companion);
+                phone.appendChild(renderDiagramArea('companion', onView));
                 layout.appendChild(phone);
             }
 
@@ -1318,6 +1361,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         initLayoutEditor: initLayoutEditor,
 
         renderOpenEditorButton:  renderOpenEditorButton,
+        renderLayoutDiagram:     renderLayoutDiagram,
         renderAnnotationDisplay: renderAnnotationDisplay,
 
         reorderContentView:  reorderContentView,

@@ -716,6 +716,206 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 
 
 /*******************
+* Layout Diagram: the layout areas around the video with their views, in
+* proportion (ViewLayout.renderLayoutDiagram). Coloured by the Display tab
+* below and by the layout areas panel (ViewVideo/style.css).
+*******************/
+
+/* The player in 16:9; its areas take their part of it as in a player of about 1600 × 900px */
+.layoutDiagram {
+    container-type: size;
+    box-sizing: border-box;
+    aspect-ratio: 16 / 9;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+}
+
+.layoutDiagramMiddle {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    gap: 3px;
+}
+
+.layoutDiagramVideo {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 3px;
+}
+
+.layoutDiagramArea {
+    box-sizing: border-box;
+    display: flex;
+    gap: 3px;
+    padding: 3px;
+    overflow: hidden;
+    border: 1px solid transparent;
+    border-radius: 3px;
+}
+
+/* An area takes the size of its active view, as in the player; an empty one is a thin strip */
+.layoutDiagramArea[data-area="top"],
+.layoutDiagramArea[data-area="bottom"] {
+    flex: none;
+    height: 6px;
+}
+
+.layoutDiagramArea[data-area="top"][data-size="small"],
+.layoutDiagramArea[data-area="bottom"][data-size="small"] {
+    height: max(24px, 8.5cqh);
+}
+
+.layoutDiagramArea[data-area="top"][data-size="medium"],
+.layoutDiagramArea[data-area="bottom"][data-size="medium"] {
+    height: max(30px, 17cqh);
+}
+
+.layoutDiagramArea[data-area="top"][data-size="large"],
+.layoutDiagramArea[data-area="bottom"][data-size="large"] {
+    height: max(40px, 40cqh);
+}
+
+.layoutDiagramArea[data-area="left"],
+.layoutDiagramArea[data-area="right"] {
+    flex: none;
+    width: 6px;
+}
+
+.layoutDiagramArea[data-area="left"][data-size="small"],
+.layoutDiagramArea[data-area="right"][data-size="small"] {
+    width: max(24px, 5.5cqw);
+}
+
+.layoutDiagramArea[data-area="left"][data-size="medium"],
+.layoutDiagramArea[data-area="right"][data-size="medium"] {
+    width: 25cqw;
+}
+
+.layoutDiagramArea[data-area="left"][data-size="large"],
+.layoutDiagramArea[data-area="right"][data-size="large"] {
+    width: 35cqw;
+}
+
+/* A small side area has room for the views' icons only (their names are in the tooltip) */
+.layoutDiagramArea[data-area="left"][data-size="small"] .layoutDiagramView,
+.layoutDiagramArea[data-area="right"][data-size="small"] .layoutDiagramView {
+    padding: 2px 0;
+}
+
+.layoutDiagramArea[data-area="left"][data-size="small"] .layoutDiagramViewName,
+.layoutDiagramArea[data-area="right"][data-size="small"] .layoutDiagramViewName {
+    display: none;
+}
+
+.layoutDiagramArea[data-area="left"],
+.layoutDiagramArea[data-area="right"],
+.layoutDiagramArea[data-area="companion"] {
+    flex-direction: column;
+}
+
+.layoutDiagramArea.empty {
+    padding: 0;
+    border-style: dashed;
+    opacity: .5;
+}
+
+/* The views of an area share it, along its direction: one alone fills it */
+.layoutDiagramView {
+    flex: 1 1 0;
+    min-width: 0;
+    min-height: 0;
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 4px;
+    font-size: 11px;
+    line-height: 14px;
+    overflow: hidden;
+    border: 1px solid transparent;
+    border-radius: 2px;
+}
+
+.layoutDiagramView > [class^="icon-"] {
+    flex: none;
+}
+
+.layoutDiagramViewName {
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* The ring frames the video: its view is the band around it, as thick as in the player. A thumbnail there is an
+   eighth of the video's width without the ring (a sixteenth at small) wide and 0.7 of that high (see
+   FrameTrailRingLayout). The band is the view's border, with its icon and name moved up into the top band, which is
+   at least a line high. */
+.layoutDiagramArea[data-area="circular"] {
+    --ring-cell: min(12.5cqw, 22.22cqh);
+    --ring-band: max(16px, 0.7 * var(--ring-cell));
+    container-type: size;
+    flex: 1 1 auto;
+    min-width: 0;
+    display: grid;
+    grid-template: minmax(0, 1fr) / minmax(0, 1fr);
+    padding: 0;
+}
+
+.layoutDiagramArea[data-area="circular"][data-size="small"] {
+    --ring-cell: min(6.25cqw, 11.11cqh);
+}
+
+.layoutDiagramArea[data-area="circular"] > * {
+    grid-area: 1 / 1;
+}
+
+.layoutDiagramArea[data-area="circular"] > .layoutDiagramView {
+    align-items: flex-start;
+    padding: 0;
+    overflow: visible;
+    border-width: var(--ring-band) var(--ring-cell);
+}
+
+.layoutDiagramArea[data-area="circular"] > .layoutDiagramView > * {
+    margin-top: calc(-1 * var(--ring-band));
+    line-height: var(--ring-band);
+}
+
+.layoutDiagramArea[data-area="circular"] > .layoutDiagramVideo {
+    margin: var(--ring-band) var(--ring-cell);
+    border-radius: 0;
+}
+
+/* The strip below the video, where the player shows one instead of the ring (the layout areas panel) */
+.layoutDiagramArea[data-area="circular"].strip {
+    grid-template: minmax(0, 1fr) auto / minmax(0, 1fr);
+    gap: 3px;
+}
+
+.layoutDiagramArea[data-area="circular"].strip > .layoutDiagramView {
+    grid-area: 2 / 1;
+    align-items: center;
+    padding: 2px 4px;
+    overflow: hidden;
+    border-width: 1px;
+}
+
+.layoutDiagramArea[data-area="circular"].strip > .layoutDiagramView > * {
+    margin-top: 0;
+    line-height: 14px;
+}
+
+.layoutDiagramArea[data-area="circular"].strip > .layoutDiagramVideo {
+    margin: 0;
+}
+
+
+/*******************
 * Annotation Display: the Display tab of an annotation's properties,
 * where its views are in the layout. Edit panel palette, not themed.
 *******************/
@@ -735,163 +935,41 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     padding: 10px 20px;
 }
 
-/* The player in 16:9; its areas take their part of it as in a player of about 1600 × 900px */
-.annotationDisplayPlayer {
-    container-type: size;
+.annotationDisplayLayout > .layoutDiagram {
     flex: 1 1 0;
     min-width: 0;
-    aspect-ratio: 16 / 9;
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
 }
 
-.annotationDisplayMiddle {
-    flex: 1 1 auto;
-    min-height: 0;
-    display: flex;
-    gap: 3px;
-}
-
-.annotationDisplayVideo {
-    flex: 1 1 auto;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 3px;
+.annotationDisplay .layoutDiagramVideo {
     background: var(--primary-bg-color);
     color: var(--primary-fg-color);
     opacity: 0.6;
 }
 
-.annotationDisplayArea {
-    box-sizing: border-box;
-    display: flex;
-    gap: 3px;
-    padding: 3px;
-    overflow: hidden;
-    border: 1px solid var(--secondary-bg-color);
-    border-radius: 3px;
+.annotationDisplay .layoutDiagramArea,
+.annotationDisplay .layoutDiagramView {
+    border-color: var(--secondary-bg-color);
 }
 
-/* An area takes the size of its active view, as in the player; an empty one is a thin strip */
-.annotationDisplayArea[data-area="top"],
-.annotationDisplayArea[data-area="bottom"] {
-    flex: none;
-    height: 6px;
-}
-
-.annotationDisplayArea[data-area="top"][data-size="small"],
-.annotationDisplayArea[data-area="bottom"][data-size="small"] {
-    height: max(24px, 8.5cqh);
-}
-
-.annotationDisplayArea[data-area="top"][data-size="medium"],
-.annotationDisplayArea[data-area="bottom"][data-size="medium"] {
-    height: max(30px, 17cqh);
-}
-
-.annotationDisplayArea[data-area="top"][data-size="large"],
-.annotationDisplayArea[data-area="bottom"][data-size="large"] {
-    height: max(40px, 40cqh);
-}
-
-.annotationDisplayArea[data-area="left"],
-.annotationDisplayArea[data-area="right"] {
-    flex: none;
-    width: 6px;
-}
-
-.annotationDisplayArea[data-area="left"][data-size="small"],
-.annotationDisplayArea[data-area="right"][data-size="small"] {
-    width: max(24px, 5.5cqw);
-}
-
-.annotationDisplayArea[data-area="left"][data-size="medium"],
-.annotationDisplayArea[data-area="right"][data-size="medium"] {
-    width: 25cqw;
-}
-
-.annotationDisplayArea[data-area="left"][data-size="large"],
-.annotationDisplayArea[data-area="right"][data-size="large"] {
-    width: 35cqw;
-}
-
-/* A small side area has room for the views' icons only (their names are in the tooltip) */
-.annotationDisplayArea[data-area="left"][data-size="small"] .annotationDisplayView,
-.annotationDisplayArea[data-area="right"][data-size="small"] .annotationDisplayView {
-    padding: 2px 0;
-}
-
-.annotationDisplayArea[data-area="left"][data-size="small"] .annotationDisplayViewName,
-.annotationDisplayArea[data-area="right"][data-size="small"] .annotationDisplayViewName {
-    display: none;
-}
-
-.annotationDisplayArea[data-area="left"],
-.annotationDisplayArea[data-area="right"],
-.annotationDisplayArea[data-area="companion"] {
-    flex-direction: column;
-}
-
-/* The ring frames the video: its view in the top band, the video inside with a band of the same width around it */
-.annotationDisplayArea[data-area="circular"] {
-    flex: 1 1 auto;
-    min-width: 0;
-    flex-direction: column;
-}
-
-.annotationDisplayArea[data-area="circular"] > .annotationDisplayView {
-    flex: none;
-}
-
-.annotationDisplayArea[data-area="circular"] > .annotationDisplayVideo {
-    margin: 0 18px 18px;
-}
-
-.annotationDisplayArea.empty {
-    padding: 0;
-    border-style: dashed;
-    opacity: .5;
-}
-
-.annotationDisplayArea.shows {
+.annotationDisplay .layoutDiagramArea.shows {
     border-color: var(--primary-bg-color);
     box-shadow: inset 0 0 0 1px var(--primary-bg-color);
 }
 
-/* The views of an area share it, along its direction: one alone fills it */
-.annotationDisplayView {
-    flex: 1 1 0;
-    min-width: 0;
-    min-height: 0;
-    box-sizing: border-box;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 2px 4px;
-    font-size: 11px;
-    line-height: 14px;
-    overflow: hidden;
-    border: 1px solid var(--secondary-bg-color);
-    border-radius: 2px;
-}
-
-.annotationDisplayView > [class^="icon-"] {
-    flex: none;
-}
-
-.annotationDisplayViewName {
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.annotationDisplayView.shows {
+.annotationDisplay .layoutDiagramView.shows {
     border-color: var(--primary-bg-color);
     background: var(--primary-bg-color);
     color: var(--primary-fg-color);
+}
+
+/* The ring's band: tinted, filled where it shows the annotation */
+.annotationDisplay .layoutDiagramArea[data-area="circular"] > .layoutDiagramView {
+    border-color: color-mix(in srgb, var(--secondary-bg-color) 30%, transparent);
+}
+
+.annotationDisplay .layoutDiagramArea[data-area="circular"] > .layoutDiagramView.shows {
+    border-color: var(--primary-bg-color);
+    background: none;
 }
 
 /* The phone: a part of the layout's width, half as wide as high */
@@ -906,7 +984,7 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     border-radius: 10px;
 }
 
-.annotationDisplayPhone .annotationDisplayArea {
+.annotationDisplayPhone .layoutDiagramArea {
     flex: 1 1 auto;
     min-width: 0;
 }

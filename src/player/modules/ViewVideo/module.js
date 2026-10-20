@@ -430,94 +430,36 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         evt.stopPropagation();
     });
 
+    // The layout areas as the player has them, with their views (ViewLayout.renderLayoutDiagram): a click on an area
+    // opens or closes it. The ring around the video is toggled on its band.
     function updateLayoutAreasPanel() {
-        layoutAreasPanel.innerHTML = '';
 
-        var schematic = document.createElement('div');
-        schematic.className = 'layoutAreasSchematic';
+        var diagram    = FrameTrail.module('ViewLayout').renderLayoutDiagram({ unused: 'hide', live: true }),
+            containers = {
+                top:      AreaTopContainer,
+                bottom:   AreaBottomContainer,
+                left:     AreaLeftContainer,
+                right:    AreaRightContainer,
+                circular: AreaCircularContainer
+            };
 
-        var hasTop = FrameTrail.getState('hv_config_areaTopVisible');
-        var hasBottom = FrameTrail.getState('hv_config_areaBottomVisible');
-        var hasLeft = FrameTrail.getState('hv_config_areaLeftVisible');
-        var hasRight = FrameTrail.getState('hv_config_areaRightVisible');
+        Object.keys(diagram.areas).forEach(function(name) {
+            var areaEl    = diagram.areas[name],
+                container = containers[name];
 
-        if (hasTop) {
-            var topEl = document.createElement('div');
-            topEl.className = 'schematicArea schematicAreaTop';
-            topEl.setAttribute('data-size', AreaTopContainer.getAttribute('data-size') || 'small');
-            if (!AreaTopContainer.classList.contains('closed')) topEl.classList.add('active');
-            topEl.addEventListener('click', function() {
-                AreaTopContainer.classList.toggle('closed');
-                this.classList.toggle('active');
-                FrameTrail.changeState('slidePosition', 'middle');
+            areaEl.classList.toggle('active', !container.classList.contains('closed'));
+            areaEl.addEventListener('click', function() {
+                container.classList.toggle('closed');
+                areaEl.classList.toggle('active');
+                if (name !== 'circular') {
+                    FrameTrail.changeState('slidePosition', 'middle');
+                }
                 window.setTimeout(function() { adjustHypervideo(); }, 250);
             });
-            schematic.appendChild(topEl);
-        }
+        });
 
-        var middleRow = document.createElement('div');
-        middleRow.className = 'schematicMiddleRow';
+        layoutAreasPanel.replaceChildren(diagram.element);
 
-        if (hasLeft) {
-            var leftEl = document.createElement('div');
-            leftEl.className = 'schematicArea schematicAreaLeft';
-            leftEl.setAttribute('data-size', AreaLeftContainer.getAttribute('data-size') || 'small');
-            if (!AreaLeftContainer.classList.contains('closed')) leftEl.classList.add('active');
-            leftEl.addEventListener('click', function() {
-                AreaLeftContainer.classList.toggle('closed');
-                this.classList.toggle('active');
-                FrameTrail.changeState('slidePosition', 'middle');
-                window.setTimeout(function() { adjustHypervideo(); }, 250);
-            });
-            middleRow.appendChild(leftEl);
-        }
-
-        var centerEl = document.createElement('div');
-        centerEl.className = 'schematicCenter';
-        centerEl.innerHTML = '<span class="icon-play-1"></span>';
-        // The ring around the video is toggled on the video itself.
-        if (FrameTrail.getState('hv_config_areaCircularVisible')) {
-            centerEl.classList.add('schematicRing');
-            if (!AreaCircularContainer.classList.contains('closed')) centerEl.classList.add('active');
-            centerEl.addEventListener('click', function() {
-                AreaCircularContainer.classList.toggle('closed');
-                this.classList.toggle('active');
-                window.setTimeout(function() { adjustHypervideo(); }, 250);
-            });
-        }
-        middleRow.appendChild(centerEl);
-
-        if (hasRight) {
-            var rightEl = document.createElement('div');
-            rightEl.className = 'schematicArea schematicAreaRight';
-            rightEl.setAttribute('data-size', AreaRightContainer.getAttribute('data-size') || 'small');
-            if (!AreaRightContainer.classList.contains('closed')) rightEl.classList.add('active');
-            rightEl.addEventListener('click', function() {
-                AreaRightContainer.classList.toggle('closed');
-                this.classList.toggle('active');
-                FrameTrail.changeState('slidePosition', 'middle');
-                window.setTimeout(function() { adjustHypervideo(); }, 250);
-            });
-            middleRow.appendChild(rightEl);
-        }
-
-        schematic.appendChild(middleRow);
-
-        if (hasBottom) {
-            var bottomEl = document.createElement('div');
-            bottomEl.className = 'schematicArea schematicAreaBottom';
-            bottomEl.setAttribute('data-size', AreaBottomContainer.getAttribute('data-size') || 'small');
-            if (!AreaBottomContainer.classList.contains('closed')) bottomEl.classList.add('active');
-            bottomEl.addEventListener('click', function() {
-                AreaBottomContainer.classList.toggle('closed');
-                this.classList.toggle('active');
-                FrameTrail.changeState('slidePosition', 'middle');
-                window.setTimeout(function() { adjustHypervideo(); }, 250);
-            });
-            schematic.appendChild(bottomEl);
-        }
-
-        layoutAreasPanel.appendChild(schematic);
     }
 
     function updateLayoutAreasButtonVisibility() {

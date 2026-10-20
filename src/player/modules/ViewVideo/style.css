@@ -700,7 +700,8 @@
     position: absolute;
     right: 4px;
     bottom: 46px;
-    width: 180px;
+    width: 320px;
+    padding: 4px;
     cursor: default;
 }
 
@@ -708,109 +709,59 @@
     display: block;
 }
 
-.playerContainer .controls .layoutAreasSchematic {
-    display: flex;
-    flex-direction: column;
-    gap: 3px;
-    padding: 4px;
+/* The layout diagram (ViewLayout/style.css) as the viewer's toggles: an open area filled, a closed one dashed */
+.playerContainer .controls .layoutAreasPanel .layoutDiagramArea {
+    --area-fill: var(--semi-transparent-fg-color);
+    background: var(--area-fill);
+    border: 1px dashed var(--primary-fg-color);
+    color: var(--primary-fg-color);
+    cursor: pointer;
+    opacity: 0.7;
+    transition: opacity 150ms;
 }
 
-.playerContainer .controls .layoutAreasSchematic .schematicMiddleRow {
-    display: flex;
-    flex-direction: row;
-    gap: 3px;
-    min-height: 50px;
+.playerContainer .controls .layoutAreasPanel .layoutDiagramArea:hover {
+    opacity: 0.85;
 }
 
-.playerContainer .controls .layoutAreasSchematic .schematicCenter {
-    flex: 1 1 auto;
-    background: transparent;
-    min-height: 50px;
-    border-radius: 2px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+.playerContainer .controls .layoutAreasPanel .layoutDiagramArea.active {
+    --area-fill: var(--secondary-fg-color);
+    border-color: transparent;
+    color: var(--primary-bg-color);
+    opacity: 1;
 }
 
-.playerContainer .controls .layoutAreasSchematic .schematicCenter .icon-play-1::before {
-    font-size: 18px !important;
+.playerContainer .controls .layoutAreasPanel .layoutDiagramView {
+    border-color: color-mix(in srgb, currentColor 30%, transparent);
+}
+
+/* The ring: its band is filled, the video inside it stays clear */
+.playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area="circular"] {
+    background: none;
+}
+
+.playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area="circular"]:not(.strip) > .layoutDiagramView {
+    border-color: var(--area-fill);
+}
+
+.playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area="circular"].strip > .layoutDiagramView {
+    background: var(--area-fill);
+}
+
+.playerContainer .controls .layoutAreasPanel .layoutDiagramView [class^="icon-"]::before {
+    font-size: inherit;
+    width: 1em;
+    margin: 0 0.2em;
+    line-height: inherit;
+}
+
+.playerContainer .controls .layoutAreasPanel .layoutDiagramVideo .icon-play-1::before {
+    font-size: 18px;
     margin: 0;
     width: auto;
     line-height: normal;
     color: var(--secondary-fg-color);
     opacity: 0.4;
-}
-
-/* The ring around the video: the video's frame is its toggle */
-.playerContainer .controls .layoutAreasSchematic .schematicCenter.schematicRing {
-    box-sizing: border-box;
-    border: 6px solid var(--semi-transparent-fg-color);
-    outline: 1px dashed var(--primary-fg-color);
-    outline-offset: -1px;
-    cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 150ms, border-color 150ms;
-}
-
-.playerContainer .controls .layoutAreasSchematic .schematicCenter.schematicRing:hover {
-    opacity: 0.85;
-}
-
-.playerContainer .controls .layoutAreasSchematic .schematicCenter.schematicRing.active {
-    border-color: var(--secondary-fg-color);
-    outline-color: transparent;
-    opacity: 1;
-}
-
-.playerContainer .controls .layoutAreasSchematic .schematicArea {
-    background: var(--semi-transparent-fg-color);
-    border: 1px dashed var(--primary-fg-color);
-    border-radius: 2px;
-    cursor: pointer;
-    opacity: 0.7;
-    transition: opacity 150ms, background-color 150ms;
-}
-
-.playerContainer .controls .layoutAreasSchematic .schematicArea:hover {
-    opacity: 0.85;
-}
-
-.playerContainer .controls .layoutAreasSchematic .schematicArea.active {
-    background: var(--secondary-fg-color);
-    opacity: 1;
-    border-color: transparent;
-}
-
-.playerContainer .controls .layoutAreasSchematic .schematicAreaTop,
-.playerContainer .controls .layoutAreasSchematic .schematicAreaBottom {
-    height: 20px;
-    width: 100%;
-}
-
-.playerContainer .controls .layoutAreasSchematic .schematicAreaTop[data-size="medium"],
-.playerContainer .controls .layoutAreasSchematic .schematicAreaBottom[data-size="medium"] {
-    height: 30px;
-}
-
-.playerContainer .controls .layoutAreasSchematic .schematicAreaTop[data-size="large"],
-.playerContainer .controls .layoutAreasSchematic .schematicAreaBottom[data-size="large"] {
-    height: 45px;
-}
-
-.playerContainer .controls .layoutAreasSchematic .schematicAreaLeft,
-.playerContainer .controls .layoutAreasSchematic .schematicAreaRight {
-    flex: 0 0 30px;
-    min-height: 50px;
-}
-
-.playerContainer .controls .layoutAreasSchematic .schematicAreaLeft[data-size="medium"],
-.playerContainer .controls .layoutAreasSchematic .schematicAreaRight[data-size="medium"] {
-    flex: 0 0 40px;
-}
-
-.playerContainer .controls .layoutAreasSchematic .schematicAreaLeft[data-size="large"],
-.playerContainer .controls .layoutAreasSchematic .schematicAreaRight[data-size="large"] {
-    flex: 0 0 55px;
 }
 
 .playerContainer .controls .playerControl.volumeButton.active [class^="icon-"]::before, .playerContainer .controls .playerControl.volumeButton.active [class*=" icon-"]::before {
@@ -1650,56 +1601,57 @@
         --play-button-size: 50px;
     }
 
-    /* Layout areas panel: match stacked layout */
+    /* Layout areas panel: the areas stacked, as the player has them, the ring as the strip below the video */
 
     .playerContainer .controls .playerControl.layoutAreasButton .layoutAreasPanel {
-        width: 100px;
+        width: 200px;
     }
 
-    .playerContainer .controls .layoutAreasSchematic .schematicMiddleRow {
+    .playerContainer .controls .layoutAreasPanel .layoutDiagram {
+        aspect-ratio: auto;
+        container-type: normal;
+    }
+
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramMiddle {
         flex-direction: column;
-        min-height: 30px;
     }
 
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaLeft,
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaRight {
-        flex: 0 0 auto;
-        width: 100%;
-        height: 16px;
-        min-height: 0;
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area] {
+        flex: none;
+        width: auto;
+        height: 24px;
     }
 
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaTop,
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaBottom,
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaLeft,
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaRight {
-        height: 16px;
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area][data-size="medium"] {
+        height: 40px;
     }
 
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaTop[data-size="medium"],
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaBottom[data-size="medium"],
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaLeft[data-size="medium"],
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaRight[data-size="medium"] {
-        height: 35px;
-    }
-
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaTop[data-size="large"],
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaBottom[data-size="large"],
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaLeft[data-size="large"],
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaRight[data-size="large"] {
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area][data-size="large"] {
         height: 60px;
     }
 
-    .playerContainer .controls .layoutAreasSchematic .schematicCenter {
-        min-height: 35px;
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area="left"],
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area="right"] {
+        flex-direction: row;
     }
 
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaLeft {
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area="left"] .layoutDiagramViewName,
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area="right"] .layoutDiagramViewName {
+        display: inline;
+    }
+
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area="left"] {
         order: -1;
     }
 
-    .playerContainer .controls .layoutAreasSchematic .schematicAreaRight {
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area="right"] {
         order: 1;
+    }
+
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramArea[data-area="circular"],
+    .playerContainer .controls .layoutAreasPanel .layoutDiagramMiddle > .layoutDiagramVideo {
+        height: auto;
+        min-height: 80px;
     }
 }
 
