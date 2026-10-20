@@ -43,6 +43,9 @@
     var CELL_RATIO      = 0.7,
         MIN_VIDEO_SHARE = 0.5;
 
+    // An item a slot before its time weighs this much of one a slot after it (placeByTime): in doubt, earlier
+    var EARLY_WEIGHT = 0.8;
+
     function capacity(cols, rows, rings) {
         var cap = 0;
         for (var j = 1; j <= rings; j++) {
@@ -187,9 +190,11 @@
 
     /**
      * I give each item a slot: times (seconds from the video's start, in item order, ascending) on a track
-     * of slotCount slots spanning duration. An item takes the slot holding its time, the next free one when
-     * taken; at the end they are pulled back. Strictly increasing; null when there are more items than
-     * slots. Without a duration, in order.
+     * of slotCount slots spanning duration, each slot standing for the time at its centre. Together the items
+     * take the slots, in their order, closest to their times: the least sum of squared distances, a slot
+     * early weighing EARLY_WEIGHT of a slot late, so a crowd is centred on its time and, in doubt, earlier;
+     * on equal cost the earlier slots. Strictly increasing; null when there are more items than slots.
+     * Without a duration, in order.
      *
      * @method placeByTime
      * @param {Array} times
@@ -200,15 +205,37 @@
     function placeByTime(times, duration, slotCount) {
         var n = times.length,
             out = new Array(n),
-            i;
+            best = [],
+            from = [],
+            i, s;
         if (n > slotCount) { return null; }
+        if (!(duration > 0)) {
+            for (i = 0; i < n; i++) { out[i] = i; }
+            return out;
+        }
+        // best[s]: the least cost of items 0..i with item i in slot s; item i leaves room for the others
         for (i = 0; i < n; i++) {
-            var ideal = (duration > 0) ? Math.floor(times[i] / duration * slotCount) : i;
-            ideal = Math.max(0, Math.min(slotCount - 1, ideal));
-            out[i] = (i > 0) ? Math.max(ideal, out[i - 1] + 1) : ideal;
+            var p = times[i] / duration * slotCount - 0.5,
+                row = [],
+                back = [],
+                min = Infinity,
+                minAt = -1;
+            for (s = i; s <= slotCount - n + i; s++) {
+                if (i > 0 && best[s - 1] < min) { min = best[s - 1]; minAt = s - 1; }
+                var d = s - p;
+                row[s] = ((i > 0) ? min : 0) + ((d < 0) ? EARLY_WEIGHT : 1) * d * d;
+                back[s] = minAt;
+            }
+            best = row;
+            from.push(back);
+        }
+        s = n - 1;
+        for (var k = n; k < slotCount; k++) {
+            if (best[k] < best[s]) { s = k; }
         }
         for (i = n - 1; i >= 0; i--) {
-            out[i] = Math.min(out[i], (i === n - 1) ? slotCount - 1 : out[i + 1] - 1);
+            out[i] = s;
+            s = from[i][s];
         }
         return out;
     }
@@ -228,40 +255,11 @@
         return { x: box.x + inset, y: box.y + inset, w: box.w - 2 * inset, h: box.h - 2 * inset };
     }
 
-    /**
-     * I tell how far along the progress bar (a track from progressTrack()) the point nearest to (x, y) is,
-     * from 0 at the bottom-left corner, clockwise, to 1 back there.
-     *
-     * @method fractionAt
-     * @param {Object} track
-     * @param {Number} x
-     * @param {Number} y
-     * @return {Number}
-     */
-    function fractionAt(track, x, y) {
-        var x0 = track.x, y0 = track.y, x1 = track.x + track.w, y1 = track.y + track.h,
-            w = track.w, h = track.h,
-            cx = Math.max(x0, Math.min(x1, x)),
-            cy = Math.max(y0, Math.min(y1, y)),
-            sides = [
-                { distance: Math.hypot(x - x0, y - cy), along: y1 - cy },              // left, upwards
-                { distance: Math.hypot(x - cx, y - y0), along: h + (cx - x0) },        // top, rightwards
-                { distance: Math.hypot(x - x1, y - cy), along: h + w + (cy - y0) },    // right, downwards
-                { distance: Math.hypot(x - cx, y - y1), along: 2 * h + w + (x1 - cx) } // bottom, leftwards
-            ],
-            nearest = sides[0];
-        for (var i = 1; i < sides.length; i++) {
-            if (sides[i].distance < nearest.distance) { nearest = sides[i]; }
-        }
-        return (w + h > 0) ? Math.max(0, Math.min(1, nearest.along / (2 * (w + h)))) : 0;
-    }
-
     return {
 
         STEPS:         STEPS,
 
         capacity:      capacity,
-        fractionAt:    fractionAt,
         layout:        layout,
         placeByTime:   placeByTime,
         progressTrack: progressTrack,

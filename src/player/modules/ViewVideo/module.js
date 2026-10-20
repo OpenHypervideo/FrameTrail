@@ -41,7 +41,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
                         + '                    <svg class="circularProgress" aria-hidden="true">'
                         + '                        <path class="circularProgressTrack"></path>'
                         + '                        <path class="circularProgressRange"></path>'
-                        + '                        <path class="circularProgressHit"></path>'
                         + '                    </svg>'
                         + '                    <div class="areaCircularContainer layoutArea" data-area="areaCircular">'
                         + '                        <div class="layoutAreaTabs"></div>'
@@ -953,11 +952,10 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
 
     // The progress bar around the video while the ring is shown: along the inner edge of the video's block,
-    // clockwise from its bottom-left corner, as the ring's slots run (FrameTrailRingLayout.progressTrack), and a
-    // way to seek. Its line is an open path: Firefox draws a closed four-sided path as a rectangle, whose dashes
-    // start at its top-left corner.
-    var CIRCULAR_PROGRESS_THICKNESS = 4,
-        circularProgressTrack       = null,
+    // clockwise from its bottom-left corner, as the ring's slots run (FrameTrailRingLayout.progressTrack). Its
+    // line is an open path: Firefox draws a closed four-sided path as a rectangle, whose dashes start at its
+    // top-left corner.
+    var CIRCULAR_PROGRESS_THICKNESS = 2,
         circularProgressLength      = 0,
         circularProgressFraction    = 0;
 
@@ -971,17 +969,14 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
     function placeCircularProgress(ring) {
 
         CircularProgress.classList.toggle('active', !!ring);
-        circularProgressTrack = null;
         if (!ring) { return; }
 
         var thickness = CIRCULAR_PROGRESS_THICKNESS,
             track     = window.FrameTrailRingLayout.progressTrack(ring.box, thickness),
-            hitWidth  = thickness + 6,
-            pad       = hitWidth / 2,
+            pad       = thickness / 2,
             // The last side runs on by half the thickness, to fill the corner where the bar starts.
             path      = 'M ' + pad + ' ' + (pad + track.h) + ' V ' + pad + ' H ' + (pad + track.w) + ' V ' + (pad + track.h) + ' H ' + (pad - thickness / 2);
 
-        circularProgressTrack  = track;
         circularProgressLength = 2 * (track.w + track.h) + thickness / 2;
         CircularProgress.style.left   = (track.x - pad) + 'px';
         CircularProgress.style.top    = (track.y - pad) + 'px';
@@ -989,7 +984,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         CircularProgress.style.height = (track.h + 2 * pad) + 'px';
         CircularProgress.querySelectorAll('path').forEach(function(element) {
             element.setAttribute('d', path);
-            element.style.strokeWidth = (element.classList.contains('circularProgressHit') ? hitWidth : thickness) + 'px';
+            element.style.strokeWidth = thickness + 'px';
         });
         CircularProgress.querySelector('.circularProgressRange').style.strokeDasharray = circularProgressLength + 'px ' + circularProgressLength + 'px';
         updateCircularProgress(circularProgressFraction);
@@ -1007,52 +1002,6 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         circularProgressFraction = Math.max(0, Math.min(1, fraction || 0));
         CircularProgress.querySelector('.circularProgressRange').style.strokeDashoffset = (circularProgressLength * (1 - circularProgressFraction)) + 'px';
     }
-
-    // Seeking on the progress bar around the video, as on the one below it: on press and while dragging.
-    (function() {
-
-        var hitPath  = CircularProgress.querySelector('.circularProgressHit'),
-            dragging = false,
-            fromTime = 0;
-
-        function seek(evt) {
-            if (!circularProgressTrack) { return 0; }
-            var rect            = VideoContainer.getBoundingClientRect(),
-                fraction        = window.FrameTrailRingLayout.fractionAt(circularProgressTrack, evt.clientX - rect.left, evt.clientY - rect.top),
-                HypervideoModel = FrameTrail.module('HypervideoModel'),
-                value           = Math.round(fraction * HypervideoModel.duration * 100) / 100;
-            updateCircularProgress(fraction);
-            FrameTrail.module('HypervideoController').currentTime = HypervideoModel.offsetIn + value;
-            return value;
-        }
-
-        hitPath.addEventListener('pointerdown', function(evt) {
-            hitPath.setPointerCapture(evt.pointerId);
-            dragging = true;
-            fromTime = FrameTrail.module('HypervideoController').currentTime;
-            seek(evt);
-            evt.preventDefault();
-        });
-
-        hitPath.addEventListener('pointermove', function(evt) {
-            if (dragging) { seek(evt); }
-        });
-
-        hitPath.addEventListener('pointerup', function(evt) {
-            if (!dragging) { return; }
-            dragging = false;
-            FrameTrail.triggerEvent('userAction', {
-                action:   'VideoJumpTime',
-                fromTime: fromTime,
-                toTime:   seek(evt)
-            });
-        });
-
-        hitPath.addEventListener('pointercancel', function() {
-            dragging = false;
-        });
-
-    })();
 
 
     /**

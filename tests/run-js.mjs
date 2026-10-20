@@ -1588,18 +1588,9 @@ describe('FrameTrailRingLayout', () => {
                                RingLayout.layout({ width: 1094, height: 740, aspect: A, count: 24, size: 'medium' }), 'gap 0 is no gap');
     });
 
-    test('the progress bar lies inside the video\'s block, along its edge, and runs clockwise from its bottom-left corner', () => {
+    test('the progress bar lies inside the video\'s block, along its edge', () => {
         const box = { x: 100, y: 50, w: 400, h: 200 };
         assert.deepStrictEqual(RingLayout.progressTrack(box, 4), { x: 102, y: 52, w: 396, h: 196 }, 'its outer edge on the block\'s edge');
-        const near = (a, b) => Math.abs(a - b) < EPS, P = 2 * (400 + 200);
-        assert.ok(near(RingLayout.fractionAt(box, 100, 250), 0), 'the bottom-left corner is the start');
-        assert.ok(near(RingLayout.fractionAt(box, 90, 150), 100 / P), 'up the left side first');
-        assert.ok(near(RingLayout.fractionAt(box, 100, 50), 200 / P), 'the top-left corner');
-        assert.ok(near(RingLayout.fractionAt(box, 300, 40), 400 / P), 'the middle of the top');
-        assert.ok(near(RingLayout.fractionAt(box, 520, 150), 700 / P), 'down the right side');
-        assert.ok(near(RingLayout.fractionAt(box, 300, 260), 1000 / P), 'back along the bottom');
-        assert.ok(near(RingLayout.fractionAt(box, 101, 252), 1199 / P), 'and ends where it started');
-        assert.ok(near(RingLayout.fractionAt(box, 300, 140), 400 / P), 'a point inside goes to the nearest side');
     });
 
     test('the same hypervideo has the same rings at every player size', () => {
@@ -1610,11 +1601,16 @@ describe('FrameTrailRingLayout', () => {
         }
     });
 
-    test('placeByTime puts items where their time is and packs them when crowded', () => {
+    test('placeByTime puts items where their time is and centres them when crowded', () => {
         const range = (n) => Array.from({ length: n }, (_, i) => i);
-        assert.deepStrictEqual(RingLayout.placeByTime([13.5, 60.5, 111.5, 141.5, 161.5, 187.5, 205.5], 215.24, 24), [1, 6, 12, 15, 18, 20, 22], 'sparse: like a clock');
+        assert.deepStrictEqual(RingLayout.placeByTime([13.5, 60.5, 111.5, 141.5, 161.5, 187.5, 205.5], 215.24, 24), [1, 6, 12, 15, 17, 20, 22], 'sparse: like a clock (161.5 s is just inside slot 18: in doubt, earlier)');
         assert.deepStrictEqual(RingLayout.placeByTime(range(10).map((i) => i * 0.1), 1, 10), range(10), 'a full track');
         assert.deepStrictEqual(RingLayout.placeByTime([9, 9.5, 9.9], 10, 10), [7, 8, 9], 'crowding at the end is pulled back');
+        assert.deepStrictEqual(RingLayout.placeByTime([55, 55, 55], 100, 10), [4, 5, 6], 'a crowd is centred on its time');
+        assert.deepStrictEqual(RingLayout.placeByTime([55, 55], 100, 10), [4, 5], 'in doubt, the earlier slot');
+        assert.deepStrictEqual(RingLayout.placeByTime([52, 54], 100, 10), [4, 5], 'both in the first half of a slot: one before it');
+        assert.deepStrictEqual(RingLayout.placeByTime([50.5], 100, 10), [5], 'alone, an item keeps the slot holding its time');
+        assert.deepStrictEqual(RingLayout.placeByTime([1, 1, 1], 100, 10), [0, 1, 2], 'a crowd at the start is not pushed');
         const police = [12, 12.5, 13, 13.5, 14, 60.5, 111, 111.5, 112, 141, 141.5, 142, 142.5, 143, 161.5, 187, 187.5, 188, 204, 204.5, 205, 205.5, 206, 206.5];
         assert.deepStrictEqual(RingLayout.placeByTime(police, 215.24, 24), range(24), '24 items on 24 slots');
         const on26 = RingLayout.placeByTime(police, 215.24, 26);

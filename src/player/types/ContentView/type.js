@@ -2498,11 +2498,12 @@ FrameTrail.defineType(
 
 
                 /**
-                 * I place my thumbnails into the slots of the ring around the video (computeRingGeometry): each where
-                 * its time is on the spiral, which starts left of the video's bottom row and runs clockwise (the mid
-                 * time of its group, as in distributeElements), packed in time order when they crowd
-                 * (FrameTrailRingLayout.placeByTime). When the slots were laid out for another number, size or gap of
-                 * thumbnails, I have the video adjusted first, which lays out the ring again and comes back here.
+                 * I place my thumbnails into the slots of the ring around the video (computeRingGeometry), which start
+                 * left of the video's bottom row and run clockwise. With one ring, each sits closest to its time (the
+                 * mid time of its group, as in distributeElements), a crowd centred on its time and, in doubt, earlier
+                 * (FrameTrailRingLayout.placeByTime); with several, they fill the spiral in order, so the inner ring is
+                 * always full. When the slots were laid out for another number, size or gap of thumbnails, I have the
+                 * video adjusted first, which lays out the ring again and comes back here.
                  *
                  * @method layoutRing
                  */
@@ -2540,7 +2541,9 @@ FrameTrail.defineType(
                         times.push((group.items[0].data.start + end) / 2 - offsetIn);
                     });
 
-                    var slots = window.FrameTrailRingLayout.placeByTime(times, HypervideoModel.duration || 0, geometry.slots.length);
+                    var slots = (geometry.rings > 1)
+                        ? elements.map(function(element, i) { return i; })
+                        : window.FrameTrailRingLayout.placeByTime(times, HypervideoModel.duration || 0, geometry.slots.length);
                     if (!slots) { return; }
 
                     elements.forEach(function(element, i) {
