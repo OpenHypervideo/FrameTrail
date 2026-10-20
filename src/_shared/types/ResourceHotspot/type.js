@@ -39,6 +39,84 @@ FrameTrail.defineType(
 
 
                 /**
+                 * I say whether a hotspot has a click action: a declarative action
+                 * (openUrl / jumpToTime / jumpToHypervideo), a legacy linkUrl, or a
+                 * non-empty onClick event. onStart pause is not a click action.
+                 *
+                 * @method hasHotspotAction
+                 * @param {Object} attrs
+                 * @param {Object} [events]
+                 * @return {Boolean}
+                 */
+                hasHotspotAction: function(attrs, events) {
+
+                    attrs = attrs || {};
+                    events = events || {};
+                    var action = attrs.action;
+                    if (action === 'openUrl' || action === 'jumpToTime' || action === 'jumpToHypervideo') {
+                        return true;
+                    }
+                    if (attrs.linkUrl && String(attrs.linkUrl).trim()) {
+                        return true;
+                    }
+                    if (events.onClick && String(events.onClick).trim()) {
+                        return true;
+                    }
+                    return false;
+
+                },
+
+
+                /**
+                 * I toggle .hasAction on the hotspot link and attach or remove the
+                 * marker fill-on-hover listeners. Fill hover only applies when there
+                 * is a click action, a visible outline, no solid fill, and the shape
+                 * is not arrow/underline (lines have no area).
+                 *
+                 * @method syncHotspotHover
+                 * @param {HTMLElement} hotspotElement
+                 * @param {Object} attrs
+                 * @param {Object} [events]
+                 */
+                syncHotspotHover: function(hotspotElement, attrs, events) {
+
+                    if (!hotspotElement) { return; }
+                    attrs = attrs || {};
+                    events = events || {};
+
+                    var hasAction = this.hasHotspotAction(attrs, events);
+                    hotspotElement.classList.toggle('hasAction', hasAction);
+
+                    if (hotspotElement._enterFn) {
+                        hotspotElement.removeEventListener('mouseenter', hotspotElement._enterFn);
+                        hotspotElement._enterFn = null;
+                    }
+                    if (hotspotElement._leaveFn) {
+                        hotspotElement.removeEventListener('mouseleave', hotspotElement._leaveFn);
+                        hotspotElement._leaveFn = null;
+                    }
+
+                    var shape = attrs.shape || 'circle',
+                        lineShape = (shape === 'arrow' || shape === 'underline'),
+                        backgroundColor = attrs.backgroundColor || '',
+                        outlineWidth = (attrs.borderWidth !== undefined) ? attrs.borderWidth : 5,
+                        color = attrs.color || '#0096ff';
+
+                    if (hasAction && outlineWidth > 0 && !backgroundColor && !lineShape) {
+                        var r = parseInt(color.slice(1, 3), 16),
+                            g = parseInt(color.slice(3, 5), 16),
+                            b = parseInt(color.slice(5, 7), 16),
+                            hoverColor = 'rgba(' + r + ', ' + g + ', ' + b + ', 0.3)';
+                        hotspotElement._enterFn = function() { this.style.backgroundColor = hoverColor; };
+                        hotspotElement._leaveFn = function() { this.style.backgroundColor = 'transparent'; };
+                        hotspotElement.addEventListener('mouseenter', hotspotElement._enterFn);
+                        hotspotElement.addEventListener('mouseleave', hotspotElement._leaveFn);
+                    }
+
+                },
+
+
+                /**
                  * I render the content of myself, which is a &lt;div&gt; containing a pulsating circle hotspot wrapped in a &lt;div class="resourceDetail" ...&gt;
                  *
                  * @method renderContent
@@ -119,14 +197,6 @@ FrameTrail.defineType(
                         borderWidth = 0;
                     }
                     
-                    // Helper function to convert hex color to rgba
-                    var hexToRgba = function(hex, alpha) {
-                        var r = parseInt(hex.slice(1, 3), 16);
-                        var g = parseInt(hex.slice(3, 5), 16);
-                        var b = parseInt(hex.slice(5, 7), 16);
-                        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
-                    };
-                    
                     // Calculate and set border width in pixels (percentage of smaller dimension)
                     var calculateBorderWidth = function(element, percentage) {
                         if (percentage <= 0) return 0;
@@ -151,16 +221,8 @@ FrameTrail.defineType(
                         hotspotElement.style.boxShadow = 'none';
                     }
 
-                    // Add hover effect: make background semi-transparent (only for marker-style
-                    // hotspots with a visible outline and no solid fill; lines have no area)
-                    var outlineWidth = svgMode ? ((attrs.borderWidth !== undefined) ? attrs.borderWidth : 5) : borderWidth;
-                    if (outlineWidth > 0 && !backgroundColor && !lineShape) {
-                        var hoverColor = hexToRgba(color, 0.3);
-                        hotspotElement._enterFn = function() { this.style.backgroundColor = hoverColor; };
-                        hotspotElement._leaveFn = function() { this.style.backgroundColor = 'transparent'; };
-                        hotspotElement.addEventListener('mouseenter', hotspotElement._enterFn);
-                        hotspotElement.addEventListener('mouseleave', hotspotElement._leaveFn);
-                    }
+                    // Pointer + fill hover only when the hotspot has a click action
+                    this.syncHotspotHover(hotspotElement, attrs, this.resourceData.events);
                     
                     // Route all clicks through the shared overlay action model
                     // (falls back to linkUrl as 'openUrl' for existing hotspot data)
@@ -791,14 +853,6 @@ FrameTrail.defineType(
                         c.querySelector('.hotspotPropBorderRadius').value = a.borderRadius !== undefined ? a.borderRadius : 10;
                     };
 
-                    // Helper function to convert hex color to rgba
-                    var hexToRgba = function(hex, alpha) {
-                        var r = parseInt(hex.slice(1, 3), 16);
-                        var g = parseInt(hex.slice(3, 5), 16);
-                        var b = parseInt(hex.slice(5, 7), 16);
-                        return 'rgba(' + r + ', ' + g + ', ' + b + ', ' + alpha + ')';
-                    };
-
                     // Create layout row container for all columns
                     var layoutRow = document.createElement('div');
                     layoutRow.className = 'layoutRow';
@@ -847,12 +901,6 @@ FrameTrail.defineType(
                             borderRadiusValue = borderRadius + 'px';
                         }
                         
-                        // Calculate border width as percentage
-                        // Note: CSS doesn't support percentage borders directly, so we'll calculate it
-                        // based on the element's size using JavaScript
-                        var borderWidthValue = borderWidth > 0 ? borderWidth + '%' : '0';
-                        var hoverColor = borderWidth > 0 ? hexToRgba(color, 0.3) : 'transparent';
-                        
                         // Helper to calculate actual border width in pixels
                         var calculateBorderWidth = function(element, percentage) {
                             if (percentage <= 0) return 0;
@@ -877,15 +925,11 @@ FrameTrail.defineType(
                             hotspotPulse.style.borderColor = color;
                             hotspotPulse.style.display = bg ? 'none' : '';
 
-                            // Update hover handlers (a solid fill overrides the marker hover)
-                            if (hotspotElement._enterFn) { hotspotElement.removeEventListener('mouseenter', hotspotElement._enterFn); hotspotElement._enterFn = null; }
-                            if (hotspotElement._leaveFn) { hotspotElement.removeEventListener('mouseleave', hotspotElement._leaveFn); hotspotElement._leaveFn = null; }
-                            if (borderWidth > 0 && !bg) {
-                                hotspotElement._enterFn = function() { this.style.backgroundColor = hoverColor; };
-                                hotspotElement._leaveFn = function() { this.style.backgroundColor = 'transparent'; };
-                                hotspotElement.addEventListener('mouseenter', hotspotElement._enterFn);
-                                hotspotElement.addEventListener('mouseleave', hotspotElement._leaveFn);
-                            }
+                            self.syncHotspotHover(
+                                hotspotElement,
+                                overlayOrAnnotation.data.attributes,
+                                overlayOrAnnotation.data.events
+                            );
 
                             FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
                         } else {
@@ -905,14 +949,11 @@ FrameTrail.defineType(
                                 hotspotPulse.style.borderColor = color;
                                 hotspotPulse.style.display = bg ? 'none' : '';
 
-                                if (hotspotElement._enterFn) { hotspotElement.removeEventListener('mouseenter', hotspotElement._enterFn); hotspotElement._enterFn = null; }
-                                if (hotspotElement._leaveFn) { hotspotElement.removeEventListener('mouseleave', hotspotElement._leaveFn); hotspotElement._leaveFn = null; }
-                                if (borderWidth > 0 && !bg) {
-                                    hotspotElement._enterFn = function() { this.style.backgroundColor = hoverColor; };
-                                    hotspotElement._leaveFn = function() { this.style.backgroundColor = 'transparent'; };
-                                    hotspotElement.addEventListener('mouseenter', hotspotElement._enterFn);
-                                    hotspotElement.addEventListener('mouseleave', hotspotElement._leaveFn);
-                                }
+                                self.syncHotspotHover(
+                                    hotspotElement,
+                                    overlayOrAnnotation.data.attributes,
+                                    overlayOrAnnotation.data.events
+                                );
                             });
                             FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
                         }
@@ -1027,6 +1068,11 @@ FrameTrail.defineType(
                                 });
                                 var pulse = el.querySelector('.hotspot-pulse');
                                 if (pulse) { pulse.style.borderColor = newColor; }
+                                self.syncHotspotHover(
+                                    el.querySelector('.hotspot-element'),
+                                    overlayOrAnnotation.data.attributes,
+                                    overlayOrAnnotation.data.events
+                                );
                             });
                             if (trackChange) {
                                 FrameTrail.module('HypervideoModel').newUnsavedChange(overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations');
@@ -1039,18 +1085,11 @@ FrameTrail.defineType(
                             var hotspotPulse = overlayOrAnnotation.overlayElement.querySelector('.hotspot-pulse');
                             hotspotElement.style.borderColor = newColor;
                             hotspotPulse.style.borderColor = newColor;
-                            
-                            // Update hover color if border width > 0 (skip when a solid fill is set)
-                            var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
-                            if (borderWidth > 0 && !overlayOrAnnotation.data.attributes.backgroundColor) {
-                                var hoverColor = hexToRgba(newColor, 0.3);
-                                if (hotspotElement._enterFn) { hotspotElement.removeEventListener('mouseenter', hotspotElement._enterFn); hotspotElement._enterFn = null; }
-                                if (hotspotElement._leaveFn) { hotspotElement.removeEventListener('mouseleave', hotspotElement._leaveFn); hotspotElement._leaveFn = null; }
-                                hotspotElement._enterFn = function() { this.style.backgroundColor = hoverColor; };
-                                hotspotElement._leaveFn = function() { this.style.backgroundColor = 'transparent'; };
-                                hotspotElement.addEventListener('mouseenter', hotspotElement._enterFn);
-                                hotspotElement.addEventListener('mouseleave', hotspotElement._leaveFn);
-                            }
+                            self.syncHotspotHover(
+                                hotspotElement,
+                                overlayOrAnnotation.data.attributes,
+                                overlayOrAnnotation.data.events
+                            );
 
                             if (trackChange) {
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
@@ -1062,18 +1101,11 @@ FrameTrail.defineType(
                                 var hotspotPulse = el.querySelector('.hotspot-pulse');
                                 hotspotElement.style.borderColor = newColor;
                                 hotspotPulse.style.borderColor = newColor;
-                                
-                                // Update hover color if border width > 0 (skip when a solid fill is set)
-                                var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
-                                if (borderWidth > 0 && !overlayOrAnnotation.data.attributes.backgroundColor) {
-                                    var hoverColor = hexToRgba(newColor, 0.3);
-                                    if (hotspotElement._enterFn) { hotspotElement.removeEventListener('mouseenter', hotspotElement._enterFn); hotspotElement._enterFn = null; }
-                                    if (hotspotElement._leaveFn) { hotspotElement.removeEventListener('mouseleave', hotspotElement._leaveFn); hotspotElement._leaveFn = null; }
-                                    hotspotElement._enterFn = function() { this.style.backgroundColor = hoverColor; };
-                                    hotspotElement._leaveFn = function() { this.style.backgroundColor = 'transparent'; };
-                                    hotspotElement.addEventListener('mouseenter', hotspotElement._enterFn);
-                                    hotspotElement.addEventListener('mouseleave', hotspotElement._leaveFn);
-                                }
+                                self.syncHotspotHover(
+                                    hotspotElement,
+                                    overlayOrAnnotation.data.attributes,
+                                    overlayOrAnnotation.data.events
+                                );
                             });
                             if (trackChange) {
                                 FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
@@ -1495,11 +1527,7 @@ FrameTrail.defineType(
                             }
                             if (hotspotEl) {
                                 hotspotEl.style.backgroundColor = a.backgroundColor || 'transparent';
-                                // A solid fill overrides the marker hover behaviour.
-                                if (a.backgroundColor) {
-                                    if (hotspotEl._enterFn) { hotspotEl.removeEventListener('mouseenter', hotspotEl._enterFn); hotspotEl._enterFn = null; }
-                                    if (hotspotEl._leaveFn) { hotspotEl.removeEventListener('mouseleave', hotspotEl._leaveFn); hotspotEl._leaveFn = null; }
-                                }
+                                self.syncHotspotHover(hotspotEl, a, overlayOrAnnotation.data.events);
                             }
                             // Freeform uses the SVG pulse; keep the rectangular CSS ring hidden
                             if (pulseEl) {
@@ -1606,7 +1634,24 @@ FrameTrail.defineType(
 
                     // --- Action (shared model: open URL / jump to time / jump to hypervideo) ---
                     hotspotEditorContainer.insertAdjacentHTML('beforeend', '<hr>');
-                    hotspotEditorContainer.appendChild(this.renderActionControls(overlayOrAnnotation));
+                    var actionControls = this.renderActionControls(overlayOrAnnotation);
+                    hotspotEditorContainer.appendChild(actionControls);
+
+                    // Keep pointer / fill hover in sync when Action is set or cleared
+                    var refreshActionHover = function() {
+                        var roots = overlayOrAnnotation.overlayElement
+                            ? [overlayOrAnnotation.overlayElement]
+                            : (overlayOrAnnotation.contentViewDetailElements || []);
+                        roots.forEach(function(el) {
+                            self.syncHotspotHover(
+                                el.querySelector('.hotspot-element'),
+                                overlayOrAnnotation.data.attributes,
+                                overlayOrAnnotation.data.events
+                            );
+                        });
+                    };
+                    actionControls.addEventListener('change', refreshActionHover);
+                    actionControls.addEventListener('input', refreshActionHover);
 
                     return hotspotEditorContainer;
 

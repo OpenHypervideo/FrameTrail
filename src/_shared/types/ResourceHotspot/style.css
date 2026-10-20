@@ -47,10 +47,12 @@
     box-shadow: 0 0 10px rgba(0, 150, 255, 0.5);
     box-sizing: border-box;
     transition: border-radius 0.2s ease, border-width 0.2s ease, background-color 0.2s ease;
+    /* Override the UA pointer on <a href> — only interactive hotspots get it back */
+    cursor: default;
 }
 
-.hotspot-element:hover {
-    cursor: pointer; /* Pointer cursor on hover */
+.hotspot-element.hasAction {
+    cursor: pointer;
 }
 
 /* When hotspot-element is an <a> tag, ensure proper link styling */
