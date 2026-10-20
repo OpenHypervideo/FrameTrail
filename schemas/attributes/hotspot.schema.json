@@ -17,9 +17,10 @@
             "default": "#0096ff"
         },
         "borderWidth": {
-            "description": "Outline or line width in percent of the smaller side of the box.",
+            "description": "Outline or line width in pixels.",
             "type": "number",
             "minimum": 0,
+            "maximum": 40,
             "default": 5
         },
         "borderRadius": {

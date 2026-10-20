@@ -123,7 +123,7 @@ Overlay. It has no src. Schema: [`attributes/hotspot.schema.json`](../schemas/at
 |-----------|------|--------|---------|-------------|
 | `shape` | string | `circle`, `rectangle`, `rounded`, `arrow`, `underline`, `freeform` | `circle` | The shape. |
 | `color` | string |  | `#0096ff` | CSS colour of the outline or line. |
-| `borderWidth` | number | ≥ 0 | `5` | Outline or line width in percent of the smaller side of the box. |
+| `borderWidth` | number | 0–40 | `5` | Outline or line width in pixels. |
 | `borderRadius` | number | ≥ 0 | `10` | rounded only: corner radius in pixels. |
 | `backgroundColor` | string |  | `""` | CSS fill colour. Set, it hides the pulse ring so the hotspot reads as a button. Empty means no fill. |
 | `text` | string |  | `""` | Label inside the hotspot, plain text. |

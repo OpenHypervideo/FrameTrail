@@ -146,10 +146,6 @@ FrameTrail.defineType(
                         borderRadiusValue = borderRadius + 'px';
                     }
 
-                    // Calculate border width - we'll set it as a CSS variable and update it
-                    // Border width will be a percentage of the smaller dimension
-                    var borderWidthValue = borderWidth > 0 ? borderWidth + '%' : '0';
-
                     // Always use an <a> tag (even when empty, to avoid element replacement during editing)
                     var elementAttrs = ' href="' + (linkUrl || '#') + '"';
                     if (linkUrl && (linkUrl.startsWith('http://') || linkUrl.startsWith('https://'))) {
@@ -196,23 +192,8 @@ FrameTrail.defineType(
                         // The stroke replaces the border; fill and label stay on the link
                         borderWidth = 0;
                     }
-                    
-                    // Calculate and set border width in pixels (percentage of smaller dimension)
-                    var calculateBorderWidth = function(element, percentage) {
-                        if (percentage <= 0) return 0;
-                        // Wait for element to be in DOM to get dimensions
-                        setTimeout(function() {
-                            var width = element.offsetWidth;
-                            var height = element.offsetHeight;
-                            var smaller = Math.min(width, height);
-                            var actualWidth = (smaller * percentage) / 100;
-                            element.style.borderWidth = actualWidth + 'px';
-                        }, 0);
-                        return 0; // Initial value
-                    };
-                    
-                    // Set initial border width
-                    calculateBorderWidth(hotspotElement, borderWidth);
+
+                    hotspotElement.style.borderWidth = (borderWidth > 0 ? borderWidth : 0) + 'px';
                     hotspotElement.style.backgroundColor = backgroundColor || 'transparent';
                     hotspotElement.style.borderStyle = 'solid';
                     hotspotElement.style.borderColor = color;
@@ -281,7 +262,7 @@ FrameTrail.defineType(
                     var SVG_NS  = 'http://www.w3.org/2000/svg',
                         shape   = attrs.shape || 'circle',
                         color   = attrs.color || '#0096ff',
-                        widthPct = (attrs.borderWidth !== undefined) ? attrs.borderWidth : 5,
+                        strokeWidth = (attrs.borderWidth !== undefined) ? attrs.borderWidth : 5,
                         wrapper = resourceDetail.querySelector('.hotspot-square-wrapper'),
                         link    = resourceDetail.querySelector('.hotspot-element');
 
@@ -330,7 +311,7 @@ FrameTrail.defineType(
                             var w = wrapper.offsetWidth, h = wrapper.offsetHeight;
                             if (!w || !h) { return; }
                             var legacy = resourceDetail._ftFreeformLegacyPath && hotspot.scalePathData(resourceDetail._ftFreeformLegacyPath, w / 100, h / 100),
-                                sw = Math.max(0.5, Math.min(w, h) * widthPct / 100),
+                                sw = Math.max(0, strokeWidth),
                                 d = legacy || hotspot.freeformPath(resourceDetail._ftFreeformPoints, w / 100, h / 100);
                             svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
                             stroke.setAttribute('stroke-width', sw);
@@ -363,7 +344,7 @@ FrameTrail.defineType(
                         var w = wrapper.offsetWidth,
                             h = wrapper.offsetHeight;
                         if (!w || !h) { return; }
-                        var sw = Math.max(0.5, Math.min(w, h) * widthPct / 100);
+                        var sw = Math.max(0, strokeWidth);
                         svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
                         stroke.setAttribute('stroke-width', sw);
                         stroke.setAttribute('d', self.svgShapePath(shape, w, h, sw, attrs));
@@ -900,25 +881,15 @@ FrameTrail.defineType(
                         } else { // rounded
                             borderRadiusValue = borderRadius + 'px';
                         }
-                        
-                        // Helper to calculate actual border width in pixels
-                        var calculateBorderWidth = function(element, percentage) {
-                            if (percentage <= 0) return 0;
-                            var width = element.offsetWidth;
-                            var height = element.offsetHeight;
-                            var smaller = Math.min(width, height);
-                            return (smaller * percentage) / 100;
-                        };
-                        
+
+                        var borderWidthPx = (borderWidth > 0 ? borderWidth : 0) + 'px';
+
                         if (overlayOrAnnotation.overlayElement) {
                             var hotspotElement = overlayOrAnnotation.overlayElement.querySelector('.hotspot-element');
                             var hotspotPulse = overlayOrAnnotation.overlayElement.querySelector('.hotspot-pulse');
-                            
-                            // Calculate actual border width in pixels
-                            var actualBorderWidth = calculateBorderWidth(hotspotElement, borderWidth);
-                            
+
                             hotspotElement.style.borderRadius = borderRadiusValue;
-                            hotspotElement.style.borderWidth = actualBorderWidth + 'px';
+                            hotspotElement.style.borderWidth = borderWidthPx;
                             hotspotElement.style.borderColor = color;
                             hotspotElement.style.backgroundColor = bg || 'transparent';
                             hotspotPulse.style.borderRadius = borderRadiusValue;
@@ -937,12 +908,9 @@ FrameTrail.defineType(
                             overlayOrAnnotation.contentViewDetailElements.forEach(function(el) {
                                 var hotspotElement = el.querySelector('.hotspot-element');
                                 var hotspotPulse = el.querySelector('.hotspot-pulse');
-                                
-                                // Calculate actual border width in pixels
-                                var actualBorderWidth = calculateBorderWidth(hotspotElement, borderWidth);
-                                
+
                                 hotspotElement.style.borderRadius = borderRadiusValue;
-                                hotspotElement.style.borderWidth = actualBorderWidth + 'px';
+                                hotspotElement.style.borderWidth = borderWidthPx;
                                 hotspotElement.style.borderColor = color;
                                 hotspotElement.style.backgroundColor = bg || 'transparent';
                                 hotspotPulse.style.borderRadius = borderRadiusValue;
@@ -1191,10 +1159,10 @@ FrameTrail.defineType(
                     var borderWidthInput = document.createElement('input');
                     borderWidthInput.type = 'number';
                     borderWidthInput.className = 'hotspotPropBorderWidth';
-                    borderWidthInput.min = '0'; borderWidthInput.max = '50'; borderWidthInput.step = '0.5';
+                    borderWidthInput.min = '0'; borderWidthInput.max = '40'; borderWidthInput.step = '1';
                     borderWidthInput.value = currentAttributes.borderWidth;
                     var borderWidthLabel = document.createElement('span');
-                    borderWidthLabel.textContent = '%';
+                    borderWidthLabel.textContent = 'px';
                     var borderWidthWrapper = document.createElement('div');
                     borderWidthWrapper.className = 'innerSizeWrapper';
                     borderWidthWrapper.append(borderWidthInput, borderWidthLabel);
@@ -1207,7 +1175,7 @@ FrameTrail.defineType(
                     borderWidthInput.addEventListener('change', function() {
                         var newWidth = parseFloat(this.value);
                         if (isNaN(newWidth) || newWidth < 0) newWidth = 0;
-                        if (newWidth > 50) newWidth = 50;
+                        if (newWidth > 40) newWidth = 40;
                         this.value = newWidth;
                         var oldWidth = borderWidthBeforeChange;
                         overlayOrAnnotation.data.attributes.borderWidth = newWidth;
