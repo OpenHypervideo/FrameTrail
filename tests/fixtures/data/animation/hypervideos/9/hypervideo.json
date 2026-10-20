@@ -332,7 +332,7 @@
                 "frametrail:attributes": {
                     "color": "#ffd23f",
                     "linkUrl": "",
-                    "borderWidth": 6,
+                    "borderWidth": 5,
                     "shape": "arrow",
                     "borderRadius": 10,
                     "animation": {

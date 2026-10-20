@@ -254,7 +254,7 @@
                 "frametrail:attributes": {
                     "color": "#ffd23f",
                     "linkUrl": "",
-                    "borderWidth": 4,
+                    "borderWidth": 5,
                     "shape": "freeform",
                     "borderRadius": 10,
                     "animation": {

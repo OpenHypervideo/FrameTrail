@@ -212,7 +212,7 @@
                 "frametrail:attributes": {
                     "color": "#d2d8e1",
                     "linkUrl": "https://www.yourgenome.org/",
-                    "borderWidth": 2,
+                    "borderWidth": 5,
                     "shape": "rectangle",
                     "borderRadius": 10
                 }
@@ -333,7 +333,7 @@
                 "frametrail:attributes": {
                     "color": "#d2d8e1",
                     "linkUrl": "https://www.yourgenome.org/",
-                    "borderWidth": 2,
+                    "borderWidth": 5,
                     "shape": "rectangle",
                     "borderRadius": 10
                 }
