@@ -150,3 +150,11 @@ a.hotspot-element {
     stroke-dasharray: 1;
     stroke-dashoffset: 0;
 }
+
+/* Freeform ripple: same motion as .hotspot-pulse, following the outline */
+.hotspot-svg .hotspot-svg-pulse {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: hotspotPulse 2s infinite;
+    pointer-events: none;
+}

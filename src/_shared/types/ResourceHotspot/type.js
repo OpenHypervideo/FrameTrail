@@ -244,7 +244,20 @@ FrameTrail.defineType(
                             // Points (edited on the video) win; a path-only legacy shape clips as written
                             pathData = this.validFreeformPoints(attrs.points)
                                 ? this.freeformPath(attrs.points)
-                                : (attrs.path || this.freeformPath(this.defaultFreeformPoints()));
+                                : (attrs.path || this.freeformPath(this.defaultFreeformPoints())),
+                            // Expanding ripple that follows the outline (CSS .hotspot-pulse is a
+                            // rectangle and stays hidden for freeform)
+                            pulse = document.createElementNS(SVG_NS, 'path');
+
+                        pulse.setAttribute('class', 'hotspot-svg-pulse');
+                        pulse.setAttribute('fill', 'none');
+                        pulse.setAttribute('stroke', color);
+                        pulse.setAttribute('stroke-linecap', 'round');
+                        pulse.setAttribute('stroke-linejoin', 'round');
+                        if (attrs.backgroundColor) {
+                            pulse.style.display = 'none';
+                        }
+                        svg.insertBefore(pulse, stroke);
 
                         // The stroke is laid out in pixels (not a stretched 0–100 viewBox with a
                         // non-scaling stroke, where the dash of a Draw animation would not span
@@ -254,10 +267,14 @@ FrameTrail.defineType(
                         resourceDetail._ftFreeformLayout = function() {
                             var w = wrapper.offsetWidth, h = wrapper.offsetHeight;
                             if (!w || !h) { return; }
-                            var legacy = resourceDetail._ftFreeformLegacyPath && hotspot.scalePathData(resourceDetail._ftFreeformLegacyPath, w / 100, h / 100);
+                            var legacy = resourceDetail._ftFreeformLegacyPath && hotspot.scalePathData(resourceDetail._ftFreeformLegacyPath, w / 100, h / 100),
+                                sw = Math.max(0.5, Math.min(w, h) * widthPct / 100),
+                                d = legacy || hotspot.freeformPath(resourceDetail._ftFreeformPoints, w / 100, h / 100);
                             svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
-                            stroke.setAttribute('stroke-width', Math.max(0.5, Math.min(w, h) * widthPct / 100));
-                            stroke.setAttribute('d', legacy || hotspot.freeformPath(resourceDetail._ftFreeformPoints, w / 100, h / 100));
+                            stroke.setAttribute('stroke-width', sw);
+                            stroke.setAttribute('d', d);
+                            pulse.setAttribute('stroke-width', sw);
+                            pulse.setAttribute('d', d);
                         };
 
                         // Clicks only inside the shape
@@ -1005,7 +1022,9 @@ FrameTrail.defineType(
                                 ? [overlayOrAnnotation.overlayElement]
                                 : (overlayOrAnnotation.contentViewDetailElements || []);
                             strokeRoots.forEach(function(el) {
-                                el.querySelectorAll('.hotspot-stroke').forEach(function(path) { path.setAttribute('stroke', newColor); });
+                                el.querySelectorAll('.hotspot-stroke, .hotspot-svg-pulse').forEach(function(path) {
+                                    path.setAttribute('stroke', newColor);
+                                });
                                 var pulse = el.querySelector('.hotspot-pulse');
                                 if (pulse) { pulse.style.borderColor = newColor; }
                             });
@@ -1467,7 +1486,9 @@ FrameTrail.defineType(
                         els.forEach(function(el) {
                             var labelEl   = el.querySelector('.hotspot-label'),
                                 hotspotEl = el.querySelector('.hotspot-element'),
-                                pulseEl   = el.querySelector('.hotspot-pulse');
+                                pulseEl   = el.querySelector('.hotspot-pulse'),
+                                svgPulse  = el.querySelector('.hotspot-svg-pulse'),
+                                pulseHide = a.backgroundColor ? 'none' : '';
                             if (labelEl) {
                                 labelEl.textContent = a.text || '';
                                 labelEl.style.color = a.textColor || '#ffffff';
@@ -1480,8 +1501,12 @@ FrameTrail.defineType(
                                     if (hotspotEl._leaveFn) { hotspotEl.removeEventListener('mouseleave', hotspotEl._leaveFn); hotspotEl._leaveFn = null; }
                                 }
                             }
+                            // Freeform uses the SVG pulse; keep the rectangular CSS ring hidden
                             if (pulseEl) {
-                                pulseEl.style.display = a.backgroundColor ? 'none' : '';
+                                pulseEl.style.display = (a.backgroundColor || svgPulse) ? 'none' : '';
+                            }
+                            if (svgPulse) {
+                                svgPulse.style.display = pulseHide;
                             }
                         });
                         FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
