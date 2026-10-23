@@ -48,7 +48,7 @@
 })(function() {
 
 
-    var PROTOCOL_VERSION = 1,
+    var PROTOCOL_VERSION = 2,
 
         // The DataChannel both sides create, negotiated: no in-band announcement.
         CHANNEL          = { label: 'frametrail', negotiated: true, id: 0 },
@@ -565,6 +565,8 @@
             'view':         { mode: ['overview'] },
             'pong':         { id: 'number' },
             'grant':        { token: 'string', ttl: 'number', cookie: 'string', path: 'string' },
+            'quiz':         { hypervideo: 'string', item: 'string', status: ['open', 'decided', 'closed', 'cancelled'], answered: 'number', voters: 'number',
+                              endsIn: 'number?', decided: 'number?', feedback: 'string?' },
             'bye':          { reason: 'string' }
         },
         guest: {
@@ -572,9 +574,24 @@
             'ready':        { id: 'string' },
             'request':      { action: ['play', 'pause', 'seek'], time: 'number?' },
             'ping':         { id: 'number' },
+            'answer':       { hypervideo: 'string', item: 'string', unknown: 'boolean?' },
             'bye':          { reason: 'string?' }
         }
     };
+
+    // An answer's choice: an answer's index or a rating (a number), a free text, or the answers chosen (a list of numbers).
+    var MAX_CHOICE_TEXT  = 2000,
+        MAX_CHOICE_ITEMS = 100;
+
+    function choiceProblem(choice) {
+        if (typeof choice === 'number') { return isFinite(choice) ? null : 'choice must be a finite number'; }
+        if (typeof choice === 'string') { return (choice.length <= MAX_CHOICE_TEXT) ? null : 'choice is too long'; }
+        if (Array.isArray(choice)) {
+            if (choice.length > MAX_CHOICE_ITEMS) { return 'choice has too many items'; }
+            return choice.every(function(item) { return typeof item === 'number' && isFinite(item); }) ? null : 'choice must hold numbers';
+        }
+        return 'choice must be a number, a text or a list of numbers';
+    }
 
     /**
      * What is wrong with a message from one side, or null.
@@ -601,6 +618,10 @@
             if (typeof value !== type || (type === 'number' && !isFinite(value))) { return field + ' must be a ' + type; }
         }
         if (message.type === 'request' && message.action === 'seek' && typeof message.time !== 'number') { return 'a seek needs a time'; }
+        if (message.type === 'answer') {
+            if ((message.choice === undefined) === (message.unknown !== true)) { return 'an answer has a choice, or says the item is unknown'; }
+            if (message.choice !== undefined) { return choiceProblem(message.choice); }
+        }
         return null;
     }
 

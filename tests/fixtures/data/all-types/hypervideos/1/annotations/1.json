@@ -83,6 +83,7 @@
         "type": "Annotation",
         "frametrail:type": "Annotation",
         "frametrail:tags": [],
+        "frametrail:pause": true,
         "frametrail:uri": null,
         "target": {
             "type": "Video",
@@ -106,6 +107,117 @@
                 "onAnswered": {
                     "showText": "Thanks!",
                     "resumePlayback": true
+                }
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:29.637Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:pause": true,
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=9,13"
+            }
+        },
+        "body": {
+            "type": "TextualBody",
+            "frametrail:type": "quiz",
+            "format": "text/html",
+            "value": "",
+            "frametrail:name": "Vote",
+            "frametrail:attributes": {
+                "questionType": "multipleChoice",
+                "question": "Where should we go next?",
+                "answers": [
+                    {
+                        "text": "Watch on",
+                        "correct": false,
+                        "action": "",
+                        "default": true
+                    },
+                    {
+                        "text": "Go back to the start",
+                        "correct": false,
+                        "action": "jumpToTime",
+                        "actionTarget": 0
+                    },
+                    {
+                        "text": "Stop here and discuss",
+                        "correct": true,
+                        "action": "pause",
+                        "feedback": "Let's talk about it."
+                    },
+                    {
+                        "text": "Read more",
+                        "correct": false,
+                        "action": "openUrl",
+                        "actionTarget": "https://frametrail.org/"
+                    },
+                    {
+                        "text": "See the next lecture",
+                        "correct": false,
+                        "action": "jumpToHypervideo",
+                        "actionTarget": "1",
+                        "actionTargetTime": 5
+                    }
+                ],
+                "countdown": 20
+            }
+        }
+    },
+    {
+        "@context": [
+            "http://www.w3.org/ns/anno.jsonld",
+            "https://frametrail.org/ns/context.jsonld"
+        ],
+        "creator": {
+            "nickname": "demo",
+            "type": "Person",
+            "id": "1"
+        },
+        "created": "2026-10-07T09:30:29.887Z",
+        "type": "Annotation",
+        "frametrail:type": "Annotation",
+        "frametrail:tags": [],
+        "frametrail:uri": null,
+        "target": {
+            "type": "Video",
+            "source": "1_1790000000_fixture-lecture.mp4",
+            "selector": {
+                "conformsTo": "http://www.w3.org/TR/media-frags/",
+                "type": "FragmentSelector",
+                "value": "t=10,14"
+            }
+        },
+        "body": {
+            "type": "TextualBody",
+            "frametrail:type": "quiz",
+            "format": "text/html",
+            "value": "",
+            "frametrail:name": "Question",
+            "frametrail:attributes": {
+                "questionType": "freeText",
+                "question": "What would you ask the speaker?",
+                "onAnswered": {
+                    "action": "",
+                    "feedback": "Thank you."
                 }
             }
         }

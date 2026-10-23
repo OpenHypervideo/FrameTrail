@@ -253,16 +253,19 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
         if (typeof body['frametrail:thumb'] === 'string') { body['frametrail:thumb'] = mapPath(ctx, body['frametrail:thumb']); }
     }
 
-    // Hotspots that jump to another hypervideo of the import.
-    function remapJumps(hypervideo, ids) {
+    // Items (overlays, annotations) whose actions jump to another hypervideo of the import:
+    // a hotspot's, a quiz answer's, a quiz's onAnswered (Serializer.actionHolders).
+    function remapJumps(items, ids) {
         var changed = false;
-        (hypervideo.contents || []).forEach(function(item) {
-            var attributes = item && isObject(item.body) ? item.body['frametrail:attributes'] : null;
-            if (isObject(attributes) && attributes.action === 'jumpToHypervideo' && attributes.actionTarget != null
-                    && Object.prototype.hasOwnProperty.call(ids, String(attributes.actionTarget))) {
-                attributes.actionTarget = String(ids[String(attributes.actionTarget)]);
-                changed = true;
-            }
+        (items || []).forEach(function(item) {
+            var body = item ? (Array.isArray(item.body) ? item.body[0] : item.body) : null;
+            Serializer.actionHolders(isObject(body) ? body['frametrail:attributes'] : null).forEach(function(holder) {
+                if (holder.action === 'jumpToHypervideo' && holder.actionTarget != null
+                        && Object.prototype.hasOwnProperty.call(ids, String(holder.actionTarget))) {
+                    holder.actionTarget = String(ids[String(holder.actionTarget)]);
+                    changed = true;
+                }
+            });
         });
         return changed;
     }
@@ -506,7 +509,7 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
             }).then(function() {
 
                 prepared.forEach(function(item, i) { ctx.ids[item.sourceID] = String(firstID + i); });
-                prepared.forEach(function(item) { remapJumps(item.hypervideo, ctx.ids); });
+                prepared.forEach(function(item) { remapJumps(item.hypervideo.contents, ctx.ids); });
 
                 // As a new hypervideo is made here (Sidebar), then the index last:
                 // a hypervideo whose folder was not written is never listed.
@@ -563,7 +566,7 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
         }, Promise.resolve()).then(function() {
             return prepared.reduce(function(chain, item) {
                 return chain.then(function() {
-                    if (!ctx.ids[item.sourceID] || !remapJumps(item.hypervideo, ctx.ids)) { return; }
+                    if (!ctx.ids[item.sourceID] || !remapJumps(item.hypervideo.contents, ctx.ids)) { return; }
                     return serverPost({ a: 'hypervideoChange', hypervideoID: ctx.ids[item.sourceID],
                                         src: JSON.stringify(item.hypervideo, null, 4), baseVersion: item.hypervideo.meta.lastchanged }).catch(function(error) {
                         ctx.report.problems.push(error.message);
@@ -586,6 +589,8 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
 
                 var id = ctx.ids[item.sourceID];
                 if (!id || !item.annotations.length) { return; }
+
+                remapJumps(item.annotations, ctx.ids);
 
                 if (isLocal()) {
                     var adapter = FrameTrail.module('StorageManager').getAdapter(),

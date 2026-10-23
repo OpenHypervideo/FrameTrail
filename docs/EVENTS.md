@@ -22,6 +22,7 @@ instance.onSeeked(handler);
 instance.onUserAction(handler);
 instance.onOverlayClick(handler);
 instance.onQuizAnswered(handler);
+instance.onQuizDecided(handler);
 instance.onAnnotationOpened(handler);
 ```
 
@@ -51,7 +52,8 @@ Events are dispatched as `CustomEvent`s; payload fields are on `evt.detail`.
 | `seeking` / `seeked` | Scrubbing | `{}` |
 | `userAction` | Editor/viewer interactions (`VideoJumpTime`, `OverlayAdd`, `OverlayChange`, …) | `{ action, ... }` (action-specific fields) |
 | `overlayClick` | Viewer clicked an overlay (any type, view mode only) | `{ name, type, start, end }` |
-| `quizAnswered` | Viewer answered a quiz question (any question type) | `{ question, questionType, answer, correct }` — `correct` is `null` for non-scored types (freeText, rating) |
+| `quizAnswered` | Someone answered a quiz question (any question type): at the player, or on a paired phone | `{ question, questionType, answer, correct, source }` — `answer` is the answer's text (a list of texts for multiSelect), the rating or the text; `correct` is `null` where nothing is marked correct (and for freeText, rating); `source` is `'player'` or `'phone'`. On the player only: phones' answers arrive there |
+| `quizDecided` | A quiz was decided: everyone answered, its time ran out, or (a vote while playing) it ended | `{ question, questionType, answer, index, reason, correct, counts, votes, voters, action }` — `index` / `answer` the decided answer (multipleChoice), `reason` `majority`, `tieDefault`, `tieFirst`, `noneDefault`, `noneFirst`, `answered`, `none` or `empty`, `counts` per answer (per step for rating), `votes` how many answered of `voters`, `action` what follows (`''` continue, `pause`, `openUrl`, `jumpToTime`, `jumpToHypervideo`). Nothing is stored: listen here to keep results |
 | `annotationOpened` | Viewer opened an annotation's detail view | `{ name, type, start, end, creator }` |
 
 ### `userAction` action names

@@ -383,9 +383,8 @@
                     }
                 }
             },
-            "frametrail:events": {
-                "onStart": "FrameTrail.module('HypervideoController').pause();"
-            }
+            "frametrail:events": {},
+            "frametrail:pause": true
         },
         {
             "@context": [

@@ -1,0 +1,146 @@
+/* The tally over the video while phones answer a quiz (QuizController). Sizes are relative to
+   the panel (container query units), which is relative to the video: readable when projected.
+   Light on a dark backdrop whatever the theme, as captions are: it lies over the picture. Above
+   every overlay, whose zIndex has no upper bound. */
+
+.quizSessionPanel {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    max-height: 92%;
+    overflow: hidden;
+    z-index: 2147483000;
+    box-sizing: border-box;
+    padding: 2% 2.4%;
+    border-radius: 8px;
+    background: rgba(0, 0, 0, .88);
+    color: #fff;
+    container-type: inline-size;
+}
+
+.quizSessionPanel .quizSessionQuestion {
+    font-size: 4.4cqw;
+    font-weight: 600;
+    line-height: 1.25;
+    margin-bottom: 2.6cqw;
+}
+
+.quizSessionPanel .quizSessionRows {
+    display: flex;
+    flex-direction: column;
+    gap: 1.4cqw;
+}
+
+.quizSessionPanel .quizSessionRow {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 3fr) 3em;
+    align-items: center;
+    gap: 2cqw;
+    font-size: 3.4cqw;
+}
+
+.quizSessionPanel .quizSessionLabel {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.quizSessionPanel .quizSessionBar {
+    height: 2.8cqw;
+    border-radius: 99px;
+    overflow: hidden;
+    background: rgba(255, 255, 255, .22);
+}
+
+.quizSessionPanel .quizSessionBar > span {
+    display: block;
+    height: 100%;
+    border-radius: 99px;
+    background: #fff;
+    transition: width .3s ease-out;
+}
+
+.quizSessionPanel .quizSessionCount {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.quizSessionPanel.decided .quizSessionRow:not(.decided) {
+    opacity: .55;
+}
+
+.quizSessionPanel .quizSessionRow.decided .quizSessionLabel {
+    font-weight: 700;
+}
+
+.quizSessionPanel .quizSessionRow.correct .quizSessionLabel::after {
+    content: " \2713";
+}
+
+.quizSessionPanel .quizSessionStatus {
+    margin-top: 2.4cqw;
+    font-size: 2.8cqw;
+    opacity: .85;
+}
+
+.quizSessionPanel .quizSessionDecision {
+    margin-top: 1.6cqw;
+    font-size: 3.6cqw;
+    font-weight: 600;
+}
+
+.quizSessionPanel .quizResultBlock {
+    margin-top: 2cqw;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.6cqw;
+}
+
+.quizSessionPanel .quizFeedback {
+    flex-basis: 100%;
+    margin: 0;
+    font-size: 3.2cqw;
+}
+
+.quizSessionPanel .quizResultButton {
+    font-size: 3cqw;
+    padding: .5em 1.2em;
+    color: #fff;
+    background: rgba(255, 255, 255, .2);
+    border: none;
+    border-radius: 4px;
+}
+
+.quizSessionPanel .quizResultButton.main {
+    color: #000;
+    background: #fff;
+}
+
+/* A paired phone: the question the player asks, in a sheet of its own */
+
+.quizSheetDialog {
+    width: min(92vw, 560px);
+    background: var(--primary-bg-color);
+    color: var(--primary-fg-color);
+}
+
+.quizSheetDialog .resourceDetail[data-type="quiz"] {
+    position: relative;
+    color: var(--primary-fg-color);
+}
+
+.quizSheetDialog .resourceDetail[data-type="quiz"] .resourceQuizQuestion {
+    font-size: 20px;
+    font-weight: 600;
+}
+
+.quizSheetDialog .resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button {
+    font-size: 18px;
+    min-height: 48px;
+}
+
+.quizSheetDialog .resourceDetail[data-type="quiz"] .resourceOptions {
+    display: none;
+}

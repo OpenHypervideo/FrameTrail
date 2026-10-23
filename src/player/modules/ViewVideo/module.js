@@ -2167,6 +2167,12 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
          */
         get Video()             { return Video          },
         /**
+         * I contain the element around the video, its overlays and captions (.hypervideo).
+         * @attribute Hypervideo
+         * @type HTMLElement
+         */
+        get Hypervideo()        { return Hypervideo     },
+        /**
          * I contain the CaptionContainer element.
          * @attribute CaptionContainer
          * @type HTMLElement

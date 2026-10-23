@@ -372,6 +372,68 @@
 
 
     /* ------------------------------------------------------------------ */
+    /*  Pause at start                                                    */
+    /* ------------------------------------------------------------------ */
+
+    // frametrail:pause as it is stored: a boolean, or nothing.
+    function pauseOf(value) {
+        return (typeof value === 'boolean') ? value : undefined;
+    }
+
+    // What the editor gave quiz and hotspot overlays before frametrail:pause existed,
+    // and the action preset that pauses (spaces, quotes and the semicolon aside).
+    var PAUSE_SNIPPETS = ["FrameTrail.module('HypervideoController').pause()", "hypervideo.pause()"];
+
+    /**
+     * I say whether an onStart event is only a call that pauses the video:
+     * the legacy form of frametrail:pause.
+     * @method isPauseSnippet
+     * @param {String} code
+     * @return {Boolean}
+     */
+    function isPauseSnippet(code) {
+        if (typeof code !== 'string') { return false; }
+        var plain = code.replace(/\s+/g, '').replace(/"/g, "'").replace(/;+$/, '');
+        return PAUSE_SNIPPETS.indexOf(plain) >= 0;
+    }
+
+    /**
+     * I say whether an item (an overlay or an annotation of the model) pauses
+     * the video at its start: its pause, or, while it has none, an onStart that
+     * is only a pause call (isPauseSnippet).
+     * @method pausesAtStart
+     * @param {Object} item
+     * @return {Boolean}
+     */
+    function pausesAtStart(item) {
+        if (!isObject(item)) { return false; }
+        if (typeof item.pause === 'boolean') { return item.pause; }
+        return isObject(item.events) && isPauseSnippet(item.events.onStart);
+    }
+
+
+    /**
+     * I return the objects of an item's attributes that carry the action model (action,
+     * actionTarget, actionTargetTime): the attributes themselves (hotspots), each answer of a
+     * quiz, and a quiz's onAnswered. Checks and imports look at the targets in all of them.
+     * @method actionHolders
+     * @param {Object} attributes
+     * @return {Array}
+     */
+    function actionHolders(attributes) {
+        if (!isObject(attributes)) { return []; }
+        var holders = [attributes];
+        if (Array.isArray(attributes.answers)) {
+            attributes.answers.forEach(function(answer) { if (isObject(answer)) { holders.push(answer); } });
+        }
+        if (isObject(attributes.onAnswered)) {
+            holders.push(attributes.onAnswered);
+        }
+        return holders;
+    }
+
+
+    /* ------------------------------------------------------------------ */
     /*  Overlays                                                          */
     /* ------------------------------------------------------------------ */
 
@@ -410,6 +472,7 @@
             "keyframes":          Keyframes.normalizeKeyframes(selector['frametrail:keyframes']),
             "rotation":           rotationOf(selector['frametrail:rotation']),
             "events":             objectOrEmpty(data['frametrail:events']),
+            "pause":              pauseOf(data['frametrail:pause']),
             "tags":               data['frametrail:tags'],
             "resourceId":         body['frametrail:resourceId']
         };
@@ -527,7 +590,8 @@
                 "frametrail:resourceId":         overlay.resourceId,
                 "frametrail:attributes":         overlayAttributes(overlay)
             },
-            "frametrail:events": objectOrEmpty(overlay.events)
+            "frametrail:events": objectOrEmpty(overlay.events),
+            "frametrail:pause":  pauseOf(overlay.pause)
         };
 
     }
@@ -672,6 +736,7 @@
             "resourceId":         body["frametrail:resourceId"],
             "attributes":         objectOrEmpty(body['frametrail:attributes']) || {},
             "tags":               data['frametrail:tags'],
+            "pause":              pauseOf(data['frametrail:pause']),
             "source":             source,
             "graphData":          data['frametrail:graphdata']     || null,
             "graphDataType":      data['frametrail:graphdatatype'] || null
@@ -707,6 +772,7 @@
             "type":     "Annotation",
             "frametrail:type": "Annotation",
             "frametrail:tags": annotation.tags || [],
+            "frametrail:pause": pauseOf(annotation.pause),
             "frametrail:uri":  annotation.uri || null,
             "frametrail:graphdata":     (annotation.graphData != null)     ? annotation.graphData     : undefined,
             "frametrail:graphdatatype": (annotation.graphDataType != null) ? annotation.graphDataType : undefined,
@@ -1890,6 +1956,10 @@
         serializeHypervideo:     serializeHypervideo,
         parseContents:           parseContents,
         transcriptsToHTML:       transcriptsToHTML,
+
+        isPauseSnippet:          isPauseSnippet,
+        pausesAtStart:           pausesAtStart,
+        actionHolders:           actionHolders,
 
         parseOverlay:            parseOverlay,
         serializeOverlay:        serializeOverlay,

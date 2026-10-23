@@ -35,6 +35,12 @@ The QR code stays on the screen until pairing is stopped, so it can be projected
 
 The network matters more than the player. School and guest WiFi often keeps devices apart (client isolation): then the phones cannot reach the player directly and need a TURN relay (below), which carries every phone's traffic. And a class reaches the broker from one public address: each phone makes a handful of requests while it pairs, so a broker for classrooms must allow that per address (the stub allows 600 requests a minute per address and 64 waiting offers per room).
 
+### Questions on the phones
+
+A quiz annotation in the phones' views is asked on the phones: when playback reaches its start (and the annotation has "Pause" on, which a new quiz has), the player stops, every phone shows the question in a sheet over its views, and the player shows the answers as they come in, over the video (the question, a bar per answer, how many have answered, the time left). Every paired phone may answer, also the ones without the right to control the video; the latest answer of a phone counts. The quiz is decided when every phone has answered, or when its time to answer (set in the quiz) is up; one phone is the same as many. The answer with the most votes decides what happens: each answer of a quiz says what (go on playing, stay paused, jump to a time, open another hypervideo, a link to open); a tie, and no answers at all, go to the answer marked as the default. The result is shown for a moment on the player and the phones, then it happens; "stay paused" and a link wait for the person at the player. Pressing play at the player while the phones are still answering calls the question off. A quiz without "Pause" is a vote while the video plays, decided when the quiz ends.
+
+The same quiz in one of the player's own views can be answered there too; without phones, the person at the player answers alone. Nothing is stored: a page can keep the results through the `quizAnswered` and `quizDecided` events ([EVENTS.md](EVENTS.md)).
+
 ### Private instances
 
 A phone has no session, so a private instance (`alwaysForceLogin`, its `_data/` behind `_server/serve.php`) would refuse it the hypervideo's media: the pictures, sounds and documents in `_data/resources/`. The text reaches the phone anyway, inside the bundle. So on a private instance the player gets a **pairing grant** from its server when pairing opens (`ajaxServer.php?a=pairingGrant`, for a signed-in user only) and a new one at half its lifetime, ten minutes, for as long as pairing is on. It gives the current grant to each phone over the channel, before the bundle (`grant`, see Protocol). The phone keeps it as a cookie for the path of `_data/resources/`, so the media requests of its player carry it, and `serve.php` lets a request with a valid grant read a file in `_data/resources/` without a session, and nothing else.
@@ -113,7 +119,7 @@ GET    /rooms/{room}/answers/{guest}            → 200 blob | 204 not yet | 404
 - **No error status in the normal course**: browsers log every 4xx answer to `fetch` in the console, and a phone asks for its answer once a second, so "nothing yet" is `204` and "no ICE servers" an empty list. A 4xx means something went wrong (a closed room, a wrong key). Clients still read a `404` from `GET /ice` as "no ICE servers".
 - **Base URL**: everything is relative to `pairingBrokerURL`, so a broker can live under a path; a PHP implementation can take the path from `PATH_INFO`.
 
-Blobs are the clients' JSON: an offer `{ v: 1, sdp, label }`, an answer `{ v: 1, sdp }` or a refusal `{ v: 1, refused: 'full' | 'closed' | 'version' }`.
+Blobs are the clients' JSON: an offer `{ v, sdp, label }`, an answer `{ v, sdp }` or a refusal `{ v, refused: 'full' | 'closed' | 'version' }`, `v` the protocol version (2, see below).
 
 ## Handshake
 
@@ -124,9 +130,9 @@ Blobs are the clients' JSON: an offer `{ v: 1, sdp, label }`, an answer `{ v: 1,
 
 The room stays open until pairing is stopped. A phone gets `canControl` when it is the first: no other phone is connected or within its time to come back; the ones that join it get `false`, until the player switches them (`control`). When a phone drops, it has two minutes to come back with its resume token and keeps its control right. When the last phone's two minutes are over and the pairing dialog is closed, pairing ends. A phone the player lets go is told `bye`; scanning the code again, it joins as a new phone.
 
-## Protocol v1
+## Protocol v2
 
-JSON messages over the channel, `{ type, … }`; `FrameTrailPairing.decode(text, from)` checks them.
+JSON messages over the channel, `{ type, … }`; `FrameTrailPairing.decode(text, from)` checks them. Version 2 added questions (`quiz`, `answer`). A phone and a player of different versions do not pair: the phone says that pairing with this player is not possible.
 
 | From | Message | Meaning |
 |---|---|---|
@@ -136,21 +142,25 @@ JSON messages over the channel, `{ type, … }`; `FrameTrailPairing.decode(text,
 | player | `control { canControl }` | Whether the phone may control playback |
 | player | `view { mode: 'overview' }` | The player shows its overview |
 | player | `grant { token, ttl, cookie, path }` | On a private instance: the pairing grant, the cookie's name and path to keep it under, and the seconds it has left (see *Private instances*). Before the first bundle, then again at half its lifetime |
+| player | `quiz { hypervideo, item, status, answered, voters, endsIn?, decided?, feedback? }` | A question is asked (`open`), decided (`decided`: the answer `decided` and its `feedback`), over (`closed`, when what follows the decision happens) or called off (`cancelled`). `item` is the quiz annotation's `<creator id>/<created>`, `answered` of `voters` have answered, `endsIn` milliseconds are left. Sent on every change, and to a phone that becomes ready while a question is open |
 | player | `pong { id }`, `bye { reason }` | Round trip; the end of pairing (`stopped`, `version`) |
 | phone | `hello { v, guest, resume?, label }` | First message on an open channel |
 | phone | `ready { id }` | The bundle `id` is shown |
 | phone | `request { action: 'play' \| 'pause' \| 'seek', time? }` | Carried out only while `canControl` |
+| phone | `answer { hypervideo, item, choice }` | The answer to the open question: an answer's index or a rating (a number), the chosen answers (a list of numbers), or a text. The latest one counts. Every phone may answer, whatever its control right |
+| phone | `answer { hypervideo, item, unknown: true }` | The phone does not have the question (it shows another version of the hypervideo): the player does not wait for its answer |
 | phone | `ping { id }`, `bye { reason? }` | Round trip (every 2 s); leaving |
 
 The bundle payload is `{ bundle, datapath, config, offsetIn, duration }`: the hypervideo bundle without code (`FrameTrailPairing.companionBundle()`: no overlays and code snippets, no global events, no `onClickContentItem`), what its relative media paths resolve against, the page's playback settings, and the time span (the phone has no video to learn it from). It is sent when a phone is paired, after every save, when edit mode ends and when another hypervideo is opened; edits in between do not reach the phones. The player makes it once for all phones, so every phone shows the same.
 
-**The state belongs to the player.** The phone sends only requests; the player carries them out through the `HypervideoController` and sends its new state. The phone never sends anything in reaction to a state, so the two cannot chase each other. The phone's clock extrapolates the last state: `time + (now − receivedAt + rtt / 2) × rate` while playing and not waiting; a new state moves it when the player started or stopped, changed its rate, or the clock is more than 0.25 s off. The phone's player (the `companion` state) is a player without video: `HypervideoModel` uses a canvas clock over the player's time span, `HypervideoController` reads the extrapolated time and turns play, pause and seeks into requests, `ViewLayout` renders the companion views into the right area's container (`ViewVideo.AreaCompanionContainer`).
+**The state belongs to the player.** The phone sends only requests and answers; the player carries out requests through the `HypervideoController`, counts answers and decides, and sends its new state. The phone never sends anything in reaction to a state (an answer is a person's; `unknown` is sent once per question), so the two cannot chase each other. The phone's clock extrapolates the last state: `time + (now − receivedAt + rtt / 2) × rate` while playing and not waiting; a new state moves it when the player started or stopped, changed its rate, or the clock is more than 0.25 s off. The phone's player (the `companion` state) is a player without video: `HypervideoModel` uses a canvas clock over the player's time span, `HypervideoController` reads the extrapolated time and turns play, pause and seeks into requests, `ViewLayout` renders the companion views into the right area's container (`ViewVideo.AreaCompanionContainer`).
 
 ## Security Model
 
 - **The broker cannot impersonate the player**: the QR code carries the fingerprint of the player's certificate, and the phone refuses an answer with another one. WebRTC encrypts the channel (DTLS), so neither the broker nor a TURN relay can read it.
 - **Spectators cannot take over**: the room's host key keeps everyone else from answering phones, phones that join while another is paired only watch, the player takes at most 50 at once, and it can take any phone's control right away or let the phone go. A projected QR code stays valid until Stop.
 - **Nothing an author wrote runs on the phone.** The phone may be outside the local network, so this is a must: the bundle comes without code, the companion page's Content Security Policy (`script-src 'self'; object-src 'none'; base-uri 'none'`) refuses inline scripts, inline event handlers and `eval`, and the page has no script of its own (CompanionLauncher starts itself on pages marked `data-frametrail-companion`). Third-party embeds that need inline scripts fall back to what they show without.
+- **Answers**: every paired phone may answer every question, without the control right. The player counts one answer per phone (its latest), ignores choices the question does not have and keeps at most 500 characters of a text; it never runs anything a phone sends. What the decision leads to (playing on, a jump, another hypervideo, a link) happens on the player, so a phone cannot do more than vote.
 - **What the broker learns**: when a room exists, how many offers it gets, and the IP addresses inside the SDPs (local addresses are hidden behind mDNS names by default). Not the hypervideo, the playback, or who is who.
 - **Private instances**: the phone gets the hypervideo from the player and loads its relative media from the instance itself with a pairing grant (see *Private instances*): only `_data/resources/`, only for reading, for ten minutes at a time, renewed by the signed-in player while pairing is on. A grant travels only over the encrypted channel, never in the QR code or through the broker; a phone checks its cookie name, path and token before it keeps it (`FrameTrailPairing.grantCookie`), so nothing in a grant can add an attribute to the cookie.
 

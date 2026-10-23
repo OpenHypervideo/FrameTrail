@@ -90,15 +90,36 @@ FrameTrail.defineType(
                  * "Custom JavaScript" is intentionally not an option — the onClick event handler
                  * with the code editor covers that.
                  *
+                 * options (all optional), for an action model held elsewhere (a quiz's answers):
+                 * target, the object holding the action (default: the item's attributes);
+                 * actions, the choices [{ value, label }] (default: none, Open URL, Jump to time,
+                 * Jump to hypervideo; actions without a target show no target control);
+                 * beforeChange, called before anything is changed; onChange, called after a
+                 * change in place of registering an undo step of my own.
+                 *
                  * @method renderActionControls
                  * @param {Object} overlayOrAnnotation
+                 * @param {Object} [options]
                  * @return HTMLElement
                  */
-                renderActionControls: function(overlayOrAnnotation) {
+                renderActionControls: function(overlayOrAnnotation, options) {
+
+                    options = options || {};
 
                     var self = this,
-                        attributes = overlayOrAnnotation.data.attributes,
-                        category = overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations';
+                        attributes = options.target || overlayOrAnnotation.data.attributes,
+                        category = overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations',
+                        TARGETED = ['openUrl', 'jumpToTime', 'jumpToHypervideo'],
+                        actions  = options.actions || [
+                            { value: '',                 label: this.labels['GenericNone'] },
+                            { value: 'openUrl',          label: this.labels['ActionOpenUrl'] },
+                            { value: 'jumpToTime',       label: this.labels['ActionPresetJumpToTime'] },
+                            { value: 'jumpToHypervideo', label: this.labels['ActionPresetJumpToHypervideo'] }
+                        ];
+
+                    var beforeChange = function() {
+                        if (options.beforeChange) { options.beforeChange(); }
+                    };
 
                     // Seconds <-> HH:MM:SS helpers for the <input type="time" step="1"> controls.
                     var secondsToClock = function(value) {
@@ -135,12 +156,7 @@ FrameTrail.defineType(
                         + '    <div class="column-5">'
                         + '        <label>'+ this.labels['SettingsAction'] +'</label>'
                         + '        <div class="custom-select">'
-                        + '        <select class="actionSelect">'
-                        + '            <option value="">'+ this.labels['GenericNone'] +'</option>'
-                        + '            <option value="openUrl">'+ this.labels['ActionOpenUrl'] +'</option>'
-                        + '            <option value="jumpToTime">'+ this.labels['ActionPresetJumpToTime'] +'</option>'
-                        + '            <option value="jumpToHypervideo">'+ this.labels['ActionPresetJumpToHypervideo'] +'</option>'
-                        + '        </select>'
+                        + '        <select class="actionSelect"></select>'
                         + '        </div>'
                         + '    </div>'
                         + '    <div class="column-7 actionTargetColumn">'
@@ -155,6 +171,12 @@ FrameTrail.defineType(
                         targetLabel   = container.querySelector('.actionTargetLabel'),
                         targetContent = container.querySelector('.actionTargetContent');
 
+                    actions.forEach(function(choice) {
+                        var option = document.createElement('option');
+                        option.value = choice.value;
+                        option.textContent = choice.label;
+                        actionSelect.appendChild(option);
+                    });
                     actionSelect.value = attributes.action || '';
 
                     var snapshot = function() {
@@ -166,6 +188,10 @@ FrameTrail.defineType(
                     };
 
                     var registerActionUndo = function(oldValues, newValues) {
+                        if (options.onChange) {
+                            options.onChange();
+                            return;
+                        }
                         (function(elementId, cat, capturedOld, capturedNew, labels) {
                             var findElement = function() {
                                 var arr = (cat === 'overlays')
@@ -201,7 +227,7 @@ FrameTrail.defineType(
                     var renderTargetContent = function() {
 
                         targetContent.innerHTML = '';
-                        targetColumn.style.display = (actionSelect.value === '') ? 'none' : '';
+                        targetColumn.style.display = (TARGETED.indexOf(actionSelect.value) < 0) ? 'none' : '';
 
                         // The Target heading adapts to the chosen action.
                         var targetLabels = {
@@ -222,6 +248,7 @@ FrameTrail.defineType(
                             var urlBefore = null;
                             urlInput.addEventListener('focus', function() { urlBefore = snapshot(); });
                             urlInput.addEventListener('input', function() {
+                                beforeChange();
                                 attributes.actionTarget = this.value;
                                 FrameTrail.module('HypervideoModel').newUnsavedChange(category);
                             });
@@ -252,6 +279,7 @@ FrameTrail.defineType(
                             // Live-persist on input so the value survives even if the editor is
                             // torn down (e.g. switching to Preview) before "change" would fire.
                             timeInput.addEventListener('input', function() {
+                                beforeChange();
                                 attributes.actionTarget = clockToSeconds(this.value);
                                 FrameTrail.module('HypervideoModel').newUnsavedChange(category);
                             });
@@ -312,6 +340,7 @@ FrameTrail.defineType(
                             jumpTime.addEventListener('focus', function() { jumpBefore = snapshot(); });
                             // Live-persist on input (see jumpToTime above).
                             jumpTime.addEventListener('input', function() {
+                                beforeChange();
                                 attributes.actionTargetTime = clockToSeconds(this.value);
                                 FrameTrail.module('HypervideoModel').newUnsavedChange(category);
                             });
@@ -331,6 +360,7 @@ FrameTrail.defineType(
                                     FrameTrail.initModule('HypervideoPicker');
                                 }
                                 FrameTrail.module('HypervideoPicker').openPicker(function(hypervideoID) {
+                                    beforeChange();
                                     var before = snapshot();
                                     attributes.actionTarget = hypervideoID;
                                     refreshHypervideoPreview();
@@ -344,6 +374,7 @@ FrameTrail.defineType(
                     };
 
                     actionSelect.addEventListener('change', function() {
+                        beforeChange();
                         var before = snapshot();
                         attributes.action = this.value;
                         // Reset the target when switching action kinds, seeding sensible defaults
@@ -354,6 +385,13 @@ FrameTrail.defineType(
                         } else if (this.value === 'jumpToHypervideo') {
                             attributes.actionTarget = '';
                             attributes.actionTargetTime = 0;
+                        } else if (this.value === 'openUrl') {
+                            attributes.actionTarget = '';
+                            attributes.actionTargetTime = '';
+                        } else if (options.target) {
+                            // An action without a target, held elsewhere: none is kept.
+                            delete attributes.actionTarget;
+                            delete attributes.actionTargetTime;
                         } else {
                             attributes.actionTarget = '';
                             attributes.actionTargetTime = '';
@@ -510,6 +548,104 @@ FrameTrail.defineType(
 
 
                 /**
+                 * I render the "Pause" switch of the time controls: whether the overlay or annotation
+                 * pauses the video at its start (frametrail:pause, or its legacy form, an onStart that
+                 * only pauses; FrameTrailSerializer.pausesAtStart()). initPauseAtStartSwitch() wires it.
+                 *
+                 * @method renderPauseAtStartSwitch
+                 * @param {Overlay|Annotation} item
+                 * @return {String} HTML
+                 */
+                renderPauseAtStartSwitch: function(item) {
+
+                    var on = window.FrameTrailSerializer.pausesAtStart(item.data);
+
+                    // The pause icon rides on the knob; the hint names the switch.
+                    return '    <label class="switch pauseAtStartSwitch" data-tooltip-bottom-right="'+ this.labels['SettingsPauseAtStartHint'] +'">'
+                         + '<input id="PauseAtStart" type="checkbox" autocomplete="off" aria-label="'+ this.labels['SettingsPauseAtStartHint'] +'"'+ (on ? ' checked' : '') +'>'
+                         + '<span class="slider round"><span class="icon-pause-1"></span></span></label>';
+
+                },
+
+                /**
+                 * I wire the "Pause" switch (renderPauseAtStartSwitch) to the item's frametrail:pause: on
+                 * sets it, off removes it (missing is off). Either way an onStart that only pauses, its
+                 * legacy form, goes, so that the switch alone decides. One undo step per change.
+                 *
+                 * @method initPauseAtStartSwitch
+                 * @param {HTMLElement} controlsContainer
+                 * @param {Overlay|Annotation} item
+                 */
+                initPauseAtStartSwitch: function(controlsContainer, item) {
+
+                    var self       = this,
+                        Serializer = window.FrameTrailSerializer,
+                        input      = controlsContainer.querySelector('#PauseAtStart'),
+                        isOverlay  = !!item.overlayElement,
+                        category   = isOverlay ? 'overlays' : 'annotations',
+                        itemId     = item.data.created;
+
+                    if (!input) { return; }
+
+                    // Undo may run when the panel shows another item, or none.
+                    function findItem() {
+                        var items = FrameTrail.module('HypervideoModel')[category];
+                        for (var i = 0; i < items.length; i++) {
+                            if (items[i].data.created === itemId) { return items[i]; }
+                        }
+                        return null;
+                    }
+
+                    function setPause(target, on) {
+                        if (!target) { return; }
+                        if (on) {
+                            target.data.pause = true;
+                        } else {
+                            delete target.data.pause;
+                        }
+                        if (input.isConnected) {
+                            input.checked = Serializer.pausesAtStart(target.data);
+                        }
+                        FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                    }
+
+                    input.addEventListener('change', function() {
+
+                        var on = input.checked;
+
+                        if (!isOverlay) {
+                            setPause(item, on);
+                            FrameTrail.module('UndoManager').register({
+                                category: 'annotations',
+                                description: self.labels['SidebarMyAnnotations'] + ' ' + self.labels['SettingsPauseAtStart'],
+                                undo: function() { setPause(findItem(), !on); },
+                                redo: function() { setPause(findItem(), on); }
+                            });
+                            return;
+                        }
+
+                        var before     = item.snapshotState(['pause', 'events']),
+                            hadSnippet = Serializer.isPauseSnippet(item.data.events && item.data.events.onStart),
+                            editor     = controlsContainer.querySelector('#ActionOnStart .cm6-wrapper');
+
+                        if (hadSnippet) {
+                            // The onStart editor writes what it shows: it shows the call gone first.
+                            if (editor && editor._cm6view) {
+                                editor._cm6view.dispatch({ changes: { from: 0, to: editor._cm6view.state.doc.length, insert: '' } });
+                            }
+                            delete item.data.events.onStart;
+                        }
+                        setPause(item, on);
+
+                        FrameTrail.module('OverlaysController').registerStateUndo(item, self.labels['SidebarOverlays'] + ' ' + self.labels['SettingsPauseAtStart'],
+                            before, item.snapshotState(['pause', 'events']));
+
+                    });
+
+                },
+
+
+                /**
                  * When an {{#crossLink "Overlay/gotInFocus:method"}}Overlay got into Focus{{/crossLink}}, its properties and some additional controls to edit the overlay's attributes
                  * should be shown in the right window of the player.
                  *
@@ -547,7 +683,8 @@ FrameTrail.defineType(
                                             + '    <input id="TimeStart" type="number" min="0" step="0.1" value="' + overlay.data.start + '" data-tooltip-bottom-right="'+ this.labels['SettingsTimeStart'] +'">'
                                             + '    <label for="TimeEnd">'+ this.labels['SettingsTimeEnd'] +'</label>'
                                             + '    <input id="TimeEnd" type="number" min="0" step="0.1" value="' + overlay.data.end + '">'
-                                            + '    <button class="deleteOverlay"><span class="icon-trash"></span>'+ this.labels['GenericDelete'] +'</button>'
+                                            + this.renderPauseAtStartSwitch(overlay)
+                                            + '    <button class="deleteOverlay" aria-label="'+ this.labels['GenericDelete'] +'" data-tooltip-bottom-right="'+ this.labels['GenericDelete'] +'"><span class="icon-trash"></span></button>'
                                             + '</div>'
                                             + '<div class="positionControls">'
                                             + '    <label for="PositionTop">'+ this.labels['SettingsPositionTop'] +'</label>'
@@ -667,6 +804,8 @@ FrameTrail.defineType(
                     while (_dcw.firstElementChild) {
                         controlsContainer.appendChild(_dcw.firstElementChild);
                     }
+
+                    this.initPauseAtStartSwitch(controlsContainer, overlay);
 
                     // The Animation tab is rendered by the player's OverlayAnimationEditor
                     var OverlayAnimationEditor = FrameTrail.module('OverlayAnimationEditor');
@@ -1276,7 +1415,8 @@ FrameTrail.defineType(
                                             + '    <input id="TimeStart" type="number" min="0" step="0.1" value="' + annotation.data.start + '">'
                                             + '    <label for="TimeEnd">'+ this.labels['SettingsTimeEnd'] +'</label>'
                                             + '    <input id="TimeEnd" type="number" min="0" step="0.1" value="' + annotation.data.end + '">'
-                                            + '    <button class="deleteAnnotation"><span class="icon-trash"></span>'+ this.labels['GenericDelete'] +'</button>'
+                                            + this.renderPauseAtStartSwitch(annotation)
+                                            + '    <button class="deleteAnnotation" aria-label="'+ this.labels['GenericDelete'] +'" data-tooltip-bottom-right="'+ this.labels['GenericDelete'] +'"><span class="icon-trash"></span></button>'
                                             + '</div>';
                     var defaultControls = _dtcw.firstElementChild;
 
@@ -1369,6 +1509,8 @@ FrameTrail.defineType(
                         header.querySelector('.annotationTags').appendChild(tagPicker.element);
 
                     })(annotation.data.created);
+
+                    this.initPauseAtStartSwitch(controlsContainer, annotation);
 
                     // Timing
 
@@ -1556,6 +1698,15 @@ FrameTrail.defineType(
                  * @type String
                  */
                 iconClass: 'icon-doc',
+
+                /**
+                 * I say whether a new overlay or annotation of this type pauses the video at its
+                 * start (frametrail:pause) unless its maker says otherwise. Subtypes that ask
+                 * something of the viewer (Quiz, Hotspot) override this.
+                 * @attribute pauseByDefault
+                 * @type Boolean
+                 */
+                pauseByDefault: false,
 
                 /**
                  * I return a display label for timeline elements.

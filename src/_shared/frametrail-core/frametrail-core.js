@@ -454,6 +454,7 @@
             onUserAction:       function (handler) { addEventListener('userAction', handler) },
             onOverlayClick:     function (handler) { addEventListener('overlayClick', handler) },
             onQuizAnswered:     function (handler) { addEventListener('quizAnswered', handler) },
+            onQuizDecided:      function (handler) { addEventListener('quizDecided', handler) },
             onAnnotationOpened: function (handler) { addEventListener('annotationOpened', handler) },
             on: addEventListener,
             off: removeEventListener,

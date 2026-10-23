@@ -24,6 +24,7 @@
                 "created": { "$ref": "common.schema.json#/$defs/created" },
                 "generator": { "$ref": "common.schema.json#/$defs/generator" },
                 "frametrail:tags": { "$ref": "common.schema.json#/$defs/tags" },
+                "frametrail:pause": { "$ref": "common.schema.json#/$defs/pause" },
                 "frametrail:uri": {
                     "description": "IRI the annotation is about, e.g. a Linked Data entity.",
                     "type": ["string", "null"]

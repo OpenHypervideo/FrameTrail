@@ -229,6 +229,10 @@
     // Set up the on-video editor of text overlays
     FrameTrail.initModule('TextInlineEditor');
 
+    // Set up pausing at the start of items (frametrail:pause), and asking quizzes (also on a paired phone)
+    FrameTrail.initModule('PauseController');
+    FrameTrail.initModule('QuizController');
+
     // Set up the edit API (instance.edit), before the extensions that use it
     FrameTrail.initModule('EditAPI');
 

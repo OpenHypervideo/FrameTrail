@@ -2,11 +2,23 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://frametrail.org/schemas/1/attributes/quiz.schema.json",
     "title": "frametrail:attributes of type \"quiz\"",
-    "description": "Quiz overlay or annotation: a question with answers to choose (scored), or asking for a free text or a rating, to check understanding at a point in the video. A quiz overlay made in the editor pauses the video when it appears (frametrail:events onStart). Scored question types use onCorrectAnswer and onWrongAnswer, the others onAnswered. This schema describes the frametrail:attributes of items whose type is \"quiz\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "description": "Quiz overlay or annotation: a question with answers to choose, or asking for a free text or a rating, at a point in the video. In an annotation it is answered where it is shown, by the viewer and on paired phones, and the answers decide what happens next: a multipleChoice quiz does what the answer with the most votes says (its action: continue, stay paused, jump to a time, open a hypervideo or show a link), the other types do what onAnswered says. A quiz pauses the video when it starts if the item has frametrail:pause (quizzes made in the editor do); without it the vote runs while the video plays and is decided when the quiz ends. Quizzes saved before per-answer actions have the outcomes onCorrectAnswer, onWrongAnswer and onAnswered with showText and resumePlayback instead, which are read as actions until the quiz is next changed in the editor. This schema describes the frametrail:attributes of items whose type is \"quiz\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "$defs": {
+        "quizAction": {
+            "description": "What happens after the quiz is decided: \"\" continues playing, \"pause\" leaves the video paused, \"openUrl\" shows a link (actionTarget) to open, \"jumpToTime\" goes to a time (actionTarget, seconds of the video) and plays on, \"jumpToHypervideo\" opens a hypervideo (actionTarget, its id; actionTargetTime where it starts).",
+            "type": "string",
+            "enum": ["", "pause", "openUrl", "jumpToTime", "jumpToHypervideo"],
+            "default": ""
+        },
+        "feedback": {
+            "description": "Text shown with the result after the quiz is decided.",
+            "type": "string"
+        }
+    },
     "type": "object",
     "properties": {
         "questionType": {
-            "description": "multipleChoice: one answer, scored. multiSelect: several answers, scored on submit. freeText: a text response, not scored. rating: a numeric scale, not scored.",
+            "description": "multipleChoice: one answer; the answer with the most votes decides. multiSelect: several answers. freeText: a text response. rating: a numeric scale. Only multipleChoice answers have actions; the other types use onAnswered.",
             "type": "string",
             "enum": ["multipleChoice", "multiSelect", "freeText", "rating"],
             "default": "multipleChoice"
@@ -27,7 +39,19 @@
                         "type": "string"
                     },
                     "correct": {
-                        "description": "Whether this answer is correct.",
+                        "description": "Whether this answer is correct: shown as right or wrong after the quiz is decided. It decides nothing (in legacy quizzes it chose between onCorrectAnswer and onWrongAnswer).",
+                        "type": "boolean",
+                        "default": false
+                    },
+                    "action": {
+                        "$ref": "#/$defs/quizAction",
+                        "description": "multipleChoice: what happens when this answer is decided. A quiz whose answers and onAnswered have no action is a legacy quiz (onCorrectAnswer, onWrongAnswer)."
+                    },
+                    "actionTarget": { "$ref": "../common.schema.json#/$defs/actionTarget" },
+                    "actionTargetTime": { "$ref": "../common.schema.json#/$defs/actionTargetTime" },
+                    "feedback": { "$ref": "#/$defs/feedback" },
+                    "default": {
+                        "description": "multipleChoice: the answer decided when the votes are tied or nobody answered before the countdown ended. Without one, a tie goes to the tied answer listed first and no votes to the first answer. At most one; the first counts.",
                         "type": "boolean",
                         "default": false
                     }
@@ -35,61 +59,65 @@
             }
         },
         "onCorrectAnswer": {
-            "description": "multipleChoice and multiSelect: what happens after a correct answer.",
+            "description": "Legacy. multipleChoice and multiSelect: what happens after a correct answer, read when no answer has an action. Replaced by the answers' actions (multiSelect: by onAnswered) on the first change in the editor.",
             "type": "object",
             "properties": {
                 "showText": {
-                    "description": "Text shown in a dialog after answering. false means none.",
+                    "description": "Legacy. Text shown in a dialog after answering. false means none.",
                     "type": ["string", "boolean"],
                     "default": false
                 },
                 "resumePlayback": {
-                    "description": "Resume playback after answering.",
+                    "description": "Legacy. Resume playback after answering.",
                     "type": "boolean",
                     "default": true
                 },
                 "jumpForward": {
-                    "description": "Seconds to jump forward after answering. false or 0 means no jump.",
+                    "description": "Legacy. Seconds to jump forward from where the quiz was answered. false or 0 means no jump. Read as jumpToTime.",
                     "type": ["number", "boolean"],
                     "default": false
                 }
             }
         },
         "onWrongAnswer": {
-            "description": "multipleChoice and multiSelect: what happens after a wrong answer.",
+            "description": "Legacy. multipleChoice and multiSelect: what happens after a wrong answer, read when no answer has an action. Replaced by the answers' actions (multiSelect: by onAnswered) on the first change in the editor.",
             "type": "object",
             "properties": {
                 "showText": {
-                    "description": "Text shown in a dialog after answering. false means none.",
+                    "description": "Legacy. Text shown in a dialog after answering. false means none.",
                     "type": ["string", "boolean"],
                     "default": false
                 },
                 "resumePlayback": {
-                    "description": "Resume playback after answering.",
+                    "description": "Legacy. Resume playback after answering.",
                     "type": "boolean",
                     "default": true
                 },
                 "jumpBackward": {
-                    "description": "Seconds to jump back after answering. false or 0 means no jump.",
+                    "description": "Legacy. Seconds to jump back from where the quiz was answered. false or 0 means no jump. Read as jumpToTime.",
                     "type": ["number", "boolean"],
                     "default": 10
                 }
             }
         },
         "onAnswered": {
-            "description": "freeText and rating: what happens after answering.",
+            "description": "multiSelect, freeText and rating: what happens after the quiz is decided.",
             "type": "object",
             "properties": {
                 "showText": {
-                    "description": "Text shown in a dialog after answering. false means none.",
+                    "description": "Legacy. Text shown after answering, read as feedback while onAnswered has no action. false means none.",
                     "type": ["string", "boolean"],
                     "default": false
                 },
                 "resumePlayback": {
-                    "description": "Resume playback after answering.",
+                    "description": "Legacy. Resume playback after answering, read as action \"\" (true) or \"pause\" (false) while onAnswered has no action.",
                     "type": "boolean",
                     "default": true
-                }
+                },
+                "action": { "$ref": "#/$defs/quizAction" },
+                "actionTarget": { "$ref": "../common.schema.json#/$defs/actionTarget" },
+                "actionTargetTime": { "$ref": "../common.schema.json#/$defs/actionTargetTime" },
+                "feedback": { "$ref": "#/$defs/feedback" }
             }
         },
         "ratingScale": {
@@ -98,6 +126,12 @@
             "minimum": 2,
             "maximum": 10,
             "default": 5
+        },
+        "countdown": {
+            "description": "Annotations: seconds the viewers have to answer. When they are up the quiz is decided with the answers given (none: the default answer). 0 means no time limit: the quiz is decided when everyone answering has answered.",
+            "type": "number",
+            "minimum": 0,
+            "default": 0
         },
         "opacity": { "$ref": "../common.schema.json#/$defs/opacity" },
         "hoverStyle": { "$ref": "../common.schema.json#/$defs/hoverStyle" },

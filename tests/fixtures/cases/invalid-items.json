@@ -722,6 +722,52 @@
             ]
         },
         {
+            "name": "pause not a boolean",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {},
+                "frametrail:pause": "yes"
+            },
+            "errors": [
+                {
+                    "path": "/frametrail:pause",
+                    "message": "must be boolean, is string"
+                }
+            ]
+        },
+        {
             "name": "hotspot shape triangle",
             "schema": "content-item.schema.json",
             "data": {
@@ -1103,6 +1149,76 @@
                 {
                     "path": "/body/frametrail:attributes/answers/1/text",
                     "message": "is required"
+                }
+            ]
+        },
+        {
+            "name": "quiz answer action \"stay\", a negative countdown, a default that is not a boolean",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "quiz",
+                    "value": "",
+                    "frametrail:attributes": {
+                        "question": "Which?",
+                        "countdown": -1,
+                        "answers": [
+                            {
+                                "text": "A",
+                                "action": "stay"
+                            },
+                            {
+                                "text": "B",
+                                "action": "",
+                                "default": "yes"
+                            }
+                        ],
+                        "onAnswered": {
+                            "action": "jump"
+                        }
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/answers/0/action",
+                    "message": "must be one of \"\", \"pause\", \"openUrl\", \"jumpToTime\", \"jumpToHypervideo\""
+                },
+                {
+                    "path": "/body/frametrail:attributes/answers/1/default",
+                    "message": "must be boolean, is string"
+                },
+                {
+                    "path": "/body/frametrail:attributes/onAnswered/action",
+                    "message": "must be one of \"\", \"pause\", \"openUrl\", \"jumpToTime\", \"jumpToHypervideo\""
+                },
+                {
+                    "path": "/body/frametrail:attributes/countdown",
+                    "message": "must be >= 0"
                 }
             ]
         },
@@ -1664,6 +1780,59 @@
                 {
                     "path": "/0/frametrail:graphdatatype",
                     "message": "must be one of \"soundwave\", \"barchart\", null"
+                }
+            ]
+        },
+        {
+            "name": "annotation with pause as a number",
+            "schema": "annotation-file.schema.json",
+            "data": [
+                {
+                    "@context": [
+                        "http://www.w3.org/ns/anno.jsonld",
+                        "https://frametrail.org/ns/context.jsonld"
+                    ],
+                    "creator": {
+                        "nickname": "demo",
+                        "type": "Person",
+                        "id": "1"
+                    },
+                    "created": "2026-10-07T09:32:00.000Z",
+                    "type": "Annotation",
+                    "frametrail:type": "Annotation",
+                    "frametrail:tags": [],
+                    "frametrail:uri": null,
+                    "target": {
+                        "type": "Video",
+                        "source": "video.mp4",
+                        "selector": {
+                            "conformsTo": "http://www.w3.org/TR/media-frags/",
+                            "type": "FragmentSelector",
+                            "value": "t=2,6"
+                        }
+                    },
+                    "body": {
+                        "type": "Text",
+                        "frametrail:type": "wikipedia",
+                        "format": "text/html",
+                        "value": "https://en.wikipedia.org/wiki/DNA",
+                        "frametrail:name": "DNA",
+                        "frametrail:thumb": null,
+                        "frametrail:licenseType": null,
+                        "frametrail:licenseAttribution": null,
+                        "frametrail:resourceId": "13",
+                        "frametrail:attributes": {
+                            "wikiLang": "en",
+                            "dir": "ltr"
+                        }
+                    },
+                    "frametrail:pause": 1
+                }
+            ],
+            "errors": [
+                {
+                    "path": "/0/frametrail:pause",
+                    "message": "must be boolean, is number"
                 }
             ]
         },

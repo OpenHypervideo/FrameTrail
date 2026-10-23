@@ -92,6 +92,8 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         playerReady = false,
         overview    = false,
         grant       = null,      // the pairing grant the player gave last, to remove its cookie when pairing ends
+        lastQuiz    = null,      // the player's last question message (kept across players: the phone's player reads it when it is ready)
+        unknownSent = {},        // questions this phone said it does not have, once each
         wakeLock    = null,
         pendingSeek = null,
         timers      = {};
@@ -121,7 +123,12 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
 
         request: request,
 
-        // fn({ type: 'state', moved }) or fn({ type: 'control' }); returns the unsubscribe function.
+        // The player's question for the hypervideo shown here (a quiz message, docs/PAIRING.md), or null.
+        get quiz() { return (lastQuiz && payload && lastQuiz.hypervideo === String(payload.bundle.id)) ? lastQuiz : null; },
+
+        answer: answer,
+
+        // fn({ type: 'state', moved }), fn({ type: 'control' }) or fn({ type: 'quiz' }); returns the unsubscribe function.
         subscribe: function(fn) {
             subscribers.push(fn);
             return function() {
@@ -136,6 +143,29 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         subscribers.slice().forEach(function(fn) {
             try { fn(event); } catch (e) { console.error('FrameTrail companion:', e); }
         });
+    }
+
+    /**
+     * I send the answer to the player's question: a choice, or { unknown: true } when this phone does not have
+     * the question (once per question). Every phone may answer, without the control right.
+     */
+    function answer(item, choice) {
+
+        if (!payload || !channel || channel.readyState !== 'open') { return false; }
+
+        var message = { type: 'answer', hypervideo: String(payload.bundle.id), item: String(item) };
+
+        if (choice && !Array.isArray(choice) && typeof choice === 'object' && choice.unknown === true) {
+            if (unknownSent[message.item]) { return true; }
+            unknownSent[message.item] = true;
+            message.unknown = true;
+        } else {
+            message.choice = choice;
+        }
+
+        send(message);
+        return true;
+
     }
 
     function request(action, time) {
@@ -492,6 +522,12 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
                 keepGrant(message);
                 break;
 
+            case 'quiz':
+                lastQuiz = message;
+                if (message.status === 'open') { delete unknownSent[message.item]; }
+                if (playerReady) { notify({ type: 'quiz' }); }
+                break;
+
             case 'pong':
                 if (pings[message.id]) {
                     var sample = Date.now() - pings[message.id];
@@ -501,7 +537,8 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
                 break;
 
             case 'bye':
-                ended = true;
+                ended    = true;
+                lastQuiz = null;
                 closeConnection();
                 stopPlayer();
                 dropGrant();
@@ -619,6 +656,7 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
             send({ type: 'ready', id: bundleID });
             show(overview ? 'overview' : 'connected');
             notify({ type: 'state', moved: true });
+            notify({ type: 'quiz' });
         });
 
     }

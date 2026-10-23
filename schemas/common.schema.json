@@ -60,6 +60,11 @@
             "type": "array",
             "items": { "type": "string" }
         },
+        "pause": {
+            "description": "Pause the video at the item's start: when playback crosses it, or starts at it. Seeking into the middle of its time span does not pause. An annotation pauses only while it is shown: in an open content view of the player, or in the phone area while phones are paired. Items created in the editor get their type's default (true for quiz, and for the plain hotspot); missing means false.",
+            "type": "boolean",
+            "default": false
+        },
         "overlayEvents": {
             "description": "JavaScript run on overlay events. Each value is the body of a function called with the arguments FrameTrail (the instance) and hypervideo (its HypervideoController), with the overlay as this.",
             "oneOf": [
@@ -71,7 +76,7 @@
                             "type": "string"
                         },
                         "onStart": {
-                            "description": "Runs when playback enters the overlay's time span. Quiz and hotspot overlays created in the editor get \"FrameTrail.module('HypervideoController').pause();\".",
+                            "description": "Runs when playback enters the overlay's time span. Legacy: quiz and hotspot overlays created in the editor before frametrail:pause got \"FrameTrail.module('HypervideoController').pause();\"; an onStart that is only that call (or \"hypervideo.pause();\") and an item without frametrail:pause count as frametrail:pause true, and the call is not run.",
                             "type": "string"
                         },
                         "onEnd": {

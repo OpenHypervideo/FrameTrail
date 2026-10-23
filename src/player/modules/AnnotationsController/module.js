@@ -586,29 +586,20 @@
             annotationsEditingOptions.querySelector('#ResourceList')
         );
 
-        /* Append custom text resource to 'Add Custom Annotation' tab */
-        // TODO: Move to separate function
-        var _tew = document.createElement('div');
-        _tew.innerHTML = '<div class="resourceThumb" data-type="text">'
-                + '                  <div class="resourceOverlay">'
-                + '                      <div class="resourceIcon"></div>'
-                + '                  </div>'
-                + '                  <div class="resourceTitle">'+ labels['ResourceCustomTextHTML'] +'</div>'
-                + '              </div>';
-        var textElement = _tew.firstElementChild;
+        /* The 'Add Custom Annotation' tab: annotations made here, not from the library */
+        var customTile = function(type, icon, title) {
+            var _tw = document.createElement('div');
+            _tw.innerHTML = '<div class="resourceThumb" data-type="'+ type +'">'
+                    + '                  <div class="resourceOverlay">'
+                    + '                      <div class="resourceIcon">'+ (icon ? '<span class="'+ icon +'"></span>' : '') +'</div>'
+                    + '                  </div>'
+                    + '                  <div class="resourceTitle"></div>'
+                    + '              </div>';
+            var tile = _tw.firstElementChild;
+            tile.querySelector('.resourceTitle').textContent = title;
 
-        var _hlew = document.createElement('div');
-        _hlew.innerHTML = '<div class="resourceThumb" data-type="html">'
-                + '                  <div class="resourceOverlay">'
-                + '                      <div class="resourceIcon"><span class="icon-file-code"></span></div>'
-                + '                  </div>'
-                + '                  <div class="resourceTitle">'+ labels['ResourceCustomHTML'] +'</div>'
-                + '              </div>';
-        var htmlElement = _hlew.firstElementChild;
-
-        (function() {
             var dragClone = null;
-            interact(textElement).draggable({
+            interact(tile).draggable({
                 listeners: {
                     start: function(e) {
                         var rect = e.target.getBoundingClientRect();
@@ -639,44 +630,15 @@
                     }
                 }
             });
-        }());
 
-        (function() {
-            var dragClone = null;
-            interact(htmlElement).draggable({
-                listeners: {
-                    start: function(e) {
-                        var rect = e.target.getBoundingClientRect();
-                        dragClone = e.target.cloneNode(true);
-                        dragClone.style.position = 'fixed';
-                        dragClone.style.zIndex = '1000';
-                        dragClone.style.pointerEvents = 'auto';
-                        dragClone.style.boxSizing = 'border-box';
-                        dragClone.style.width = rect.width + 'px';
-                        dragClone.style.height = rect.height + 'px';
-                        dragClone.style.left = rect.left + 'px';
-                        dragClone.style.top = rect.top + 'px';
-                        dragClone.classList.add('ft-drag-clone');
-                        document.body.appendChild(dragClone);
-                        e.target.classList.add('dragPlaceholder');
-                        document.body.classList.add('ft-dragging');
-                    },
-                    move: function(e) {
-                        if (dragClone) {
-                            dragClone.style.left = (parseFloat(dragClone.style.left) + e.dx) + 'px';
-                            dragClone.style.top  = (parseFloat(dragClone.style.top)  + e.dy) + 'px';
-                        }
-                    },
-                    end: function(e) {
-                        e.target.classList.remove('dragPlaceholder');
-                        if (dragClone) { dragClone.remove(); dragClone = null; }
-                        document.body.classList.remove('ft-dragging');
-                    }
-                }
-            });
-        }());
+            return tile;
+        };
 
-        annotationsEditingOptions.querySelector('#CustomAnnotation').append(textElement, htmlElement);
+        annotationsEditingOptions.querySelector('#CustomAnnotation').append(
+            customTile('text', '', labels['ResourceCustomTextHTML']),
+            customTile('html', 'icon-file-code', labels['ResourceCustomHTML']),
+            customTile('quiz', 'icon-question-circle-o', labels['ResourceTypeQuiz'])
+        );
 
         /* Render other users' annotation timelines in the main view container */
         var otherUsersContainer = ViewVideo.OtherUsersContainer;
@@ -763,6 +725,20 @@
                                 "start":      startTime,
                                 "end":        endTime,
                                 "attributes": { "text": "" }
+                            });
+                        } else if (dragged.getAttribute('data-type') == 'quiz') {
+                            // Pauses at its start (ResourceQuiz.pauseByDefault): the question is asked there.
+                            newAnnotation = FrameTrail.module('HypervideoModel').newAnnotation({
+                                "name":       labels['ResourceTypeQuiz'],
+                                "type":       'quiz',
+                                "start":      startTime,
+                                "end":        endTime,
+                                "attributes": window.FrameTrailQuiz.newAttributes({
+                                    question: labels['SettingsQuizDefaultQuestion'],
+                                    answer1:  labels['SettingsQuizDefaultAnswer1'],
+                                    answer2:  labels['SettingsQuizDefaultAnswer2'],
+                                    answer3:  labels['SettingsQuizDefaultAnswer3']
+                                })
                             });
                         } else if (!resourceID) {
                             var resourceData = dragged._originResourceData;

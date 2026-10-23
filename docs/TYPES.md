@@ -10,7 +10,7 @@ What each type of overlay, annotation and library resource is for, and what its 
 |------|:-------:|:----------:|:-------:|------------|
 | `text` | ✓ | ✓ |  | Text overlay or annotation: rich text with an optional title and card style, for titles, captions, notes and explanations. |
 | `html` | ✓ | ✓ |  | Custom HTML overlay or annotation, for what the other types cannot show. |
-| `quiz` | ✓ | ✓ |  | Quiz overlay or annotation: a question with answers to choose (scored), or asking for a free text or a rating, to check understanding at a point in the video. |
+| `quiz` | ✓ | ✓ |  | Quiz overlay or annotation: a question with answers to choose, or asking for a free text or a rating, at a point in the video. |
 | `hotspot` | ✓ |  |  | Hotspot overlay: a clickable shape (circle, rectangle, rounded rectangle) that marks something in the picture and can open a URL or jump to a time or another hypervideo, or a drawn mark (arrow, underline, freeform outline) that points something out. |
 | `cursor` | ✓ |  |  | Cursor overlay: a mouse pointer with click ripples, for walking through a screen recording. |
 | `counter` | ✓ |  |  | Counter overlay: a number that counts up or rolls like an odometer, for a figure or statistic the video mentions. |
@@ -89,29 +89,39 @@ Overlay, annotation. Its src, if it has one, goes into `body.source`. Schema: [`
 
 ### `quiz`
 
-Quiz overlay or annotation: a question with answers to choose (scored), or asking for a free text or a rating, to check understanding at a point in the video. A quiz overlay made in the editor pauses the video when it appears (frametrail:events onStart). Scored question types use onCorrectAnswer and onWrongAnswer, the others onAnswered.
+Quiz overlay or annotation: a question with answers to choose, or asking for a free text or a rating, at a point in the video. In an annotation it is answered where it is shown, by the viewer and on paired phones, and the answers decide what happens next: a multipleChoice quiz does what the answer with the most votes says (its action: continue, stay paused, jump to a time, open a hypervideo or show a link), the other types do what onAnswered says. A quiz pauses the video when it starts if the item has frametrail:pause (quizzes made in the editor do); without it the vote runs while the video plays and is decided when the quiz ends. Quizzes saved before per-answer actions have the outcomes onCorrectAnswer, onWrongAnswer and onAnswered with showText and resumePlayback instead, which are read as actions until the quiz is next changed in the editor.
 
 Overlay, annotation. Its src, if it has one, goes into `body.value`. Schema: [`attributes/quiz.schema.json`](../schemas/attributes/quiz.schema.json).
 
 | Attribute | Type | Values | Default | Description |
 |-----------|------|--------|---------|-------------|
-| `questionType` | string | `multipleChoice`, `multiSelect`, `freeText`, `rating` | `multipleChoice` | multipleChoice: one answer, scored. multiSelect: several answers, scored on submit. freeText: a text response, not scored. rating: a numeric scale, not scored. |
+| `questionType` | string | `multipleChoice`, `multiSelect`, `freeText`, `rating` | `multipleChoice` | multipleChoice: one answer; the answer with the most votes decides. multiSelect: several answers. freeText: a text response. rating: a numeric scale. Only multipleChoice answers have actions; the other types use onAnswered. |
 | `question` | string |  |  | The question, plain text. |
 | `answers` | array of objects |  |  | multipleChoice and multiSelect: the answers. |
 | `answers[].text` | string |  |  | Required. Answer text, plain text. |
-| `answers[].correct` | boolean |  | `false` | Whether this answer is correct. |
-| `onCorrectAnswer` | object |  |  | multipleChoice and multiSelect: what happens after a correct answer. |
-| `onCorrectAnswer.showText` | string or boolean |  | `false` | Text shown in a dialog after answering. false means none. |
-| `onCorrectAnswer.resumePlayback` | boolean |  | `true` | Resume playback after answering. |
-| `onCorrectAnswer.jumpForward` | number or boolean |  | `false` | Seconds to jump forward after answering. false or 0 means no jump. |
-| `onWrongAnswer` | object |  |  | multipleChoice and multiSelect: what happens after a wrong answer. |
-| `onWrongAnswer.showText` | string or boolean |  | `false` | Text shown in a dialog after answering. false means none. |
-| `onWrongAnswer.resumePlayback` | boolean |  | `true` | Resume playback after answering. |
-| `onWrongAnswer.jumpBackward` | number or boolean |  | `10` | Seconds to jump back after answering. false or 0 means no jump. |
-| `onAnswered` | object |  |  | freeText and rating: what happens after answering. |
-| `onAnswered.showText` | string or boolean |  | `false` | Text shown in a dialog after answering. false means none. |
-| `onAnswered.resumePlayback` | boolean |  | `true` | Resume playback after answering. |
+| `answers[].correct` | boolean |  | `false` | Whether this answer is correct: shown as right or wrong after the quiz is decided. It decides nothing (in legacy quizzes it chose between onCorrectAnswer and onWrongAnswer). |
+| `answers[].action` | string | `""`, `pause`, `openUrl`, `jumpToTime`, `jumpToHypervideo` | `""` | multipleChoice: what happens when this answer is decided. A quiz whose answers and onAnswered have no action is a legacy quiz (onCorrectAnswer, onWrongAnswer). |
+| `answers[].actionTarget` | string or number |  |  | Target of the action: a URL for openUrl (one starting with # changes the page hash), seconds of the video for jumpToTime, a hypervideo id for jumpToHypervideo. |
+| `answers[].actionTargetTime` | number or string |  |  | jumpToHypervideo only: the time in seconds to start the target hypervideo at. Empty or 0 means its start. |
+| `answers[].feedback` | string |  |  | Text shown with the result after the quiz is decided. |
+| `answers[].default` | boolean |  | `false` | multipleChoice: the answer decided when the votes are tied or nobody answered before the countdown ended. Without one, a tie goes to the tied answer listed first and no votes to the first answer. At most one; the first counts. |
+| `onCorrectAnswer` | object |  |  | Legacy. multipleChoice and multiSelect: what happens after a correct answer, read when no answer has an action. Replaced by the answers' actions (multiSelect: by onAnswered) on the first change in the editor. |
+| `onCorrectAnswer.showText` | string or boolean |  | `false` | Legacy. Text shown in a dialog after answering. false means none. |
+| `onCorrectAnswer.resumePlayback` | boolean |  | `true` | Legacy. Resume playback after answering. |
+| `onCorrectAnswer.jumpForward` | number or boolean |  | `false` | Legacy. Seconds to jump forward from where the quiz was answered. false or 0 means no jump. Read as jumpToTime. |
+| `onWrongAnswer` | object |  |  | Legacy. multipleChoice and multiSelect: what happens after a wrong answer, read when no answer has an action. Replaced by the answers' actions (multiSelect: by onAnswered) on the first change in the editor. |
+| `onWrongAnswer.showText` | string or boolean |  | `false` | Legacy. Text shown in a dialog after answering. false means none. |
+| `onWrongAnswer.resumePlayback` | boolean |  | `true` | Legacy. Resume playback after answering. |
+| `onWrongAnswer.jumpBackward` | number or boolean |  | `10` | Legacy. Seconds to jump back from where the quiz was answered. false or 0 means no jump. Read as jumpToTime. |
+| `onAnswered` | object |  |  | multiSelect, freeText and rating: what happens after the quiz is decided. |
+| `onAnswered.showText` | string or boolean |  | `false` | Legacy. Text shown after answering, read as feedback while onAnswered has no action. false means none. |
+| `onAnswered.resumePlayback` | boolean |  | `true` | Legacy. Resume playback after answering, read as action "" (true) or "pause" (false) while onAnswered has no action. |
+| `onAnswered.action` | string | `""`, `pause`, `openUrl`, `jumpToTime`, `jumpToHypervideo` | `""` | What happens after the quiz is decided: "" continues playing, "pause" leaves the video paused, "openUrl" shows a link (actionTarget) to open, "jumpToTime" goes to a time (actionTarget, seconds of the video) and plays on, "jumpToHypervideo" opens a hypervideo (actionTarget, its id; actionTargetTime where it starts). |
+| `onAnswered.actionTarget` | string or number |  |  | Target of the action: a URL for openUrl (one starting with # changes the page hash), seconds of the video for jumpToTime, a hypervideo id for jumpToHypervideo. |
+| `onAnswered.actionTargetTime` | number or string |  |  | jumpToHypervideo only: the time in seconds to start the target hypervideo at. Empty or 0 means its start. |
+| `onAnswered.feedback` | string |  |  | Text shown with the result after the quiz is decided. |
 | `ratingScale` | integer | 2–10 | `5` | rating: number of steps. |
+| `countdown` | number | ≥ 0 | `0` | Annotations: seconds the viewers have to answer. When they are up the quiz is decided with the answers given (none: the default answer). 0 means no time limit: the quiz is decided when everyone answering has answered. |
 
 ### `hotspot`
 

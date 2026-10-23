@@ -239,6 +239,110 @@
             }
         },
         {
+            "name": "quiz with outcomes instead of per-answer actions: onCorrectAnswer, onWrongAnswer",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:01.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "quiz",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Quiz",
+                    "frametrail:attributes": {
+                        "questionType": "multipleChoice",
+                        "question": "Which?",
+                        "answers": [
+                            {
+                                "text": "A",
+                                "correct": true
+                            },
+                            {
+                                "text": "B",
+                                "correct": false
+                            }
+                        ],
+                        "onCorrectAnswer": {
+                            "jumpForward": false,
+                            "resumePlayback": true,
+                            "showText": "Correct."
+                        },
+                        "onWrongAnswer": {
+                            "jumpBackward": 10,
+                            "resumePlayback": true,
+                            "showText": false
+                        }
+                    }
+                },
+                "frametrail:events": {
+                    "onStart": "FrameTrail.module('HypervideoController').pause();"
+                }
+            }
+        },
+        {
+            "name": "pausing through an onStart that only calls pause (before frametrail:pause), in the form of the action preset",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:01.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "hotspot",
+                    "format": "text/html",
+                    "frametrail:name": "Hotspot",
+                    "frametrail:attributes": {
+                        "shape": "circle",
+                        "action": "jumpToTime",
+                        "actionTarget": 20
+                    }
+                },
+                "frametrail:events": {
+                    "onStart": "hypervideo.pause();"
+                }
+            }
+        },
+        {
             "name": "animationIn, animationOut and animationDuration",
             "schema": "content-item.schema.json",
             "data": {

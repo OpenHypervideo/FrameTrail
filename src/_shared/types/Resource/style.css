@@ -327,6 +327,7 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
     margin-bottom: 14px;
 }
 
+
 .editPropertiesContainer .timeControls .ft-spinner {
     width: 55px;
     margin: 3px 2px 3px 6px;
@@ -347,6 +348,40 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
 
 .editPropertiesContainer label[for="TimeEnd"] {
     left: 94px;
+}
+
+/* "Pause" (frametrail:pause) between End and Delete: the pause icon rides on the knob */
+.editPropertiesContainer .timeControls label.switch {
+    position: relative;
+    top: auto;
+    left: auto;
+    vertical-align: middle;
+    margin: 0px 4px 0px 10px;
+}
+
+.editPropertiesContainer .pauseAtStartSwitch .slider .icon-pause-1 {
+    position: absolute;
+    left: 2px;
+    bottom: 2px;
+    width: 13px;
+    height: 13px;
+    font-size: 9px;
+    line-height: 13px;
+    text-align: center;
+    color: #999;
+    pointer-events: none;
+    transition: transform .4s, color .4s;
+    z-index: 1;
+}
+
+.editPropertiesContainer .pauseAtStartSwitch .slider .icon-pause-1::before {
+    margin: 0;
+    width: auto;
+}
+
+.editPropertiesContainer .pauseAtStartSwitch input:checked + .slider .icon-pause-1 {
+    transform: translateX(13px);
+    color: var(--primary-bg-color);
 }
 
 .editPropertiesContainer .timeControls .deleteOverlay, .editPropertiesContainer .timeControls .deleteAnnotation {

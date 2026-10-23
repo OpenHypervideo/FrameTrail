@@ -1360,6 +1360,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         TranscriptsEditor.updateActiveCue(currentTime);
         updateCurrentChapter();
 
+        // Last: it may pause at an item's start.
+        FrameTrail.module('PauseController').update(currentTime);
+
     };
 
 
@@ -1413,6 +1416,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         TranscriptsEditor.updateActiveCue(currentTime);
         updateCurrentChapter();
 
+        // Last: it may pause at an item's start.
+        FrameTrail.module('PauseController').update(currentTime);
+
     };
 
 
@@ -1462,6 +1468,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         if (companion) {
             companion.request('play');
             return;
+        }
+
+        // A quiz waiting for answers is called off, a decided one goes on (here, not at the play event, which comes later).
+        if (FrameTrail.module('QuizController')) {
+            FrameTrail.module('QuizController').playRequested();
         }
 
         FrameTrail.changeState('videoWorking', false);
@@ -1875,6 +1886,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             nullVideoStartDate = Date.now() - (currentTime * 1000)
 
         }
+
+        // Before the updaters: a start right where the seek lands counts as reached.
+        FrameTrail.module('PauseController').seeked(aNumberAsFloat);
 
         highPriorityUpdater();
         lowPriorityUpdater();

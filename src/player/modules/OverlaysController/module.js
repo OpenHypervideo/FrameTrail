@@ -470,6 +470,9 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                             if (tile.events) {
                                 protoData.events = JSON.parse(JSON.stringify(tile.events));
                             }
+                            if (typeof tile.pause === 'boolean') {
+                                protoData.pause = tile.pause;
+                            }
                             newOverlay = FrameTrail.module('HypervideoModel').newOverlay(protoData);
                         } else {
                             newOverlay = FrameTrail.module('HypervideoModel').newOverlay({
@@ -545,8 +548,9 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
     /**
      * I return the tiles of the "Custom Overlay" gallery: one per overlay kind or
      * variant, each with the data a dropped overlay starts with. Custom HTML,
-     * Quiz and Hotspot keep their long-standing defaults; Quiz and Hotspot pass no
-     * events, so newOverlay() adds the pausing onStart handler. The text tiles
+     * Quiz and Hotspot keep their long-standing defaults; a tile without pause gets
+     * its type's (Resource.pauseByDefault: Quiz and Hotspot pause at their start),
+     * the drawn hotspot variants pass pause: false. The text tiles
      * (Text, Card, Quote, Notification) have auto height: size[1] is only the
      * height until their content is measured.
      *
@@ -585,17 +589,12 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             },
             {
                 id: 'quiz', type: 'quiz', icon: 'icon-question-circle-o', label: 'Quiz', name: labels['ResourceTypeQuiz'],
-                attributes: {
-                    "questionType": "multipleChoice",
-                    "question": labels['SettingsQuizDefaultQuestion'],
-                    "answers": [
-                        { 'text': labels['SettingsQuizDefaultAnswer1'], 'correct': false },
-                        { 'text': labels['SettingsQuizDefaultAnswer2'], 'correct': true  },
-                        { 'text': labels['SettingsQuizDefaultAnswer3'], 'correct': false }
-                    ],
-                    "onCorrectAnswer": { "jumpForward": false, "resumePlayback": true,  "showText": false },
-                    "onWrongAnswer":   { "jumpBackward": 10, "resumePlayback": true, "showText": false }
-                },
+                attributes: window.FrameTrailQuiz.newAttributes({
+                    question: labels['SettingsQuizDefaultQuestion'],
+                    answer1:  labels['SettingsQuizDefaultAnswer1'],
+                    answer2:  labels['SettingsQuizDefaultAnswer2'],
+                    answer3:  labels['SettingsQuizDefaultAnswer3']
+                }),
                 size: [30, 30]
             },
             {
@@ -612,7 +611,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     "animation": { "in": { "preset": "slideFromBottom" }, "out": { "preset": "fadeOut" } },
                     "autoSize": "height"
                 },
-                size: [34, 32], events: {}
+                size: [34, 32]
             },
             {
                 id: 'quote', type: 'text', icon: 'icon-quote-left', label: labels['CustomOverlayQuote'],
@@ -625,7 +624,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     "animation": { "in": { "preset": "fadeIn", "duration": 600 }, "out": { "preset": "fadeOut" } },
                     "autoSize": "height"
                 },
-                size: [40, 30], events: {}
+                size: [40, 30]
             },
             {
                 id: 'notification', type: 'text', icon: 'icon-bell', label: labels['CustomOverlayNotification'],
@@ -636,22 +635,22 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     "animation": { "in": { "preset": "slideFromTop", "duration": 600, "ease": "springQuick" }, "out": { "preset": "slideToTop" } },
                     "autoSize": "height"
                 },
-                size: [34, 18], events: {}
+                size: [34, 18]
             },
             {
                 id: 'arrow', type: 'hotspot', icon: 'icon-right-big', label: labels['CustomOverlayArrow'],
                 attributes: hotspotVariant('arrow', { "direction": "right", "curve": "straight" }),
-                size: [22, 10], events: {}
+                size: [22, 10], pause: false
             },
             {
                 id: 'curvedArrow', type: 'hotspot', icon: 'icon-reply', label: labels['CustomOverlayCurvedArrow'],
                 attributes: hotspotVariant('arrow', { "direction": "right", "curve": "curved" }),
-                size: [22, 18], events: {}
+                size: [22, 18], pause: false
             },
             {
                 id: 'underline', type: 'hotspot', icon: 'icon-underline', label: labels['CustomOverlayUnderline'],
                 attributes: hotspotVariant('underline', {}),
-                size: [24, 6], events: {}
+                size: [24, 6], pause: false
             },
             {
                 id: 'freeform', type: 'hotspot', icon: 'icon-brush', label: labels['CustomOverlayFreeform'],
@@ -660,12 +659,12 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     "path": "M50,4 L96,36 L80,94 L20,94 L4,36 Z",
                     "borderWidth": 4
                 }),
-                size: [20, 30], events: {}, draw: true
+                size: [20, 30], pause: false, draw: true
             },
             {
                 id: 'cursor', type: 'cursor', icon: 'icon-mouse-pointer', label: labels['ResourceTypeCursor'],
                 attributes: { "style": "arrow", "color": "#ffffff", "outlineColor": "#111111", "clicks": [] },
-                size: [4, 8], motion: true, events: {}
+                size: [4, 8], motion: true
             },
             {
                 id: 'counter', type: 'counter', icon: 'icon-hashtag', label: labels['ResourceTypeCounter'],
@@ -674,27 +673,27 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     "duration": 1500, "ease": "power2Out", "style": "count",
                     "color": "#ffffff", "weight": 700, "align": "center"
                 },
-                size: [24, 16], events: {}
+                size: [24, 16]
             },
             {
                 id: 'barChart', type: 'chart', icon: 'icon-chart-bar', label: labels['CustomOverlayBarChart'],
                 attributes: { "chartType": "bars", "data": "2022: 40\n2023: 65\n2024: 90", "unit": "", "color": "#4cc3ff", "highlight": 0, "showValues": true, "duration": 1500, "textColor": "#ffffff" },
-                size: [36, 36], events: {}
+                size: [36, 36]
             },
             {
                 id: 'lineChart', type: 'chart', icon: 'icon-chart-line-data', label: labels['CustomOverlayLineChart'],
                 attributes: { "chartType": "line", "data": "Jan: 12\nFeb: 19\nMar: 15\nApr: 28\nMay: 33", "unit": "", "color": "#4cc3ff", "highlight": 0, "showValues": true, "duration": 1800, "textColor": "#ffffff" },
-                size: [40, 32], events: {}
+                size: [40, 32]
             },
             {
                 id: 'donutChart', type: 'chart', icon: 'icon-chart-pie', label: labels['CustomOverlayDonutChart'],
                 attributes: { "chartType": "donut", "data": "A: 55\nB: 30\nC: 15", "unit": "%", "color": "#4cc3ff", "highlight": 0, "showValues": true, "duration": 1500, "textColor": "#ffffff" },
-                size: [26, 40], events: {}
+                size: [26, 40]
             },
             {
                 id: 'progressRing', type: 'chart', icon: 'icon-chart-ring', label: labels['CustomOverlayProgressRing'],
                 attributes: { "chartType": "ring", "data": "72", "unit": "%", "color": "#4cc3ff", "highlight": 0, "showValues": true, "duration": 1500, "textColor": "#ffffff" },
-                size: [20, 34], events: {}
+                size: [20, 34]
             }
         ];
 

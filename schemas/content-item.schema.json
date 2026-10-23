@@ -25,6 +25,7 @@
                 "generator": { "$ref": "common.schema.json#/$defs/generator" },
                 "frametrail:tags": { "$ref": "common.schema.json#/$defs/tags" },
                 "frametrail:events": { "$ref": "common.schema.json#/$defs/overlayEvents" },
+                "frametrail:pause": { "$ref": "common.schema.json#/$defs/pause" },
                 "frametrail:attributes": {
                     "description": "Legacy. Attributes at the annotation level, from very old files. Read only when the body has none.",
                     "type": ["object", "array"]

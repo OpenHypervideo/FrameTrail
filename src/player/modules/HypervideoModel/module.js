@@ -471,6 +471,24 @@
 
 
     /**
+     * I say whether a new overlay or annotation pauses the video at its start (frametrail:pause):
+     * as its maker asks (a gallery tile's pause), else as its type does by default
+     * (Resource.pauseByDefault: quizzes and hotspots).
+     *
+     * @method pausesWhenNew
+     * @param {String} type
+     * @param {Boolean} [pause]
+     * @return {Boolean}
+     * @private
+     */
+    function pausesWhenNew(type, pause) {
+        if (typeof pause === 'boolean') { return pause; }
+        var resourceType = type ? FrameTrail.type('Resource' + type.charAt(0).toUpperCase() + type.slice(1)) : null;
+        return !!(resourceType && resourceType.prototype.pauseByDefault);
+    }
+
+
+    /**
      * I create a new {{#crossLink "Overlay"}}overlay{{/crossLink}}.
      *
      * I am called from {{#crossLink "OverlaysController/makeTimelineDroppable:method"}}OverlaysController{{/crossLink}}.
@@ -509,12 +527,7 @@
                         "height":   protoData.position.height
                     }
                 }
-                if ( protoData.type == 'quiz' || protoData.type == 'hotspot' ) {
-                    // Gallery tiles may pass explicit events; otherwise default to pausing on start.
-                    newData.events = protoData.events || {
-                        "onStart": "FrameTrail.module('HypervideoController').pause();"
-                    };
-                } else if ( protoData.events ) {
+                if ( protoData.events ) {
                     newData.events = protoData.events;
                 }
             } else {
@@ -541,6 +554,10 @@
                         "height":   30
                     }
                 }
+            }
+
+            if (!protoData.created && pausesWhenNew(newData.type, protoData.pause)) {
+                newData.pause = true;
             }
 
             FrameTrail.module('Database').overlays.push(newData);
@@ -612,7 +629,7 @@
             if (protoData.created) {
                 // Restoring from saved data - use as-is
                 newData = JSON.parse(JSON.stringify(protoData));
-            } else if ( protoData.type == 'text' || protoData.type == 'html' ) {
+            } else if ( protoData.type == 'text' || protoData.type == 'html' || protoData.type == 'quiz' ) {
                 newData = {
                     "name":         protoData.name,
                     "creator":      FrameTrail.getState('username'),
@@ -670,6 +687,9 @@
                 };
             }
 
+            if (!protoData.created && pausesWhenNew(newData.type, protoData.pause)) {
+                newData.pause = true;
+            }
 
             FrameTrail.module('Database').annotations.push(newData);
 
@@ -2034,6 +2054,14 @@
         // And text being edited on the video.
         if (FrameTrail.module('TextInlineEditor')) {
             FrameTrail.module('TextInlineEditor').stop({ discard: true });
+        }
+
+        // The last tick's time was the old hypervideo's; a quiz being asked is called off.
+        if (FrameTrail.module('PauseController')) {
+            FrameTrail.module('PauseController').reset();
+        }
+        if (FrameTrail.module('QuizController')) {
+            FrameTrail.module('QuizController').reset();
         }
 
         // Clear undo history when switching hypervideos

@@ -675,8 +675,47 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
     }
 
+    /**
+     * I return the collection views (TimedContent) that show an annotation: { player, companion }. A view of the
+     * player counts while someone sees it: its area open and rendered, the view its area's active tab (in the circular
+     * area, the ring's view). The views for a paired phone count as they are; whether a phone is paired is the
+     * caller's question. Timelines views show a bar, not the annotation, and do not count.
+     *
+     * @method viewsShowing
+     * @param {Annotation} annotation
+     * @return {Object} { player: [ContentView], companion: [ContentView] }
+     */
+    function viewsShowing(annotation) {
+
+        var shown = { player: [], companion: [] };
+
+        managedAnnotations.forEach(function(pair) {
+            var contentView = pair[1];
+            if (pair[0] !== annotation || contentView.contentViewData.type !== 'TimedContent') { return; }
+            if (contentView.whichArea === 'companion') {
+                shown.companion.push(contentView);
+            } else if (isOnScreen(contentView)) {
+                shown.player.push(contentView);
+            }
+        });
+
+        return shown;
+
+    }
+
+    function isOnScreen(contentView) {
+
+        if (contentView.whichArea === 'circular' && contentView !== circularView()) { return false; }
+
+        var area = contentView.getLayoutAreaContainer();
+        if (!area || area.classList.contains('closed') || !area.getClientRects().length) { return false; }
+
+        return !contentView.contentViewContainer || contentView.contentViewContainer.classList.contains('active');
+
+    }
+
     function initLayoutEditor() {
-        
+
         HypervideoLayoutContainer.innerHTML = '';
 
         var thisID = FrameTrail.module('RouteNavigation').hypervideoID;
@@ -1357,6 +1396,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         generateSchematic: generateSchematic,
 
         updateTimedStateOfContentViews: updateTimedStateOfContentViews,
+        viewsShowing: viewsShowing,
 
         initLayoutEditor: initLayoutEditor,
 

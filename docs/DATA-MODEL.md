@@ -209,11 +209,12 @@ Lint.checkFolder(files);   // a _data folder in the folder format → [{ path, m
 | `item-partly-outside` | warning | an overlay or annotation that runs past the end of the video or begins before its start |
 | `overlay-overlap` | warning | two overlays covering the same area at the same time; hotspots and cursors are meant to lie over others and are left out |
 | `unknown-resource` | warning | the clip or an item naming a resource that is not in the library |
-| `empty-required` | error | an item lacking what its type needs: a source, text, HTML, a question and answers, a position, chart data, the target of a hotspot's action, code |
+| `empty-required` | error | an item lacking what its type needs: a source, text, HTML, a question and answers, a position, chart data, the target of an action (a hotspot's, a quiz answer's, a quiz's `onAnswered`), code |
 | `missing-license` | warning | an overlay made from a library resource, or showing a media file, without a licence type |
 | `chapter-order` | warning | chapters not stored in order of their start, or two with the same start |
 | `cue-outside-video` | warning | subtitle cues that start at or after the end of the video, so probably belong to another one |
 | `circular-view-unshown` | warning | a view in the ring around the video (`areaCircular`) that is not shown as stored: another type than a collection (`TimedContent`), or a large one (shown as medium) |
+| `quiz-defaults` | warning | a quiz that marks more than one answer as default (decided on a tie or when nobody answers): only the first counts |
 
 `checkFolder()` looks at a whole folder for files that do not agree with each other, and for the files no schema describes: a `.json` file that is not JSON; a `.vtt` file the player cannot read as meant (no `WEBVTT` header, a cue timing it does not read, a cue that ends before it starts; `checkVTT(text)` checks one text); a hypervideo `hypervideos/_index.json` lists without its `hypervideo.json`, or one it does not list; a hypervideo without `annotations/_index.json`; an annotation file without its entry in that index, or an entry without its file; a `subtitles` entry without its `.vtt` file, or a `.vtt` file no entry names. A project file is checked through its folder, `FrameTrailHTMLFormat.readProject(html).files`.
 
@@ -347,15 +348,18 @@ Overlays and code snippets (in `hypervideo.json` → `contents`) and annotations
         "frametrail:resourceId": null,
         "frametrail:attributes": { "text": "&lt;p&gt;Hello&lt;/p&gt;", "animation": { "in": { "preset": "fadeIn" } } }
     },
-    "frametrail:events": { "onStart": "FrameTrail.module('HypervideoController').pause();" }
+    "frametrail:events": { "onClick": "console.log('clicked');" },
+    "frametrail:pause": true
 }
 ```
 
 | `frametrail:type` | Lives in | Target selector | Notes |
 |-------------------|----------|-----------------|-------|
-| `Overlay` | `hypervideo.json` → `contents` | time span and box | shown over the video; may move (keyframes) and rotate; `frametrail:events` |
+| `Overlay` | `hypervideo.json` → `contents` | time span and box | shown over the video; may move (keyframes) and rotate; `frametrail:events`, `frametrail:pause` |
 | `CodeSnippet` | `hypervideo.json` → `contents` | a point in time `t=<start>` | body is `TextualBody`, `frametrail:type` `codesnippet`, `format` `text/javascript`, the code in `value`; FrameTrail has no editor for them, they run when written into the file |
-| `Annotation` | `annotations/<userId>.json` | time span | shown in timelines and content views; `frametrail:uri`, `frametrail:graphdata` |
+| `Annotation` | `annotations/<userId>.json` | time span | shown in timelines and content views; `frametrail:uri`, `frametrail:graphdata`, `frametrail:pause` |
+
+`frametrail:pause: true` (overlays and annotations) pauses the video at the item's start: when playback crosses it, or starts at it (an item at 0:00, "Play from here"); seeking into the middle of its time span does not. An annotation pauses only while it is shown: in an open content view of the player, or in the phone area while phones are paired. Items made in the editor get their type's default — `true` for quizzes and the plain hotspot, `false` otherwise; a missing `frametrail:pause` is `false`.
 
 ### Resource types
 
@@ -384,7 +388,7 @@ The body's `frametrail:type` is the resource type. It decides how the item is re
 
 The text of `text` and `html` items (`attributes.text`) is stored HTML-escaped (`&lt;p&gt;…`) and unescaped before rendering.
 
-Every overlay type also takes `opacity`, `hoverStyle`, `zIndex` and `animation` in its attributes; hotspots take an action (`action`, `actionTarget`, `actionTargetTime`). They are listed in each attribute schema. [TYPES.md](TYPES.md) has every type's attributes with their values and defaults, and what each type is for.
+Every overlay type also takes `opacity`, `hoverStyle`, `zIndex` and `animation` in its attributes; hotspots take an action (`action`, `actionTarget`, `actionTargetTime`), and so do a quiz's answers and its `onAnswered` (with the quiz's own actions `""` continue and `pause` beside them). They are listed in each attribute schema. [TYPES.md](TYPES.md) has every type's attributes with their values and defaults, and what each type is for.
 
 ## Time and Space
 
@@ -495,6 +499,8 @@ Readers must accept these shapes. Each is in the schemas as a separate alternati
 | `frametrail:lat`, `frametrail:long`, `frametrail:boundingBox` on the body | location annotations | `attributes.lat`, `.lon`, `.boundingBox` |
 | `animationIn`, `animationOut`, `animationDuration` | overlay attributes | `attributes.animation` |
 | `linkUrl` | hotspot attributes | `action: "openUrl"` with that target, when `action` is empty |
+| `onCorrectAnswer`, `onWrongAnswer` (`showText`, `resumePlayback`, `jumpForward`, `jumpBackward`), and `onAnswered` with `showText` / `resumePlayback` | quiz attributes, when no answer and no `onAnswered` has an `action` | actions: the correct or wrong outcome for the decided answer, a jump as `jumpToTime` from where the quiz was answered, `resumePlayback: false` as `pause`, `showText` as `feedback`. The quiz editor converts them on its first change (jumps from the quiz's start; a multiSelect quiz keeps its correct outcome as `onAnswered`) |
+| an `onStart` that only pauses (`FrameTrail.module('HypervideoController').pause();`, or `hypervideo.pause();`) | overlays without `frametrail:pause` (quiz and hotspot overlays made before it) | `frametrail:pause: true`; the call is not run. Kept as stored until the item's pause is switched in the editor, which writes `frametrail:pause` and removes the call |
 | a label and description per language code (`{ "en": { "label": … }, "de": { … } }`) | tags in `tagdefinitions.json` | the label in the interface language, else the English one, else the first; written as `{ label, description }` the first time the tag is edited |
 | `overviewMap` (markers as a list of `{ hypervideoID, x, y, size }`) | `config.json` | the overview map, when `hypervideos/_index.json` has none; moved there by the first map save |
 | `defaultTheme` | `config.json`, a project bundle's `config`, init options, `data-frametrail-config` | `theme`, when that is empty |

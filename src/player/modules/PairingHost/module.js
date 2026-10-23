@@ -530,6 +530,17 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
                 if (message.id === g.bundleID) {
                     g.fresh = true;
                     sample();
+                    // A question being asked, for a phone that joins or comes back while it is.
+                    var question = FrameTrail.module('QuizController') ? FrameTrail.module('QuizController').quizMessage() : null;
+                    if (question) { send(g, question); }
+                }
+                break;
+
+            case 'answer':
+                // Every phone may answer, with or without the control right; only the question being asked, in the hypervideo shown.
+                if (g.status === 'connected' && FrameTrail.getState('viewMode') === 'video' && message.hypervideo === openID()
+                        && openID() === readyID && FrameTrail.module('QuizController')) {
+                    FrameTrail.module('QuizController').phoneAnswer(g.id, message);
                 }
                 break;
 
@@ -823,6 +834,21 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
 
     }
 
+    /**
+     * I send a question message (QuizController) to every phone: encoded once.
+     *
+     * @method sendQuiz
+     * @param {Object} message
+     */
+    function sendQuiz(message) {
+        var text = null;
+        connectedPhones().forEach(function(g) {
+            if (g.channel.readyState !== 'open') { return; }
+            if (text === null) { text = Pairing.encode(message); }
+            g.channel.send(text);
+        });
+    }
+
     // The hypervideo changed where the phones cannot see it: they get it again.
     function resendBundle() {
         revision++;
@@ -980,6 +1006,7 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
         setCanControl:     setCanControl,
         disconnect:        disconnect,
         hypervideoChanged: hypervideoChanged,
+        sendQuiz:          sendQuiz,
 
         /**
          * The status, as published in the state "pairing" (see snapshot()).

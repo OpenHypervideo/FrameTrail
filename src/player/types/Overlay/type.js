@@ -1796,7 +1796,9 @@ FrameTrail.defineType(
 
                     this.timelineElement.classList.add('active');
 
-                    if (this.data.events.onStart && !this.activeState && !this.permanentFocusState) {
+                    // An onStart that only pauses is the legacy form of frametrail:pause: the PauseController pauses at the start.
+                    if (this.data.events.onStart && !this.activeState && !this.permanentFocusState
+                        && !window.FrameTrailSerializer.isPauseSnippet(this.data.events.onStart)) {
                         try {
                             var thisEvent = new Function('FrameTrail', 'hypervideo', this.data.events.onStart);
                             thisEvent.call(this, FrameTrail, FrameTrail.module('HypervideoController'));

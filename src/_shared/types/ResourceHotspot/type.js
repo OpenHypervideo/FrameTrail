@@ -35,6 +35,7 @@ FrameTrail.defineType(
                  * @type {}
                  */
                 resourceData:   {},
+                pauseByDefault: true,
                 iconClass:      'icon-link',
 
 

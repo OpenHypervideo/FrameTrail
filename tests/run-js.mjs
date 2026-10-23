@@ -3,7 +3,7 @@
  * in schemas/ (with FrameTrailSchema), through FrameTrailSerializer and
  * FrameTrailLint, plus unit tests of FrameTrailSchema, FrameTrailSerializer,
  * FrameTrailHTMLFormat, FrameTrailLint, FrameTrailKeyframes, FrameTrailWebVTT,
- * FrameTrailRingLayout and FrameTrailPairing, the pairing broker contract against the stub in
+ * FrameTrailRingLayout, FrameTrailQuiz and FrameTrailPairing, the pairing broker contract against the stub in
  * scripts/pairing-broker.mjs, and the storage adapters of a local folder and
  * a project file against an in-memory File System Access API.
  * No dependencies, Node 20 or later:
@@ -40,6 +40,7 @@ const HTMLFormat = require('../src/_shared/frametrail-core/serialization/FrameTr
 const Lint       = require('../src/_shared/frametrail-core/serialization/FrameTrailLint.js');
 const WebVTT     = require('../src/_shared/frametrail-core/serialization/FrameTrailWebVTT.js');
 const Pairing    = require('../src/_shared/frametrail-core/pairing/FrameTrailPairing.js');
+const Quiz       = require('../src/_shared/frametrail-core/quiz/FrameTrailQuiz.js');
 
 const NOW = 1999999999999;
 
@@ -866,6 +867,49 @@ describe('FrameTrailSerializer', () => {
         assert.equal(fresh['frametrail:graphdatatype'], 'audio');
         assert.equal(fresh.target.source, 'v.mp4');
         assert.equal(fresh.body.type, 'TextualBody');
+    });
+
+    test('pause at start: frametrail:pause, or the legacy onStart that only pauses; removing it drops the key', () => {
+        assert.equal(Serializer.isPauseSnippet("FrameTrail.module('HypervideoController').pause();"), true);
+        assert.equal(Serializer.isPauseSnippet(' FrameTrail.module("HypervideoController").pause() \n'), true);
+        assert.equal(Serializer.isPauseSnippet('hypervideo.pause();'), true);
+        assert.equal(Serializer.isPauseSnippet('hypervideo.pause(); hypervideo.currentTime = 10;'), false);
+        assert.equal(Serializer.isPauseSnippet(''), false);
+        assert.equal(Serializer.isPauseSnippet(undefined), false);
+
+        const legacy = Serializer.parseHypervideo(hypervideo([overlayItem(toStringCreated, { 'frametrail:events': { onStart: 'hypervideo.pause();' } })])).overlays[0];
+        assert.equal(legacy.pause, undefined);
+        assert.equal(Serializer.pausesAtStart(legacy), true);
+        assert.equal(Serializer.pausesAtStart(Object.assign({}, legacy, { pause: false })), false, 'an explicit pause wins over the snippet');
+        assert.equal(Serializer.pausesAtStart({ events: { onStart: 'alert(1);' } }), false);
+
+        const model = Serializer.parseHypervideo(hypervideo([overlayItem(toStringCreated, { 'frametrail:pause': true })]));
+        assert.equal(model.overlays[0].pause, true);
+        assert.equal(Serializer.pausesAtStart(model.overlays[0]), true);
+        let out = Serializer.serializeHypervideo(model, { now: 5 });
+        assert.equal(out.contents[0]['frametrail:pause'], true);
+        delete model.overlays[0].pause;
+        out = Serializer.serializeHypervideo(model, { now: 6 });
+        assert.equal(Object.prototype.hasOwnProperty.call(out.contents[0], 'frametrail:pause'), false);
+
+        const annotation = Serializer.parseAnnotation({ creator: { id: '1' }, created: toStringCreated, target: { selector: { value: 't=1,2' } },
+            body: { 'frametrail:type': 'quiz' }, 'frametrail:pause': true }, {});
+        assert.equal(Serializer.pausesAtStart(annotation), true);
+        delete annotation._stored;
+        assert.equal(Serializer.serializeAnnotation(annotation, {})['frametrail:pause'], true);
+        annotation.pause = 'yes';
+        assert.equal(Serializer.serializeAnnotation(annotation, {})['frametrail:pause'], undefined, 'only a boolean is written');
+    });
+
+    test('actionHolders: a hotspot\'s attributes, a quiz\'s answers and its onAnswered', () => {
+        const hotspot = { shape: 'circle', action: 'openUrl', actionTarget: 'https://frametrail.org/' };
+        assert.deepStrictEqual(Serializer.actionHolders(hotspot), [hotspot]);
+        const quiz = { answers: [{ text: 'A', action: '' }, 'broken', { text: 'B' }], onAnswered: { action: 'pause' } };
+        const holders = Serializer.actionHolders(quiz);
+        assert.equal(holders.length, 4);
+        assert.equal(holders[1], quiz.answers[0], 'the holders are the stored objects, to change in place');
+        assert.equal(holders[3], quiz.onAnswered);
+        assert.deepStrictEqual(Serializer.actionHolders(null), []);
     });
 
     test('a new item (never stored) is written in the current shape', () => {
@@ -1718,6 +1762,135 @@ describe('FrameTrailWebVTT', () => {
 /*  Pairing                                                               */
 /* ---------------------------------------------------------------------- */
 
+describe('FrameTrailQuiz', () => {
+
+    const mc = (extra) => Object.assign({
+        questionType: 'multipleChoice', question: 'Which way?',
+        answers: [
+            { text: 'Left',  correct: false, action: 'jumpToTime', actionTarget: 40 },
+            { text: 'Right', correct: true,  action: '' },
+            { text: 'Stay',  correct: false, action: 'pause', feedback: 'We wait.' }
+        ]
+    }, extra || {});
+
+    test('normalizeChoice: the form each question type takes, null for anything else', () => {
+        assert.equal(Quiz.normalizeChoice(mc(), 1), 1);
+        assert.equal(Quiz.normalizeChoice(mc(), 3), null);
+        assert.equal(Quiz.normalizeChoice(mc(), 1.5), null);
+        assert.equal(Quiz.normalizeChoice(mc(), '1'), null);
+        const ms = mc({ questionType: 'multiSelect' });
+        assert.deepStrictEqual(Quiz.normalizeChoice(ms, [2, 0, 2, 7, 'x']), [0, 2]);
+        assert.deepStrictEqual(Quiz.normalizeChoice(ms, []), [], 'choosing none is an answer');
+        assert.equal(Quiz.normalizeChoice(ms, 1), null);
+        const rating = { questionType: 'rating', ratingScale: 4 };
+        assert.equal(Quiz.normalizeChoice(rating, 4), 4);
+        assert.equal(Quiz.normalizeChoice(rating, 5), null);
+        assert.equal(Quiz.normalizeChoice(rating, 0), null);
+        assert.equal(Quiz.normalizeChoice({ questionType: 'rating' }, 5), 5, 'the scale is 5 when missing');
+        const text = { questionType: 'freeText' };
+        assert.equal(Quiz.normalizeChoice(text, '  yes \n'), 'yes');
+        assert.equal(Quiz.normalizeChoice(text, '   '), null);
+        assert.equal(Quiz.normalizeChoice(text, 'x'.repeat(900)).length, Quiz.MAX_TEXT);
+        assert.equal(Quiz.normalizeChoice({ questionType: 'essay', answers: [{ text: 'a' }] }, 0), 0, 'an unknown type is multipleChoice');
+    });
+
+    test('decide: the majority; a tie and no votes go to the default, without one to the first', () => {
+        assert.deepStrictEqual(Quiz.decide(mc(), [0, 2, 0]), { index: 0, reason: 'majority', correct: false });
+        assert.deepStrictEqual(Quiz.decide(mc(), [2, 0]), { index: 0, reason: 'tieFirst', correct: false });
+        assert.deepStrictEqual(Quiz.decide(mc(), []), { index: 0, reason: 'noneFirst', correct: false });
+        const withDefault = mc();
+        withDefault.answers[1]['default'] = true;
+        assert.deepStrictEqual(Quiz.decide(withDefault, [2, 0]), { index: 1, reason: 'tieDefault', correct: true }, 'the default wins a tie it is not in');
+        assert.deepStrictEqual(Quiz.decide(withDefault, [null, undefined]), { index: 1, reason: 'noneDefault', correct: true });
+        assert.deepStrictEqual(Quiz.decide(withDefault, [2]), { index: 2, reason: 'majority', correct: false });
+        withDefault.answers[2]['default'] = true;
+        assert.equal(Quiz.defaultIndex(withDefault), 1, 'of several defaults the first counts');
+        assert.deepStrictEqual(Quiz.decide({ questionType: 'multipleChoice', answers: [] }, [0]), { index: null, reason: 'empty', correct: null });
+        const ms = mc({ questionType: 'multiSelect' });
+        assert.deepStrictEqual(Quiz.decide(ms, [[1], [0, 1]]), { index: null, reason: 'answered', correct: true }, 'half the votes exactly right');
+        assert.deepStrictEqual(Quiz.decide(ms, [[0, 1], [2]]), { index: null, reason: 'answered', correct: false });
+        assert.deepStrictEqual(Quiz.decide(ms, []), { index: null, reason: 'none', correct: false });
+        assert.deepStrictEqual(Quiz.decide({ questionType: 'rating' }, [3]), { index: null, reason: 'answered', correct: null });
+    });
+
+    test('tally: counts per answer or per step, the average, the texts', () => {
+        assert.deepStrictEqual(Quiz.tally(mc(), [0, 2, 0, null]), { voters: 3, counts: [2, 0, 1], average: null, texts: [] });
+        assert.deepStrictEqual(Quiz.tally(mc({ questionType: 'multiSelect' }), [[0, 1], [1]]).counts, [1, 2, 0]);
+        assert.deepStrictEqual(Quiz.tally({ questionType: 'rating', ratingScale: 3 }, [1, 3, 3]), { voters: 3, counts: [1, 0, 2], average: 7 / 3, texts: [] });
+        assert.deepStrictEqual(Quiz.tally({ questionType: 'freeText' }, ['a', 'b']).texts, ['a', 'b']);
+    });
+
+    test('actionOf: the decided answer\'s action, or onAnswered', () => {
+        assert.deepStrictEqual(Quiz.actionOf(mc(), { index: 0 }), { action: 'jumpToTime', target: 40, targetTime: undefined, feedback: '' });
+        assert.deepStrictEqual(Quiz.actionOf(mc(), { index: 2 }), { action: 'pause', target: undefined, targetTime: undefined, feedback: 'We wait.' });
+        assert.equal(Quiz.actionOf(mc(), { index: 1 }).action, '', 'empty is continue');
+        const rating = { questionType: 'rating', onAnswered: { action: 'jumpToHypervideo', actionTarget: '7', actionTargetTime: 12, feedback: 'Thanks' } };
+        assert.deepStrictEqual(Quiz.actionOf(rating, { index: null }), { action: 'jumpToHypervideo', target: '7', targetTime: 12, feedback: 'Thanks' });
+        assert.equal(Quiz.actionOf({ questionType: 'freeText', onAnswered: { action: 'nonsense' } }, {}).action, '');
+    });
+
+    test('legacy outcomes: read as actions, relative jumps from the time of answering', () => {
+        const legacy = {
+            questionType: 'multipleChoice', question: 'Q',
+            answers: [{ text: 'A', correct: true }, { text: 'B', correct: false }],
+            onCorrectAnswer: { jumpForward: false, resumePlayback: true, showText: 'Correct.' },
+            onWrongAnswer:   { jumpBackward: 10, resumePlayback: true, showText: false }
+        };
+        assert.equal(Quiz.isLegacy(legacy), true);
+        assert.deepStrictEqual(Quiz.actionOf(legacy, Quiz.decide(legacy, [0]), 30), { action: '', target: undefined, targetTime: undefined, feedback: 'Correct.' });
+        assert.deepStrictEqual(Quiz.actionOf(legacy, Quiz.decide(legacy, [1]), 30), { action: 'jumpToTime', target: 20, targetTime: undefined, feedback: '' });
+        assert.equal(Quiz.actionOf(Object.assign({}, legacy, { onWrongAnswer: { resumePlayback: false } }), { index: 1, correct: false }, 30).action, 'pause');
+        assert.equal(Quiz.actionOf({ questionType: 'rating' }, {}, 0).action, 'pause', 'no outcome: it stays paused, as it did');
+        assert.equal(Quiz.actionOf({ questionType: 'rating', onAnswered: { resumePlayback: true } }, {}, 0).action, '');
+        assert.equal(Quiz.isLegacy(mc()), false);
+        assert.equal(Quiz.isLegacy({ questionType: 'freeText', onAnswered: { action: '' } }), false);
+    });
+
+    test('fromLegacy: every answer gets its outcome; done once, it changes nothing', () => {
+        const legacy = {
+            questionType: 'multipleChoice', question: 'Q', custom: 1,
+            answers: [{ text: 'A', correct: true }, { text: 'B', correct: false, extra: 'kept' }],
+            onCorrectAnswer: { jumpForward: 5, resumePlayback: false, showText: 'Yes' },
+            onWrongAnswer:   { jumpBackward: 10, resumePlayback: true, showText: false }
+        };
+        const converted = Quiz.fromLegacy(legacy, 12);
+        assert.deepStrictEqual(converted, {
+            questionType: 'multipleChoice', question: 'Q', custom: 1,
+            answers: [{ text: 'A', correct: true, action: 'jumpToTime', actionTarget: 17, feedback: 'Yes' },
+                      { text: 'B', correct: false, extra: 'kept', action: 'jumpToTime', actionTarget: 2 }]
+        });
+        assert.deepStrictEqual(Quiz.fromLegacy(converted, 99), converted);
+        assert.equal(legacy.onCorrectAnswer.jumpForward, 5, 'the input is not changed');
+        assert.deepStrictEqual(Quiz.fromLegacy({ questionType: 'rating', ratingScale: 3, onAnswered: { showText: 'Thanks', resumePlayback: true } }, 0),
+            { questionType: 'rating', ratingScale: 3, onAnswered: { action: '', feedback: 'Thanks' } });
+        assert.deepStrictEqual(Quiz.fromLegacy({ questionType: 'multiSelect', answers: [{ text: 'A', correct: true }],
+            onCorrectAnswer: { resumePlayback: true }, onWrongAnswer: { jumpBackward: 10 } }, 0),
+            { questionType: 'multiSelect', answers: [{ text: 'A', correct: true }], onAnswered: { action: '' } });
+    });
+
+    test('changeType: what the other types keep goes', () => {
+        const ms = Quiz.changeType(mc({ onAnswered: { action: 'pause' } }), 'multiSelect');
+        assert.deepStrictEqual(ms.answers, [{ text: 'Left', correct: false }, { text: 'Right', correct: true }, { text: 'Stay', correct: false }]);
+        assert.deepStrictEqual(ms.onAnswered, { action: 'pause' }, 'an onAnswered with an action is kept');
+        const rating = Quiz.changeType(mc(), 'rating');
+        assert.deepStrictEqual(rating, { questionType: 'rating', question: 'Which way?', ratingScale: 5, onAnswered: { action: '' } });
+        const back = Quiz.changeType(rating, 'multipleChoice', { answer1: 'One', answer2: 'Two' });
+        assert.deepStrictEqual(back.answers, [{ text: 'One', correct: false, action: '' }, { text: 'Two', correct: true, action: '' }]);
+        assert.equal(back.onAnswered, undefined);
+        assert.equal(back.ratingScale, undefined);
+    });
+
+    test('newAttributes and itemKey', () => {
+        const attrs = Quiz.newAttributes({ question: 'Q', answer1: 'A', answer2: 'B', answer3: 'C' });
+        assert.equal(Quiz.isLegacy(attrs), false);
+        assert.deepStrictEqual(validator.validate('attributes/quiz.schema.json', attrs), []);
+        assert.equal(Quiz.itemKey({ creatorId: '1', created: 1700000000123 }), '1/1700000000123');
+        assert.equal(Quiz.itemKey({ creatorId: 1, created: 1700000000123 }), '1/1700000000123', 'ids as numbers and strings are one');
+    });
+
+});
+
+
 describe('FrameTrailPairing', () => {
 
     const hex = (bytes) => Array.from(bytes, (b) => b.toString(16).toUpperCase().padStart(2, '0')).join(':');
@@ -1787,13 +1960,14 @@ describe('FrameTrailPairing', () => {
 
     test('offer and answer blobs', () => {
         assert.deepStrictEqual(Pairing.readOffer(Pairing.offerBlob('v=0', 'iPhone')), { sdp: 'v=0', label: 'iPhone' });
-        assert.deepStrictEqual(Pairing.readOffer({ v: 2, sdp: 'v=0' }), { error: 'version' });
-        assert.deepStrictEqual(Pairing.readOffer({ v: 1 }), { error: 'invalid' });
+        assert.deepStrictEqual(Pairing.readOffer({ v: Pairing.PROTOCOL_VERSION + 1, sdp: 'v=0' }), { error: 'version' });
+        assert.deepStrictEqual(Pairing.readOffer({ v: Pairing.PROTOCOL_VERSION - 1, sdp: 'v=0' }), { error: 'version' }, 'an older phone as well');
+        assert.deepStrictEqual(Pairing.readOffer({ v: Pairing.PROTOCOL_VERSION }), { error: 'invalid' });
         assert.deepStrictEqual(Pairing.readOffer('v=0'), { error: 'invalid' });
         assert.deepStrictEqual(Pairing.readAnswer(Pairing.answerBlob('v=0')), { sdp: 'v=0' });
         assert.deepStrictEqual(Pairing.readAnswer(Pairing.refusalBlob('full')), { refused: 'full' });
         assert.deepStrictEqual(Pairing.readAnswer({ v: 1, refused: 'something new' }), { refused: 'closed' });
-        assert.deepStrictEqual(Pairing.readAnswer({ v: 2, sdp: 'v=0' }), { refused: 'version' });
+        assert.deepStrictEqual(Pairing.readAnswer({ v: Pairing.PROTOCOL_VERSION + 1, sdp: 'v=0' }), { refused: 'version' });
         assert.equal(Pairing.readAnswer(null), null);
     });
 
@@ -1806,6 +1980,8 @@ describe('FrameTrailPairing', () => {
                 { type: 'view', mode: 'overview' },
                 { type: 'pong', id: 7 },
                 { type: 'grant', token: '1760000600.' + 'a'.repeat(43), ttl: 600, cookie: 'FTPAIR0123abcd', path: '/_data/resources/' },
+                { type: 'quiz', hypervideo: '3', item: '1/1700000000000', status: 'open', answered: 2, voters: 30, endsIn: 14500 },
+                { type: 'quiz', hypervideo: '3', item: '1/1700000000000', status: 'decided', answered: 30, voters: 30, decided: 1, feedback: 'Off we go' },
                 { type: 'bye', reason: 'stopped' }
             ],
             guest: [
@@ -1815,6 +1991,10 @@ describe('FrameTrailPairing', () => {
                 { type: 'request', action: 'seek', time: 3 },
                 { type: 'ready', id: 'b' },
                 { type: 'ping', id: 1 },
+                { type: 'answer', hypervideo: '3', item: '1/1700000000000', choice: 2 },
+                { type: 'answer', hypervideo: '3', item: '1/1700000000000', choice: [0, 2] },
+                { type: 'answer', hypervideo: '3', item: '1/1700000000000', choice: 'A good point' },
+                { type: 'answer', hypervideo: '3', item: '1/1700000000000', unknown: true },
                 { type: 'bye' }
             ]
         };
@@ -1834,6 +2014,16 @@ describe('FrameTrailPairing', () => {
         assert.equal(Pairing.validateMessage([], 'guest'), 'not a message');
         assert.equal(Pairing.decode(Pairing.encode(valid.host[5]), 'guest'), null, 'a guest cannot hand out grants');
         assert.equal(Pairing.validateMessage({ type: 'grant', token: 't', ttl: '600', cookie: 'c', path: '/' }, 'host'), 'ttl must be a number');
+        const answer = { type: 'answer', hypervideo: '3', item: '1/1' };
+        assert.equal(Pairing.validateMessage(answer, 'guest'), 'an answer has a choice, or says the item is unknown');
+        assert.equal(Pairing.validateMessage(Object.assign({ choice: 1, unknown: true }, answer), 'guest'), 'an answer has a choice, or says the item is unknown');
+        assert.equal(Pairing.validateMessage(Object.assign({ choice: { a: 1 } }, answer), 'guest'), 'choice must be a number, a text or a list of numbers');
+        assert.equal(Pairing.validateMessage(Object.assign({ choice: [1, 'x'] }, answer), 'guest'), 'choice must hold numbers');
+        assert.equal(Pairing.validateMessage(Object.assign({ choice: 'x'.repeat(2001) }, answer), 'guest'), 'choice is too long');
+        assert.equal(Pairing.validateMessage(Object.assign({ choice: Infinity }, answer), 'guest'), 'choice must be a finite number');
+        assert.equal(Pairing.validateMessage({ type: 'quiz', hypervideo: '3', item: 'i', status: 'over', answered: 0, voters: 1 }, 'host'), 'status must be one of open, decided, closed, cancelled');
+        assert.equal(Pairing.decode(Pairing.encode(valid.guest[6]), 'host'), null, 'the host does not answer quizzes');
+        assert.equal(Pairing.decode(Pairing.encode(valid.host[7]), 'guest'), null, 'nor do phones run them');
     });
 
     test('grants: the cookie a phone keeps a private instance\'s grant in', () => {
@@ -1994,7 +2184,7 @@ describe('pairing broker (contract v1, scripts/pairing-broker.mjs)', () => {
         assert.deepStrictEqual(await client.listOffers(room, hostKey, listed.cursor), { offers: [], cursor: 1 }, 'after the cursor: nothing new');
         assert.equal(await client.getAnswer(room, guest), null, 'no answer yet');
         await client.putAnswer(room, guest, hostKey, Pairing.answerBlob('v=0 answer'));
-        assert.deepStrictEqual(await client.getAnswer(room, guest), { v: 1, sdp: 'v=0 answer' });
+        assert.deepStrictEqual(await client.getAnswer(room, guest), { v: Pairing.PROTOCOL_VERSION, sdp: 'v=0 answer' });
         await client.closeRoom(room, hostKey);
         await assert.rejects(client.postOffer(room, guest, offer), { code: 'noRoom' });
         await assert.rejects(client.listOffers(room, hostKey, 0), { code: 'noRoom' });
@@ -2085,7 +2275,7 @@ describe('pairing broker (contract v1, scripts/pairing-broker.mjs)', () => {
     test('pollAnswer waits for the answer, or gives up', () => withBroker({}, async ({ client }) => {
         await client.openRoom(room, hostKey);
         setTimeout(() => { client.putAnswer(room, guest, hostKey, Pairing.answerBlob('late')); }, 60);
-        assert.deepStrictEqual(await Pairing.pollAnswer(client, room, guest, { interval: 20, timeout: 2000 }), { v: 1, sdp: 'late' });
+        assert.deepStrictEqual(await Pairing.pollAnswer(client, room, guest, { interval: 20, timeout: 2000 }), { v: Pairing.PROTOCOL_VERSION, sdp: 'late' });
         await assert.rejects(Pairing.pollAnswer(client, room, Pairing.randomId(), { interval: 10, timeout: 50 }), { code: 'timeout' });
         const controller = new AbortController();
         setTimeout(() => controller.abort(), 30);
