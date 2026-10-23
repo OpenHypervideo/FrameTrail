@@ -547,12 +547,12 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
     /**
      * I return the tiles of the "Custom Overlay" gallery: one per overlay kind or
-     * variant, each with the data a dropped overlay starts with. Custom HTML,
-     * Quiz and Hotspot keep their long-standing defaults; a tile without pause gets
-     * its type's (Resource.pauseByDefault: Quiz and Hotspot pause at their start),
-     * the drawn hotspot variants pass pause: false. The text tiles
-     * (Text, Card, Quote, Notification) have auto height: size[1] is only the
-     * height until their content is measured.
+     * variant, each with the data a dropped overlay starts with: Hotspot first,
+     * Custom HTML last. Hotspot, Quiz and Custom HTML keep their long-standing
+     * defaults; a tile without pause gets its type's (Resource.pauseByDefault: Quiz
+     * and Hotspot pause at their start), the drawn hotspot variants pass pause:
+     * false. The text tiles (Text, Quote, Notification, Speech Bubble, Cloud) have
+     * auto height: size[1] is only the height until their content is measured.
      *
      * @method getCustomOverlayTiles
      * @return {Array}
@@ -569,6 +569,19 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             return escapeHelper.innerHTML;
         };
 
+        // A text in a shape: blue with white text unless extra says otherwise; text, if
+        // any, at the size of the Quote and Notification tiles
+        var shape = function(name, extra, text, autoSize) {
+            var box = { "shape": name, "background": "#0096ff", "textColor": "#ffffff", "padding": 16 };
+            for (var key in extra) { box[key] = extra[key]; }
+            var attributes = {
+                "text": text ? escapeHtml('<p><span style="font-size: 22px;">' + text + '</span></p>') : "",
+                "box": box
+            };
+            if (autoSize) { attributes.autoSize = autoSize; }
+            return attributes;
+        };
+
         var hotspotVariant = function(shape, extra) {
             var attributes = {
                 "color": "#ffd23f", "linkUrl": "", "borderWidth": 6, "shape": shape, "borderRadius": 10,
@@ -580,12 +593,13 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
         return [
             {
-                id: 'text', type: 'text', icon: 'icon-doc-text', label: labels['ResourceCustomTextHTML'],
-                attributes: { "text": "", "autoSize": "height" }, size: [30, 10]
+                id: 'hotspot', type: 'hotspot', icon: 'icon-link', label: 'Hotspot / Link',
+                attributes: { "color": "#0096ff", "linkUrl": "", "borderWidth": 5, "shape": "circle", "borderRadius": 10 },
+                size: [20, 30]
             },
             {
-                id: 'html', type: 'html', icon: 'icon-file-code', label: labels['ResourceCustomHTML'],
-                attributes: { "text": "" }, size: [30, 30]
+                id: 'text', type: 'text', icon: 'icon-doc-text', label: labels['ResourceCustomTextHTML'],
+                attributes: { "text": "", "autoSize": "height" }, size: [30, 10]
             },
             {
                 id: 'quiz', type: 'quiz', icon: 'icon-question-circle-o', label: 'Quiz', name: labels['ResourceTypeQuiz'],
@@ -598,47 +612,37 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 size: [30, 30]
             },
             {
-                id: 'hotspot', type: 'hotspot', icon: 'icon-link', label: 'Hotspot / Link',
-                attributes: { "color": "#0096ff", "linkUrl": "", "borderWidth": 5, "shape": "circle", "borderRadius": 10 },
-                size: [20, 30]
+                id: 'rectangle', type: 'text', icon: 'icon-stop-2', label: labels['SettingsHotspotShapeRectangle'],
+                attributes: shape('rectangle', {}), size: [20, 20]
             },
             {
-                id: 'card', type: 'text', icon: 'icon-vcard', label: labels['CustomOverlayCard'],
-                attributes: {
-                    "title": labels['CustomOverlayCardTitle'],
-                    "text": escapeHtml('<p><span style="font-size: 22px;">' + labels['CustomOverlayCardText'] + '</span></p>'),
-                    "box": { "background": "#ffffff", "titleColor": "#14161a", "padding": 28, "radius": 14, "shadow": true },
-                    "animation": { "in": { "preset": "slideFromBottom" }, "out": { "preset": "fadeOut" } },
-                    "autoSize": "height"
-                },
-                size: [34, 32]
+                id: 'roundedRectangle', type: 'text', icon: 'icon-check-empty', label: labels['SettingsHotspotShapeRounded'],
+                attributes: shape('rounded', { "radius": 18 }), size: [20, 20]
             },
             {
-                id: 'quote', type: 'text', icon: 'icon-quote-left', label: labels['CustomOverlayQuote'],
-                attributes: {
-                    "text": escapeHtml(
-                          '<p><span style="font-size: 30px;">“' + labels['CustomOverlayQuoteText'] + '”</span></p>'
-                        + '<p><span style="color: rgb(96, 102, 112); font-size: 18px;">— ' + labels['CustomOverlayQuoteAuthor'] + '</span></p>'
-                    ),
-                    "box": { "background": "#f4f2ee", "padding": 32, "radius": 6, "borderWidth": 0 },
-                    "animation": { "in": { "preset": "fadeIn", "duration": 600 }, "out": { "preset": "fadeOut" } },
-                    "autoSize": "height"
-                },
-                size: [40, 30]
+                id: 'circle', type: 'text', icon: 'icon-circle', label: labels['SettingsHotspotShapeCircle'],
+                attributes: shape('circle', {}), size: [12, 21.33]
             },
             {
-                id: 'notification', type: 'text', icon: 'icon-bell', label: labels['CustomOverlayNotification'],
-                attributes: {
-                    "title": labels['CustomOverlayNotificationTitle'],
-                    "text": escapeHtml('<p><span style="color: rgb(214, 218, 224); font-size: 20px;">' + labels['CustomOverlayNotificationText'] + '</span></p>'),
-                    "box": { "background": "#1f2329", "titleColor": "#ffffff", "padding": 22, "radius": 16, "shadow": true },
-                    "animation": { "in": { "preset": "slideFromTop", "duration": 600, "ease": "springQuick" }, "out": { "preset": "slideToTop" } },
-                    "autoSize": "height"
-                },
-                size: [34, 18]
+                id: 'speechBubble', type: 'text', icon: 'icon-comment', label: labels['SettingsShapeSpeechBubble'],
+                attributes: shape('speechBubble', { "direction": "downLeft", "radius": 20, "background": "#ffffff", "textColor": "#14161a", "shadow": true },
+                    labels['CustomOverlaySpeechBubbleText'], "height"),
+                size: [26, 16]
             },
             {
-                id: 'arrow', type: 'hotspot', icon: 'icon-right-big', label: labels['CustomOverlayArrow'],
+                id: 'cloud', type: 'text', icon: 'icon-cloud', label: labels['SettingsShapeCloud'],
+                attributes: shape('cloud', { "direction": "downLeft", "background": "#ffffff", "textColor": "#14161a", "shadow": true },
+                    labels['CustomOverlayCloudText'], "height"),
+                size: [28, 24]
+            },
+            {
+                id: 'blockArrow', type: 'text', icon: 'icon-right-big', label: labels['SettingsShapeBlockArrow'],
+                attributes: shape('arrow', { "direction": "right", "background": "#ffd23f", "textColor": "#14161a" },
+                    labels['CustomOverlayBlockArrowText']),
+                size: [24, 16]
+            },
+            {
+                id: 'arrow', type: 'hotspot', icon: 'icon-right', label: labels['CustomOverlayArrow'],
                 attributes: hotspotVariant('arrow', { "direction": "right", "curve": "straight" }),
                 size: [22, 10], pause: false
             },
@@ -653,7 +657,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 size: [24, 6], pause: false
             },
             {
-                id: 'freeform', type: 'hotspot', icon: 'icon-brush', label: labels['CustomOverlayFreeform'],
+                id: 'freeform', type: 'hotspot', icon: 'icon-assembly-reference', label: labels['CustomOverlayFreeform'],
                 attributes: hotspotVariant('freeform', {
                     "points": [{ "x": 50, "y": 4 }, { "x": 96, "y": 36 }, { "x": 80, "y": 94 }, { "x": 20, "y": 94 }, { "x": 4, "y": 36 }],
                     "path": "M50,4 L96,36 L80,94 L20,94 L4,36 Z",
@@ -694,6 +698,34 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                 id: 'progressRing', type: 'chart', icon: 'icon-chart-ring', label: labels['CustomOverlayProgressRing'],
                 attributes: { "chartType": "ring", "data": "72", "unit": "%", "color": "#4cc3ff", "highlight": 0, "showValues": true, "duration": 1500, "textColor": "#ffffff" },
                 size: [20, 34]
+            },
+            {
+                id: 'quote', type: 'text', icon: 'icon-quote-left', label: labels['CustomOverlayQuote'],
+                attributes: {
+                    "text": escapeHtml(
+                          '<p><span style="font-size: 30px;">“' + labels['CustomOverlayQuoteText'] + '”</span></p>'
+                        + '<p><span style="color: rgb(96, 102, 112); font-size: 18px;">— ' + labels['CustomOverlayQuoteAuthor'] + '</span></p>'
+                    ),
+                    "box": { "shape": "rounded", "background": "#f4f2ee", "padding": 32, "radius": 6, "borderWidth": 0 },
+                    "animation": { "in": { "preset": "fadeIn", "duration": 600 }, "out": { "preset": "fadeOut" } },
+                    "autoSize": "height"
+                },
+                size: [40, 30]
+            },
+            {
+                id: 'notification', type: 'text', icon: 'icon-bell', label: labels['CustomOverlayNotification'],
+                attributes: {
+                    "title": labels['CustomOverlayNotificationTitle'],
+                    "text": escapeHtml('<p><span style="color: rgb(214, 218, 224); font-size: 20px;">' + labels['CustomOverlayNotificationText'] + '</span></p>'),
+                    "box": { "shape": "rounded", "background": "#1f2329", "titleColor": "#ffffff", "padding": 22, "radius": 16, "shadow": true },
+                    "animation": { "in": { "preset": "slideFromTop", "duration": 600, "ease": "springQuick" }, "out": { "preset": "slideToTop" } },
+                    "autoSize": "height"
+                },
+                size: [34, 18]
+            },
+            {
+                id: 'html', type: 'html', icon: 'icon-file-code', label: labels['ResourceCustomHTML'],
+                attributes: { "text": "" }, size: [30, 30]
             }
         ];
 
@@ -1424,7 +1456,8 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                             +  '    <div id="CustomOverlay"></div>'
                             +  '</div>';
         var overlayEditingOptions = _oeWrapper.firstElementChild;
-        FTTabs(overlayEditingOptions, { heightStyle: 'fill' }); // Phase 2 bridge
+        // Opens on the Custom Overlay gallery
+        FTTabs(overlayEditingOptions, { heightStyle: 'fill', active: 1 }); // Phase 2 bridge
 
         ViewVideo.EditingOptions.appendChild(overlayEditingOptions);
 

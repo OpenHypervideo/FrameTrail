@@ -935,6 +935,18 @@
     display: block;
 }
 
+/* The Custom Overlay gallery's tiles have no picture: the icon is their picture */
+.editingOptions #CustomOverlay .resourceThumb .resourceOverlay .resourceIcon {
+    width: auto;
+    height: auto;
+    line-height: 1;
+}
+
+.editingOptions #CustomOverlay .resourceThumb .resourceOverlay .resourceIcon [class^="icon-"]::before,
+.editingOptions #CustomOverlay .resourceThumb .resourceOverlay .resourceIcon [class*=" icon-"]::before {
+    font-size: 32px;
+}
+
 /* Edit Properties Container */
 
 .hypervideoContainer .infoAreaRight .editPropertiesContainer {

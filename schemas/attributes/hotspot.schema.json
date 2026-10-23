@@ -12,12 +12,12 @@
             "default": "circle"
         },
         "color": {
-            "description": "CSS colour of the outline or line.",
+            "description": "CSS colour of the outline (of the line for arrow and underline), and of the pulse.",
             "type": "string",
             "default": "#0096ff"
         },
         "borderWidth": {
-            "description": "Outline or line width in pixels.",
+            "description": "Outline or line width in pixels. 0 means no outline.",
             "type": "number",
             "minimum": 0,
             "maximum": 40,
@@ -30,12 +30,16 @@
             "default": 10
         },
         "backgroundColor": {
-            "description": "CSS fill colour. Set, it hides the pulse ring so the hotspot reads as a button. Empty means no fill.",
+            "description": "CSS fill colour of the closed shapes (not drawn for arrow and underline). Empty means no fill. Where pulse is missing, a fill hides the pulse ring.",
             "type": "string",
             "default": ""
         },
+        "pulse": {
+            "description": "Closed shapes: show the pulse ring, an expanding ring in the outline colour. Missing means on unless the hotspot has a fill (hotspots made before the switch). Arrow and underline never pulse.",
+            "type": "boolean"
+        },
         "text": {
-            "description": "Label inside the hotspot, plain text.",
+            "description": "Label inside the hotspot, plain text. Not drawn for arrow and underline.",
             "type": "string",
             "default": ""
         },

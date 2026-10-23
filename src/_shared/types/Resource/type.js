@@ -646,6 +646,75 @@ FrameTrail.defineType(
 
 
                 /**
+                 * I render a paint control (the fill or the outline of a shape): a switch that turns
+                 * the colour on or off, and the colour input. Off, the input keeps its colour (shown
+                 * faded), so switching on brings it back; choosing a colour while off switches on.
+                 *
+                 * The element has setPaint(on, color) to show a value without calling back (undo).
+                 *
+                 * @method renderColorSwitch
+                 * @param {Object} options { label, color, on, onInput(color), onChange(color or null) }:
+                 *        onInput while a colour is being chosen, onChange once a choice is made
+                 *        (null: switched off)
+                 * @return HTMLElement
+                 */
+                renderColorSwitch: function(options) {
+
+                    // The text is a label of its own, so it names the input to toggle it.
+                    var id      = 'colorSwitch-' + Math.random().toString(36).slice(2, 10),
+                        element = document.createElement('div');
+
+                    var colorValue = function(value) {
+                        return (/^#[0-9a-fA-F]{6}$/.test(value || '')) ? value : '#ffffff';
+                    };
+
+                    element.className = 'colorSwitch';
+                    element.innerHTML = '<div class="checkboxRow">'
+                        + '<label class="switch"><input type="checkbox" id="' + id + '" autocomplete="off"' + (options.on ? ' checked' : '') + '><span class="slider round"></span></label>'
+                        + '<label for="' + id + '">' + options.label + '</label>'
+                        + '</div>'
+                        + '<input type="color" value="' + colorValue(options.color) + '">';
+
+                    var toggle = element.querySelector('input[type="checkbox"]'),
+                        picker = element.querySelector('input[type="color"]');
+
+                    var show = function() {
+                        picker.style.opacity = toggle.checked ? '' : '0.4';
+                    };
+
+                    toggle.addEventListener('change', function() {
+                        show();
+                        options.onChange(toggle.checked ? picker.value : null);
+                    });
+
+                    picker.addEventListener('input', function() {
+                        if (!toggle.checked) {
+                            toggle.checked = true;
+                            show();
+                        }
+                        if (options.onInput) { options.onInput(picker.value); }
+                    });
+
+                    picker.addEventListener('change', function() {
+                        toggle.checked = true;
+                        show();
+                        options.onChange(picker.value);
+                    });
+
+                    element.setPaint = function(on, color) {
+                        toggle.checked = !!on;
+                        if (color) { picker.value = colorValue(color); }
+                        show();
+                    };
+
+                    show();
+
+                    return element;
+
+                },
+
+
+                /**
                  * When an {{#crossLink "Overlay/gotInFocus:method"}}Overlay got into Focus{{/crossLink}}, its properties and some additional controls to edit the overlay's attributes
                  * should be shown in the right window of the player.
                  *

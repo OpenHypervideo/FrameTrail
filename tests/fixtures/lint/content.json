@@ -34,6 +34,36 @@
             "findings": []
         },
         {
+            "name": "a filled shape without text is complete",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/0/body/frametrail:attributes",
+                    "value": { "text": "", "box": { "shape": "circle", "background": "#0096ff" } }
+                }
+            ],
+            "findings": []
+        },
+        {
+            "name": "a shape without fill, outline or text",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/0/body/frametrail:attributes",
+                    "value": { "text": "", "box": { "shape": "speechBubble", "background": "transparent", "borderWidth": 0 } }
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "empty-required",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:00.000Z",
+                    "message": "Is incomplete: no text."
+                }
+            ]
+        },
+        {
             "name": "an image without a source",
             "rules": ["empty-required"],
             "patch": [{ "op": "remove", "path": "/hypervideo/contents/2/body/source" }],

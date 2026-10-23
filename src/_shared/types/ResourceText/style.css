@@ -180,7 +180,7 @@
 }
 
 
-/* Optional title and card style (attributes.title / attributes.box) */
+/* Optional title and shape (attributes.title / attributes.box) */
 
 .resourceDetail[data-type="text"] .textOverlayTitle {
     font-size: 30px;
@@ -200,6 +200,37 @@
     overflow: visible;
 }
 
+/* Circle, speech bubble, cloud and block arrow centre their text (alignment set
+   in the text wins). Speech bubble, cloud and arrow are an SVG outline behind the
+   text, whose shadow shows outside the box, so they do not clip. */
+.resourceDetail[data-type="text"] .resourceContent[data-shape="circle"],
+.resourceDetail[data-type="text"] .resourceContent[data-shape="speechBubble"],
+.resourceDetail[data-type="text"] .resourceContent[data-shape="cloud"],
+.resourceDetail[data-type="text"] .resourceContent[data-shape="arrow"] {
+    display: flex;
+    flex-direction: column;
+    justify-content: safe center;
+    text-align: center;
+}
+
+.resourceDetail[data-type="text"] .resourceContent[data-shape="speechBubble"],
+.resourceDetail[data-type="text"] .resourceContent[data-shape="cloud"],
+.resourceDetail[data-type="text"] .resourceContent[data-shape="arrow"] {
+    overflow: visible;
+    isolation: isolate;
+}
+
+.resourceDetail[data-type="text"] .textShapeSvg {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+    z-index: -1;
+}
+
 /* Auto height (attributes.autoSize "height"): the content takes the height it
    needs, which Overlay.measureContentHeight() reads, and is never clipped, even
    where other fonts break the lines differently than when the box was fitted.
@@ -214,6 +245,15 @@
 
 .overlayElement.autoHeight .resourceDetail[data-type="text"] .resourceContent:not(.textOverlayCard) {
     overflow: visible;
+}
+
+/* These shapes fill the box, which getContentFitHeight() makes as high as the
+   text inside them needs */
+.overlayElement.autoHeight .resourceDetail[data-type="text"] .resourceContent[data-shape="circle"],
+.overlayElement.autoHeight .resourceDetail[data-type="text"] .resourceContent[data-shape="speechBubble"],
+.overlayElement.autoHeight .resourceDetail[data-type="text"] .resourceContent[data-shape="cloud"],
+.overlayElement.autoHeight .resourceDetail[data-type="text"] .resourceContent[data-shape="arrow"] {
+    flex: 1;
 }
 
 .overlayElement.autoHeight .resourceDetail[data-type="text"] .textOverlayBody:empty {

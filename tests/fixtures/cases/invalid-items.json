@@ -817,6 +817,53 @@
             ]
         },
         {
+            "name": "hotspot pulse not a boolean",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:01.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "hotspot",
+                    "format": "text/html",
+                    "frametrail:name": "Hotspot",
+                    "frametrail:attributes": {
+                        "shape": "circle",
+                        "pulse": "yes"
+                    }
+                },
+                "frametrail:events": {
+                    "onStart": "FrameTrail.module('HypervideoController').pause();"
+                }
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/pulse",
+                    "message": "must be boolean, is string"
+                }
+            ]
+        },
+        {
             "name": "freeform point without y",
             "schema": "content-item.schema.json",
             "data": {
@@ -1010,6 +1057,102 @@
                 {
                     "path": "/body/frametrail:attributes/autoSize",
                     "message": "must be one of \"height\""
+                }
+            ]
+        },
+        {
+            "name": "text shape triangle",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;",
+                        "box": {
+                            "shape": "triangle",
+                            "background": "#ffffff"
+                        }
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/box/shape",
+                    "message": "must be one of \"rectangle\", \"rounded\", \"circle\", \"speechBubble\", \"cloud\", \"arrow\""
+                }
+            ]
+        },
+        {
+            "name": "speech bubble pointing sideways",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-07T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Hello&lt;/p&gt;",
+                        "box": {
+                            "shape": "speechBubble",
+                            "direction": "sideways"
+                        }
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/body/frametrail:attributes/box/direction",
+                    "message": "must be one of \"right\", \"left\", \"up\", \"down\", \"upRight\", \"upLeft\", \"downRight\", \"downLeft\", \"none\""
                 }
             ]
         },

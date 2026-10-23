@@ -83,7 +83,7 @@
         {
             "id": "empty-required",
             "severity": "error",
-            "description": "An overlay, annotation or code snippet lacks what its type needs: a source (embedded media, pages, files), text (text: text or title), HTML (html), a question and answers (quiz; answers for multipleChoice and multiSelect, each with text), a position (location: lat and lon), data (chart), the target of an action (a hotspot's, a quiz answer's, a quiz's onAnswered), code (code snippet)."
+            "description": "An overlay, annotation or code snippet lacks what its type needs: a source (embedded media, pages, files), text (text: text or title, or a shape with a fill or an outline), HTML (html), a question and answers (quiz; answers for multipleChoice and multiSelect, each with text), a position (location: lat and lon), data (chart), the target of an action (a hotspot's, a quiz answer's, a quiz's onAnswered), code (code snippet)."
         },
         {
             "id": "missing-license",
@@ -538,7 +538,10 @@
                 } else if (type === 'location') {
                     if (!isFinite(parseFloat(attrs.lat)) || !isFinite(parseFloat(attrs.lon))) { missing.push('no position (lat, lon)'); }
                 } else if (type === 'text') {
-                    if (plainText(attrs.text) === '' && plainText(attrs.title) === '') { missing.push('no text'); }
+                    // A shape that shows (a fill or an outline) is complete without text
+                    var box   = isObject(attrs.box) ? attrs.box : {},
+                        shows = (nonEmpty(box.background) && box.background !== 'transparent') || box.borderWidth > 0;
+                    if (plainText(attrs.text) === '' && plainText(attrs.title) === '' && !shows) { missing.push('no text'); }
                 } else if (type === 'html') {
                     if (!nonEmpty(attrs.text)) { missing.push('no HTML'); }
                 } else if (type === 'quiz') {

@@ -8,7 +8,7 @@ What each type of overlay, annotation and library resource is for, and what its 
 
 | Type | Overlay | Annotation | Library | What it is |
 |------|:-------:|:----------:|:-------:|------------|
-| `text` | ✓ | ✓ |  | Text overlay or annotation: rich text with an optional title and card style, for titles, captions, notes and explanations. |
+| `text` | ✓ | ✓ |  | Text overlay or annotation: rich text with an optional title, plain or in a shape (rectangle, rounded rectangle, circle, speech bubble, cloud, block arrow), for titles, captions, callouts and labels. |
 | `html` | ✓ | ✓ |  | Custom HTML overlay or annotation, for what the other types cannot show. |
 | `quiz` | ✓ | ✓ |  | Quiz overlay or annotation: a question with answers to choose, or asking for a free text or a rating, at a point in the video. |
 | `hotspot` | ✓ |  |  | Hotspot overlay: a clickable shape (circle, rectangle, rounded rectangle) that marks something in the picture and can open a URL or jump to a time or another hypervideo, or a drawn mark (arrow, underline, freeform outline) that points something out. |
@@ -59,7 +59,7 @@ Every overlay type also takes these attributes; annotations do not use them.
 
 ### `text`
 
-Text overlay or annotation: rich text with an optional title and card style, for titles, captions, notes and explanations. Over a busy picture a card (box) keeps the text readable.
+Text overlay or annotation: rich text with an optional title, plain or in a shape (rectangle, rounded rectangle, circle, speech bubble, cloud, block arrow), for titles, captions, callouts and labels. Over a busy picture a filled shape keeps the text readable; a shape may also stand alone, without text.
 
 Overlay, annotation. Its src, if it has one, goes into `body.value`. Schema: [`attributes/text.schema.json`](../schemas/attributes/text.schema.json).
 
@@ -67,15 +67,18 @@ Overlay, annotation. Its src, if it has one, goes into `body.value`. Schema: [`a
 |-----------|------|--------|---------|-------------|
 | `text` | string |  | `""` | The text. HTML, stored HTML-escaped ("&lt;p&gt;Hello&lt;/p&gt;"); FrameTrail unescapes it before rendering. |
 | `title` | string |  |  | Optional title, plain text, shown above the text. |
-| `box` | object |  |  | Card style. Missing means the text is drawn without a card. |
-| `box.background` | string |  | `transparent` | CSS background colour. |
-| `box.titleColor` | string |  |  | CSS colour of the title. |
-| `box.padding` | number | ≥ 0 |  | Padding in pixels. |
-| `box.radius` | number | ≥ 0 |  | Corner radius in pixels. |
-| `box.borderWidth` | number | ≥ 0 | `0` | Border width in pixels. 0 means no border. |
-| `box.borderColor` | string |  | `#000000` | CSS border colour. |
+| `box` | object |  |  | On overlays: the shape the text is in, and its style. Pixels are pixels of the overlay stage taken as 800 px wide, so the shape scales with the player. Missing means plain text: no fill, no outline, no padding. |
+| `box.shape` | string | `rectangle`, `rounded`, `circle`, `speechBubble`, `cloud`, `arrow` |  | The shape. Circle, speech bubble, cloud and block arrow centre the text in them. Missing (cards made before shapes): rounded when radius is above 0, else rectangle. |
+| `box.direction` | string | `right`, `left`, `up`, `down`, `upRight`, `upLeft`, `downRight`, `downLeft`, `none` |  | speechBubble: where the tail points (default downLeft). cloud: where its two trailing circles go (default downLeft), none for a cloud without them. arrow: where the arrow points, right, left, up or down (default right); other directions come from rotating the overlay. |
+| `box.background` | string |  | `transparent` | CSS fill colour. Missing or "transparent" means no fill. |
+| `box.textColor` | string |  |  | CSS colour of the text and the title; colours set in the text win. Missing means the default text colour (black on overlays). |
+| `box.titleColor` | string |  |  | CSS colour of the title. Missing means the text colour. |
+| `box.padding` | number | ≥ 0 |  | Space between the shape and the text, in pixels. |
+| `box.radius` | number | ≥ 0 |  | rounded and speechBubble: corner radius in pixels (default 12). Ignored by the other shapes. |
+| `box.borderWidth` | number | ≥ 0 | `0` | Outline width in pixels. 0 means no outline. |
+| `box.borderColor` | string |  | `#000000` | CSS outline colour. |
 | `box.shadow` | boolean |  | `false` | Draw a drop shadow. |
-| `autoSize` |  | `height` |  | On overlays: "height" makes the box as high as its content (title, text and card). The editor sets the height whenever the content or the width changes; only the width is set by hand. When shown, the content is never clipped, even where other fonts make it longer. Missing means the box keeps the size it was given. |
+| `autoSize` |  | `height` |  | On overlays: "height" makes the box as high as its content (title, text and shape). The editor sets the height whenever the content or the width changes; only the width is set by hand. When shown, the content is never clipped, even where other fonts make it longer. Missing means the box keeps the size it was given. |
 
 ### `html`
 
@@ -132,11 +135,12 @@ Overlay. It has no src. Schema: [`attributes/hotspot.schema.json`](../schemas/at
 | Attribute | Type | Values | Default | Description |
 |-----------|------|--------|---------|-------------|
 | `shape` | string | `circle`, `rectangle`, `rounded`, `arrow`, `underline`, `freeform` | `circle` | The shape. |
-| `color` | string |  | `#0096ff` | CSS colour of the outline or line. |
-| `borderWidth` | number | 0–40 | `5` | Outline or line width in pixels. |
+| `color` | string |  | `#0096ff` | CSS colour of the outline (of the line for arrow and underline), and of the pulse. |
+| `borderWidth` | number | 0–40 | `5` | Outline or line width in pixels. 0 means no outline. |
 | `borderRadius` | number | ≥ 0 | `10` | rounded only: corner radius in pixels. |
-| `backgroundColor` | string |  | `""` | CSS fill colour. Set, it hides the pulse ring so the hotspot reads as a button. Empty means no fill. |
-| `text` | string |  | `""` | Label inside the hotspot, plain text. |
+| `backgroundColor` | string |  | `""` | CSS fill colour of the closed shapes (not drawn for arrow and underline). Empty means no fill. Where pulse is missing, a fill hides the pulse ring. |
+| `pulse` | boolean |  |  | Closed shapes: show the pulse ring, an expanding ring in the outline colour. Missing means on unless the hotspot has a fill (hotspots made before the switch). Arrow and underline never pulse. |
+| `text` | string |  | `""` | Label inside the hotspot, plain text. Not drawn for arrow and underline. |
 | `textColor` | string |  | `#ffffff` | CSS colour of the label. |
 | `direction` | string | `right`, `left`, `up`, `down`, `upRight`, `upLeft`, `downRight`, `downLeft` | `right` | arrow only: where the arrow points. |
 | `curve` | string | `straight`, `curved`, `swoop` | `straight` | arrow only: straight, curved (one bend) or swoop (S-like). |

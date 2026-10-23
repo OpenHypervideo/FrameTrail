@@ -121,19 +121,10 @@ a.hotspot-element {
 }
 
 .hotspotEditorContainer input[type="number"] {
-    width: calc(100% - 30px);
+    width: 100%;
+    box-sizing: border-box;
     padding: 4px 0 4px 6px;
     margin: 0px;
-}
-
-.hotspotEditorContainer .innerSizeWrapper {
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-
-.hotspotEditorContainer .innerSizeWrapper span {
-    font-weight: normal;
 }
 
 /* SVG outline (arrow / underline / freeform shapes, Draw entrance and exit) */

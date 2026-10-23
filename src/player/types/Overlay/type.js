@@ -1246,9 +1246,12 @@ FrameTrail.defineType(
 
                     this.overlayElement.classList.toggle('autoHeight', this.hasAutoHeight());
 
+                    // A type may need more height than its content's (a circle around text)
                     var oldWidth = detail.style.width;
                     detail.style.width = (widthPercent * base / 100) + 'px';
-                    var height = root.offsetHeight;
+                    var height = (typeof this.resourceItem.getContentFitHeight === 'function')
+                        ? this.resourceItem.getContentFitHeight(root)
+                        : root.offsetHeight;
                     detail.style.width = oldWidth;
 
                     return height / (base * stage.height / stage.width) * 100;

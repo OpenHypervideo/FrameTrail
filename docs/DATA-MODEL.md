@@ -209,7 +209,7 @@ Lint.checkFolder(files);   // a _data folder in the folder format → [{ path, m
 | `item-partly-outside` | warning | an overlay or annotation that runs past the end of the video or begins before its start |
 | `overlay-overlap` | warning | two overlays covering the same area at the same time; hotspots and cursors are meant to lie over others and are left out |
 | `unknown-resource` | warning | the clip or an item naming a resource that is not in the library |
-| `empty-required` | error | an item lacking what its type needs: a source, text, HTML, a question and answers, a position, chart data, the target of an action (a hotspot's, a quiz answer's, a quiz's `onAnswered`), code |
+| `empty-required` | error | an item lacking what its type needs: a source, text (or a visible shape), HTML, a question and answers, a position, chart data, the target of an action (a hotspot's, a quiz answer's, a quiz's `onAnswered`), code |
 | `missing-license` | warning | an overlay made from a library resource, or showing a media file, without a licence type |
 | `chapter-order` | warning | chapters not stored in order of their start, or two with the same start |
 | `cue-outside-video` | warning | subtitle cues that start at or after the end of the video, so probably belong to another one |

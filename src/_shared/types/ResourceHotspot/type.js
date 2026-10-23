@@ -69,6 +69,40 @@ FrameTrail.defineType(
 
 
                 /**
+                 * I tell whether a shape is a line (arrow, underline): lines have no area, so
+                 * no fill, no label and no pulse.
+                 *
+                 * @method isLineShape
+                 * @param {String} shape
+                 * @return {Boolean}
+                 */
+                isLineShape: function(shape) {
+
+                    return shape === 'arrow' || shape === 'underline';
+
+                },
+
+
+                /**
+                 * I tell whether a hotspot shows its pulse ring: attributes.pulse, or, where it is
+                 * missing (hotspots made before the switch), unless the hotspot has a fill. Lines
+                 * never pulse.
+                 *
+                 * @method hasPulse
+                 * @param {Object} attrs
+                 * @return {Boolean}
+                 */
+                hasPulse: function(attrs) {
+
+                    attrs = attrs || {};
+                    if (this.isLineShape(attrs.shape)) { return false; }
+                    if (attrs.pulse !== undefined) { return !!attrs.pulse; }
+                    return !attrs.backgroundColor;
+
+                },
+
+
+                /**
                  * I toggle .hasAction on the hotspot link and attach or remove the
                  * marker fill-on-hover listeners. Fill hover only applies when there
                  * is a click action, a visible outline, no solid fill, and the shape
@@ -98,7 +132,7 @@ FrameTrail.defineType(
                     }
 
                     var shape = attrs.shape || 'circle',
-                        lineShape = (shape === 'arrow' || shape === 'underline'),
+                        lineShape = this.isLineShape(shape),
                         backgroundColor = attrs.backgroundColor || '',
                         outlineWidth = (attrs.borderWidth !== undefined) ? attrs.borderWidth : 5,
                         color = attrs.color || '#0096ff';
@@ -133,9 +167,11 @@ FrameTrail.defineType(
                     var borderWidth = (attrs.borderWidth !== undefined) ? attrs.borderWidth : 5;
                     var shape = attrs.shape ? attrs.shape : 'circle';
                     var borderRadius = (attrs.borderRadius !== undefined) ? attrs.borderRadius : 10;
-                    var text = attrs.text ? attrs.text : '';
+                    // Lines (arrow, underline) have no area: no fill, no label
+                    var lineShape = this.isLineShape(shape);
+                    var text = (attrs.text && !lineShape) ? attrs.text : '';
                     var textColor = attrs.textColor ? attrs.textColor : '#ffffff';
-                    var backgroundColor = attrs.backgroundColor ? attrs.backgroundColor : '';
+                    var backgroundColor = (attrs.backgroundColor && !lineShape) ? attrs.backgroundColor : '';
 
                     // Calculate border-radius value based on shape (0% to 50%)
                     var borderRadiusValue;
@@ -153,9 +189,8 @@ FrameTrail.defineType(
                         elementAttrs += ' target="_blank"';
                     }
 
-                    // A filled background makes the hotspot read as a button; the pulse ring is
-                    // then hidden so it looks like a solid call-to-action rather than a marker.
-                    var pulseDisplay = backgroundColor ? 'none' : '';
+                    // The pulse ring (hasPulse); freeform draws its own, following the outline
+                    var pulseDisplay = (this.hasPulse(attrs) && shape !== 'freeform') ? '' : 'none';
                     var labelStyle = 'position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); '
                                    + 'width:90%; text-align:center; pointer-events:none; overflow:hidden; '
                                    + 'text-overflow:ellipsis; color:' + textColor + ';';
@@ -163,12 +198,7 @@ FrameTrail.defineType(
                     // Arrow, underline and freeform shapes, and any shape whose outline
                     // draws itself (Draw entrance / exit), are rendered as an SVG stroke.
                     // All other hotspots keep the CSS border rendering.
-                    var svgMode   = this.usesSvg(attrs),
-                        lineShape = (shape === 'arrow' || shape === 'underline');
-
-                    if (lineShape || shape === 'freeform') {
-                        pulseDisplay = 'none';
-                    }
+                    var svgMode = this.usesSvg(attrs);
 
                     var _rdw = document.createElement('div');
                     _rdw.innerHTML = '<div class="resourceDetail" data-type="hotspot" data-shape="' + shape + '">'
@@ -298,7 +328,7 @@ FrameTrail.defineType(
                         pulse.setAttribute('stroke', color);
                         pulse.setAttribute('stroke-linecap', 'round');
                         pulse.setAttribute('stroke-linejoin', 'round');
-                        if (attrs.backgroundColor) {
+                        if (!this.hasPulse(attrs)) {
                             pulse.style.display = 'none';
                         }
                         svg.insertBefore(pulse, stroke);
@@ -787,552 +817,47 @@ FrameTrail.defineType(
 
 
                 /**
-                 * I render an editor for hotspot properties (color, link URL)
+                 * I render the editor of a hotspot: its shape and that shape's settings, its
+                 * outline (a line for arrow and underline) and fill, the pulse, the label and the
+                 * click action. Each change is one undo step, a snapshot of the attributes.
+                 *
                  * @method renderHotspotEditor
                  * @param {Object} overlayOrAnnotation
-                 * @return &#123; hotspotEditorContainer: HTMLElement;
+                 * @return HTMLElement
                  */
                 renderHotspotEditor: function(overlayOrAnnotation) {
 
-                    var self = this;
-                    var currentAttributes = overlayOrAnnotation.data.attributes || {};
+                    var self      = this,
+                        labels    = this.labels,
+                        isOverlay = !!overlayOrAnnotation.overlayElement,
+                        category  = isOverlay ? 'overlays' : 'annotations',
+                        elementId = overlayOrAnnotation.data.created,
+                        pulseId   = 'hotspotPulse-' + Math.random().toString(36).slice(2, 10),
+                        pending   = null;
 
-                    if (!currentAttributes.color) {
-                        currentAttributes.color = '#0096ff';
-                    }
-                    if (!currentAttributes.linkUrl) {
-                        currentAttributes.linkUrl = '';
-                    }
-                    if (currentAttributes.borderWidth === undefined) {
-                        currentAttributes.borderWidth = 5;
-                    }
-                    if (!currentAttributes.shape) {
-                        currentAttributes.shape = 'circle';
-                    }
-                    if (currentAttributes.borderRadius === undefined) {
-                        currentAttributes.borderRadius = 10;
-                    }
-                    if (currentAttributes.text === undefined) {
-                        currentAttributes.text = '';
-                    }
-                    if (!currentAttributes.textColor) {
-                        currentAttributes.textColor = '#ffffff';
-                    }
-                    if (currentAttributes.backgroundColor === undefined) {
-                        currentAttributes.backgroundColor = '';
+                    if (!overlayOrAnnotation.data.attributes) {
+                        overlayOrAnnotation.data.attributes = {};
                     }
 
-                    var hotspotEditorContainer = document.createElement('div');
-                    hotspotEditorContainer.className = 'hotspotEditorContainer';
-
-                    // Helper to sync editor UI controls from current data attributes
-                    var syncHotspotUI = function(a) {
-                        var c = document.querySelector('.hotspotEditorContainer');
-                        if (!c) return;
-                        c.querySelector('.hotspotPropShape').value = a.shape || 'circle';
-                        c.querySelector('.hotspotPropColor').value = a.color || '#0096ff';
-                        c.querySelector('.hotspotPropBorderWidth').value = a.borderWidth !== undefined ? a.borderWidth : 5;
-                        c.querySelector('.hotspotPropBorderRadius').value = a.borderRadius !== undefined ? a.borderRadius : 10;
+                    // Undo replaces the attributes object, so it is always read anew
+                    var attrs = function() {
+                        return overlayOrAnnotation.data.attributes;
+                    };
+                    var width = function() {
+                        var value = attrs().borderWidth;
+                        return (value !== undefined) ? value : 5;
+                    };
+                    var colorOf = function(value, fallback) {
+                        return (/^#[0-9a-fA-F]{6}$/.test(value || '')) ? value : fallback;
                     };
 
-                    // Create layout row container for all columns
-                    var layoutRow = document.createElement('div');
-                    layoutRow.className = 'layoutRow';
-                    
-                    // Shape and Color columns
-                    var shapeColumn = document.createElement('div');
-                    shapeColumn.className = 'column-3';
-                    var colorColumn = document.createElement('div');
-                    colorColumn.className = 'column-3';
-
-                    // Hotspots drawn as SVG (new shapes, Draw animations) are re-rendered
-                    // instead of having their CSS border patched.
-                    var rerenderHotspot = function(target) {
-                        if (target.rerenderContent) {
-                            target.rerenderContent();
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                        } else {
-                            (target.contentViewDetailElements || []).forEach(function(el) {
-                                var oldDetail = el.querySelector('.resourceDetail');
-                                if (oldDetail) {
-                                    if (oldDetail._ftCleanup) { oldDetail._ftCleanup(); }
-                                    oldDetail.replaceWith(target.resourceItem.renderContent());
-                                }
-                            });
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
-                        }
-                    };
-                    var isSvgRendered = function(target) {
-                        var root = target.overlayElement || ((target.contentViewDetailElements || [])[0]);
-                        return self.usesSvg(target.data.attributes) || !!(root && root.querySelector && root.querySelector('.hotspot-svg'));
-                    };
-
-                    // Helper function to apply shape, border-radius, and border-width changes
-                    var applyShapeChanges = function(overlayOrAnnotation, shape, borderRadius, borderWidth, color) {
-                        if (isSvgRendered(overlayOrAnnotation)) {
-                            rerenderHotspot(overlayOrAnnotation);
-                            return;
-                        }
-                        var bg = overlayOrAnnotation.data.attributes.backgroundColor || '';
-                        var borderRadiusValue;
-                        if (shape === 'circle') {
-                            borderRadiusValue = '50%';
-                        } else if (shape === 'rectangle') {
-                            borderRadiusValue = '0';
-                        } else { // rounded
-                            borderRadiusValue = borderRadius + 'px';
-                        }
-
-                        var borderWidthPx = (borderWidth > 0 ? borderWidth : 0) + 'px';
-
-                        if (overlayOrAnnotation.overlayElement) {
-                            var hotspotElement = overlayOrAnnotation.overlayElement.querySelector('.hotspot-element');
-                            var hotspotPulse = overlayOrAnnotation.overlayElement.querySelector('.hotspot-pulse');
-
-                            hotspotElement.style.borderRadius = borderRadiusValue;
-                            hotspotElement.style.borderWidth = borderWidthPx;
-                            hotspotElement.style.borderColor = color;
-                            hotspotElement.style.backgroundColor = bg || 'transparent';
-                            hotspotPulse.style.borderRadius = borderRadiusValue;
-                            hotspotPulse.style.borderColor = color;
-                            hotspotPulse.style.display = bg ? 'none' : '';
-
-                            self.syncHotspotHover(
-                                hotspotElement,
-                                overlayOrAnnotation.data.attributes,
-                                overlayOrAnnotation.data.events
-                            );
-
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                        } else {
-                            // Update annotation elements in dom
-                            overlayOrAnnotation.contentViewDetailElements.forEach(function(el) {
-                                var hotspotElement = el.querySelector('.hotspot-element');
-                                var hotspotPulse = el.querySelector('.hotspot-pulse');
-
-                                hotspotElement.style.borderRadius = borderRadiusValue;
-                                hotspotElement.style.borderWidth = borderWidthPx;
-                                hotspotElement.style.borderColor = color;
-                                hotspotElement.style.backgroundColor = bg || 'transparent';
-                                hotspotPulse.style.borderRadius = borderRadiusValue;
-                                hotspotPulse.style.borderColor = color;
-                                hotspotPulse.style.display = bg ? 'none' : '';
-
-                                self.syncHotspotHover(
-                                    hotspotElement,
-                                    overlayOrAnnotation.data.attributes,
-                                    overlayOrAnnotation.data.events
-                                );
-                            });
-                            FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
-                        }
-                    };
-
-                    // Shape selector column
-                    shapeColumn.insertAdjacentHTML('beforeend', '<label>'+ this.labels['SettingsHotspotShape'] +'</label>');
-                    var shapeSelect = document.createElement('select');
-                    shapeSelect.className = 'hotspotPropShape';
-                    shapeSelect.insertAdjacentHTML('beforeend', '<option value="circle"' + (currentAttributes.shape === 'circle' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeCircle'] +'</option>');
-                    shapeSelect.insertAdjacentHTML('beforeend', '<option value="rectangle"' + (currentAttributes.shape === 'rectangle' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeRectangle'] +'</option>');
-                    shapeSelect.insertAdjacentHTML('beforeend', '<option value="rounded"' + (currentAttributes.shape === 'rounded' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeRounded'] +'</option>');
-                    shapeSelect.insertAdjacentHTML('beforeend', '<option value="arrow"' + (currentAttributes.shape === 'arrow' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeArrow'] +'</option>');
-                    shapeSelect.insertAdjacentHTML('beforeend', '<option value="underline"' + (currentAttributes.shape === 'underline' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeUnderline'] +'</option>');
-                    shapeSelect.insertAdjacentHTML('beforeend', '<option value="freeform"' + (currentAttributes.shape === 'freeform' ? ' selected' : '') + '>'+ this.labels['SettingsHotspotShapeFreeform'] +'</option>');
-                    
-                    var shapeBeforeChange = currentAttributes.shape || 'circle';
-                    shapeSelect.addEventListener('focus', function() {
-                        shapeBeforeChange = overlayOrAnnotation.data.attributes.shape || 'circle';
-                    });
-                    
-                    shapeSelect.addEventListener('change', function() {
-                        var newShape = this.value;
-                        var oldShape = shapeBeforeChange;
-                        overlayOrAnnotation.data.attributes.shape = newShape;
-                        
-                        // Show/hide border radius column based on shape
-                        if (newShape === 'rounded') {
-                            borderRadiusColumn.style.display = '';
-                        } else {
-                            borderRadiusColumn.style.display = 'none';
-                        }
-                        syncShapeRows(newShape);
-                        
-                        // Apply shape changes
-                        var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
-                        var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
-                        applyShapeChanges(overlayOrAnnotation, newShape, overlayOrAnnotation.data.attributes.borderRadius, borderWidth, color);
-                        
-                        // Register undo for shape change
-                        if (oldShape !== newShape) {
-                            var isOverlay = !!overlayOrAnnotation.overlayElement;
-                            var category = isOverlay ? 'overlays' : 'annotations';
-                            var elementId = overlayOrAnnotation.data.created;
-                            
-                            (function(id, oldS, newS, cat, labels, applyFn) {
-                                var findElement = function() {
-                                    var arr = cat === 'overlays' ? 
-                                        FrameTrail.module('HypervideoModel').overlays : 
-                                        FrameTrail.module('HypervideoModel').annotations;
-                                    for (var i = 0; i < arr.length; i++) {
-                                        if (arr[i].data.created === id) {
-                                            return arr[i];
-                                        }
-                                    }
-                                    return null;
-                                };
-                                FrameTrail.module('UndoManager').register({
-                                    category: cat,
-                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Shape',
-                                    undo: function() {
-                                        var el = findElement();
-                                        if (!el) return;
-                                        el.data.attributes.shape = oldS;
-                                        var bw = el.data.attributes.borderWidth || 5;
-                                        var c = el.data.attributes.color || '#0096ff';
-                                        var br = el.data.attributes.borderRadius || 10;
-                                        applyFn(el, oldS, br, bw, c);
-                                        syncHotspotUI(el.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                    },
-                                    redo: function() {
-                                        var el = findElement();
-                                        if (!el) return;
-                                        el.data.attributes.shape = newS;
-                                        var bw = el.data.attributes.borderWidth || 5;
-                                        var c = el.data.attributes.color || '#0096ff';
-                                        var br = el.data.attributes.borderRadius || 10;
-                                        applyFn(el, newS, br, bw, c);
-                                        syncHotspotUI(el.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                    }
-                                });
-                            })(elementId, oldShape, newShape, category, self.labels, applyShapeChanges);
-                        }
-                        shapeBeforeChange = newShape;
-                    });
-                    
-                    var shapeWrapper = document.createElement('div');
-                    shapeWrapper.className = 'custom-select';
-                    shapeWrapper.appendChild(shapeSelect);
-                    shapeColumn.appendChild(shapeWrapper);
-
-                    // Color picker column
-                    colorColumn.insertAdjacentHTML('beforeend', '<label>'+ this.labels['SettingsHotspotColor'] +'</label>');
-                    var colorInput = document.createElement('input');
-                    colorInput.type = 'color';
-                    colorInput.className = 'hotspotPropColor';
-                    colorInput.value = currentAttributes.color;
-
-                    // Helper function to update color visually
-                    var updateColor = function(newColor, trackChange) {
-                        overlayOrAnnotation.data.attributes.color = newColor;
-
-                        if (isSvgRendered(overlayOrAnnotation)) {
-                            var strokeRoots = overlayOrAnnotation.overlayElement
-                                ? [overlayOrAnnotation.overlayElement]
-                                : (overlayOrAnnotation.contentViewDetailElements || []);
-                            strokeRoots.forEach(function(el) {
-                                el.querySelectorAll('.hotspot-stroke, .hotspot-svg-pulse').forEach(function(path) {
-                                    path.setAttribute('stroke', newColor);
-                                });
-                                var pulse = el.querySelector('.hotspot-pulse');
-                                if (pulse) { pulse.style.borderColor = newColor; }
-                                self.syncHotspotHover(
-                                    el.querySelector('.hotspot-element'),
-                                    overlayOrAnnotation.data.attributes,
-                                    overlayOrAnnotation.data.events
-                                );
-                            });
-                            if (trackChange) {
-                                FrameTrail.module('HypervideoModel').newUnsavedChange(overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations');
-                            }
-                            return;
-                        }
-
-                        if (overlayOrAnnotation.overlayElement) {
-                            var hotspotElement = overlayOrAnnotation.overlayElement.querySelector('.hotspot-element');
-                            var hotspotPulse = overlayOrAnnotation.overlayElement.querySelector('.hotspot-pulse');
-                            hotspotElement.style.borderColor = newColor;
-                            hotspotPulse.style.borderColor = newColor;
-                            self.syncHotspotHover(
-                                hotspotElement,
-                                overlayOrAnnotation.data.attributes,
-                                overlayOrAnnotation.data.events
-                            );
-
-                            if (trackChange) {
-                                FrameTrail.module('HypervideoModel').newUnsavedChange('overlays');
-                            }
-                        } else {
-                            // Update annotation elements in dom
-                            overlayOrAnnotation.contentViewDetailElements.forEach(function(el) {
-                                var hotspotElement = el.querySelector('.hotspot-element');
-                                var hotspotPulse = el.querySelector('.hotspot-pulse');
-                                hotspotElement.style.borderColor = newColor;
-                                hotspotPulse.style.borderColor = newColor;
-                                self.syncHotspotHover(
-                                    hotspotElement,
-                                    overlayOrAnnotation.data.attributes,
-                                    overlayOrAnnotation.data.events
-                                );
-                            });
-                            if (trackChange) {
-                                FrameTrail.module('HypervideoModel').newUnsavedChange('annotations');
-                            }
-                        }
-                    };
-
-                    // Update color in real-time as user interacts with picker
-                    var colorBeforeChange = currentAttributes.color || '#0096ff';
-                    colorInput.addEventListener('focus', function() {
-                        colorBeforeChange = overlayOrAnnotation.data.attributes.color || '#0096ff';
-                    });
-                    
-                    colorInput.addEventListener('input', function() {
-                        var newColor = this.value;
-                        updateColor(newColor, false);
-                    });
-
-                    // Track change when picker is closed
-                    colorInput.addEventListener('change', function() {
-                        var newColor = this.value;
-                        updateColor(newColor, true);
-                        
-                        // Register undo for color change
-                        if (colorBeforeChange !== newColor) {
-                            var isOverlay = !!overlayOrAnnotation.overlayElement;
-                            var category = isOverlay ? 'overlays' : 'annotations';
-                            var elementId = overlayOrAnnotation.data.created;
-                            
-                            (function(id, oldC, newC, cat, labels, applyFn) {
-                                var findElement = function() {
-                                    var arr = cat === 'overlays' ? 
-                                        FrameTrail.module('HypervideoModel').overlays : 
-                                        FrameTrail.module('HypervideoModel').annotations;
-                                    for (var i = 0; i < arr.length; i++) {
-                                        if (arr[i].data.created === id) {
-                                            return arr[i];
-                                        }
-                                    }
-                                    return null;
-                                };
-                                FrameTrail.module('UndoManager').register({
-                                    category: cat,
-                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Color',
-                                    undo: function() {
-                                        var el = findElement();
-                                        if (!el) return;
-                                        el.data.attributes.color = oldC;
-                                        var shape = el.data.attributes.shape || 'circle';
-                                        var bw = el.data.attributes.borderWidth || 5;
-                                        var br = el.data.attributes.borderRadius || 10;
-                                        applyFn(el, shape, br, bw, oldC);
-                                        syncHotspotUI(el.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                    },
-                                    redo: function() {
-                                        var el = findElement();
-                                        if (!el) return;
-                                        el.data.attributes.color = newC;
-                                        var shape = el.data.attributes.shape || 'circle';
-                                        var bw = el.data.attributes.borderWidth || 5;
-                                        var br = el.data.attributes.borderRadius || 10;
-                                        applyFn(el, shape, br, bw, newC);
-                                        syncHotspotUI(el.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                    }
-                                });
-                            })(elementId, colorBeforeChange, newColor, category, self.labels, applyShapeChanges);
-                        }
-                        colorBeforeChange = newColor;
-                    });
-
-                    colorColumn.appendChild(colorInput);
-
-                    // Border Width and Border Radius columns
-                    var borderWidthColumn = document.createElement('div');
-                    borderWidthColumn.className = 'column-3';
-                    var borderRadiusColumn = document.createElement('div');
-                    borderRadiusColumn.className = 'column-3';
-
-                    // Border width control column
-                    borderWidthColumn.insertAdjacentHTML('beforeend', '<label>'+ this.labels['SettingsHotspotBorderWidth'] +'</label>');
-                    var borderWidthInput = document.createElement('input');
-                    borderWidthInput.type = 'number';
-                    borderWidthInput.className = 'hotspotPropBorderWidth';
-                    borderWidthInput.min = '0'; borderWidthInput.max = '40'; borderWidthInput.step = '1';
-                    borderWidthInput.value = currentAttributes.borderWidth;
-                    var borderWidthLabel = document.createElement('span');
-                    borderWidthLabel.textContent = 'px';
-                    var borderWidthWrapper = document.createElement('div');
-                    borderWidthWrapper.className = 'innerSizeWrapper';
-                    borderWidthWrapper.append(borderWidthInput, borderWidthLabel);
-
-                    var borderWidthBeforeChange = currentAttributes.borderWidth;
-                    borderWidthInput.addEventListener('focus', function() {
-                        borderWidthBeforeChange = overlayOrAnnotation.data.attributes.borderWidth;
-                    });
-                    
-                    borderWidthInput.addEventListener('change', function() {
-                        var newWidth = parseFloat(this.value);
-                        if (isNaN(newWidth) || newWidth < 0) newWidth = 0;
-                        if (newWidth > 40) newWidth = 40;
-                        this.value = newWidth;
-                        var oldWidth = borderWidthBeforeChange;
-                        overlayOrAnnotation.data.attributes.borderWidth = newWidth;
-                        
-                        var shape = overlayOrAnnotation.data.attributes.shape || 'circle';
-                        var borderRadius = overlayOrAnnotation.data.attributes.borderRadius || 10;
-                        var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
-                        
-                        // Apply changes
-                        applyShapeChanges(overlayOrAnnotation, shape, borderRadius, newWidth, color);
-                        FrameTrail.module('HypervideoModel').newUnsavedChange(overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations');
-                        
-                        // Register undo for border width change
-                        if (oldWidth !== newWidth) {
-                            var isOverlay = !!overlayOrAnnotation.overlayElement;
-                            var category = isOverlay ? 'overlays' : 'annotations';
-                            var elementId = overlayOrAnnotation.data.created;
-                            
-                            (function(id, oldW, newW, cat, labels, applyFn) {
-                                var findElement = function() {
-                                    var arr = cat === 'overlays' ? 
-                                        FrameTrail.module('HypervideoModel').overlays : 
-                                        FrameTrail.module('HypervideoModel').annotations;
-                                    for (var i = 0; i < arr.length; i++) {
-                                        if (arr[i].data.created === id) {
-                                            return arr[i];
-                                        }
-                                    }
-                                    return null;
-                                };
-                                FrameTrail.module('UndoManager').register({
-                                    category: cat,
-                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Border',
-                                    undo: function() {
-                                        var el = findElement();
-                                        if (!el) return;
-                                        el.data.attributes.borderWidth = oldW;
-                                        var shape = el.data.attributes.shape || 'circle';
-                                        var br = el.data.attributes.borderRadius || 10;
-                                        var c = el.data.attributes.color || '#0096ff';
-                                        applyFn(el, shape, br, oldW, c);
-                                        syncHotspotUI(el.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                    },
-                                    redo: function() {
-                                        var el = findElement();
-                                        if (!el) return;
-                                        el.data.attributes.borderWidth = newW;
-                                        var shape = el.data.attributes.shape || 'circle';
-                                        var br = el.data.attributes.borderRadius || 10;
-                                        var c = el.data.attributes.color || '#0096ff';
-                                        applyFn(el, shape, br, newW, c);
-                                        syncHotspotUI(el.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                    }
-                                });
-                            })(elementId, oldWidth, newWidth, category, self.labels, applyShapeChanges);
-                        }
-                        borderWidthBeforeChange = newWidth;
-                    });
-
-                    borderWidthColumn.appendChild(borderWidthWrapper);
-
-                    // Border radius input column (only visible for rounded rectangles)
-                    borderRadiusColumn.insertAdjacentHTML('beforeend', '<label>'+ this.labels['SettingsHotspotBorderRadius'] +'</label>');
-                    var borderRadiusInput = document.createElement('input');
-                    borderRadiusInput.type = 'number';
-                    borderRadiusInput.className = 'hotspotPropBorderRadius';
-                    borderRadiusInput.min = '0'; borderRadiusInput.max = '100'; borderRadiusInput.step = '1';
-                    borderRadiusInput.value = currentAttributes.borderRadius;
-                    var borderRadiusLabel = document.createElement('span');
-                    borderRadiusLabel.textContent = 'px';
-                    var borderRadiusWrapper = document.createElement('div');
-                    borderRadiusWrapper.className = 'innerSizeWrapper';
-                    borderRadiusWrapper.append(borderRadiusInput, borderRadiusLabel);
-                    
-                    // Hide border radius if shape is not rounded
-                    if (currentAttributes.shape !== 'rounded') {
-                        borderRadiusColumn.style.display = 'none';
-                    }
-                    
-                    var borderRadiusBeforeChange = currentAttributes.borderRadius || 10;
-                    borderRadiusInput.addEventListener('focus', function() {
-                        borderRadiusBeforeChange = overlayOrAnnotation.data.attributes.borderRadius || 10;
-                    });
-                    
-                    borderRadiusInput.addEventListener('change', function() {
-                        var newRadius = parseFloat(this.value);
-                        if (isNaN(newRadius) || newRadius < 0) newRadius = 0;
-                        if (newRadius > 100) newRadius = 100;
-                        this.value = newRadius;
-                        var oldRadius = borderRadiusBeforeChange;
-                        overlayOrAnnotation.data.attributes.borderRadius = newRadius;
-                        
-                        // Apply shape changes
-                        var borderWidth = overlayOrAnnotation.data.attributes.borderWidth || 5;
-                        var color = overlayOrAnnotation.data.attributes.color || '#0096ff';
-                        applyShapeChanges(overlayOrAnnotation, overlayOrAnnotation.data.attributes.shape, newRadius, borderWidth, color);
-                        
-                        // Register undo for border radius change
-                        if (oldRadius !== newRadius) {
-                            var isOverlay = !!overlayOrAnnotation.overlayElement;
-                            var category = isOverlay ? 'overlays' : 'annotations';
-                            var elementId = overlayOrAnnotation.data.created;
-                            
-                            (function(id, oldR, newR, cat, labels, applyFn) {
-                                var findElement = function() {
-                                    var arr = cat === 'overlays' ? 
-                                        FrameTrail.module('HypervideoModel').overlays : 
-                                        FrameTrail.module('HypervideoModel').annotations;
-                                    for (var i = 0; i < arr.length; i++) {
-                                        if (arr[i].data.created === id) {
-                                            return arr[i];
-                                        }
-                                    }
-                                    return null;
-                                };
-                                FrameTrail.module('UndoManager').register({
-                                    category: cat,
-                                    description: (cat === 'overlays' ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' Border Radius',
-                                    undo: function() {
-                                        var el = findElement();
-                                        if (!el) return;
-                                        el.data.attributes.borderRadius = oldR;
-                                        var shape = el.data.attributes.shape || 'circle';
-                                        var bw = el.data.attributes.borderWidth || 5;
-                                        var c = el.data.attributes.color || '#0096ff';
-                                        applyFn(el, shape, oldR, bw, c);
-                                        syncHotspotUI(el.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                    },
-                                    redo: function() {
-                                        var el = findElement();
-                                        if (!el) return;
-                                        el.data.attributes.borderRadius = newR;
-                                        var shape = el.data.attributes.shape || 'circle';
-                                        var bw = el.data.attributes.borderWidth || 5;
-                                        var c = el.data.attributes.color || '#0096ff';
-                                        applyFn(el, shape, newR, bw, c);
-                                        syncHotspotUI(el.data.attributes);
-                                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                                    }
-                                });
-                            })(elementId, oldRadius, newRadius, category, self.labels, applyShapeChanges);
-                        }
-                        borderRadiusBeforeChange = newRadius;
-                    });
-
-                    borderRadiusColumn.appendChild(borderRadiusWrapper);
-
-                    // Append all columns to layoutRow, then layoutRow to container
-                    layoutRow.append(shapeColumn, colorColumn, borderWidthColumn, borderRadiusColumn);
-                    hotspotEditorContainer.appendChild(layoutRow);
-
-                    // --- Shape specific settings: arrow direction / curve, freeform drawing ---
-                    var directions = ['right', 'downRight', 'down', 'downLeft', 'left', 'upLeft', 'up', 'upRight'],
+                    var shapes = ['circle', 'rectangle', 'rounded', 'arrow', 'underline', 'freeform'],
+                        shapeLabels = {
+                            circle: 'SettingsHotspotShapeCircle', rectangle: 'SettingsHotspotShapeRectangle',
+                            rounded: 'SettingsHotspotShapeRounded', arrow: 'SettingsHotspotShapeArrow',
+                            underline: 'SettingsHotspotShapeUnderline', freeform: 'SettingsHotspotShapeFreeform'
+                        },
+                        directions = ['right', 'downRight', 'down', 'downLeft', 'left', 'upLeft', 'up', 'upRight'],
                         directionLabels = {
                             right: 'SettingsHotspotDirectionRight', downRight: 'SettingsHotspotDirectionDownRight',
                             down: 'SettingsHotspotDirectionDown', downLeft: 'SettingsHotspotDirectionDownLeft',
@@ -1341,288 +866,365 @@ FrameTrail.defineType(
                         },
                         curves = { straight: 'SettingsHotspotCurveStraight', curved: 'SettingsHotspotCurveCurved', swoop: 'SettingsHotspotCurveSwoop' };
 
-                    var _shw = document.createElement('div');
-                    _shw.innerHTML = '<div class="hotspotShapeSettings">'
+                    var options = function(values, labelKeys) {
+                        return values.map(function(value) {
+                            return '<option value="' + value + '">' + labels[labelKeys[value]] + '</option>';
+                        }).join('');
+                    };
+
+                    var container = document.createElement('div');
+                    container.className = 'hotspotEditorContainer';
+                    container.innerHTML = '<div class="layoutRow">'
+                        + '    <div class="column-6">'
+                        + '        <label>' + labels['SettingsHotspotShape'] + '</label>'
+                        + '        <div class="custom-select"><select class="hotspotPropShape">' + options(shapes, shapeLabels) + '</select></div>'
+                        + '    </div>'
+                        + '    <div class="column-6 hotspotRadiusColumn">'
+                        + '        <label>' + labels['SettingsShapeCornerRadius'] + '</label>'
+                        + '        <input type="number" class="hotspotPropBorderRadius" min="0" max="100" step="1">'
+                        + '    </div>'
+                        + '</div>'
                         + '<div class="layoutRow hotspotArrowRow">'
                         + '    <div class="column-6">'
-                        + '        <label>' + this.labels['SettingsHotspotDirection'] + '</label>'
-                        + '        <div class="custom-select"><select class="hotspotPropDirection">'
-                        +              directions.map(function(d) { return '<option value="' + d + '"' + ((currentAttributes.direction || 'right') === d ? ' selected' : '') + '>' + self.labels[directionLabels[d]] + '</option>'; }).join('')
-                        + '        </select></div>'
+                        + '        <label>' + labels['SettingsHotspotDirection'] + '</label>'
+                        + '        <div class="custom-select"><select class="hotspotPropDirection">' + options(directions, directionLabels) + '</select></div>'
                         + '    </div>'
                         + '    <div class="column-6">'
-                        + '        <label>' + this.labels['SettingsHotspotCurve'] + '</label>'
-                        + '        <div class="custom-select"><select class="hotspotPropCurve">'
-                        +              Object.keys(curves).map(function(c) { return '<option value="' + c + '"' + ((currentAttributes.curve || 'straight') === c ? ' selected' : '') + '>' + self.labels[curves[c]] + '</option>'; }).join('')
-                        + '        </select></div>'
+                        + '        <label>' + labels['SettingsHotspotCurve'] + '</label>'
+                        + '        <div class="custom-select"><select class="hotspotPropCurve">' + options(Object.keys(curves), curves) + '</select></div>'
                         + '    </div>'
                         + '</div>'
                         + '<div class="layoutRow hotspotFreeformRow">'
                         + '    <div class="column-12">'
-                        + '        <button type="button" class="hotspotDrawShape"><span class="icon-pencil"></span> ' + this.labels['SettingsHotspotDrawShape'] + '</button>'
-                        + '        <div class="fieldHint">' + this.labels['MessageHotspotFreeformEdit'] + '</div>'
+                        + '        <button type="button" class="hotspotDrawShape"><span class="icon-pencil"></span> ' + labels['SettingsHotspotDrawShape'] + '</button>'
+                        + '        <div class="fieldHint">' + labels['MessageHotspotFreeformEdit'] + '</div>'
                         + '    </div>'
                         + '</div>'
+                        + '<div class="layoutRow">'
+                        + '    <div class="column-4 hotspotFillColumn"></div>'
+                        + '    <div class="column-4 hotspotOutlineColumn"></div>'
+                        + '    <div class="column-4">'
+                        + '        <label>' + labels['SettingsShapeOutlineWidth'] + '</label>'
+                        + '        <input type="number" class="hotspotPropBorderWidth" min="0" max="40" step="1">'
+                        + '    </div>'
+                        + '</div>'
+                        + '<div class="layoutRow hotspotPulseRow">'
+                        + '    <div class="column-12">'
+                        + '        <div class="checkboxRow">'
+                        + '            <label class="switch"><input id="' + pulseId + '" class="hotspotPropPulse" type="checkbox" autocomplete="off"><span class="slider round"></span></label>'
+                        + '            <label for="' + pulseId + '">' + labels['SettingsHotspotPulse'] + '</label>'
+                        + '        </div>'
+                        + '    </div>'
+                        + '</div>'
+                        + '<div class="hotspotLabelSection">'
+                        + '    <hr>'
+                        + '    <div class="layoutRow">'
+                        + '        <div class="column-8">'
+                        + '            <label>' + labels['SettingsHotspotText'] + '</label>'
+                        + '            <input type="text" class="hotspotPropText">'
+                        + '        </div>'
+                        + '        <div class="column-4">'
+                        + '            <label>' + labels['SettingsShapeTextColor'] + '</label>'
+                        + '            <input type="color" class="hotspotPropTextColor">'
+                        + '        </div>'
+                        + '    </div>'
                         + '</div>';
-                    var shapeSettings = _shw.firstElementChild;
-                    hotspotEditorContainer.appendChild(shapeSettings);
+
+                    var q = function(selector) { return container.querySelector(selector); };
+
+                    var shapeSelect     = q('.hotspotPropShape'),
+                        radiusInput     = q('.hotspotPropBorderRadius'),
+                        directionSelect = q('.hotspotPropDirection'),
+                        curveSelect     = q('.hotspotPropCurve'),
+                        widthInput      = q('.hotspotPropBorderWidth'),
+                        pulseInput      = q('.hotspotPropPulse'),
+                        textInput       = q('.hotspotPropText'),
+                        textColorInput  = q('.hotspotPropTextColor'),
+                        lastWidth       = (width() > 0) ? width() : 5;
+
+                    // --- Undo: a change starts with begin() (the state before it) and ends with commit() ---
+
+                    var snapshot = function() {
+                        return JSON.parse(JSON.stringify(attrs()));
+                    };
+
+                    var begin = function() {
+                        if (!pending) { pending = snapshot(); }
+                    };
+
+                    var findTarget = function() {
+                        var items = FrameTrail.module('HypervideoModel')[category];
+                        for (var i = 0; i < items.length; i++) {
+                            if (items[i].data.created === elementId) { return items[i]; }
+                        }
+                        return null;
+                    };
+
+                    var commit = function(labelKey) {
+                        var before = pending,
+                            after  = snapshot(),
+                            description = (isOverlay ? labels['SidebarOverlays'] : labels['SidebarMyAnnotations']) + ' ' + labels[labelKey];
+                        pending = null;
+                        if (!before || JSON.stringify(before) === JSON.stringify(after)) { return; }
+                        FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                        if (isOverlay) {
+                            // Undo and redo render the panel anew
+                            FrameTrail.module('OverlaysController').registerStateUndo(
+                                overlayOrAnnotation, description, { attributes: before }, { attributes: after }, { rerender: true }
+                            );
+                            return;
+                        }
+                        var restore = function(values) {
+                            var target = findTarget();
+                            if (!target) { return; }
+                            target.data.attributes = JSON.parse(JSON.stringify(values));
+                            rerender(target);
+                            if (target === overlayOrAnnotation && container.isConnected) { syncInputs(); }
+                            FrameTrail.module('HypervideoModel').newUnsavedChange(category);
+                        };
+                        FrameTrail.module('UndoManager').register({
+                            category: category,
+                            description: description,
+                            undo: function() { restore(before); },
+                            redo: function() { restore(after); }
+                        });
+                    };
+
+                    // --- Showing a change ---
+
+                    // A change of the shape, its size or its parts renders the hotspot anew
+                    var rerender = function(target) {
+                        target = target || overlayOrAnnotation;
+                        if (target.overlayElement) {
+                            target.rerenderContent();
+                            return;
+                        }
+                        (target.contentViewDetailElements || []).forEach(function(el) {
+                            var oldDetail = el.querySelector('.resourceDetail');
+                            if (oldDetail) {
+                                if (oldDetail._ftCleanup) { oldDetail._ftCleanup(); }
+                                oldDetail.replaceWith(target.resourceItem.renderContent());
+                            }
+                        });
+                    };
+
+                    // While a colour is chosen or the label typed, only colours and label change
+                    var preview = function() {
+                        var a     = attrs(),
+                            line  = self.isLineShape(a.shape),
+                            color = a.color || '#0096ff',
+                            roots = isOverlay ? [overlayOrAnnotation.overlayElement] : (overlayOrAnnotation.contentViewDetailElements || []);
+                        roots.forEach(function(root) {
+                            var link  = root.querySelector('.hotspot-element'),
+                                pulse = root.querySelector('.hotspot-pulse'),
+                                label = root.querySelector('.hotspot-label');
+                            if (link) {
+                                link.style.borderColor = color;
+                                link.style.backgroundColor = (!line && a.backgroundColor) || 'transparent';
+                                self.syncHotspotHover(link, a, overlayOrAnnotation.data.events);
+                            }
+                            if (pulse) { pulse.style.borderColor = color; }
+                            root.querySelectorAll('.hotspot-stroke, .hotspot-svg-pulse').forEach(function(path) {
+                                path.setAttribute('stroke', color);
+                            });
+                            if (label) {
+                                label.textContent = line ? '' : (a.text || '');
+                                label.style.color = a.textColor || '#ffffff';
+                            }
+                        });
+                    };
+
+                    // Hotspots made before the pulse switch lose their pulse with a fill. Once the
+                    // fill is changed here, the switch decides.
+                    var keepPulse = function() {
+                        var a = attrs();
+                        if (a.pulse === undefined && !self.isLineShape(a.shape)) {
+                            a.pulse = self.hasPulse(a);
+                        }
+                    };
+
+                    // --- Outline (line) and fill ---
+
+                    var outlineControl = this.renderColorSwitch({
+                        label:   labels['SettingsShapeOutline'],
+                        color:   colorOf(attrs().color, '#0096ff'),
+                        on:      width() > 0,
+                        onInput: function(color) {
+                            begin();
+                            attrs().color = color;
+                            if (width() > 0) {
+                                preview();
+                            } else {
+                                attrs().borderWidth = lastWidth;
+                                widthInput.value = lastWidth;
+                                rerender();
+                            }
+                        },
+                        onChange: function(color) {
+                            begin();
+                            if (color === null) {
+                                if (width() > 0) { lastWidth = width(); }
+                                attrs().borderWidth = 0;
+                            } else {
+                                attrs().color = color;
+                                if (!(width() > 0)) { attrs().borderWidth = lastWidth; }
+                            }
+                            widthInput.value = width();
+                            rerender();
+                            commit('SettingsShapeOutline');
+                        }
+                    });
+                    q('.hotspotOutlineColumn').appendChild(outlineControl);
+
+                    var fillControl = this.renderColorSwitch({
+                        label:   labels['SettingsShapeFill'],
+                        color:   colorOf(attrs().backgroundColor, colorOf(attrs().color, '#0096ff')),
+                        on:      !!attrs().backgroundColor,
+                        onInput: function(color) {
+                            begin();
+                            keepPulse();
+                            attrs().backgroundColor = color;
+                            preview();
+                        },
+                        onChange: function(color) {
+                            begin();
+                            keepPulse();
+                            attrs().backgroundColor = color || '';
+                            rerender();
+                            commit('SettingsShapeFill');
+                        }
+                    });
+                    q('.hotspotFillColumn').appendChild(fillControl);
+
+                    widthInput.addEventListener('change', function() {
+                        var value = parseFloat(this.value);
+                        if (isNaN(value) || value < 0) { value = 0; }
+                        if (value > 40) { value = 40; }
+                        this.value = value;
+                        begin();
+                        attrs().borderWidth = value;
+                        if (value > 0) { lastWidth = value; }
+                        outlineControl.setPaint(value > 0);
+                        rerender();
+                        commit('SettingsShapeOutlineWidth');
+                    });
+
+                    // --- Shape and its settings ---
+
+                    // What a shape offers: corner radius (rounded), direction and curve (arrow),
+                    // drawing (freeform, on the video); lines have no fill, pulse or label.
+                    var syncRows = function() {
+                        var shape = attrs().shape || 'circle',
+                            line  = self.isLineShape(shape);
+                        q('.hotspotRadiusColumn').style.display = (shape === 'rounded') ? '' : 'none';
+                        q('.hotspotArrowRow').style.display     = (shape === 'arrow') ? '' : 'none';
+                        q('.hotspotFreeformRow').style.display  = (shape === 'freeform' && isOverlay) ? '' : 'none';
+                        q('.hotspotFillColumn').style.display   = line ? 'none' : '';
+                        q('.hotspotPulseRow').style.display     = line ? 'none' : '';
+                        q('.hotspotLabelSection').style.display = line ? 'none' : '';
+                        outlineControl.querySelector('label:not(.switch)').textContent = labels[line ? 'SettingsShapeLine' : 'SettingsShapeOutline'];
+                    };
+
+                    var syncInputs = function() {
+                        var a = attrs();
+                        shapeSelect.value     = a.shape || 'circle';
+                        radiusInput.value     = (a.borderRadius !== undefined) ? a.borderRadius : 10;
+                        directionSelect.value = a.direction || 'right';
+                        curveSelect.value     = a.curve || 'straight';
+                        widthInput.value      = width();
+                        outlineControl.setPaint(width() > 0, colorOf(a.color, '#0096ff'));
+                        fillControl.setPaint(!!a.backgroundColor, a.backgroundColor);
+                        pulseInput.checked    = self.hasPulse(a);
+                        textInput.value       = a.text || '';
+                        textColorInput.value  = colorOf(a.textColor, '#ffffff');
+                        syncRows();
+                    };
+
+                    shapeSelect.addEventListener('change', function() {
+                        begin();
+                        attrs().shape = this.value;
+                        syncRows();
+                        pulseInput.checked = self.hasPulse(attrs());
+                        rerender();
+                        commit('SettingsHotspotShape');
+                    });
+
+                    radiusInput.addEventListener('change', function() {
+                        var value = parseFloat(this.value);
+                        if (isNaN(value) || value < 0) { value = 0; }
+                        if (value > 100) { value = 100; }
+                        this.value = value;
+                        begin();
+                        attrs().borderRadius = value;
+                        rerender();
+                        commit('SettingsShapeCornerRadius');
+                    });
+
+                    [[directionSelect, 'direction', 'SettingsHotspotDirection'], [curveSelect, 'curve', 'SettingsHotspotCurve']].forEach(function(entry) {
+                        entry[0].addEventListener('change', function() {
+                            begin();
+                            attrs()[entry[1]] = this.value;
+                            rerender();
+                            commit(entry[2]);
+                        });
+                    });
 
                     // The outline is drawn and edited on the video (overlays only)
-                    shapeSettings.querySelector('.hotspotDrawShape').addEventListener('click', function(evt) {
+                    q('.hotspotDrawShape').addEventListener('click', function(evt) {
                         evt.preventDefault();
                         var FreeformShapeEditor = FrameTrail.module('FreeformShapeEditor');
-                        if (FreeformShapeEditor && overlayOrAnnotation.overlayElement) {
+                        if (FreeformShapeEditor && isOverlay) {
                             FreeformShapeEditor.startDrawing(overlayOrAnnotation);
                         }
                     });
 
-                    var syncShapeRows = function(shapeValue) {
-                        shapeSettings.querySelector('.hotspotArrowRow').style.display    = (shapeValue === 'arrow') ? '' : 'none';
-                        shapeSettings.querySelector('.hotspotFreeformRow').style.display = (shapeValue === 'freeform' && overlayOrAnnotation.overlayElement) ? '' : 'none';
-                    };
-                    syncShapeRows(currentAttributes.shape);
-
-                    // Undo for the shape settings (attributes snapshot + re-render)
-                    var shapeSettingUndo = function(key, oldValue, newValue) {
-                        var cat = overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations',
-                            elementId = overlayOrAnnotation.data.created;
-                        var findElement = function() {
-                            var arr = cat === 'overlays' ? FrameTrail.module('HypervideoModel').overlays : FrameTrail.module('HypervideoModel').annotations;
-                            for (var i = 0; i < arr.length; i++) {
-                                if (arr[i].data.created === elementId) { return arr[i]; }
-                            }
-                            return null;
-                        };
-                        var applyValue = function(value) {
-                            var target = findElement();
-                            if (!target) { return; }
-                            target.data.attributes[key] = value;
-                            rerenderHotspot(target);
-                            var select = document.querySelector('.hotspotEditorContainer .hotspotProp' + key.charAt(0).toUpperCase() + key.slice(1));
-                            if (select) { select.value = value; }
-                        };
-                        FrameTrail.module('UndoManager').register({
-                            category: cat,
-                            description: (cat === 'overlays' ? self.labels['SidebarOverlays'] : self.labels['SidebarMyAnnotations']) + ' ' + self.labels['SettingsHotspotShape'],
-                            undo: function() { applyValue(oldValue); },
-                            redo: function() { applyValue(newValue); }
-                        });
-                    };
-
-                    ['direction', 'curve'].forEach(function(key) {
-                        var control = shapeSettings.querySelector('.hotspotProp' + key.charAt(0).toUpperCase() + key.slice(1)),
-                            valueBefore = null;
-                        control.addEventListener('focus', function() {
-                            valueBefore = overlayOrAnnotation.data.attributes[key];
-                        });
-                        control.addEventListener('change', function() {
-                            var value = this.value.trim();
-                            var oldValue = (valueBefore !== null) ? valueBefore : overlayOrAnnotation.data.attributes[key];
-                            overlayOrAnnotation.data.attributes[key] = value;
-                            rerenderHotspot(overlayOrAnnotation);
-                            if (oldValue !== value) {
-                                shapeSettingUndo(key, oldValue, value);
-                            }
-                            valueBefore = value;
-                        });
+                    pulseInput.addEventListener('change', function() {
+                        begin();
+                        attrs().pulse = this.checked;
+                        rerender();
+                        commit('SettingsHotspotPulse');
                     });
 
-                    // --- Optional text / text color / background color ---
-                    hotspotEditorContainer.insertAdjacentHTML('beforeend', '<hr>');
+                    // --- Label ---
 
-                    // Checkerboard fill used to signal a transparent background (both on the
-                    // "make transparent" reset button and behind the faded color picker).
-                    var checkerboard = 'background-image:'
-                        + 'linear-gradient(45deg,#bbb 25%,transparent 25%),'
-                        + 'linear-gradient(-45deg,#bbb 25%,transparent 25%),'
-                        + 'linear-gradient(45deg,transparent 75%,#bbb 75%),'
-                        + 'linear-gradient(-45deg,transparent 75%,#bbb 75%);'
-                        + 'background-size:8px 8px;background-position:0 0,0 4px,4px -4px,-4px 0;background-color:#fff;';
-
-                    var _txw = document.createElement('div');
-                    _txw.innerHTML = '<div class="layoutRow">'
-                        + '    <div class="column-6">'
-                        + '        <label>'+ this.labels['SettingsHotspotText'] +'</label>'
-                        + '        <input type="text" class="hotspotPropText">'
-                        + '    </div>'
-                        + '    <div class="column-3">'
-                        + '        <label>'+ this.labels['SettingsHotspotTextColor'] +'</label>'
-                        + '        <input type="color" class="hotspotPropTextColor" value="'+ (currentAttributes.textColor || '#ffffff') +'">'
-                        + '    </div>'
-                        + '    <div class="column-3">'
-                        + '        <label>'+ this.labels['SettingsHotspotBackground'] +'</label>'
-                        + '        <div class="innerSizeWrapper">'
-                        + '            <span class="hotspotBgSwatchWrap" style="'+ checkerboard +' display:inline-flex; border-radius:3px; overflow:hidden; width: calc(100% - 50px);">'
-                        + '                <input type="color" class="hotspotPropBackground" value="'+ (currentAttributes.backgroundColor || '#0096ff') +'">'
-                        + '            </span>'
-                        + '            <button type="button" class="hotspotBackgroundClear" title="'+ this.labels['GenericTransparent'] +'" style="'+ checkerboard +' width:26px; height:26px; padding:0; border:1px solid var(--primary-bg-color); border-radius:3px; cursor:pointer;"></button>'
-                        + '        </div>'
-                        + '    </div>'
-                        + '</div>';
-                    hotspotEditorContainer.appendChild(_txw.firstElementChild);
-
-                    var textInput       = hotspotEditorContainer.querySelector('.hotspotPropText'),
-                        textColorInput  = hotspotEditorContainer.querySelector('.hotspotPropTextColor'),
-                        backgroundInput = hotspotEditorContainer.querySelector('.hotspotPropBackground'),
-                        backgroundClear = hotspotEditorContainer.querySelector('.hotspotBackgroundClear');
-
-                    // The color picker sits over a checkerboard; when no background is set we fade
-                    // the picker so the checkerboard shows through (reads as "transparent").
-                    var syncBackgroundSwatch = function() {
-                        var bg = overlayOrAnnotation.data.attributes.backgroundColor;
-                        backgroundInput.style.opacity = bg ? '1' : '0.25';
-                        if (bg) { backgroundInput.value = bg; }
-                    };
-
-                    textInput.value = currentAttributes.text || '';
-                    syncBackgroundSwatch();
-
-                    // Apply the current text/textColor/backgroundColor to all rendered hotspot elements.
-                    var applyTextStyles = function() {
-                        var a = overlayOrAnnotation.data.attributes,
-                            cat = overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations',
-                            els = overlayOrAnnotation.overlayElement
-                                ? [overlayOrAnnotation.overlayElement]
-                                : (overlayOrAnnotation.contentViewDetailElements || []);
-                        els.forEach(function(el) {
-                            var labelEl   = el.querySelector('.hotspot-label'),
-                                hotspotEl = el.querySelector('.hotspot-element'),
-                                pulseEl   = el.querySelector('.hotspot-pulse'),
-                                svgPulse  = el.querySelector('.hotspot-svg-pulse'),
-                                pulseHide = a.backgroundColor ? 'none' : '';
-                            if (labelEl) {
-                                labelEl.textContent = a.text || '';
-                                labelEl.style.color = a.textColor || '#ffffff';
-                            }
-                            if (hotspotEl) {
-                                hotspotEl.style.backgroundColor = a.backgroundColor || 'transparent';
-                                self.syncHotspotHover(hotspotEl, a, overlayOrAnnotation.data.events);
-                            }
-                            // Freeform uses the SVG pulse; keep the rectangular CSS ring hidden
-                            if (pulseEl) {
-                                pulseEl.style.display = (a.backgroundColor || svgPulse) ? 'none' : '';
-                            }
-                            if (svgPulse) {
-                                svgPulse.style.display = pulseHide;
-                            }
-                        });
-                        FrameTrail.module('HypervideoModel').newUnsavedChange(cat);
-                    };
-
-                    // Snapshot/undo for the text controls.
-                    var textSnapshot = function() {
-                        var a = overlayOrAnnotation.data.attributes;
-                        return { text: a.text, textColor: a.textColor, backgroundColor: a.backgroundColor };
-                    };
-                    var registerTextUndo = function(oldValues, newValues) {
-                        var cat = overlayOrAnnotation.overlayElement ? 'overlays' : 'annotations',
-                            elementId = overlayOrAnnotation.data.created;
-                        (function(id, category, capturedOld, capturedNew, labels) {
-                            var findElement = function() {
-                                var arr = category === 'overlays'
-                                    ? FrameTrail.module('HypervideoModel').overlays
-                                    : FrameTrail.module('HypervideoModel').annotations;
-                                for (var i = 0; i < arr.length; i++) {
-                                    if (arr[i].data.created === id) return arr[i];
-                                }
-                                return null;
-                            };
-                            var applyValues = function(values) {
-                                var el = findElement();
-                                if (!el) return;
-                                el.data.attributes.text = values.text;
-                                el.data.attributes.textColor = values.textColor;
-                                el.data.attributes.backgroundColor = values.backgroundColor;
-                                applyTextStyles();
-                                if (textInput.isConnected) {
-                                    textInput.value = values.text || '';
-                                    textColorInput.value = values.textColor || '#ffffff';
-                                    if (values.backgroundColor) { backgroundInput.value = values.backgroundColor; }
-                                    syncBackgroundSwatch();
-                                }
-                            };
-                            FrameTrail.module('UndoManager').register({
-                                category: category,
-                                description: labels['SettingsHotspotText'],
-                                undo: function() { applyValues(capturedOld); },
-                                redo: function() { applyValues(capturedNew); }
-                            });
-                        })(elementId, cat, Object.assign({}, oldValues), Object.assign({}, newValues), self.labels);
-                    };
-
-                    var textBefore = null;
-                    textInput.addEventListener('focus', function() { textBefore = textSnapshot(); });
                     textInput.addEventListener('input', function() {
-                        overlayOrAnnotation.data.attributes.text = this.value;
-                        applyTextStyles();
+                        begin();
+                        attrs().text = this.value;
+                        preview();
                     });
-                    textInput.addEventListener('blur', function() {
-                        if (textBefore && textBefore.text !== overlayOrAnnotation.data.attributes.text) {
-                            registerTextUndo(textBefore, textSnapshot());
-                        }
-                        textBefore = null;
+                    textInput.addEventListener('change', function() {
+                        commit('SettingsHotspotText');
                     });
 
-                    var textColorBefore = null;
-                    textColorInput.addEventListener('focus', function() { textColorBefore = textSnapshot(); });
                     textColorInput.addEventListener('input', function() {
-                        overlayOrAnnotation.data.attributes.textColor = this.value;
-                        applyTextStyles();
+                        begin();
+                        attrs().textColor = this.value;
+                        preview();
                     });
                     textColorInput.addEventListener('change', function() {
-                        if (textColorBefore && textColorBefore.textColor !== overlayOrAnnotation.data.attributes.textColor) {
-                            registerTextUndo(textColorBefore, textSnapshot());
-                        }
-                        textColorBefore = textSnapshot();
+                        commit('SettingsShapeTextColor');
                     });
 
-                    var backgroundBefore = null;
-                    backgroundInput.addEventListener('focus', function() { backgroundBefore = textSnapshot(); });
-                    backgroundInput.addEventListener('input', function() {
-                        overlayOrAnnotation.data.attributes.backgroundColor = this.value;
-                        applyTextStyles();
-                        syncBackgroundSwatch();
-                    });
-                    backgroundInput.addEventListener('change', function() {
-                        if (backgroundBefore && backgroundBefore.backgroundColor !== overlayOrAnnotation.data.attributes.backgroundColor) {
-                            registerTextUndo(backgroundBefore, textSnapshot());
-                        }
-                        backgroundBefore = textSnapshot();
-                    });
-
-                    backgroundClear.addEventListener('click', function(evt) {
-                        evt.preventDefault();
-                        evt.stopPropagation();
-                        if (!overlayOrAnnotation.data.attributes.backgroundColor) { return; }
-                        var before = textSnapshot();
-                        overlayOrAnnotation.data.attributes.backgroundColor = '';
-                        applyTextStyles();
-                        syncBackgroundSwatch();
-                        registerTextUndo(before, textSnapshot());
-                    });
+                    syncInputs();
 
                     // --- Action (shared model: open URL / jump to time / jump to hypervideo) ---
-                    hotspotEditorContainer.insertAdjacentHTML('beforeend', '<hr>');
+                    container.insertAdjacentHTML('beforeend', '<hr>');
                     var actionControls = this.renderActionControls(overlayOrAnnotation);
-                    hotspotEditorContainer.appendChild(actionControls);
+                    container.appendChild(actionControls);
 
                     // Keep pointer / fill hover in sync when Action is set or cleared
                     var refreshActionHover = function() {
-                        var roots = overlayOrAnnotation.overlayElement
+                        var roots = isOverlay
                             ? [overlayOrAnnotation.overlayElement]
                             : (overlayOrAnnotation.contentViewDetailElements || []);
                         roots.forEach(function(el) {
-                            self.syncHotspotHover(
-                                el.querySelector('.hotspot-element'),
-                                overlayOrAnnotation.data.attributes,
-                                overlayOrAnnotation.data.events
-                            );
+                            self.syncHotspotHover(el.querySelector('.hotspot-element'), attrs(), overlayOrAnnotation.data.events);
                         });
                     };
                     actionControls.addEventListener('change', refreshActionHover);
                     actionControls.addEventListener('input', refreshActionHover);
 
-                    return hotspotEditorContainer;
+                    return container;
 
                 }
 
