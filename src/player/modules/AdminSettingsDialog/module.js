@@ -826,10 +826,12 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
         _gcw.innerHTML = '<div class="globalCSSContainer">'
                         + '    <div class="message active">'+ labels['MessageGlobalCSS'] +'</div>'
                         + '    <div class="globalCSSEditingUI">'
-                        + '        <textarea class="globalCSS">'+ cssText +'</textarea>'
+                        + '        <textarea class="globalCSS"></textarea>'
                         + '    </div>'
                         + '</div>';
         var globalCSSContainer = _gcw.firstElementChild;
+        // A value, not markup: the HTML parser would decode entities in the CSS
+        globalCSSContainer.querySelector('.globalCSS').value = cssText;
 
         adminTabs.querySelector('#ChangeGlobalCSS').appendChild(globalCSSContainer);
 

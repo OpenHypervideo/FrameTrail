@@ -197,7 +197,7 @@ FrameTrail.defineType(
                     htmlEditorContainer.append(htmlEditorLabel, htmlEditorContent);
 
                     var textarea = document.createElement('textarea');
-                    textarea.textContent = overlayOrAnnotation.data.attributes.text;
+                    textarea.textContent = this.getTextHTML();
                     htmlEditorContent.appendChild(textarea);
 
                     /* Init CodeMirror 6 for Custom HTML */
@@ -277,10 +277,7 @@ FrameTrail.defineType(
                                     var newHtml = update.state.doc.toString();
                                     textChanged = true;
 
-                                    var escapeHelper = document.createElement('div');
-                                    escapeHelper.appendChild(document.createTextNode(newHtml));
-                                    var escapedHtml = escapeHelper.innerHTML;
-                                    overlayOrAnnotation.data.attributes.text = escapedHtml;
+                                    self.setTextHTML(newHtml);
 
                                     if (overlayOrAnnotation.overlayElement) {
 

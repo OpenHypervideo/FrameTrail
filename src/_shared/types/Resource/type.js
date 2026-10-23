@@ -848,22 +848,22 @@ FrameTrail.defineType(
                                             + '        </div>'
                                             + '        <div id="OverlayAnimation" class="overlayAnimationPanel"></div>'
                                             + '        <div id="ActionOnReady">'
-                                            + '            <textarea class="onReadyAction codeTextarea" data-eventname="onReady">' + (overlay.data.events.onReady ? overlay.data.events.onReady : '') + '</textarea>'
+                                            + '            <textarea class="onReadyAction codeTextarea" data-eventname="onReady"></textarea>'
                                             + '            <button class="executeActionCode">'+ this.labels['SettingsTestCode'] +'</button>'
                                             + '            <div class="message active">'+ this.labels['MessageTestCode'] +'</div>'
                                             + '        </div>'
                                             + '        <div id="ActionOnClick">'
-                                            + '            <textarea class="onClickAction codeTextarea" data-eventname="onClick">' + (overlay.data.events.onClick ? overlay.data.events.onClick : '') + '</textarea>'
+                                            + '            <textarea class="onClickAction codeTextarea" data-eventname="onClick"></textarea>'
                                             + '            <button class="executeActionCode">'+ this.labels['SettingsTestCode'] +'</button>'
                                             + '            <div class="message active">'+ this.labels['MessageTestCode'] +'</div>'
                                             + '        </div>'
                                             + '        <div id="ActionOnStart">'
-                                            + '            <textarea class="onStartAction codeTextarea" data-eventname="onStart">' + (overlay.data.events.onStart ? overlay.data.events.onStart : '') + '</textarea>'
+                                            + '            <textarea class="onStartAction codeTextarea" data-eventname="onStart"></textarea>'
                                             + '            <button class="executeActionCode">'+ this.labels['SettingsTestCode'] +'</button>'
                                             + '            <div class="message active">'+ this.labels['MessageTestCode'] +'</div>'
                                             + '        </div>'
                                             + '        <div id="ActionOnEnd">'
-                                            + '            <textarea class="onEndAction codeTextarea" data-eventname="onEnd">' + (overlay.data.events.onEnd ? overlay.data.events.onEnd : '') + '</textarea>'
+                                            + '            <textarea class="onEndAction codeTextarea" data-eventname="onEnd"></textarea>'
                                             + '            <button class="executeActionCode">'+ this.labels['SettingsTestCode'] +'</button>'
                                             + '            <div class="message active">'+ this.labels['MessageTestCode'] +'</div>'
                                             + '        </div>'
@@ -873,6 +873,12 @@ FrameTrail.defineType(
                     while (_dcw.firstElementChild) {
                         controlsContainer.appendChild(_dcw.firstElementChild);
                     }
+
+                    // Set as values, not written into the markup above: the HTML parser
+                    // would decode entities in the code ('&amp;' became '&')
+                    controlsContainer.querySelectorAll('.codeTextarea').forEach(function(textarea) {
+                        textarea.value = overlay.data.events[textarea.dataset.eventname] || '';
+                    });
 
                     this.initPauseAtStartSwitch(controlsContainer, overlay);
 
@@ -1785,6 +1791,35 @@ FrameTrail.defineType(
                  */
                 getDisplayLabel: function() {
                     return this.resourceData.name || this.resourceData.type || '';
+                },
+
+                /**
+                 * I return my text as HTML: attributes.text of text, html and entity items
+                 * is stored HTML-escaped ("&lt;p&gt;…"). Decoded in a textarea, whose
+                 * content is never parsed as markup, so a text stored unescaped comes back
+                 * as it is.
+                 * @method getTextHTML
+                 * @return {String}
+                 */
+                getTextHTML: function() {
+
+                    var unescapeHelper = document.createElement('textarea');
+                    unescapeHelper.innerHTML = this.resourceData.attributes.text || '';
+                    return unescapeHelper.value;
+
+                },
+
+                /**
+                 * I store HTML as my text (HTML-escaped, see getTextHTML).
+                 * @method setTextHTML
+                 * @param {String} html
+                 */
+                setTextHTML: function(html) {
+
+                    var escapeHelper = document.createElement('div');
+                    escapeHelper.appendChild(document.createTextNode(html));
+                    this.resourceData.attributes.text = escapeHelper.innerHTML;
+
                 },
 
                 /**

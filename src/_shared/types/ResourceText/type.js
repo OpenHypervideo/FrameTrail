@@ -1106,34 +1106,6 @@ FrameTrail.defineType(
 
 
                 /**
-                 * I return my text as HTML (attributes.text is stored HTML-escaped).
-                 * @method getTextHTML
-                 * @return {String}
-                 */
-                getTextHTML: function() {
-
-                    var unescapeHelper = document.createElement('div');
-                    unescapeHelper.innerHTML = this.resourceData.attributes.text || '';
-                    return unescapeHelper.textContent || '';
-
-                },
-
-
-                /**
-                 * I store HTML as my text (HTML-escaped, see getTextHTML).
-                 * @method setTextHTML
-                 * @param {String} html
-                 */
-                setTextHTML: function(html) {
-
-                    var escapeHelper = document.createElement('div');
-                    escapeHelper.appendChild(document.createTextNode(html));
-                    this.resourceData.attributes.text = escapeHelper.innerHTML;
-
-                },
-
-
-                /**
                  * After the text of a text overlay was edited on the video, I bring the
                  * panel's title field and HTML source up to date, in place: the panel
                  * is not rendered anew, so a click that ended the editing still reaches
@@ -1245,18 +1217,11 @@ FrameTrail.defineType(
                             visualEditorContent.style.display = 'none';
                             htmlEditorTab.classList.add('active');
                             htmlEditorContent.style.display = '';
-                            // Sync Quill → CodeMirror on switch to HTML tab
-                            if (window.quillEditor && window.htmlCodeEditor) {
-                                var quillHtml = window.quillEditor.root.innerHTML;
-                                var doc = window.htmlCodeEditor.state.doc;
-                                window.htmlCodeEditor.dispatch({
-                                    changes: { from: 0, to: doc.length, insert: quillHtml },
-                                    annotations: CM6.Transaction.userEvent.of('setValue')
-                                });
-                            }
+                            // Not filled from Quill: every edit there reaches the source as it
+                            // is made (text-change below), and refilling it here wrote Quill's
+                            // version of the markup into the text just for opening the tab
                             if (window.htmlCodeEditor) {
                                 window.htmlCodeEditor.requestMeasure();
-
                             }
                         });
 
@@ -1265,8 +1230,7 @@ FrameTrail.defineType(
                     }
 
                     var textarea = document.createElement('textarea');
-                    // An overlay shows its source at once, so it starts unescaped
-                    textarea.textContent = isOverlay ? this.getTextHTML() : overlayOrAnnotation.data.attributes.text;
+                    textarea.textContent = this.getTextHTML();
                     htmlEditorContent.appendChild(textarea);
 
                     var visualEditorWrapper = document.createElement('div');
@@ -1359,10 +1323,7 @@ FrameTrail.defineType(
                                     var newHtml = update.state.doc.toString();
                                     textChanged = true;
 
-                                    var escapeHelper = document.createElement('div');
-                                    escapeHelper.appendChild(document.createTextNode(newHtml));
-                                    var escapedHtml = escapeHelper.innerHTML;
-                                    overlayOrAnnotation.data.attributes.text = escapedHtml;
+                                    self.setTextHTML(newHtml);
 
                                     if (isOverlay) {
 
