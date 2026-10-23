@@ -107,6 +107,7 @@ window.FrameTrail_L10n['en'] = {
     "CustomOverlayQuoteAuthor": "Name, Role",
     "CustomOverlayQuoteText": "A short, memorable quote.",
     "CustomOverlaySpeechBubbleText": "Hello!",
+    "CustomOverlayTextText": "Text",
     "CustomOverlayUnderline": "Underline",
     "DownloadFiles": "Download Files",
     "DownloadFormatHTML": "HTML File",

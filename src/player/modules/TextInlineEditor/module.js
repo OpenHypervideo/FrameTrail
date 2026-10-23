@@ -338,17 +338,24 @@ FrameTrail.defineModule('TextInlineEditor', function(FrameTrail){
 
 
     /**
-     * I put the caret where the text was double-clicked, or at its end.
+     * I put the caret where the text was double-clicked, or at its end; the text
+     * of a Text just dropped is selected, so typing replaces it.
      * @method placeCaret
      * @param {Object} point { x, y } in client pixels (optional)
+     * @param {Boolean} selectAll
      * @private
      */
-    function placeCaret(point) {
+    function placeCaret(point, selectAll) {
 
         var quill = session.quill,
             root  = quill.root;
 
         quill.focus();
+
+        if (selectAll) {
+            quill.setSelection(0, Math.max(0, quill.getLength() - 1), 'user');
+            return;
+        }
 
         if (point) {
             var node = null, offset = 0;
@@ -376,9 +383,10 @@ FrameTrail.defineModule('TextInlineEditor', function(FrameTrail){
      *
      * @method start
      * @param {Overlay} overlay
-     * @param {Object} options { isNew: just dropped (its add is registered when
-     *                         editing ends, and nothing is left when it stays
-     *                         empty), point: { x, y } where it was double-clicked }
+     * @param {Object} options { isNew: just dropped (its text is selected, its add
+     *                         is registered when editing ends, and nothing is left
+     *                         when it is left empty), point: { x, y } where it was
+     *                         double-clicked }
      * @return {Boolean} whether editing started (or was already going on)
      */
     function start(overlay, options) {
@@ -527,7 +535,7 @@ FrameTrail.defineModule('TextInlineEditor', function(FrameTrail){
             toolbar.showPopover();
         }
         positionToolbar();
-        placeCaret(options.point);
+        placeCaret(options.point, !!options.isNew);
 
         return true;
 

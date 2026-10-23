@@ -505,7 +505,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     stackTimelineView();
                     FrameTrail.module('TimelineController').refreshMinimap();
 
-                    // An empty Text is typed into at once; its add is registered when that ends
+                    // A new Text is typed into at once, its word selected; its add is registered when that ends
                     var TextInlineEditor = FrameTrail.module('TextInlineEditor'),
                         typedAtOnce      = !!(tile && tile.id === 'text' && TextInlineEditor
                                               && TextInlineEditor.start(newOverlay, { isNew: true }));
@@ -599,7 +599,12 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             },
             {
                 id: 'text', type: 'text', icon: 'icon-doc-text', label: labels['ResourceCustomTextHTML'],
-                attributes: { "text": "", "autoSize": "height" }, size: [30, 10]
+                attributes: {
+                    "text": escapeHtml('<p><span style="font-size: 50px;">' + labels['CustomOverlayTextText'] + '</span></p>'),
+                    "box": { "textColor": "#ffffff" },
+                    "autoSize": "height"
+                },
+                size: [30, 10]
             },
             {
                 id: 'quiz', type: 'quiz', icon: 'icon-question-circle-o', label: 'Quiz', name: labels['ResourceTypeQuiz'],

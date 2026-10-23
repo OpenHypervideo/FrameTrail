@@ -813,10 +813,22 @@ FrameTrail.defineType(
                         fitBox();
                     };
 
-                    // Fill, outline or a shape on plain text start with room around the text
+                    // Fill, outline or a shape on plain text (a box that draws nothing, e.g. only
+                    // a text colour) start with room around the text
                     var ensureBox = function(room) {
-                        if (!attrs.box) { attrs.box = room ? { padding: 24 } : {}; }
-                        return attrs.box;
+                        if (!attrs.box) { attrs.box = {}; }
+                        var b = attrs.box;
+                        if (room && b.padding == null && !(b.background && b.background !== 'transparent')
+                            && !(b.borderWidth > 0) && self.shapeOf(b) === 'rectangle') {
+                            b.padding = 24;
+                        }
+                        return b;
+                    };
+
+                    // Whether a #rrggbb colour is light (white text and the like)
+                    var isLight = function(color) {
+                        var m = /^#([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(color || '');
+                        return !!m && (0.299 * parseInt(m[1], 16) + 0.587 * parseInt(m[2], 16) + 0.114 * parseInt(m[3], 16)) > 160;
                     };
 
                     // Plain text has no box
@@ -894,9 +906,10 @@ FrameTrail.defineType(
                         if (b.direction !== undefined && self.shapeDirection(b) !== b.direction) {
                             delete b.direction;
                         }
-                        // A shape around text that draws nothing gets a fill, so the change shows
+                        // A shape around text that draws nothing gets a fill, so the change shows:
+                        // white, behind light text the blue of the shape tiles
                         if (drawsNothing && b.shape !== 'rectangle') {
-                            b.background = '#ffffff';
+                            b.background = isLight(b.textColor) ? '#0096ff' : '#ffffff';
                         }
                         tidy();
                         overlay.rerenderContent();
