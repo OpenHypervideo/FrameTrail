@@ -29,7 +29,7 @@ What each type of overlay, annotation and library resource is for, and what its 
 | `webpage` | ✓ | ✓ | ✓ | Web page shown in an iframe, or as a card when the site forbids embedding. |
 | `wikipedia` | ✓ | ✓ | ✓ | Wikipedia article summary, for background on a term, a person or an event. |
 | `entity` | ✓ | ✓ | ✓ | Linked data entity, such as a Wikidata item: a person, place or concept with its description. |
-| `location` | ✓ | ✓ | ✓ | Map (OpenStreetMap via Leaflet) centred on a coordinate, for a place the video shows or mentions. |
+| `location` | ✓ | ✓ | ✓ | Map (OpenStreetMap-based tiles via Leaflet) centred on a coordinate, for a place the video shows or mentions. |
 | `mastodon` | ✓ | ✓ | ✓ | Mastodon post. |
 | `codepen` | ✓ | ✓ | ✓ | CodePen embed: a live HTML, CSS and JavaScript demo. |
 | `figma` | ✓ | ✓ | ✓ | Figma embed: a design file or prototype. |
@@ -342,7 +342,7 @@ Overlay, annotation, library resource. Its src, if it has one, goes into `body.v
 
 ### `location`
 
-Map (OpenStreetMap via Leaflet) centred on a coordinate, for a place the video shows or mentions.
+Map (OpenStreetMap-based tiles via Leaflet) centred on a coordinate, for a place the video shows or mentions.
 
 Overlay, annotation, library resource. Its src, if it has one, goes into `body.source`. Schema: [`attributes/location.schema.json`](../schemas/attributes/location.schema.json).
 
@@ -352,7 +352,7 @@ Overlay, annotation, library resource. Its src, if it has one, goes into `body.s
 | `lon` | number or string |  |  | Longitude (WGS 84). Resources store it as a string. |
 | `boundingBox` | array of numbers or strings, or string |  |  | Area to fit the map to when zoom is not set: [south, north, west, east] in degrees, numbers or strings. An empty string or array means none. |
 | `zoom` | integer | 0–20 | `15` | Zoom level. |
-| `tileStyle` | string | `osm-standard`, `carto-light`, `carto-dark`, `carto-voyager` | `osm-standard` | Map tiles. |
+| `tileStyle` | string | `osm-standard`, `light`, `dark`, `soft`, `sepia`, `humanitarian`, `opentopomap`, `carto-light`, `carto-dark`, `carto-voyager` | `osm-standard` | Map style: osm-standard (OpenStreetMap's own map); light, dark, soft (muted colours) and sepia (OpenStreetMap's map, recoloured); humanitarian (OpenStreetMap France's Humanitarian style); opentopomap (terrain, OpenTopoMap). The names describe the look, not the tile server behind it. Legacy: carto-light, carto-dark and carto-voyager (CARTO's tiles need an API key since September 2026) are shown as light, dark and soft, and kept as stored until the style is changed. A reader shows a value it does not know as osm-standard. |
 | `marker` | object |  |  | The marker. |
 | `marker.show` | boolean |  | `true` | Show a marker at the centre. |
 | `marker.color` | string |  | `#e74c3c` | CSS colour of the marker. |

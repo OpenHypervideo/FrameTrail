@@ -497,6 +497,7 @@ Readers must accept these shapes. Each is in the schemas as a separate alternati
 | `annotation-increment` | `hypervideo.json`, `annotations/_index.json` | not used |
 | `frametrail:attributes` at the item level instead of the body | very old overlays | the body's attributes, when the body has none |
 | `frametrail:lat`, `frametrail:long`, `frametrail:boundingBox` on the body | location annotations | `attributes.lat`, `.lon`, `.boundingBox` |
+| `tileStyle` `carto-light`, `carto-dark`, `carto-voyager` | location attributes | the styles `light`, `dark`, `soft` (CARTO's tiles need an API key since September 2026); kept as stored until the style is changed in the editor |
 | `animationIn`, `animationOut`, `animationDuration` | overlay attributes | `attributes.animation` |
 | `linkUrl` | hotspot attributes | `action: "openUrl"` with that target, when `action` is empty |
 | `onCorrectAnswer`, `onWrongAnswer` (`showText`, `resumePlayback`, `jumpForward`, `jumpBackward`), and `onAnswered` with `showText` / `resumePlayback` | quiz attributes, when no answer and no `onAnswered` has an `action` | actions: the correct or wrong outcome for the decided answer, a jump as `jumpToTime` from where the quiz was answered, `resumePlayback: false` as `pause`, `showText` as `feedback`. The quiz editor converts them on its first change (jumps from the quiz's start; a multiSelect quiz keeps its correct outcome as `onAnswered`) |

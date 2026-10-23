@@ -809,6 +809,44 @@
                     }
                 ]
             }
+        },
+        {
+            "name": "location with a CARTO tile style (shown as dark)",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-23T09:30:02.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,15"
+                    }
+                },
+                "body": {
+                    "type": "Dataset",
+                    "frametrail:type": "location",
+                    "frametrail:attributes": {
+                        "lat": 1,
+                        "lon": 2,
+                        "tileStyle": "carto-dark"
+                    }
+                },
+                "frametrail:events": {}
+            }
         }
     ]
 }

@@ -1647,7 +1647,7 @@
             "errors": [
                 {
                     "path": "/body/frametrail:attributes/tileStyle",
-                    "message": "must be one of \"osm-standard\", \"carto-light\", \"carto-dark\", \"carto-voyager\""
+                    "message": "must be one of \"osm-standard\", \"light\", \"dark\", \"soft\", \"sepia\", \"humanitarian\", \"opentopomap\", \"carto-light\", \"carto-dark\", \"carto-voyager\""
                 }
             ]
         },

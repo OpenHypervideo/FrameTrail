@@ -569,7 +569,10 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                         + (onlyVideo ? '' :
                                               '        <div id="resourceInputTabMap">'
                                             + '            <div class="locationSearchWrapper">'
-                                            + '                <input type="text" name="locationQ" class="locationQ" placeholder="'+ labels['LocationSearch'] +'">'
+                                            + '                <div class="openverseSearchBar">'
+                                            + '                    <input type="text" name="locationQ" class="locationQ" placeholder="'+ labels['LocationSearch'] +'">'
+                                            + '                    <button type="button" class="locationSearchBtn">'+ labels['GenericSearch'] +'</button>'
+                                            + '                </div>'
                                             + '                <span class="locationSearchCopyright">Data \u00a9 OpenStreetMap contributors, ODbL 1.0.</span>'
                                             + '                <ul class="locationSearchSuggestions"></ul>'
                                             + '            </div>'
@@ -694,11 +697,23 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                     }
 
                     // ---- Map tab: Nominatim location search ----
-                    if (!onlyVideo) uploadDialog.querySelector('.locationQ').addEventListener('keyup', function() {
-                        fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(this.value) + '&format=json')
+                    // On Enter or the button only: the usage policy forbids search-as-you-type
+                    // and allows at most one request per second.
+                    var lastLocationQuery = '',
+                        lastLocationSearch = 0;
+                    if (!onlyVideo) uploadDialog.querySelector('.locationSearchBtn').addEventListener('click', function() {
+                        var q = uploadDialog.querySelector('.locationQ').value.trim();
+                        var sugg = uploadDialog.querySelector('.locationSearchSuggestions');
+                        if (!q || Date.now() - lastLocationSearch < 1000) { return; }
+                        if (q === lastLocationQuery) {
+                            if (sugg.children.length) { sugg.style.display = 'block'; }
+                            return;
+                        }
+                        lastLocationQuery = q;
+                        lastLocationSearch = Date.now();
+                        fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json')
                             .then(function(r) { return r.json(); })
                             .then(function(respText) {
-                                var sugg = uploadDialog.querySelector('.locationSearchSuggestions');
                                 sugg.innerHTML = '';
                                 sugg.style.display = 'block';
                                 for (var i = 0; i < respText.length; i++) {
@@ -720,7 +735,16 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                     });
                                     sugg.appendChild(li);
                                 }
+                            })
+                            .catch(function() {
+                                lastLocationQuery = '';
+                                sugg.innerHTML = '';
+                                sugg.style.display = 'none';
                             });
+                    });
+
+                    if (!onlyVideo) uploadDialog.querySelector('.locationQ').addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter') { uploadDialog.querySelector('.locationSearchBtn').click(); }
                     });
 
                     // ---- Search Images tab: Openverse ----

@@ -36,39 +36,86 @@ FrameTrail.defineType(
 
 
                 /**
-                 * Tile provider configurations (no API keys required)
+                 * Tile provider configurations (no API keys required). Light, dark, soft and sepia
+                 * are the OpenStreetMap tiles recoloured by a CSS filter on the tile layer.
+                 * The keys name the look, not the provider, so the tiles behind a style can change.
                  * @attribute tileProviders
                  * @type {}
                  */
                 tileProviders: {
                     'osm-standard': {
-                        url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-                        maxZoom: 19
+                        maxZoom: 19,
+                        label: 'SettingsLocationTileStandard'
                     },
-                    'carto-light': {
-                        url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                        maxZoom: 20,
-                        subdomains: 'abcd'
+                    'light': {
+                        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19,
+                        filter: 'grayscale(1) brightness(1.12) contrast(0.8)',
+                        label: 'SettingsLocationTileLight'
                     },
-                    'carto-dark': {
-                        url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                        maxZoom: 20,
-                        subdomains: 'abcd'
+                    'dark': {
+                        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19,
+                        filter: 'invert(1) hue-rotate(180deg) grayscale(0.6) brightness(0.9) contrast(0.95)',
+                        background: '#2b2b2b',
+                        label: 'SettingsLocationTileDark'
                     },
-                    'carto-voyager': {
-                        url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                        maxZoom: 20,
-                        subdomains: 'abcd'
+                    'soft': {
+                        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19,
+                        filter: 'saturate(0.35) brightness(1.06) contrast(0.88)',
+                        label: 'SettingsLocationTileSoft'
+                    },
+                    'sepia': {
+                        url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                        maxZoom: 19,
+                        filter: 'sepia(0.65) saturate(0.85) contrast(0.95)',
+                        label: 'SettingsLocationTileSepia'
+                    },
+                    'humanitarian': {
+                        url: 'https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png',
+                        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, Tiles style by <a href="https://www.hotosm.org/">Humanitarian OpenStreetMap Team</a> hosted by <a href="https://openstreetmap.fr/">OpenStreetMap France</a>',
+                        maxZoom: 19,
+                        label: 'SettingsLocationTileHumanitarian'
                     },
                     'opentopomap': {
                         url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
                         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
-                        maxZoom: 17
+                        maxZoom: 17,
+                        label: 'SettingsLocationTileTerrain'
                     }
+                },
+
+
+                /**
+                 * Stored tile styles that are no longer offered, and the style shown instead
+                 * (CARTO's raster tiles need an API key since September 2026).
+                 * @attribute legacyTileStyles
+                 * @type {}
+                 */
+                legacyTileStyles: {
+                    'carto-light': 'light',
+                    'carto-dark': 'dark',
+                    'carto-voyager': 'soft'
+                },
+
+
+                /**
+                 * I return the key of the tile provider that shows a stored tile style:
+                 * legacy styles map to their replacement, unknown ones to the standard map.
+                 * @method resolveTileStyle
+                 * @param {String} style
+                 * @return {String}
+                 */
+                resolveTileStyle: function(style) {
+                    style = this.legacyTileStyles[style] || style;
+                    return this.tileProviders[style] ? style : 'osm-standard';
                 },
 
 
@@ -119,7 +166,7 @@ FrameTrail.defineType(
                     var lon = parseFloat(attrs.lon);
 
                     // Get settings with defaults (backward compatible)
-                    var tileStyle = attrs.tileStyle || 'osm-standard';
+                    var tileStyle = this.resolveTileStyle(attrs.tileStyle);
                     var zoom = parseInt(attrs.zoom, 10) || 15;
                     var showMarker = attrs.marker ? attrs.marker.show !== false : true;
                     var markerColor = (attrs.marker && attrs.marker.color) ? attrs.marker.color : '#e74c3c';
@@ -128,7 +175,10 @@ FrameTrail.defineType(
                     var showZoomControl = attrs.controls ? attrs.controls.zoomControl !== false : true;
 
                     // Get tile provider config
-                    var provider = this.tileProviders[tileStyle] || this.tileProviders['osm-standard'];
+                    var provider = this.tileProviders[tileStyle];
+                    if (provider.background) {
+                        resourceDetail.style.backgroundColor = provider.background;
+                    }
 
                     // Initialize map after element is in DOM
                     setTimeout(function() {
@@ -147,15 +197,23 @@ FrameTrail.defineType(
 
                         var map = L.map(resourceContent, mapOptions);
 
-                        // Add tile layer
+                        // Add tile layer. The referrer policy overrides a page's no-referrer
+                        // (companion.html): OpenStreetMap refuses tiles without a Referer.
                         var tileOptions = {
                             attribution: provider.attribution,
-                            maxZoom: provider.maxZoom || 19
+                            maxZoom: provider.maxZoom || 19,
+                            referrerPolicy: 'strict-origin-when-cross-origin'
                         };
                         if (provider.subdomains) {
                             tileOptions.subdomains = provider.subdomains;
                         }
-                        L.tileLayer(provider.url, tileOptions).addTo(map);
+                        var tileLayer = L.tileLayer(provider.url, tileOptions).addTo(map);
+                        if (provider.filter) {
+                            tileLayer.getContainer().style.filter = provider.filter;
+                        }
+                        if (provider.background) {
+                            map.getContainer().style.background = provider.background;
+                        }
 
                         // Add marker if enabled
                         if (showMarker) {
@@ -291,7 +349,7 @@ FrameTrail.defineType(
                         attrs.controls = {};
                     }
 
-                    // Current values with defaults
+                    // Current values with defaults (the tile style as stored, for undo)
                     var currentTileStyle = attrs.tileStyle || 'osm-standard';
                     var currentZoom = attrs.zoom || 15;
                     var currentMarkerShow = attrs.marker.show !== false;
@@ -350,7 +408,7 @@ FrameTrail.defineType(
                     var syncEditorUI = function(a) {
                         var c = document.querySelector('.locationEditorContainer');
                         if (!c) return;
-                        c.querySelector('.locationPropTileStyle').value = a.tileStyle || 'osm-standard';
+                        c.querySelector('.locationPropTileStyle').value = self.resolveTileStyle(a.tileStyle);
                         c.querySelector('.locationPropZoom').value = a.zoom || 15;
 
                         c.querySelector('.locationPropMarkerShow').checked = a.marker ? a.marker.show !== false : true;
@@ -359,6 +417,11 @@ FrameTrail.defineType(
                         c.querySelector('.locationPropZoomControl').checked = a.controls ? a.controls.zoomControl !== false : true;
                         c.querySelector('.locationPropScrollWheelZoom').checked = a.controls ? a.controls.scrollWheelZoom !== false : true;
                     };
+
+                    var tileStyleOptions = '';
+                    for (var styleKey in this.tileProviders) {
+                        tileStyleOptions += '<option value="' + styleKey + '">' + this.labels[this.tileProviders[styleKey].label] + '</option>';
+                    }
 
                     // Build location-specific controls HTML
                     var locationEditorContainer = document.createElement('div');
@@ -369,11 +432,7 @@ FrameTrail.defineType(
                         + '<label>' + this.labels['SettingsLocationTileStyle'] + '</label>'
                         + '<div class="custom-select">'
                         + '<select class="locationPropTileStyle">'
-                        + '<option value="osm-standard">OpenStreetMap (Standard)</option>'
-                        + '<option value="carto-light">Light (CARTO Positron)</option>'
-                        + '<option value="carto-dark">Dark (CARTO Dark Matter)</option>'
-                        + '<option value="carto-voyager">Colorful (CARTO Voyager)</option>'
-                        + '<option value="opentopomap">Terrain (OpenTopoMap)</option>'
+                        + tileStyleOptions
                         + '</select>'
                         + '</div>'
                         + '</div>'
@@ -429,8 +488,8 @@ FrameTrail.defineType(
                         + '</div>'
                         + '</div>';
 
-                    // Set current tile style selection
-                    locationEditorContainer.querySelector('.locationPropTileStyle').value = currentTileStyle;
+                    // Set current tile style selection (a legacy style shows as its replacement)
+                    locationEditorContainer.querySelector('.locationPropTileStyle').value = this.resolveTileStyle(currentTileStyle);
 
                     // ============================================
                     // TILE STYLE with Undo

@@ -2,7 +2,7 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://frametrail.org/schemas/1/attributes/location.schema.json",
     "title": "frametrail:attributes of type \"location\"",
-    "description": "Map (OpenStreetMap via Leaflet) centred on a coordinate, for a place the video shows or mentions. This schema describes the frametrail:attributes of items (and the attributes of resources) whose type is \"location\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "description": "Map (OpenStreetMap-based tiles via Leaflet) centred on a coordinate, for a place the video shows or mentions. This schema describes the frametrail:attributes of items (and the attributes of resources) whose type is \"location\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
     "type": "object",
     "properties": {
         "lat": {
@@ -28,9 +28,9 @@
             "default": 15
         },
         "tileStyle": {
-            "description": "Map tiles.",
+            "description": "Map style: osm-standard (OpenStreetMap's own map); light, dark, soft (muted colours) and sepia (OpenStreetMap's map, recoloured); humanitarian (OpenStreetMap France's Humanitarian style); opentopomap (terrain, OpenTopoMap). The names describe the look, not the tile server behind it. Legacy: carto-light, carto-dark and carto-voyager (CARTO's tiles need an API key since September 2026) are shown as light, dark and soft, and kept as stored until the style is changed. A reader shows a value it does not know as osm-standard.",
             "type": "string",
-            "enum": ["osm-standard", "carto-light", "carto-dark", "carto-voyager"],
+            "enum": ["osm-standard", "light", "dark", "soft", "sepia", "humanitarian", "opentopomap", "carto-light", "carto-dark", "carto-voyager"],
             "default": "osm-standard"
         },
         "marker": {
