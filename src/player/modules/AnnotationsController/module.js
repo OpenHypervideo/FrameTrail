@@ -586,10 +586,11 @@
             annotationsEditingOptions.querySelector('#ResourceList')
         );
 
-        /* The 'Add Custom Annotation' tab: annotations made here, not from the library */
+        /* The 'Add Custom Annotation' tab: annotations made here, not from the library.
+           data-tile tells them from library thumbs and other users' annotations of the same type. */
         var customTile = function(type, icon, title) {
             var _tw = document.createElement('div');
-            _tw.innerHTML = '<div class="resourceThumb" data-type="'+ type +'">'
+            _tw.innerHTML = '<div class="resourceThumb" data-type="'+ type +'" data-tile="'+ type +'">'
                     + '                  <div class="resourceOverlay">'
                     + '                      <div class="resourceIcon">'+ (icon ? '<span class="'+ icon +'"></span>' : '') +'</div>'
                     + '                  </div>'
@@ -637,7 +638,8 @@
         annotationsEditingOptions.querySelector('#CustomAnnotation').append(
             customTile('text', '', labels['ResourceCustomTextHTML']),
             customTile('html', 'icon-file-code', labels['ResourceCustomHTML']),
-            customTile('quiz', 'icon-question-circle-o', labels['ResourceTypeQuiz'])
+            customTile('quiz', 'icon-question-circle-o', labels['ResourceTypeQuiz']),
+            customTile('location', 'icon-location-2', labels['ResourceTypeLocation'])
         );
 
         /* Render other users' annotation timelines in the main view container */
@@ -697,6 +699,7 @@
                     var dragged = e.relatedTarget;
 
                     var resourceID      = dragged.getAttribute('data-resourceID'),
+                        tile            = dragged.getAttribute('data-tile'),
                         videoDuration   = FrameTrail.module('HypervideoModel').duration,
                         startTime,
                         endTime,
@@ -710,7 +713,7 @@
                             endTime   = (startTime + 4 > videoDuration) ? videoDuration : startTime + 4;
                         }
 
-                        if (dragged.getAttribute('data-type') == 'text') {
+                        if (tile == 'text') {
                             newAnnotation = FrameTrail.module('HypervideoModel').newAnnotation({
                                 "name":       labels['ResourceCustomTextHTML'],
                                 "type":       dragged.getAttribute('data-type'),
@@ -718,7 +721,7 @@
                                 "end":        endTime,
                                 "attributes": { "text": "" }
                             });
-                        } else if (dragged.getAttribute('data-type') == 'html') {
+                        } else if (tile == 'html') {
                             newAnnotation = FrameTrail.module('HypervideoModel').newAnnotation({
                                 "name":       labels['ResourceCustomHTML'],
                                 "type":       dragged.getAttribute('data-type'),
@@ -726,7 +729,7 @@
                                 "end":        endTime,
                                 "attributes": { "text": "" }
                             });
-                        } else if (dragged.getAttribute('data-type') == 'quiz') {
+                        } else if (tile == 'quiz') {
                             // Pauses at its start (ResourceQuiz.pauseByDefault): the question is asked there.
                             newAnnotation = FrameTrail.module('HypervideoModel').newAnnotation({
                                 "name":       labels['ResourceTypeQuiz'],
@@ -740,7 +743,18 @@
                                     answer3:  labels['SettingsQuizDefaultAnswer3']
                                 })
                             });
+                        } else if (tile == 'location') {
+                            // The place is chosen in its properties (search, map)
+                            var locationType = FrameTrail.type('ResourceLocation').prototype;
+                            newAnnotation = FrameTrail.module('HypervideoModel').newAnnotation({
+                                "name":       locationType.defaultPlace.name,
+                                "type":       'location',
+                                "start":      startTime,
+                                "end":        endTime,
+                                "attributes": locationType.newAttributes()
+                            });
                         } else if (!resourceID) {
+                            // A copy of another user's annotation: editing it must not change theirs
                             var resourceData = dragged._originResourceData;
                             newAnnotation = FrameTrail.module('HypervideoModel').newAnnotation({
                                 "name":       resourceData.name,
@@ -749,8 +763,8 @@
                                 "thumb":      resourceData.thumb,
                                 "start":      startTime,
                                 "end":        endTime,
-                                "attributes": resourceData.attributes,
-                                "tags":       resourceData.tags
+                                "attributes": JSON.parse(JSON.stringify(resourceData.attributes || {})),
+                                "tags":       JSON.parse(JSON.stringify(resourceData.tags || []))
                             });
                         } else {
                             newAnnotation = FrameTrail.module('HypervideoModel').newAnnotation({

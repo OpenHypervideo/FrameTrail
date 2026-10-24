@@ -342,16 +342,16 @@ Overlay, annotation, library resource. Its src, if it has one, goes into `body.v
 
 ### `location`
 
-Map (OpenStreetMap-based tiles via Leaflet) centred on a coordinate, for a place the video shows or mentions.
+Map (OpenStreetMap-based tiles via Leaflet) centred on a coordinate, for a place the video shows or mentions. Locations are made in the editor as overlays and annotations, their place chosen by a search and a small map in the properties; a resources index may still hold location resources from earlier versions, which are used as before.
 
 Overlay, annotation, library resource. Its src, if it has one, goes into `body.source`. Schema: [`attributes/location.schema.json`](../schemas/attributes/location.schema.json).
 
 | Attribute | Type | Values | Default | Description |
 |-----------|------|--------|---------|-------------|
-| `lat` | number or string |  |  | Latitude (WGS 84). Resources store it as a string. |
-| `lon` | number or string |  |  | Longitude (WGS 84). Resources store it as a string. |
-| `boundingBox` | array of numbers or strings, or string |  |  | Area to fit the map to when zoom is not set: [south, north, west, east] in degrees, numbers or strings. An empty string or array means none. |
-| `zoom` | integer | 0–20 | `15` | Zoom level. |
+| `lat` | number or string |  |  | Latitude (WGS 84): the centre of the map and the marker. Resources and older items store it as a string. |
+| `lon` | number or string |  |  | Longitude (WGS 84): the centre of the map and the marker. Resources and older items store it as a string. |
+| `boundingBox` | array of numbers or strings, or string |  |  | Area to fit the map to when zoom is not set (at most zoom 17): [south, north, west, east] in degrees, numbers or strings; the place search sets it, panning or zooming the map in the editor sets zoom instead. Anything but four numbers (an empty string or array, four empty strings) means none. |
+| `zoom` | integer | 0–20 | `15` | Zoom level. Missing: the bounding box fitted, else 15. |
 | `tileStyle` | string | `osm-standard`, `light`, `dark`, `soft`, `sepia`, `humanitarian`, `opentopomap`, `carto-light`, `carto-dark`, `carto-voyager` | `osm-standard` | Map style: osm-standard (OpenStreetMap's own map); light, dark, soft (muted colours) and sepia (OpenStreetMap's map, recoloured); humanitarian (OpenStreetMap France's Humanitarian style); opentopomap (terrain, OpenTopoMap). The names describe the look, not the tile server behind it. Legacy: carto-light, carto-dark and carto-voyager (CARTO's tiles need an API key since September 2026) are shown as light, dark and soft, and kept as stored until the style is changed. A reader shows a value it does not know as osm-standard. |
 | `marker` | object |  |  | The marker. |
 | `marker.show` | boolean |  | `true` | Show a marker at the centre. |

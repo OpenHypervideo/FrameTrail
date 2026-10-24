@@ -45,7 +45,7 @@ function ftResourceIndexRead($file) {
  *     4       =   failed. File type expected but file wasn't transferred.
  *     5       =   failed. No video file transferred.
  *     6       =   failed. File format not supported (FFmpeg unavailable for transcoding).
- *     7       =   failed. Type "map" was expected but $lat or $lon aren't sent.
+ *     7       =   failed. Type "map" was expected but $lat or $lon aren't numbers.
  *     8       =   failed. $type or $name have not been transferred.
  *     9       =   failed. $type was wrong or file type not recognized.
  *     10      =   failed. File size too big.
@@ -348,7 +348,8 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
         break;
 
         case "map":
-            if ((!$lat) || (!$lon)) {
+            // 0 is a coordinate too
+            if (!is_numeric($lat) || !is_numeric($lon)) {
                 $return["status"] = "fail";
                 $return["code"] = 7;
                 $return["string"] = "Lat or Lon are missing";
@@ -356,11 +357,17 @@ function fileUpload($type, $name, $description="", $attributes, $files, $lat, $l
             }
             $newResource["type"] = "location";
             $newResource["src"] = "";
-            $newResource["attributes"] = [
-                "lat" => $lat,
-                "lon" => $lon,
-                "boundingBox" => $boundingBox ?: []
-            ];
+            // The map's other attributes (zoom, tileStyle, marker, controls) as sent, decoded
+            // as objects: as an array, {} would be written as [].
+            $mapAttr = is_string($attributes) ? json_decode($attributes) : null;
+            $mapAttr = is_object($mapAttr) ? $mapAttr : new stdClass();
+            $mapAttr->lat = $lat;
+            $mapAttr->lon = $lon;
+            // [south, north, west, east], or none
+            $mapAttr->boundingBox = (is_array($boundingBox) && count($boundingBox) === 4 && count(array_filter($boundingBox, "is_numeric")) === 4)
+                ? array_values($boundingBox)
+                : [];
+            $newResource["attributes"] = $mapAttr;
         break;
 
         default:

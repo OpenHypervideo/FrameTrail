@@ -582,6 +582,8 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
             return attributes;
         };
 
+        var locationType = FrameTrail.type('ResourceLocation').prototype;
+
         var hotspotVariant = function(shape, extra) {
             var attributes = {
                 "color": "#ffd23f", "linkUrl": "", "borderWidth": 6, "shape": shape, "borderRadius": 10,
@@ -614,6 +616,12 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
                     answer2:  labels['SettingsQuizDefaultAnswer2'],
                     answer3:  labels['SettingsQuizDefaultAnswer3']
                 }),
+                size: [30, 30]
+            },
+            {
+                // The place is chosen in its properties (search, map)
+                id: 'location', type: 'location', icon: 'icon-location-2', label: labels['ResourceTypeLocation'], name: locationType.defaultPlace.name,
+                attributes: locationType.newAttributes(),
                 size: [30, 30]
             },
             {

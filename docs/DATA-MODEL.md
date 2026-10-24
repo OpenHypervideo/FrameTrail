@@ -386,6 +386,8 @@ The body's `frametrail:type` is the resource type. It decides how the item is re
 
 `body.type` and `body.format` are derived from `frametrail:type` for other W3C consumers; FrameTrail never reads them, and older files omit them for some types. The resource's `src` goes into `body.source` or `body.value` as the last column says; overlays read whichever is present. Items made from a resource repeat its name, thumbnail, licence and attributes in `frametrail:name`, `frametrail:thumb`, `frametrail:licenseType`, `frametrail:licenseAttribution` and `frametrail:attributes`.
 
+Location items are made in the editor, like text, HTML and quiz items, and carry no `frametrail:resourceId`; their place is chosen in their properties. The editor no longer makes location resources, except from a pasted OpenStreetMap link. A resources index may still hold location resources from earlier versions, and items made from them work as before.
+
 The text of `text` and `html` items (`attributes.text`) is stored HTML-escaped (`&lt;p&gt;…`) and unescaped before rendering.
 
 Every overlay type also takes `opacity`, `hoverStyle`, `zIndex` and `animation` in its attributes; hotspots take an action (`action`, `actionTarget`, `actionTargetTime`), and so do a quiz's answers and its `onAnswered` (with the quiz's own actions `""` continue and `pause` beside them). They are listed in each attribute schema. [TYPES.md](TYPES.md) has every type's attributes with their values and defaults, and what each type is for.

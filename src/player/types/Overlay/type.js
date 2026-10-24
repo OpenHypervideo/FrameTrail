@@ -258,9 +258,13 @@ FrameTrail.defineType(
                  */
                 updateLabel: function () {
 
-                    var previewWrapper = this.timelineElement.querySelector('.previewWrapper');
-                    previewWrapper.innerHTML = '';
-                    previewWrapper.append(this.resourceItem.renderThumb());
+                    // While hovered, the preview is shown from a popup on the body (TimelineController)
+                    var previewWrapper = this.timelineElement.querySelector('.previewWrapper')
+                        || (this.timelineElement.dataset.previewDetached && document.querySelector('body > .previewPopupWrapper .previewWrapper'));
+                    if (previewWrapper) {
+                        previewWrapper.innerHTML = '';
+                        previewWrapper.append(this.resourceItem.renderThumb());
+                    }
 
                     // Set icon from resourceItem
                     this.timelineElement.querySelector('.timelineElementIcon').innerHTML =
@@ -1485,6 +1489,11 @@ FrameTrail.defineType(
 
                     this.updateHoverStyle();
                     this.updateTimelineElement();
+
+                    // A location's name follows its place
+                    if ('name' in state) {
+                        this.updateLabel();
+                    }
 
                     var OverlayAnimator = FrameTrail.module('OverlayAnimator');
                     if (OverlayAnimator) {

@@ -146,9 +146,13 @@ FrameTrail.defineType(
                  */
                 updateLabel: function () {
 
-                    var _pw = this.timelineElement.querySelector('.previewWrapper');
-                    _pw.innerHTML = '';
-                    _pw.append(this.resourceItem.renderThumb());
+                    // While hovered, the preview is shown from a popup on the body (TimelineController)
+                    var _pw = this.timelineElement.querySelector('.previewWrapper')
+                        || (this.timelineElement.dataset.previewDetached && document.querySelector('body > .previewPopupWrapper .previewWrapper'));
+                    if (_pw) {
+                        _pw.innerHTML = '';
+                        _pw.append(this.resourceItem.renderThumb());
+                    }
 
                     // Set icon from resourceItem
                     this.timelineElement.querySelector('.timelineElementIcon').innerHTML = '<span class="' + this.resourceItem.iconClass + '"></span>';

@@ -508,7 +508,7 @@
             if (protoData.created) {
                 // Restoring from saved data - use as-is
                 newData = JSON.parse(JSON.stringify(protoData));
-            } else if ( ['text', 'html', 'quiz', 'hotspot', 'cursor', 'counter', 'chart'].indexOf(protoData.type) >= 0 ) {
+            } else if ( ['text', 'html', 'quiz', 'location', 'hotspot', 'cursor', 'counter', 'chart'].indexOf(protoData.type) >= 0 ) {
                 // Overlay kinds that do not come from the resource library
                 newData = {
                     "name":         protoData.name,
@@ -629,7 +629,8 @@
             if (protoData.created) {
                 // Restoring from saved data - use as-is
                 newData = JSON.parse(JSON.stringify(protoData));
-            } else if ( protoData.type == 'text' || protoData.type == 'html' || protoData.type == 'quiz' ) {
+            } else if ( ['text', 'html', 'quiz', 'location'].indexOf(protoData.type) >= 0 ) {
+                // Annotation kinds that do not come from the resource library (a tile, or a copy of another user's)
                 newData = {
                     "name":         protoData.name,
                     "creator":      FrameTrail.getState('username'),
@@ -640,7 +641,7 @@
                     "start":        protoData.start,
                     "end":          protoData.end,
                     "attributes":   protoData.attributes,
-                    "tags":         [],
+                    "tags":         protoData.tags || [],
                     "source": {
                         frametrail: true,
                         url: "_data/hypervideos/"

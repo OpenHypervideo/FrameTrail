@@ -539,7 +539,6 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                         + '        <ul class="resourceInputTabList">'
                                         + (onlyVideo ? '' : '            <li data-type="url"><a href="#resourceInputTabURL">'+ labels['ResourcePasteURL'] +'</a></li>')
                                         + '            <li data-type="file"><a href="#resourceInputTabFile">'+ labels['ResourceUploadFiles'] +'</a></li>'
-                                        + (onlyVideo ? '' : '            <li data-type="map"><a href="#resourceInputTabMap">'+ labels['ResourceAddMap'] +'</a></li>')
                                         + (onlyVideo ? '' : '            <li data-type="search"><a href="#resourceInputTabSearch">Search Images</a></li>')
                                         + '        </ul>'
                                         + (onlyVideo ? '' :
@@ -566,24 +565,6 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                         + '            <div class="queueSummary"></div>'
                                         + '            <div class="uploadProgressBarWrap"><div class="uploadProgressBar"></div></div>'
                                         + '        </div>'
-                                        + (onlyVideo ? '' :
-                                              '        <div id="resourceInputTabMap">'
-                                            + '            <div class="locationSearchWrapper">'
-                                            + '                <div class="openverseSearchBar">'
-                                            + '                    <input type="text" name="locationQ" class="locationQ" placeholder="'+ labels['LocationSearch'] +'">'
-                                            + '                    <button type="button" class="locationSearchBtn">'+ labels['GenericSearch'] +'</button>'
-                                            + '                </div>'
-                                            + '                <span class="locationSearchCopyright">Data \u00a9 OpenStreetMap contributors, ODbL 1.0.</span>'
-                                            + '                <ul class="locationSearchSuggestions"></ul>'
-                                            + '            </div>'
-                                            + '            <input type="text" name="lat" placeholder="latitude">'
-                                            + '            <input type="text" name="lon" placeholder="longitude">'
-                                            + '            <input type="hidden" name="boundingBox[]" class="BB1">'
-                                            + '            <input type="hidden" name="boundingBox[]" class="BB2">'
-                                            + '            <input type="hidden" name="boundingBox[]" class="BB3">'
-                                            + '            <input type="hidden" name="boundingBox[]" class="BB4">'
-                                            + '        </div>'
-                                        )
                                         + (onlyVideo ? '' :
                                               '        <div id="resourceInputTabSearch">'
                                             + '            <div class="openverseSearchBar">'
@@ -696,57 +677,6 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                         }
                     }
 
-                    // ---- Map tab: Nominatim location search ----
-                    // On Enter or the button only: the usage policy forbids search-as-you-type
-                    // and allows at most one request per second.
-                    var lastLocationQuery = '',
-                        lastLocationSearch = 0;
-                    if (!onlyVideo) uploadDialog.querySelector('.locationSearchBtn').addEventListener('click', function() {
-                        var q = uploadDialog.querySelector('.locationQ').value.trim();
-                        var sugg = uploadDialog.querySelector('.locationSearchSuggestions');
-                        if (!q || Date.now() - lastLocationSearch < 1000) { return; }
-                        if (q === lastLocationQuery) {
-                            if (sugg.children.length) { sugg.style.display = 'block'; }
-                            return;
-                        }
-                        lastLocationQuery = q;
-                        lastLocationSearch = Date.now();
-                        fetch('https://nominatim.openstreetmap.org/search?q=' + encodeURIComponent(q) + '&format=json')
-                            .then(function(r) { return r.json(); })
-                            .then(function(respText) {
-                                sugg.innerHTML = '';
-                                sugg.style.display = 'block';
-                                for (var i = 0; i < respText.length; i++) {
-                                    var loc = respText[i];
-                                    var li = document.createElement('li');
-                                    li.textContent = loc.display_name;
-                                    li._locData = loc;
-                                    li.addEventListener('click', function() {
-                                        var d = this._locData;
-                                        uploadDialog.querySelector('input[name="lon"]').value = d.lon;
-                                        uploadDialog.querySelector('input[name="lat"]').value = d.lat;
-                                        uploadDialog.querySelector('input.BB1').value = d.boundingbox[0];
-                                        uploadDialog.querySelector('input.BB2').value = d.boundingbox[1];
-                                        uploadDialog.querySelector('input.BB3').value = d.boundingbox[2];
-                                        uploadDialog.querySelector('input.BB4').value = d.boundingbox[3];
-                                        uploadDialog.querySelector('input[name="name"]').value = d.display_name;
-                                        sugg.style.display = 'none';
-                                        uploadDialogCtrl.widget().querySelector('.newResourceConfirm').disabled = false;
-                                    });
-                                    sugg.appendChild(li);
-                                }
-                            })
-                            .catch(function() {
-                                lastLocationQuery = '';
-                                sugg.innerHTML = '';
-                                sugg.style.display = 'none';
-                            });
-                    });
-
-                    if (!onlyVideo) uploadDialog.querySelector('.locationQ').addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter') { uploadDialog.querySelector('.locationSearchBtn').click(); }
-                    });
-
                     // ---- Search Images tab: Openverse ----
                     if (!onlyVideo) {
                         uploadDialog.querySelector('.openverseSearchBtn').addEventListener('click', function() {
@@ -787,12 +717,6 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                 buttons[0].text = hasQueue ? (labels['ResourceUploadStart'] || 'Start Upload') : (labels['ResourceAddNew'] || 'Add Resource');
                                 uploadDialogCtrl.setButtons(buttons);
                                 uploadDialogCtrl.widget().querySelector('.newResourceConfirm').disabled = !hasQueue;
-                            } else if (tabType === 'map') {
-                                uploadDialog.querySelector('.nameInputContainer').style.display = '';
-                                buttons[0].text = labels['ResourceAddNew'] || 'Add Resource';
-                                uploadDialogCtrl.setButtons(buttons);
-                                var hasCoords = uploadDialog.querySelector('input[name="lat"]').value.length > 0;
-                                uploadDialogCtrl.widget().querySelector('.newResourceConfirm').disabled = !hasCoords;
                             } else if (tabType === 'search') {
                                 uploadDialog.querySelector('.nameInputContainer').style.display = 'none';
                                 buttons[0].text = labels['ResourceAddNew'] || 'Add Resource';
@@ -828,6 +752,12 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                             uploadDialog.querySelector('.resourceInput[name="thumbnail"]').value,
                             true
                         );
+                        // An OpenStreetMap link is a place, no URL to embed
+                        if (urlObj && urlObj.type === 'location') {
+                            urlObj.name = resourceName;
+                            submitLocation(urlObj);
+                            return;
+                        }
                         if (!urlObj || !urlObj.src) {
                             uploadDialog.querySelectorAll('.message.error').forEach(function(el) { el.remove(); });
                             uploadDialog.querySelector('#resourceInputTabURL').insertAdjacentHTML('beforeend', '<div class="message active error">'+ labels['ErrorEmptyURL'] +'</div>');
@@ -898,76 +828,46 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                         }
                     }
 
-                    function submitMap() {
-                        var resourceName = uploadDialog.querySelector('input[name="name"]').value;
-                        var lat = uploadDialog.querySelector('input[name="lat"]').value;
-                        var lon = uploadDialog.querySelector('input[name="lon"]').value;
-                        if (!lat || !lon) {
+                    // A location resource (from an OpenStreetMap link): its place and view
+                    function submitLocation(resource) {
+                        var showError = function(text) {
                             uploadDialog.querySelectorAll('.message.error').forEach(function(el) { el.remove(); });
-                            uploadDialog.querySelector('#resourceInputTabMap').insertAdjacentHTML('beforeend', '<div class="message active error">'+ labels['ErrorMapNoCoordinates'] +'</div>');
-                            return;
-                        }
-                        if (!resourceName || resourceName.length < 2) {
-                            uploadDialog.querySelectorAll('.message.error').forEach(function(el) { el.remove(); });
-                            uploadDialog.querySelector('#resourceInputTabMap').insertAdjacentHTML('beforeend', '<div class="message active error">'+ labels['ErrorEmptyName'] +'</div>');
-                            return;
-                        }
-                        uploadDialogCtrl.widget().querySelector('.newResourceConfirm').disabled = true;
-                        var mapResource = {
-                            src: '', type: 'location', name: resourceName,
-                            attributes: {
-                                lat: lat, lon: lon,
-                                boundingBox: [
-                                    uploadDialog.querySelector('input.BB1').value,
-                                    uploadDialog.querySelector('input.BB2').value,
-                                    uploadDialog.querySelector('input.BB3').value,
-                                    uploadDialog.querySelector('input.BB4').value
-                                ]
-                            }
+                            uploadDialog.querySelector('#resourceInputTabURL').insertAdjacentHTML('beforeend', '<div class="message active error">' + text + '</div>');
+                            uploadDialogCtrl.widget().querySelector('.newResourceConfirm').disabled = false;
                         };
+                        var done = function() {
+                            FrameTrail.module('Database').loadResourceData(function() {
+                                uploadDialogCtrl.close();
+                                successCallback && successCallback.call();
+                            });
+                        };
+                        var attributes = resource.attributes || {};
+                        delete attributes.embed;
+
+                        uploadDialogCtrl.widget().querySelector('.newResourceConfirm').disabled = true;
 
                         if (isLocalMode) {
-                            addResourceLocally(mapResource).then(function() {
-                                FrameTrail.module('Database').loadResourceData(function() {
-                                    uploadDialogCtrl.close();
-                                    successCallback && successCallback.call();
-                                });
-                            }).catch(function(err) {
-                                uploadDialog.querySelectorAll('.message.error').forEach(function(el) { el.remove(); });
-                                uploadDialog.querySelector('#resourceInputTabMap').insertAdjacentHTML('beforeend', '<div class="message active error">' + err.message + '</div>');
-                                uploadDialogCtrl.widget().querySelector('.newResourceConfirm').disabled = false;
-                            });
-                        } else {
-                            var adapter = FrameTrail.module('StorageManager').getAdapter();
-                            var dataPath = (adapter && adapter.dataPathAbsolute) ? adapter.dataPathAbsolute : '';
-                            var mapParams = new URLSearchParams({
-                                a: 'fileUpload', type: 'map', name: resourceName,
-                                lat: lat, lon: lon, dataPath: dataPath
-                            });
-                            mapParams.append('boundingBox[]', uploadDialog.querySelector('input.BB1').value);
-                            mapParams.append('boundingBox[]', uploadDialog.querySelector('input.BB2').value);
-                            mapParams.append('boundingBox[]', uploadDialog.querySelector('input.BB3').value);
-                            mapParams.append('boundingBox[]', uploadDialog.querySelector('input.BB4').value);
-                            fetch(FrameTrail.module('RouteNavigation').resolveServerURL('ajaxServer.php'), { method: 'POST', body: mapParams })
-                            .then(function(r) { return r.json(); })
-                            .then(function(resp) {
-                                if (resp.code === 0) {
-                                    FrameTrail.module('Database').loadResourceData(function() {
-                                        uploadDialogCtrl.close();
-                                        successCallback && successCallback.call();
-                                    });
-                                } else {
-                                    uploadDialog.querySelectorAll('.message.error').forEach(function(el) { el.remove(); });
-                                    uploadDialog.querySelector('#resourceInputTabMap').insertAdjacentHTML('beforeend', '<div class="message active error">'+ (resp.string || labels['ErrorGeneric']) +'</div>');
-                                    uploadDialogCtrl.widget().querySelector('.newResourceConfirm').disabled = false;
-                                }
-                            })
-                            .catch(function() {
-                                uploadDialog.querySelectorAll('.message.error').forEach(function(el) { el.remove(); });
-                                uploadDialog.querySelector('#resourceInputTabMap').insertAdjacentHTML('beforeend', '<div class="message active error">'+ labels['ErrorGeneric'] +'</div>');
-                                uploadDialogCtrl.widget().querySelector('.newResourceConfirm').disabled = false;
-                            });
+                            addResourceLocally(resource).then(done).catch(function(err) { showError(err.message); });
+                            return;
                         }
+                        var adapter = FrameTrail.module('StorageManager').getAdapter();
+                        var dataPath = (adapter && adapter.dataPathAbsolute) ? adapter.dataPathAbsolute : '';
+                        var params = new URLSearchParams({
+                            a: 'fileUpload', type: 'map', name: resource.name,
+                            lat: attributes.lat, lon: attributes.lon,
+                            attributes: JSON.stringify(attributes), dataPath: dataPath
+                        });
+                        (Array.isArray(attributes.boundingBox) ? attributes.boundingBox : []).forEach(function(value) { params.append('boundingBox[]', value); });
+                        fetch(FrameTrail.module('RouteNavigation').resolveServerURL('ajaxServer.php'), { method: 'POST', body: params })
+                        .then(function(r) { return r.json(); })
+                        .then(function(resp) {
+                            if (resp.code === 0) {
+                                done();
+                            } else {
+                                showError(resp.string || labels['ErrorGeneric']);
+                            }
+                        })
+                        .catch(function() { showError(labels['ErrorGeneric']); });
                     }
 
                     function buildOpenverseUrl(query, license) {
@@ -1155,8 +1055,6 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                         } else if (uploadQueue.length > 0) {
                                             startBatchUpload();
                                         }
-                                    } else if (tabType === 'map') {
-                                        submitMap();
                                     } else if (tabType === 'search') {
                                         submitOpenverse();
                                     }
@@ -1311,22 +1209,33 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                     }
                 },
                 function (src, name) {
-                    // OpenStreeMap
-                    var res = /www\.openstreetmap\.org.+#map=(\d+)\/([\d.]+)\/([\d.]+)/.exec(src);
-                    if (res) {
-                        var r = createResource("", "location", name);
-                        r.attributes.lat = res[2];
-                        r.attributes.lon = res[3];
-                        return r;
+                    // OpenStreetMap (also osm.org): the marked point (mlat, mlon), else the view's
+                    // centre (#map=zoom/lat/lon, or lat, lon and zoom); the view's zoom
+                    if (!/^https?:\/\/(?:www\.)?(?:openstreetmap|osm)\.org(?:[\/?#]|$)/i.test(src)) {
+                        return null;
                     }
-                    res = /www\.openstreetmap\.org.+lat=([\d.]+).+lon=([\d.]+)/.exec(src);
-                    if (res) {
-                        var r = createResource("", "location", name);
-                        r.attributes.lat = res[1];
-                        r.attributes.lon = res[2];
-                        return r;
+                    var param = function(key) {
+                        var match = new RegExp('[?&#]' + key + '=(-?[\\d.]+)').exec(src);
+                        return match ? parseFloat(match[1]) : NaN;
+                    };
+                    var view = /#map=(\d+)\/(-?[\d.]+)\/(-?[\d.]+)/.exec(src),
+                        lat  = param('mlat'),
+                        lon  = param('mlon'),
+                        zoom = view ? parseInt(view[1], 10) : param('zoom');
+                    if (!isFinite(lat) || !isFinite(lon)) {
+                        lat = view ? parseFloat(view[2]) : param('lat');
+                        lon = view ? parseFloat(view[3]) : param('lon');
                     }
-                    return null;
+                    if (!isFinite(lat) || !isFinite(lon)) {
+                        return null;
+                    }
+                    var r = createResource("", "location", name || labels['ResourceTypeLocation']);
+                    r.attributes.lat = lat;
+                    r.attributes.lon = lon;
+                    if (isFinite(zoom)) {
+                        r.attributes.zoom = Math.round(zoom);
+                    }
+                    return r;
                 },
                 function (src, name) {
                     // Image

@@ -2,26 +2,26 @@
     "$schema": "https://json-schema.org/draft/2020-12/schema",
     "$id": "https://frametrail.org/schemas/1/attributes/location.schema.json",
     "title": "frametrail:attributes of type \"location\"",
-    "description": "Map (OpenStreetMap-based tiles via Leaflet) centred on a coordinate, for a place the video shows or mentions. This schema describes the frametrail:attributes of items (and the attributes of resources) whose type is \"location\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
+    "description": "Map (OpenStreetMap-based tiles via Leaflet) centred on a coordinate, for a place the video shows or mentions. Locations are made in the editor as overlays and annotations, their place chosen by a search and a small map in the properties; a resources index may still hold location resources from earlier versions, which are used as before. This schema describes the frametrail:attributes of items (and the attributes of resources) whose type is \"location\". On overlays, opacity, hoverStyle, zIndex and animation apply as on every overlay type. Unknown keys are allowed; writers keep them.",
     "type": "object",
     "properties": {
         "lat": {
-            "description": "Latitude (WGS 84). Resources store it as a string.",
+            "description": "Latitude (WGS 84): the centre of the map and the marker. Resources and older items store it as a string.",
             "type": ["number", "string"]
         },
         "lon": {
-            "description": "Longitude (WGS 84). Resources store it as a string.",
+            "description": "Longitude (WGS 84): the centre of the map and the marker. Resources and older items store it as a string.",
             "type": ["number", "string"]
         },
         "boundingBox": {
-            "description": "Area to fit the map to when zoom is not set: [south, north, west, east] in degrees, numbers or strings. An empty string or array means none.",
+            "description": "Area to fit the map to when zoom is not set (at most zoom 17): [south, north, west, east] in degrees, numbers or strings; the place search sets it, panning or zooming the map in the editor sets zoom instead. Anything but four numbers (an empty string or array, four empty strings) means none.",
             "type": ["array", "string"],
             "items": {
                 "type": ["number", "string"]
             }
         },
         "zoom": {
-            "description": "Zoom level.",
+            "description": "Zoom level. Missing: the bounding box fitted, else 15.",
             "type": "integer",
             "minimum": 0,
             "maximum": 20,

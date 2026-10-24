@@ -327,38 +327,3 @@
     margin-left: -150px;
     text-align: center;
 }
-
-.uploadDialog .locationSearchWrapper {
-    position: relative;
-    margin-bottom: 10px;
-}
-
-.uploadDialog .locationSearchWrapper .locationSearchCopyright {
-    color: #afafaf;
-    font-size: 11px;
-}
-
-.uploadDialog .locationSearchWrapper .locationSearchSuggestions {
-    position: absolute;
-    top: 41px;
-    background: #d5d6da;
-    width: 500px;
-    height: auto;
-    max-height: 150px;
-    overflow: auto;
-    border: 2px solid #444;
-    display: none;
-}
-
-.uploadDialog .locationSearchWrapper .locationSearchSuggestions li {
-    list-style: none;
-    font-size: 13px;
-    font-weight: 100;
-    border-bottom: 1px solid var(--primary-fg-color);
-    padding: 2px 6px;
-}
-
-.uploadDialog .locationSearchWrapper .locationSearchSuggestions li:hover {
-    background: #bfbfbf;
-    cursor: pointer;
-}

@@ -264,8 +264,7 @@
     flex-wrap: wrap;
 }
 
-.openverseSearchBar input[name="openverseQ"],
-.openverseSearchBar input[name="locationQ"] {
+.openverseSearchBar input[name="openverseQ"] {
     flex: 1;
     min-width: 140px;
 }

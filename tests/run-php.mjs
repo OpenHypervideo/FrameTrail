@@ -456,6 +456,36 @@ describe('server contract (src/_server/)', () => {
         assert.deepStrictEqual(index.hypervideos, { 1: './1' });
     });
 
+    test('fileUpload map: 0 is a coordinate, the attributes go along, a bounding box needs four numbers', async () => {
+        const a = await Client.signedIn(folder, 'a@example.org', 'adminadmin'),
+              resources = () => readJSON(path.join(folder.dir, 'resources', '_index.json')).resources,
+              map = (fields, box) => {
+                  const form = new FormData();
+                  form.append('a', 'fileUpload');
+                  form.append('type', 'map');
+                  form.append('description', '');
+                  Object.entries(fields).forEach(([key, value]) => form.append(key, value));
+                  (box || []).forEach((value) => form.append('boundingBox[]', value));
+                  return a.post(form);
+              };
+
+        const nullIsland = await map({ name: 'Null Island', lat: '0', lon: '0',
+            attributes: JSON.stringify({ zoom: 4, tileStyle: 'dark', marker: {}, controls: { dragging: false } }) }, ['-1', '1', '-1', '1']);
+        assert.equal(String(nullIsland.code), '0', JSON.stringify(nullIsland));
+        assert.deepStrictEqual(resources()[String(nullIsland.response.resId)].attributes,
+            { zoom: 4, tileStyle: 'dark', marker: {}, controls: { dragging: false }, lat: '0', lon: '0', boundingBox: ['-1', '1', '-1', '1'] });
+
+        const typed = await map({ name: 'Typed', lat: '52.5', lon: '13.4' }, ['', '', '', '']);
+        assert.equal(String(typed.code), '0', JSON.stringify(typed));
+        assert.deepStrictEqual(resources()[String(typed.response.resId)].attributes, { lat: '52.5', lon: '13.4', boundingBox: [] }, 'no attributes sent, an empty bounding box');
+
+        assert.equal(String((await map({ name: 'Nowhere', lat: 'north', lon: '13.4' })).code), '7', 'not a number');
+        assert.equal(String((await map({ name: 'Nowhere', lon: '13.4' })).code), '7', 'no lat');
+
+        assert.equal(String((await a.post({ a: 'fileDelete', resourcesID: String(nullIsland.response.resId) })).code), '0');
+        assert.equal(String((await a.post({ a: 'fileDelete', resourcesID: String(typed.response.resId) })).code), '0');
+    });
+
     test("annotationfileDelete: the user's own file only, compare-and-swap on its index entry (code 7)", async () => {
         const a   = await Client.signedIn(folder, 'a@example.org', 'adminadmin'),
               b   = await Client.signedIn(folder, 'b@example.org', 'userbuser'),

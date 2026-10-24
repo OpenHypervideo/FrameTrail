@@ -755,6 +755,46 @@
                 },
                 "frametrail:events": {}
             }
+        },
+        {
+            "name": "location made in the editor: named after its place, fitted to its bounding box (no zoom), no resource",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-10-24T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,30,30"
+                    }
+                },
+                "body": {
+                    "type": "Dataset",
+                    "format": "application/x-frametrail-location",
+                    "frametrail:type": "location",
+                    "frametrail:name": "Brandenburger Tor",
+                    "frametrail:attributes": {
+                        "lat": 52.5162699,
+                        "lon": 13.3777034,
+                        "boundingBox": [52.516117, 52.5164328, 13.3775798, 13.3778251]
+                    }
+                },
+                "frametrail:events": {}
+            }
         }
     ]
 }

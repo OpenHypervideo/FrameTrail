@@ -458,8 +458,10 @@ FrameTrail.defineModule('ImportDialog', function(FrameTrail){
                     var entry = entryOf(resource);
                     if (reuse(oldID, resource, entry)) { return; }
                     if (entry.type === 'location') {
+                        // Its zoom, tile style, marker and controls go along
                         var attributes = entry.attributes || {},
-                            params     = new URLSearchParams({ a: 'fileUpload', type: 'map', name: entry.name || 'Location', lat: attributes.lat, lon: (attributes.lon != null ? attributes.lon : attributes.lng) });
+                            params     = new URLSearchParams({ a: 'fileUpload', type: 'map', name: entry.name || 'Location', lat: attributes.lat, lon: (attributes.lon != null ? attributes.lon : attributes.lng),
+                                                              attributes: JSON.stringify(attributes) });
                         (Array.isArray(attributes.boundingBox) ? attributes.boundingBox : []).forEach(function(value) { params.append('boundingBox[]', value); });
                         request = serverPost(params);
                     } else {

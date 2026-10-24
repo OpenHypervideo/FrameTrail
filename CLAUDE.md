@@ -226,7 +226,7 @@ All 26 resource types inherit from the base `Resource` type in `src/_shared/type
 | ResourcePDF | PDF document viewer |
 | ResourceText | Rich text (WYSIWYG via Quill + HTML editor), optional title, plain or in a shape (rectangle, rounded, circle, speech bubble, cloud, block arrow) |
 | ResourceHtml | Raw HTML (CodeMirror HTML editor only, no sanitisation) |
-| ResourceLocation | OpenStreetMap (via Leaflet) |
+| ResourceLocation | OpenStreetMap (via Leaflet); made as a custom overlay or annotation (Location tile), see Locations |
 | ResourceQuiz | Interactive quiz |
 | ResourceHotspot | Clickable hotspot: circle, rectangle, rounded, arrow, underline, freeform (outline drawn on the video); outline, fill, pulse, label |
 | ResourceEntity | Linked data entity |
@@ -645,6 +645,14 @@ A quiz (`ResourceQuiz`) is answered by voters and decided; each answer of a mult
 - **Quiz overlays** are answered on the video by the person at the player and decided at once (`overlayAnswered` until the playhead leaves them); they pause through `frametrail:pause` like any overlay.
 - **Editor** (`ResourceQuiz.renderQuizEditor()`): answers with a folded "Then:" (`Resource.renderActionControls(item, { target, actions, beforeChange, onChange })`, feedback, the default switch), "After answering" for the other types, the countdown for annotations; a legacy quiz is shown converted and becomes so on the first change; one snapshot undo per change (focus leaving the editor, or a choice). The annotations' Custom tab has a Quiz tile.
 
+## Locations
+
+A location (`ResourceLocation`, a Leaflet map) is made like a quiz: the Location tile of the Custom Overlay gallery and of the annotations' Custom tab (whose tiles carry `data-tile`, which the drop handler goes by: library thumbs and other users' annotations have the same `data-type`). There is no "Add Map" tab in the New Resource dialog any more; a pasted OpenStreetMap link (`openstreetmap.org` / `osm.org`: `mlat`/`mlon`, else `#map=zoom/lat/lon`) still makes a library location resource (`submitLocation()`, server `fileUpload type=map`, which keeps the `attributes` sent). Library location resources from earlier versions are listed and used as before.
+
+- **New:** `defaultPlace` (Amsterdam) via `newAttributes()`: lat, lon and its bounding box, no zoom; the item is named after the place.
+- **Editor** (`renderLocationEditor()`, Options tab): the place search (`searchPlaces()`: Nominatim on Enter or the button only, at most one request per second, cached per query and interface language; results in a `popover="auto"` list), a mini map (`createMap(…, { interactive: true, trackResize: false })`, made once the panel shows it, removed with it), tile style, marker, interaction. Picking a result sets lat, lon, `boundingBox`, the name (`placeName()`: the result's `name`, else its address's first part) and deletes `zoom`, so every box fits the place; panning or zooming the mini map stores its centre and zoom (one undo step per gesture). The marker is the centre. One snapshot undo of `{ attributes, name }` per change (`registerStateUndo` for overlays; `Overlay.applyState()` updates the label when the state has a name).
+- **View:** `createMap()` is shared by `renderContent()` and the mini map: the stored zoom, else a bounding box of four numbers fitted (at most `FIT_MAX_ZOOM` 17), else 15. `renderContent()` sets `_ftCleanup` (removes the map) and keeps `_leafletMap` for the views' `invalidateSize()`.
+
 ## Code Snippets, Events and Hypervideo CSS
 
 There is no Custom Code edit mode (overlay actions cover running code).
@@ -688,7 +696,7 @@ Text is the type for text in a shape, as in Keynote or PowerPoint; Hotspot the t
 
 ## Custom Overlay Gallery
 
-The "Custom Overlay" tab of the overlay editing panel is one flat gallery built from `getCustomOverlayTiles()` in `OverlaysController`: Hotspot (unchanged defaults), Text (white 50px "Text" — `box.textColor` white, the size inline —, auto height, typed into on the video right after the drop), Quiz, then Rectangle, Rounded Rectangle, Circle, Speech Bubble, Cloud, Block Arrow (Text overlays in a shape; they drop without starting to type, double-click types), Arrow, Curved Arrow, Underline, Freeform Hotspot (Hotspot variants that draw themselves in; the freeform one starts in draw mode), Cursor (starts with box motion on), Counter, Bar / Line / Donut Chart and Progress Ring, Quote, Notification (pre-styled Text overlays with auto height), and last Custom HTML. A tile is `{ id, type, icon, label, attributes, size, events?, pause?, motion?, draw? }`; the drop handler builds the overlay from it. A tile without `pause` gets its type's default (`Resource.pauseByDefault`: quizzes and hotspots pause at their start); the drawn hotspot variants pass `pause: false`. The former "Presets" tab (Pause & Continue, Choice Buttons) has been removed.
+The "Custom Overlay" tab of the overlay editing panel is one flat gallery built from `getCustomOverlayTiles()` in `OverlaysController`: Hotspot (unchanged defaults), Text (white 50px "Text" — `box.textColor` white, the size inline —, auto height, typed into on the video right after the drop), Quiz, Location (Amsterdam, see Locations), then Rectangle, Rounded Rectangle, Circle, Speech Bubble, Cloud, Block Arrow (Text overlays in a shape; they drop without starting to type, double-click types), Arrow, Curved Arrow, Underline, Freeform Hotspot (Hotspot variants that draw themselves in; the freeform one starts in draw mode), Cursor (starts with box motion on), Counter, Bar / Line / Donut Chart and Progress Ring, Quote, Notification (pre-styled Text overlays with auto height), and last Custom HTML. A tile is `{ id, type, icon, label, attributes, size, events?, pause?, motion?, draw? }`; the drop handler builds the overlay from it. A tile without `pause` gets its type's default (`Resource.pauseByDefault`: quizzes and hotspots pause at their start); the drawn hotspot variants pass `pause: false`. The former "Presets" tab (Pause & Continue, Choice Buttons) has been removed.
 
 ## Client Extensions
 
