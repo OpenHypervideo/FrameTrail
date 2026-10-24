@@ -3023,7 +3023,7 @@ FrameTrail.defineType(
                                     +'                <input type="hidden" class="contentViewData" data-property="collectionFilter-users" data-value="'+ contentViewData.collectionFilter.users +'" value="'+ contentViewData.collectionFilter.users +'" placeholder="('+ self.labels['GenericOptional'] +')">'
                                     +'            </div>'
                                     +'            <div class="column-3">'
-                                    +'                <label>'+ self.labels['SettingsFilterByName'] +'</label>'
+                                    +'                <label>'+ self.labels['SettingsFilterByTitle'] +'</label>'
                                     +'                <input type="text" class="contentViewData" data-property="collectionFilter-text" data-value="'+ contentViewData.collectionFilter.text +'" value="'+ contentViewData.collectionFilter.text +'" placeholder="('+ self.labels['GenericOptional'] +')">'
                                     +'            </div>'
                                     +'        </div>'

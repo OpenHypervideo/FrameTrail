@@ -624,6 +624,7 @@ window.FrameTrail_L10n['de'] = {
     "SettingsEvents": "Ereignisse",
     "SettingsFilterByName": "Filtern nach Name",
     "SettingsFilterByTags": "Filtern nach Tags",
+    "SettingsFilterByTitle": "Filtern nach Name",
     "SettingsFilterByTypes": "Filtern nach Typen (eg. \"Image\")",
     "SettingsFilterByUsers": "Filtern nach Nutzer:innen",
     "SettingsFitToMedia": "Rahmen an Medium anpassen",

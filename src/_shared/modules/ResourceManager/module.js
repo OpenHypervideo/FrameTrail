@@ -608,7 +608,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                         )
                                         + '    </div>'
                                         + '    <div class="nameInputContainer"' + (onlyVideo ? ' style="display:none"' : '') + '>'
-                                        + '        <div class="nameInputMessage">Name</div>'
+                                        + '        <div class="nameInputMessage">'+ labels['GenericName'] +'</div>'
                                         + '        <input type="text" name="name" placeholder="'+ labels['MessageNewResourceName'] +'" class="resourceNameInput">'
                                         + '    </div>'
                                         + '</div>';
