@@ -218,6 +218,13 @@ function ftResourceFilePath($name) {
 }
 
 /**
+ * How FrameTrail names itself in requests to other sites: with a URL and a
+ * contact, as Wikimedia's User-Agent policy asks (without them its APIs and
+ * media servers may count a request as unidentified and throttle or block it).
+ */
+define("FT_USER_AGENT", "FrameTrail (https://frametrail.org; code@frametrail.org)");
+
+/**
  * I fetch an http(s) URL on behalf of a request, and only from the public
  * internet.
  *
@@ -234,7 +241,7 @@ function ftResourceFilePath($name) {
  * @return Array|null   { status, body, contentType, headers, url } for the
  *                      final hop (header names lowercased), or null
  */
-function ftFetchPublicUrl($url, $timeout = 15, $maxBytes = 10485760, $userAgent = 'FrameTrail/1.0') {
+function ftFetchPublicUrl($url, $timeout = 15, $maxBytes = 10485760, $userAgent = FT_USER_AGENT) {
 
     for ($hop = 0; $hop <= 5; $hop++) {
 
@@ -301,6 +308,68 @@ function ftFetchPublicUrl($url, $timeout = 15, $maxBytes = 10485760, $userAgent 
     }
 
     return null;
+
+}
+
+/**
+ * I resolve a URL found in a page (its og:image, say) against the page's own
+ * URL, as a browser would: an absolute http(s) URL as it is, "//host/…" with
+ * the page's scheme, "/path" on the page's host, anything else beside the
+ * page, with "." and ".." segments collapsed.
+ *
+ * @param $base     the page's URL, after redirects
+ * @param $ref
+ * @return String|null  null for an empty reference, or one that is not http(s)
+ */
+function ftResolveUrl($base, $ref) {
+
+    $ref = trim((string)$ref);
+    if ($ref === "") {
+        return null;
+    }
+    if (preg_match('#^[a-z][a-z0-9+.-]*:#i', $ref)) {
+        return preg_match('#^https?://#i', $ref) ? $ref : null;
+    }
+
+    $parts = parse_url($base);
+    if (empty($parts["scheme"]) || empty($parts["host"])) {
+        return null;
+    }
+    $scheme = strtolower($parts["scheme"]);
+    if (substr($ref, 0, 2) === "//") {
+        return $scheme . ":" . $ref;
+    }
+
+    $basePath = isset($parts["path"]) ? $parts["path"] : "/";
+    $path = ($ref[0] === "/") ? $ref : substr($basePath, 0, strrpos($basePath, "/") + 1) . $ref;
+
+    $rest = "";
+    $end = strcspn($path, "?#");
+    if ($end < strlen($path)) {
+        $rest = substr($path, $end);
+        $path = substr($path, 0, $end);
+    }
+
+    $segments = explode("/", $path);
+    $resolved = array();
+    foreach ($segments as $segment) {
+        if ($segment === ".") {
+            continue;
+        }
+        if ($segment === "..") {
+            if (count($resolved) > 1) {
+                array_pop($resolved);
+            }
+            continue;
+        }
+        $resolved[] = $segment;
+    }
+    if (in_array(end($segments), array(".", ".."), true)) {
+        $resolved[] = "";
+    }
+
+    return $scheme . "://" . $parts["host"] . (isset($parts["port"]) ? ":" . $parts["port"] : "")
+         . implode("/", $resolved) . $rest;
 
 }
 

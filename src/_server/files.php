@@ -767,111 +767,7 @@ function downloadAndCacheThumbnail($imageUrl, $resourceName) {
 }
 
 
-/**
- * Fetch article summary from the Wikipedia REST API.
- * Parses language and title from the URL automatically.
- *
- * @param string $url  Wikipedia article URL (any language)
- * @return array
- *
- * Return codes:
- * 0  Success — urlInfo contains title, extract, image, description, articleUrl, lang
- * 1  Failed — URL not recognized or API error
- */
-function fileGetWikipediaInfo($url) {
-    // Parse language and title from URL
-    // Handles: https://en.wikipedia.org/wiki/Albert_Einstein
-    //          https://de.wikipedia.org/wiki/Albert_Einstein
-    //          https://en.m.wikipedia.org/wiki/Albert_Einstein (mobile)
-    if (!preg_match('#^https?://([a-z]{2,3})\.(?:m\.)?wikipedia\.org/wiki/(.+?)(?:\#.*)?$#i', $url, $matches)) {
-        return [
-            "status" => "error",
-            "code" => 1,
-            "string" => "Not a valid Wikipedia URL",
-            "urlInfo" => false
-        ];
-    }
-
-    $lang = strtolower($matches[1]);
-    $title = $matches[2];
-
-    // Call Wikipedia REST API
-    $apiUrl = "https://{$lang}.wikipedia.org/api/rest_v1/page/summary/" . rawurlencode($title);
-
-    $ch = curl_init($apiUrl);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-    // Wikipedia API requires a meaningful User-Agent
-    curl_setopt($ch, CURLOPT_USERAGENT, 'FrameTrail/1.4 (https://github.com/OpenHypervideo/FrameTrail; code@frametrail.org;)');
-    // Request JSON response
-    curl_setopt($ch, CURLOPT_HTTPHEADER, ['Accept: application/json']);
-
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($response === false || $httpCode !== 200) {
-        return [
-            "status" => "error",
-            "code" => 1,
-            "string" => "Wikipedia API request failed (HTTP " . $httpCode . ")",
-            "urlInfo" => false
-        ];
-    }
-
-    $data = json_decode($response, true);
-    if (!$data || empty($data['title'])) {
-        return [
-            "status" => "error",
-            "code" => 1,
-            "string" => "Failed to parse Wikipedia API response",
-            "urlInfo" => false
-        ];
-    }
-
-    // Build result
-    $urlInfo = [
-        "title"        => $data['title'],
-        "description"  => isset($data['description']) ? $data['description'] : '',
-        "extract"      => isset($data['extract']) ? $data['extract'] : '',
-        "extract_html" => isset($data['extract_html']) ? $data['extract_html'] : '',
-        "image"        => null,
-        "articleUrl"   => isset($data['content_urls']['desktop']['page'])
-                            ? $data['content_urls']['desktop']['page']
-                            : $url,
-        "mobileUrl"    => isset($data['content_urls']['mobile']['page'])
-                            ? $data['content_urls']['mobile']['page']
-                            : null,
-        "lang"         => $lang,
-        "dir"          => isset($data['dir']) ? $data['dir'] : 'ltr'
-    ];
-
-    // Prefer thumbnail over originalimage (thumbnail is pre-sized, faster to download)
-    if (!empty($data['thumbnail']['source'])) {
-        $urlInfo['image'] = $data['thumbnail']['source'];
-    } elseif (!empty($data['originalimage']['source'])) {
-        $urlInfo['image'] = $data['originalimage']['source'];
-    }
-
-    return [
-        "status" => "success",
-        "code" => 0,
-        "string" => "see result",
-        "urlInfo" => $urlInfo,
-        "embed" => "allowed"
-    ];
-}
-
-
 function fileGetUrlInfo($url) {
-
-    // Route Wikipedia URLs to dedicated API handler
-    if (preg_match('#^https?://[a-z]{2,3}\.(?:m\.)?wikipedia\.org/wiki/#i', $url)) {
-        return fileGetWikipediaInfo($url);
-    }
 
     // One request for both the page and its framing headers, made only to a
     // public http(s) address (ftFetchPublicUrl() via OpenGraph::fetch).
@@ -910,33 +806,19 @@ function fileGetUrlInfo($url) {
         $return["urlInfo"] = false;
         return $return;
     } else {
-        
-        if (isAbsoluteUrl($siteInfo["result"]->image)) {
-            $imagePath = $siteInfo["result"]->image;
-        } else {
-            $urlResult = parse_url($url);
-            $imagePath = ($siteInfo["result"]->image) ? $urlResult['scheme']."://".$urlResult['host']."/".$siteInfo["result"]->image : null;
-        }
+
+        // No result: a page without any meta tags
+        $page = $siteInfo["result"] ? $siteInfo["result"] : null;
 
         $return["status"] = "success";
         $return["code"] = 0;
         $return["string"] = "URL Info successfully retrieved";
         $return["urlInfo"] = Array();
-        $return["urlInfo"]["title"] = $siteInfo["result"]->title;
-        $return["urlInfo"]["image"] = $imagePath;
-        $return["urlInfo"]["description"] = $siteInfo["result"]->description;
+        $return["urlInfo"]["title"] = $page ? $page->title : null;
+        $return["urlInfo"]["image"] = $page ? ftResolveUrl($siteInfo["url"], $page->image) : null;
+        $return["urlInfo"]["description"] = $page ? $page->description : null;
         return $return;
     }
-}
-
-
-function isAbsoluteUrl($url) {
-    $pattern = "/^(?:ftp|https?|file)?:?\/\/(?:(?:(?:[\w\.\-\+!$&'\(\)*\+,;=]|%[0-9a-f]{2})+:)*
-    (?:[\w\.\-\+%!$&'\(\)*\+,;=]|%[0-9a-f]{2})+@)?(?:
-    (?:[a-z0-9\-\.]|%[0-9a-f]{2})+|(?:\[(?:[0-9a-f]{0,4}:)*(?:[0-9a-f]{0,4})\]))(?::[0-9]+)?(?:[\/|\?]
-    (?:[\w#!:\.\?\+\|=&@$'~*,;\/\(\)\[\]\-]|%[0-9a-f]{2})*)?$/xi";
-
-    return (bool) preg_match($pattern, $url);
 }
 
 

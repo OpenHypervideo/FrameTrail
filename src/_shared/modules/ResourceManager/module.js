@@ -20,6 +20,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
     var labels = FrameTrail.module('Localization').labels;
 
     var previewController,
+        previewPending = null,
         uploadQueue = [],
         completedUploads = [],
         isUploading = false,
@@ -178,18 +179,36 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
         document.addEventListener(ev, function(evt) {
             if (!evt.target.matches || !evt.target.matches('#resourceInputTabURL input')) { return; }
             clearTimeout(previewTimeout);
-            previewTimeout = setTimeout(function() {
-                var previewEl = document.querySelector('#resourceInputTabURL .resourceURLPreview');
-                if (previewEl) { previewEl.innerHTML = ''; }
-                var thumbEl = document.querySelector('.resourceInput[name="thumbnail"]');
-                if (thumbEl) { thumbEl.value = ''; }
-                var urlInput = document.querySelector('#resourceInputTabURL input');
-                var nameInput = document.querySelector('.resourceNameInput');
-                checkResourceInput(urlInput ? urlInput.value : '', nameInput ? nameInput.value : '');
-            }, 800);
+            previewTimeout = setTimeout(checkURLInput, 800);
             evt.stopPropagation();
         });
     });
+
+    function checkURLInput() {
+        previewTimeout = null;
+        var previewEl = document.querySelector('#resourceInputTabURL .resourceURLPreview');
+        if (previewEl) { previewEl.innerHTML = ''; }
+        var thumbEl = document.querySelector('.resourceInput[name="thumbnail"]');
+        if (thumbEl) { thumbEl.value = ''; }
+        var urlInput = document.querySelector('#resourceInputTabURL input');
+        // A new URL brings its own name (its title, else one made from the
+        // URL), replacing what the name field held
+        checkResourceInput(urlInput ? urlInput.value : '', '');
+    }
+
+    /**
+     * I call back once no preview request is on its way (at once when none is).
+     * A preview replaced by a newer one is followed by the newer one.
+     * @method whenPreviewDone
+     * @param {Function} callback
+     */
+    function whenPreviewDone(callback) {
+        if (!previewPending) {
+            callback();
+            return;
+        }
+        previewPending.then(function() { whenPreviewDone(callback); });
+    }
 
     //Check for Name Length
     ['change', 'paste', 'keyup', 'input'].forEach(function(ev) {
@@ -739,13 +758,33 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                     }
 
                     function submitURL() {
-                        if (previewController) { previewController.abort(); previewController = null; }
-                        var resourceName = uploadDialog.querySelector('input[name="name"]').value;
-                        if (!resourceName || resourceName.length < 2) {
-                            uploadDialog.querySelectorAll('.message.error').forEach(function(el) { el.remove(); });
-                            uploadDialog.querySelector('#resourceInputTabURL').insertAdjacentHTML('beforeend', '<div class="message active error">'+ labels['ErrorEmptyName'] +'</div>');
-                            return;
+                        // The preview brings the name, the thumbnail (and a Wikipedia
+                        // article's text): one still on its way is waited for, not cancelled.
+                        if (previewTimeout) {
+                            clearTimeout(previewTimeout);
+                            checkURLInput();
                         }
+                        if (previewPending) {
+                            uploadDialogCtrl.widget().querySelector('.newResourceConfirm').disabled = true;
+                        }
+                        whenPreviewDone(function() {
+                            if (currentUploadDialog !== uploadDialog) { return; }
+                            // Refused by the preview (the button stays disabled)
+                            if (uploadDialog.querySelector('.resourceInput[name="embed"]').value === 'forbidden'
+                                    && isEmbedBlocklisted(uploadDialog.querySelector('.resourceInput[name="url"]').value)) {
+                                return;
+                            }
+                            var resourceName = uploadDialog.querySelector('input[name="name"]').value;
+                            if (!resourceName || resourceName.length < 2) {
+                                uploadDialog.querySelectorAll('.message.error').forEach(function(el) { el.remove(); });
+                                uploadDialog.querySelector('#resourceInputTabURL').insertAdjacentHTML('beforeend', '<div class="message active error">'+ labels['ErrorEmptyName'] +'</div>');
+                                return;
+                            }
+                            submitCheckedURL(resourceName);
+                        });
+                    }
+
+                    function submitCheckedURL(resourceName) {
                         var urlObj = checkResourceInput(
                             uploadDialog.querySelector('.resourceInput[name="url"]').value,
                             resourceName,
@@ -1171,14 +1210,13 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                 function (src, name) {
                     // Youtube
                     // Check various patterns
-                    var yt_list = [ /youtube\.com\/watch\?v=([^\&\?\/]+)/,
-                                    /youtube\.com\/embed\/([^\&\?\/]+)/,
-                                    /youtube\.com\/v\/([^\&\?\/]+)/,
-                                    /youtu\.be\/([^\&\?\/]+)/ ];
+                    var yt_list = [ /youtube\.com\/watch\?(?:[^#]*&)?v=([^\&\#]+)/,
+                                    /youtube(?:-nocookie)?\.com\/(?:embed|v|shorts|live)\/([^\&\?\/\#]+)/,
+                                    /youtu\.be\/([^\&\?\/\#]+)/ ];
                     for (var i in yt_list) {
                         var res = yt_list[i].exec(src);
                         if (res !== null) {
-                            var timeCode = /t=([0-9]*)/.exec(src),
+                            var timeCode = /[?&#]t=([0-9]+)/.exec(src),
                                 tcString = (timeCode) ? '?start=' + timeCode[1] : '';
                             return createResource("https://www.youtube.com/embed/" + res[1] + tcString,
                                                    "youtube", name, "https://img.youtube.com/vi/" + res[1] + "/hqdefault.jpg");
@@ -1198,7 +1236,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
 
                                 var vimeoID = _vimeoData[0].id.toString();
 
-                                if (!r.name || r.name == vimeoID) {
+                                if (!name || r.name == vimeoID) {
                                     r.name = _vimeoData[0].title;
                                 }
                         }
@@ -1332,7 +1370,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                             if (_bskyData.html) {
                                 r.attributes.html = _bskyData.html;
                             }
-                            if (_bskyData.author_name && (!r.name || r.name.length < 3)) {
+                            if (_bskyData.author_name && (!name || r.name.length < 3)) {
                                 r.name = _bskyData.author_name + "'s post";
                             }
                         }
@@ -1372,7 +1410,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                         var _twData = syncGetJSON("https://publish.twitter.com/oembed?url=" + encodeURIComponent(src) + "&omit_script=true");
                         if (_twData) {
                             if (_twData.html) r.attributes.html = _twData.html;
-                            if (_twData.author_name && (!r.name || r.name.length < 3)) r.name = _twData.author_name + "'s post";
+                            if (_twData.author_name && (!name || r.name.length < 3)) r.name = _twData.author_name + "'s post";
                         }
                         return r;
                     }
@@ -1388,7 +1426,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                         if (_ttData) {
                             if (_ttData.html) r.attributes.html = _ttData.html;
                             if (_ttData.thumbnail_url) r.thumb = _ttData.thumbnail_url;
-                            if (_ttData.title && (!r.name || r.name.length < 3)) r.name = _ttData.title;
+                            if (_ttData.title && (!name || r.name.length < 3)) r.name = _ttData.title;
                         }
                         return r;
                     }
@@ -1427,7 +1465,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                         if (_spData) {
                             if (_spData.html) r.attributes.html = _spData.html;
                             if (_spData.thumbnail_url) r.thumb = _spData.thumbnail_url;
-                            if (_spData.title && (!r.name || r.name.length < 3)) r.name = _spData.title;
+                            if (_spData.title && (!name || r.name.length < 3)) r.name = _spData.title;
                         }
                         return r;
                     }
@@ -1443,7 +1481,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                         if (_ssData) {
                             if (_ssData.html) r.attributes.html = _ssData.html;
                             if (_ssData.thumbnail) r.thumb = _ssData.thumbnail;
-                            if (_ssData.title && (!r.name || r.name.length < 3)) r.name = _ssData.title;
+                            if (_ssData.title && (!name || r.name.length < 3)) r.name = _ssData.title;
                         }
                         return r;
                     }
@@ -1458,7 +1496,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                         var _rdData = syncGetJSON("https://www.reddit.com/oembed?url=" + encodeURIComponent(src));
                         if (_rdData) {
                             if (_rdData.html) r.attributes.html = _rdData.html;
-                            if (_rdData.author_name && (!r.name || r.name.length < 3)) r.name = _rdData.author_name + "'s post";
+                            if (_rdData.author_name && (!name || r.name.length < 3)) r.name = _rdData.author_name + "'s post";
                         }
                         return r;
                     }
@@ -1484,7 +1522,7 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                                 } else if (_flData.html) {
                                     r.attributes.html = _flData.html;
                                 }
-                                if (_flData.title && (!r.name || r.name.length < 3)) r.name = _flData.title;
+                                if (_flData.title && (!name || r.name.length < 3)) r.name = _flData.title;
                             }
                             return r;
                         }
@@ -1531,6 +1569,121 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
 
 
     /**
+     * I look up a Wikipedia article from the browser (Wikipedia's APIs allow
+     * that): title, description, extract and an image. The image is the
+     * article's page image, else its first photo: Wikipedia chooses page images
+     * only from the lead section, so an article whose images are all further
+     * down has none. SVGs (icons, flags, maintenance symbols, maps), small
+     * images and long strips are passed over.
+     * @method getWikipediaInfo
+     * @param {String} url
+     * @param {AbortSignal} signal
+     * @return {Promise} { title, description, extract, extract_html, image, articleUrl, lang, dir }
+     */
+    function getWikipediaInfo(url, signal) {
+
+        // https://de.wikipedia.org/wiki/K%C3%B6ln (as browsers copy it), en.m. (mobile),
+        // simple., zh-yue.; a query or a section is not part of the title
+        var match = /^https?:\/\/([a-z][a-z0-9-]*)\.(?:m\.)?wikipedia\.org\/wiki\/([^?#]+)/i.exec(url);
+        if (!match) {
+            return Promise.reject(new Error('Not a Wikipedia article URL'));
+        }
+
+        var lang  = match[1].toLowerCase(),
+            title = match[2],
+            api   = 'https://' + lang + '.wikipedia.org/w/api.php?format=json&formatversion=2&origin=*&';
+        try { title = decodeURIComponent(title); } catch (e) {}
+
+        var getJSON = function(requestURL) {
+            return fetch(requestURL, {
+                signal:  signal,
+                // Browser code cannot set the User-Agent: Wikimedia asks it to name
+                // itself here (its APIs allow the header from other sites)
+                headers: { 'Api-User-Agent': 'FrameTrail (https://frametrail.org; code@frametrail.org)' }
+            }).then(function(response) {
+                if (!response.ok) { throw new Error('Wikipedia answered HTTP ' + response.status + ' for ' + requestURL); }
+                return response.json();
+            });
+        };
+
+        var firstImage = function(articleTitle) {
+            // The article's files, in the order they appear
+            return getJSON(api + new URLSearchParams({ action: 'parse', page: articleTitle, prop: 'images', redirects: 1 })).then(function(parsed) {
+                var files = ((parsed.parse && parsed.parse.images) || []).filter(function(file) {
+                    return !/\.svg$/i.test(file);
+                }).slice(0, 10);
+                if (!files.length) { return null; }
+                return getJSON(api + new URLSearchParams({
+                    action:     'query',
+                    titles:     files.map(function(file) { return 'File:' + file; }).join('|'),
+                    prop:       'imageinfo',
+                    iiprop:     'url|size|mime',
+                    iiurlwidth: 640
+                })).then(function(info) {
+                    // Pages come back in no particular order, titled in the wiki's
+                    // language ("Datei:Gipswerk 001.jpg"): matched by the name after the prefix
+                    var byName = {};
+                    ((info.query && info.query.pages) || []).forEach(function(page) {
+                        if (page.title && page.imageinfo && page.imageinfo[0]) {
+                            byName[page.title.slice(page.title.indexOf(':') + 1).replace(/ /g, '_')] = page.imageinfo[0];
+                        }
+                    });
+                    for (var i = 0; i < files.length; i++) {
+                        var image = byName[files[i].replace(/ /g, '_')];
+                        if (!image || ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].indexOf(image.mime) === -1
+                                || image.width < 200 || image.height < 150
+                                || Math.max(image.width, image.height) > 3 * Math.min(image.width, image.height)) {
+                            continue;
+                        }
+                        return image.thumburl || image.url || null;
+                    }
+                    return null;
+                });
+            }).catch(function(error) {
+                if (error && error.name === 'AbortError') { throw error; }
+                return null;
+            });
+        };
+
+        return getJSON('https://' + lang + '.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(title)).then(function(data) {
+            if (!data || !data.title) { throw new Error('No Wikipedia article: ' + url); }
+            var info = {
+                title:        data.title,
+                description:  data.description || '',
+                extract:      data.extract || '',
+                extract_html: data.extract_html || '',
+                image:        (data.thumbnail && data.thumbnail.source) || (data.originalimage && data.originalimage.source) || null,
+                articleUrl:   (data.content_urls && data.content_urls.desktop && data.content_urls.desktop.page) || url,
+                lang:         lang,
+                dir:          data.dir || 'ltr'
+            };
+            if (info.image) { return info; }
+            return firstImage(data.title).then(function(image) {
+                info.image = image;
+                return info;
+            });
+        });
+    }
+
+    /**
+     * I return the URL of a site's icon, from DuckDuckGo's icon service (only
+     * the host name is sent): the thumb of a webpage where no server can read
+     * the page itself. ResourceWebpage shows such thumbs at icon size.
+     * @method siteIconURL
+     * @param {String} url
+     * @return {String|null}
+     */
+    function siteIconURL(url) {
+        try {
+            var host = new URL(url).hostname;
+            return host ? 'https://icons.duckduckgo.com/ip3/' + host + '.ico' : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+
+    /**
      * I render a preview of a resource
      * @method renderWebsitePreview
      * @param {String} uriValue
@@ -1563,17 +1716,26 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
             if (previewController) { previewController.abort(); }
             previewController = new AbortController();
 
-            if ((resourceType == 'webpage' || resourceType == 'wikipedia') && FrameTrail.module('RouteNavigation').hasServer()) {
+            var lookup = null;
+            if (resourceType == 'wikipedia') {
+                // Wikipedia's APIs answer the browser directly, in every storage mode
+                lookup = getWikipediaInfo(uriValue, previewController.signal).then(function(info) {
+                    return { code: 0, urlInfo: info, embed: 'allowed' };
+                });
+            } else if (resourceType == 'webpage' && FrameTrail.module('RouteNavigation').hasServer()) {
                 var adapter = FrameTrail.module('StorageManager').getAdapter();
                 var dataPath = (adapter && adapter.dataPathAbsolute) ? adapter.dataPathAbsolute : '';
-                fetch(FrameTrail.module('RouteNavigation').resolveServerURL('ajaxServer.php'), {
+                lookup = fetch(FrameTrail.module('RouteNavigation').resolveServerURL('ajaxServer.php'), {
                     method: 'POST',
                     cache: 'no-cache',
                     signal: previewController.signal,
                     body: new URLSearchParams({ a: 'fileGetUrlInfo', url: uriValue, dataPath: dataPath })
                 })
-                .then(function(r) { return r.json(); })
-                .then(function(data) {
+                .then(function(r) { return r.json(); });
+            }
+
+            if (lookup) {
+                var pending = lookup.then(function(data) {
 
                     //console.log(data);
                     if (data.code == 0) {
@@ -1607,15 +1769,29 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
                             });
                         }
 
-                        renderResourcePreviewElement(uriValue, resourceType, data.urlInfo.title, data.urlInfo.image, data.urlInfo.description, data.embed);
-                    } else if (data.code == 1) {
+                        renderResourcePreviewElement(uriValue, resourceObj, data.urlInfo.title || resourceObj.name, data.urlInfo.image, data.urlInfo.description, data.embed);
+                    } else {
+                        // The site refused the server (often 403) or could not be read:
+                        // the preview without what the page would have told
                         console.log(data.string);
+                        renderResourcePreviewElement(uriValue, resourceObj, resourceObj.name, resourceObj.thumb, resourceObj.description);
                     }
 
                 })
-                .catch(function() { /* aborted or network error — ignore */ });
+                .catch(function(error) {
+                    // Replaced by a newer preview, or the dialog closed
+                    if (error && error.name === 'AbortError') { return; }
+                    console.log(error);
+                    renderResourcePreviewElement(uriValue, resourceObj, resourceObj.name, resourceObj.thumb, resourceObj.description);
+                })
+                .then(function() {
+                    if (previewPending === pending) { previewPending = null; }
+                });
+                previewPending = pending;
             } else {
-                renderResourcePreviewElement(uriValue, resourceType, resourceObj.name, resourceObj.thumb, resourceObj.description);
+                // A webpage with no server to read it: the site's icon
+                var thumb = resourceObj.thumb || (resourceType == 'webpage' ? siteIconURL(uriValue) : null);
+                renderResourcePreviewElement(uriValue, resourceObj, resourceObj.name, thumb, resourceObj.description);
             }
             
 
@@ -1626,17 +1802,18 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
     }
 
     /**
-     * I render the actual preview element
+     * I render the actual preview element: the thumb the resource will have
+     * once it is added (its type's thumb, with its icon)
      * @method renderResourcePreviewElement
      * @param {String} uriValue
-     * @param {String} resourceType
+     * @param {Object} resourceObj
      * @param {String} resourceTitle
      * @param {String} resourceThumb
      * @param {String} resourceDescription
      * @param {String} embed (optional)
      * @return
      */
-    function renderResourcePreviewElement(uriValue, resourceType, resourceTitle, resourceThumb, resourceDescription, embed) {
+    function renderResourcePreviewElement(uriValue, resourceObj, resourceTitle, resourceThumb, resourceDescription, embed) {
         if (!currentUploadDialog) return;
         currentUploadDialog.querySelector('.resourceInput[name="thumbnail"]').value = resourceThumb || '';
         currentUploadDialog.querySelector('.resourceInput[name="embed"]').value = embed || '';
@@ -1647,16 +1824,33 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
             _nameInput.dispatchEvent(new Event('input', { bubbles: true }));
         }
 
-        var previewTitle = (_nameInput.value.length > 3) ? _nameInput.value : resourceTitle;
-        var previewImageString = (resourceThumb) ? '--thumb-bg:url('+ resourceThumb +'); background-image: var(--thumb-bg)' : '';
+        // A page the server may not frame is added as a URL preview (submitURL)
+        var resourceType = (embed == 'forbidden' && !isEmbedBlocklisted(uriValue)) ? 'urlpreview' : resourceObj.type,
+            typeName     = 'Resource' + resourceType.charAt(0).toUpperCase() + resourceType.slice(1),
+            previewElem;
 
-        var _prevw = document.createElement('div');
-        _prevw.innerHTML = '<div class="resourceThumb" data-type="'+ resourceType +'" style="'+ previewImageString +'">'
-                           +'    <div class="resourceOverlay">'
-                           +'    </div>'
-                           +'    <div class="resourceTitle">'+ previewTitle +'</div>'
-                           +'</div>';
-        var previewElem = _prevw.firstElementChild;
+        if (FrameTrail.type(typeName)) {
+            // Rendered without a name, which is set as text below: a title a page
+            // gives is not markup
+            previewElem = FrameTrail.newObject(typeName, Object.assign({}, resourceObj, {
+                type:  resourceType,
+                name:  '',
+                thumb: resourceThumb || null
+            })).renderThumb('preview');
+            var _previewButton = previewElem.querySelector('.resourcePreviewButton');
+            if (_previewButton) { _previewButton.remove(); }
+        } else {
+            previewElem = document.createElement('div');
+            previewElem.className = 'resourceThumb';
+            previewElem.dataset.type = resourceType;
+            previewElem.innerHTML = '<div class="resourceOverlay"></div><div class="resourceTitle"></div>';
+            if (resourceThumb) {
+                previewElem.style.setProperty('--thumb-bg', 'url("' + resourceThumb + '")');
+                previewElem.style.backgroundImage = 'var(--thumb-bg)';
+            }
+        }
+        var _previewTitle = previewElem.querySelector('.resourceTitle');
+        if (_previewTitle) { _previewTitle.textContent = resourceTitle || _nameInput.value; }
 
         currentUploadDialog.querySelectorAll('#resourceInputTabURL .resourceURLPreview .resourceThumb').forEach(function(el) { el.remove(); });
         currentUploadDialog.querySelector('#resourceInputTabURL .resourceURLPreview').appendChild(previewElem);

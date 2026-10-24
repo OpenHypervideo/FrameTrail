@@ -22,6 +22,14 @@
     background-image: linear-gradient( 35deg, transparent 49.5%, rgba(0,0,0,0.25) 50%, transparent 50.5% ), linear-gradient( -35deg, transparent 49.5%, rgba(0,0,0,0.25) 50%, transparent 50.5% ), linear-gradient(#bdbdbd, #bdbdbd);
 }
 
+/* The site's icon as the thumb (a webpage added without a server): shown at
+   icon size in the middle, on the placeholder's grey */
+.resourceThumb.siteIconThumb {
+    --thumb-size: 32px;
+    --thumb-position: center;
+    --thumb-color: #bdbdbd;
+}
+
 /* Annotation Tile */
 
 .tileElement[data-type="webpage"] [class^="icon-"]::before, .tileElement[data-type="webpage"] [class*=" icon-"]::before {

@@ -175,10 +175,10 @@
     width: 160px;
     height: 100%;
     background-image: var(--thumb-bg);
-    background-size: cover;
-    background-position: center top;
+    background-size: var(--thumb-size, cover);
+    background-position: var(--thumb-position, center top);
     background-repeat: no-repeat;
-    background-color: var(--primary-bg-color);
+    background-color: var(--thumb-color, var(--primary-bg-color));
     border-radius: 3px 0 0 3px;
 }
 

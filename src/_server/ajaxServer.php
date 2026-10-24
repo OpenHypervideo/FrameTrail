@@ -153,11 +153,6 @@ switch($_REQUEST["a"]) {
         $return = fileGetUrlInfo($_REQUEST["url"]);
         break;
 
-    case "fileGetWikipediaInfo":
-        include_once("files.php");
-        $return = fileGetWikipediaInfo($_REQUEST["url"]);
-        break;
-
 
     /*#########################################
      ############ Hypervideo Handling
@@ -594,7 +589,7 @@ switch($_REQUEST["a"]) {
                 $ch = curl_init($oembedUrl);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
                 curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-                curl_setopt($ch, CURLOPT_USERAGENT, 'FrameTrail/1.0');
+                curl_setopt($ch, CURLOPT_USERAGENT, FT_USER_AGENT);
                 curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, true);
                 $result = curl_exec($ch);
                 if (curl_errno($ch)) { $result = false; }
@@ -603,7 +598,7 @@ switch($_REQUEST["a"]) {
             if ($result === false) {
                 $context = stream_context_create(array("http" => array(
                     "timeout" => 5,
-                    "header" => "User-Agent: FrameTrail/1.0\r\n"
+                    "header" => "User-Agent: " . FT_USER_AGENT . "\r\n"
                 )));
                 $result = @file_get_contents($oembedUrl, false, $context);
             }

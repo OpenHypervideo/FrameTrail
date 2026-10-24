@@ -409,10 +409,10 @@ body > .timelineElement .previewWrapper .resourceThumb {
     width: 100% !important;
     height: 100% !important;
     cursor: pointer;
-    background-color: var(--primary-bg-color);
-    background-size: 130% auto;
+    background-color: var(--thumb-color, var(--primary-bg-color));
+    background-size: var(--thumb-size, 130% auto);
     background-repeat: no-repeat;
-    background-position: top center;
+    background-position: var(--thumb-position, top center);
     text-align: center;
     margin: 0px !important;
     font-size: 11px;

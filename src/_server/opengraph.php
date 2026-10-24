@@ -52,7 +52,7 @@ class OpenGraph implements Iterator
           // addresses on every hop. This endpoint needs no login, so a plain
           // curl here let anyone reach the server's own network and file system.
           $fetched = ftFetchPublicUrl($URI, 15, 5 * 1024 * 1024,
-                                      isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : 'FrameTrail/1.0');
+                                      isset($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : FT_USER_AGENT);
           if ($fetched === null) {
               throw new Exception('URL not allowed or not reachable');
           }
@@ -69,6 +69,9 @@ class OpenGraph implements Iterator
               $return["string"] = "see result";
               $return["result"] = self::_parse($response, $URI, $contentType);
               $return["headers"] = $fetched["headers"];
+              // FrameTrail: the page's URL after redirects, which relative
+              // values (og:image) are resolved against
+              $return["url"] = $fetched["url"];
               return $return;
           } else {
               $return["status"] = "error";
@@ -196,7 +199,6 @@ class OpenGraph implements Iterator
         */
         if (empty($page->_values)) { return false; }
 
-        $page->_values['image'] = ltrim($page->_values['image'], '/');
         return $page;
     }
   /**

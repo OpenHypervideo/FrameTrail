@@ -136,7 +136,13 @@ FrameTrail.defineType(
                             "--thumb-bg: url('"+ FrameTrail.module('RouteNavigation').getResourceURL(this.resourceData.thumb) +"'); background-image: var(--thumb-bg);" : "" );
 
                     var tagList = (this.resourceData.tags ? this.resourceData.tags.join(' ') : '');
-                    
+
+                    // The site's icon, from the icon service the ResourceManager asks
+                    // where no server can read the page: shown at icon size
+                    if (/^https:\/\/icons\.duckduckgo\.com\/ip3\//.test(this.resourceData.thumb || '')) {
+                        tagList += ' siteIconThumb';
+                    }
+
                     var _thumbWrapper = document.createElement('div');
                     _thumbWrapper.innerHTML = '<div class="resourceThumb '+ tagList +'" data-license-type="'+ this.resourceData.licenseType +'" data-resourceID="'+ trueID +'" data-type="'+ this.resourceData.type +'" style="'+ thumbBackground +'">'
                         + '<div class="resourceOverlay"><div class="resourceIcon"><span class="icon-window"></span></div></div>'

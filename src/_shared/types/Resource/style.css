@@ -110,9 +110,9 @@
 
 .resourceThumb {
     background-repeat: no-repeat;
-    background-size: cover;
-    background-position: top center;
-    background-color: var(--primary-bg-color);
+    background-size: var(--thumb-size, cover);
+    background-position: var(--thumb-position, top center);
+    background-color: var(--thumb-color, var(--primary-bg-color));
     outline: 1px solid var(--primary-bg-color);
     cursor: pointer;
     border-radius: 3px;
@@ -258,10 +258,10 @@ body > .resourceThumb:not(.resourceAnimationDiv) .resourceTitle {
     width: 100%;
     height: 100%;
     background-image: var(--thumb-bg);
-    background-size: cover;
-    background-position: center top;
+    background-size: var(--thumb-size, cover);
+    background-position: var(--thumb-position, center top);
     background-repeat: no-repeat;
-    background-color: var(--primary-bg-color);
+    background-color: var(--thumb-color, var(--primary-bg-color));
     border-radius: 0;
 }
 
