@@ -430,7 +430,7 @@ window.FrameTrail_L10n['fr'] = {
     "MessagePairingBrokerURL": "Les téléphones se couplent au lecteur en scannant un code QR, puis affichent ses vues en synchronisation. Le broker ne transmet que l'établissement de la connexion. Vide : pas de couplage.",
     "MessagePairingButtonVisible": "Jamais affiché sur les téléphones et tablettes.",
     "MessagePairingCompanionURL": "La page qu'ouvre un téléphone. Vide : companion.html à côté de cette page (requiert http(s) ; un lecteur ouvert depuis un dossier ou un fichier doit en indiquer une).",
-    "MessagePasteAnyURL": "Coller n'importe quelle URL (ex. http://example.com).<br>Certains types seront détectés automatiquement (ex. Image, Wikipedia, Youtube, Vimeo).",
+    "MessagePasteAnyURL": "Coller n'importe quelle URL (Site web, Image, Youtube-Video, Wikipedia, ..)",
     "MessagePosterFrame": "Image optionnelle affichée avant la lecture. Cliquez à nouveau sur l'image sélectionnée pour la retirer.",
     "MessagePrivacyBlocked": "Ce serveur refuse les règles de réécriture du .htaccess de FrameTrail. Rendre l’instance privée ici rendrait ses fichiers inaccessibles à tous, connectés ou non",
     "MessagePrivacyNotEnforced": "Ce serveur ignore les règles .htaccess de FrameTrail (le serveur intégré de PHP et nginx ne les appliquent jamais). Une instance privée n’affiche ici qu’un écran de connexion : ses fichiers restent lisibles par leur URL, sauf si le serveur applique une règle équivalente",

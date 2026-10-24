@@ -430,7 +430,7 @@ window.FrameTrail_L10n['en'] = {
     "MessagePairingBrokerURL": "Phones pair with the player by scanning a QR code and then show its content views in step. The broker only passes the connection setup on. Empty: no pairing.",
     "MessagePairingButtonVisible": "Never shown on phones and tablets.",
     "MessagePairingCompanionURL": "The page a phone opens. Empty: companion.html beside this page (needs http(s); a player opened from a folder or file has to name one).",
-    "MessagePasteAnyURL": "Paste any URL (eg. http://example.com).<br>Some types will be detected automatically (ie. Image, Wikipedia, Youtube, Vimeo).",
+    "MessagePasteAnyURL": "Paste any URL (website, image, Youtube video, Wikipedia article, ..)",
     "MessagePosterFrame": "Optional image shown before playback starts. Click the selected image again to remove it.",
     "MessagePrivacyBlocked": "This server refuses the rewrite rules in FrameTrail’s .htaccess. Making the instance private here would make its files unreachable for everyone, signed in or not",
     "MessagePrivacyNotEnforced": "This server ignores FrameTrail’s .htaccess rules (PHP’s built-in server and nginx never apply them). A private instance only shows a sign-in wall here: its files stay readable by URL unless the server has an equivalent rule of its own",

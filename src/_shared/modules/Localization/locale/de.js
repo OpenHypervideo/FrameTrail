@@ -430,7 +430,7 @@ window.FrameTrail_L10n['de'] = {
     "MessagePairingBrokerURL": "Smartphones koppeln sich per QR-Code mit dem Player und zeigen dann im Takt seine Inhaltsansichten. Der Broker vermittelt nur den Verbindungsaufbau. Leer: keine Kopplung.",
     "MessagePairingButtonVisible": "Wird auf Smartphones und Tablets nie gezeigt.",
     "MessagePairingCompanionURL": "Die Seite, die ein Smartphone öffnet. Leer: companion.html neben dieser Seite (braucht http(s); ein aus einem Ordner oder einer Datei geöffneter Player muss eine angeben).",
-    "MessagePasteAnyURL": "Füge eine URL ein (eg. http://example.com).<br>Manche Inhaltstypen werden automatisch erkannt (bspw. Image, Wikipedia, Youtube, Vimeo).",
+    "MessagePasteAnyURL": "Füge eine URL ein (Website, Bild, Youtube-Video, Wikipedia-Artikel, ..)",
     "MessagePosterFrame": "Optionales Bild, das vor dem Abspielen angezeigt wird. Klicke erneut auf das ausgewählte Bild, um es zu entfernen.",
     "MessagePrivacyBlocked": "Dieser Server lehnt die Rewrite-Regeln in FrameTrails .htaccess ab. Eine private Instanz würde ihre Dateien hier für alle unerreichbar machen, ob angemeldet oder nicht",
     "MessagePrivacyNotEnforced": "Dieser Server ignoriert FrameTrails .htaccess-Regeln (der eingebaute PHP-Server und nginx wenden sie nie an). Eine private Instanz zeigt hier nur eine Anmeldesperre: Ihre Dateien bleiben per URL lesbar, sofern der Server keine eigene gleichwertige Regel hat",
