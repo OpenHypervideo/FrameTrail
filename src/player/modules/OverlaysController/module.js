@@ -369,26 +369,17 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
      */
     function stackTimelineView() {
 
-        var scroller = ViewVideo.OverlayTimeline.querySelector('.timelineScroller');
-        if (scroller) {
-            // Reset inline heights first so elements resolve to their CSS-defined height
-            // (avoids circular dependency: elements height:100% → scroller min-height:100% → inflated)
-            scroller.style.height = ''; scroller.style.flexBasis = '';
-            ViewVideo.OverlayTimeline.style.height = ''; ViewVideo.OverlayTimeline.style.minHeight = ''; ViewVideo.OverlayTimeline.style.flexBasis = '';
-            CollisionDetection(scroller, {spacing:0, includeVerticalMargins: true, exclude: '.timelinePlayhead', containerPadding: 4});
-            // Read the inline value CollisionDetection just wrote (not getComputedStyle which is affected by CSS min-height:100%)
-            var stackedHeight = scroller.style.height;
-            ViewVideo.OverlayTimeline.style.height = stackedHeight;
-            ViewVideo.OverlayTimeline.style.flexBasis = stackedHeight;
-            ViewVideo.OverlayTimeline.style.flexShrink = '0';
-        } else {
-            CollisionDetection(ViewVideo.OverlayTimeline, {spacing:0, includeVerticalMargins: true});
-        }
+        var TimelineController = FrameTrail.module('TimelineController');
+
+        // Rows, the timeline's height (it scrolls when there is no room for all rows) and the minimap
+        TimelineController.stackTimeline(ViewVideo.OverlayTimeline);
+
         ViewVideo.adjustLayout();
         ViewVideo.adjustHypervideo();
 
-        if (FrameTrail.module('TimelineController').initialized) {
-            FrameTrail.module('TimelineController').refreshMinimap();
+        // The selected overlay stays in view, whichever row it is in now
+        if (overlayInFocus) {
+            TimelineController.revealRow(overlayInFocus.timelineElement);
         }
 
     };
@@ -401,15 +392,7 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
      */
     function resetTimelineView() {
 
-        ViewVideo.OverlayTimeline.style.height = ''; ViewVideo.OverlayTimeline.style.minHeight = ''; ViewVideo.OverlayTimeline.style.flexBasis = ''; ViewVideo.OverlayTimeline.style.flexShrink = '';
-        var target = ViewVideo.OverlayTimeline.querySelector('.timelineScroller');
-        if (target) {
-            target.style.height = ''; target.style.flexBasis = '';
-        }
-        var _timelineSource = target || ViewVideo.OverlayTimeline;
-        _timelineSource.querySelectorAll('.timelineElement').forEach(function(el) {
-            el.style.top = ''; el.style.right = ''; el.style.bottom = ''; el.style.height = '';
-        });
+        FrameTrail.module('TimelineController').unstackTimeline(ViewVideo.OverlayTimeline);
 
     };
 
@@ -886,6 +869,8 @@ FrameTrail.defineModule('OverlaysController', function(FrameTrail){
 
         if (overlayInFocus) {
             overlayInFocus.gotInFocus();
+            // Picked on the video, its row may be scrolled out of the timeline
+            FrameTrail.module('TimelineController').revealRow(overlayInFocus.timelineElement);
         }
 
         var FreeformShapeEditor = FrameTrail.module('FreeformShapeEditor');

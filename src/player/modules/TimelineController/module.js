@@ -37,6 +37,15 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
     var MIN_ZOOM = 1;
     var MAX_ZOOM = 16;
 
+    // A stacked timeline that has no room for all its rows keeps at least two of them (and never
+    // less than an empty editable timeline's height); the rest scrolls.
+    var STACK_MIN_HEIGHT   = 64,
+        STACK_EMPTY_HEIGHT = 20;
+
+    // The minimap never grows beyond this: more rows than fit are drawn thinner and closer together.
+    var MINIMAP_MAX_HEIGHT = 48,
+        MINIMAP_PADDING    = 5;
+
 
     /*
      * Time inside this module is always *relative* to the clip's in-point, i.e.
@@ -153,6 +162,8 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
             if (t.playhead) {
                 t.playhead.remove();
             }
+            // The rows' thumb is a child of the timeline itself: it must not stay behind as an item
+            forgetRows(t.element);
             if (t.scroller) {
                 t.scroller.removeEventListener('pointerdown', t._scrubStart);
                 t.scroller.removeEventListener('pointermove', t._scrubMove);
@@ -409,6 +420,8 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
             if (!el.dataset.programmaticScroll) {
                 onTimelineScroll(el.scrollLeft);
             }
+            rememberRows(el);
+            positionRowsThumb(el);
         };
         el.addEventListener('scroll', scrollHandler);
 
@@ -638,6 +651,237 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
     function applyZoomToTimeline(timelineData) {
         var widthPercent = zoomLevel * 100;
         timelineData.scroller.style.width = widthPercent + '%';
+    }
+
+
+    /**
+     * I stack the elements of a timeline in rows, so that none lies over another, and give the
+     * timeline the height of its rows.
+     *
+     * The timeline may get less than that: while editing, the video and the edit panel keep a
+     * minimum height (ViewVideo/style.css), and the timeline takes what is left. Its rows then
+     * scroll, with a thumb of our own at its right edge (a native scrollbar takes width where
+     * scrollbars are always shown, and the timeline would no longer line up with the ruler).
+     *
+     * Row 0 is the bottom row, so the distance from the bottom is what stays the same when a row
+     * is added above: I keep that across a restack, and a timeline stacked for the first time
+     * opens at its bottom.
+     *
+     * @method stackTimeline
+     * @param {HTMLElement} el The timeline
+     */
+    function stackTimeline(el) {
+
+        var scroller = el.querySelector(':scope > .timelineScroller');
+
+        if (!scroller) {
+            CollisionDetection(el, { spacing: 0, includeVerticalMargins: true });
+            return;
+        }
+
+        var fromBottom = el._ftStacked ? (el._ftRowsFromBottom || 0) : 0;
+
+        // Reset inline heights first so elements resolve to their CSS-defined height
+        // (avoids circular dependency: elements height:100% → scroller min-height:100% → inflated)
+        scroller.style.height = ''; scroller.style.flexBasis = '';
+        el.style.height = ''; el.style.minHeight = ''; el.style.flexBasis = ''; el.style.flexShrink = '';
+
+        CollisionDetection(scroller, { spacing: 0, includeVerticalMargins: true, exclude: '.timelinePlayhead', containerPadding: 4 });
+
+        // Read the inline value CollisionDetection just wrote (not getComputedStyle which is affected by CSS min-height:100%)
+        var stackedHeight = scroller.style.height,
+            rowsHeight    = parseFloat(stackedHeight) || 0;
+
+        el.style.height    = stackedHeight;
+        el.style.flexBasis = stackedHeight;
+        el.style.minHeight = Math.max(STACK_EMPTY_HEIGHT, Math.min(rowsHeight, STACK_MIN_HEIGHT)) + 'px';
+        el._ftStacked = true;
+
+        // The minimap's height is part of what is left for the rows
+        if (initialized) { renderMinimapItems(); }
+
+        el._ftRowsFromBottom = fromBottom;
+        keepRowsFromBottom(el);
+
+        watchRows(el);
+        updateRowsBar(el);
+
+    }
+
+
+    /**
+     * I take a timeline's rows back: its elements and the timeline get their CSS layout again.
+     *
+     * @method unstackTimeline
+     * @param {HTMLElement} el The timeline
+     */
+    function unstackTimeline(el) {
+
+        var scroller = el.querySelector(':scope > .timelineScroller');
+
+        el.style.height = ''; el.style.minHeight = ''; el.style.flexBasis = ''; el.style.flexShrink = '';
+        if (scroller) {
+            scroller.style.height = ''; scroller.style.flexBasis = '';
+        }
+        (scroller || el).querySelectorAll('.timelineElement').forEach(function(item) {
+            item.style.top = ''; item.style.right = ''; item.style.bottom = ''; item.style.height = '';
+        });
+
+        forgetRows(el);
+
+    }
+
+
+    /**
+     * I scroll a stacked timeline so that the row of one of its elements is visible.
+     *
+     * The row is read from the element's inline "bottom" (what the stacking wrote), not from
+     * where it is drawn: elements move to a new row in a transition.
+     *
+     * @method revealRow
+     * @param {HTMLElement} itemElement A timeline element
+     */
+    function revealRow(itemElement) {
+
+        var scroller = itemElement && itemElement.parentElement,
+            el       = scroller && scroller.parentElement;
+
+        if (!el || !el._ftStacked || !scroller.classList.contains('timelineScroller')) { return; }
+
+        var rowsHeight = parseFloat(scroller.style.height),
+            bottom     = parseFloat(itemElement.style.bottom);
+
+        if (!isFinite(rowsHeight) || !isFinite(bottom)) { return; }
+
+        var style     = getComputedStyle(itemElement),
+            rowBottom = rowsHeight - bottom,
+            rowTop    = rowBottom - itemElement.offsetHeight - (parseFloat(style.marginTop) || 0) - (parseFloat(style.marginBottom) || 0),
+            margin    = 4;
+
+        if (rowTop - margin < el.scrollTop) {
+            el.scrollTop = Math.max(0, rowTop - margin);
+        } else if (rowBottom + margin > el.scrollTop + el.clientHeight) {
+            el.scrollTop = rowBottom + margin - el.clientHeight;
+        }
+
+        rememberRows(el);
+        positionRowsThumb(el);
+
+    }
+
+
+    // How far a stacked timeline is scrolled, as the distance from its bottom: what a restack and a
+    // change of its height keep (scrollTop would move the rows that are shown).
+    function rememberRows(el) {
+        if (!el._ftStacked) { return; }
+        el._ftRowsFromBottom = Math.max(0, el.scrollHeight - el.clientHeight - el.scrollTop);
+    }
+
+    function keepRowsFromBottom(el) {
+        el.scrollTop = Math.max(0, el.scrollHeight - el.clientHeight - (el._ftRowsFromBottom || 0));
+    }
+
+    // A stacked timeline's height changes with everything around it (the window, the minimap, other
+    // users' timelines): which rows it shows, whether they fit, and where the thumb is, follow its size.
+    function watchRows(el) {
+        if (el._ftRowsObserver || typeof ResizeObserver === 'undefined') { return; }
+        el._ftRowsObserver = new ResizeObserver(function() {
+            keepRowsFromBottom(el);
+            updateRowsBar(el);
+        });
+        el._ftRowsObserver.observe(el);
+    }
+
+    function forgetRows(el) {
+        if (el._ftRowsObserver) {
+            el._ftRowsObserver.disconnect();
+            el._ftRowsObserver = null;
+        }
+        var bar = el.querySelector(':scope > .timelineRowsBar');
+        if (bar) { bar.remove(); }
+        el.classList.remove('rowsOverflow');
+        el._ftStacked = false;
+        el._ftRowsFromBottom = 0;
+        el.scrollTop = 0;
+    }
+
+    // The thumb exists only while the rows do not fit
+    function updateRowsBar(el) {
+
+        var overflows = !!el._ftStacked && (el.scrollHeight - el.clientHeight > 1),
+            bar       = el.querySelector(':scope > .timelineRowsBar');
+
+        el.classList.toggle('rowsOverflow', overflows);
+
+        if (!overflows) {
+            if (bar) { bar.remove(); }
+            return;
+        }
+
+        if (!bar) { createRowsBar(el); }
+        positionRowsThumb(el);
+
+    }
+
+    function positionRowsThumb(el) {
+
+        var thumb = el.querySelector(':scope > .timelineRowsBar > .timelineRowsThumb');
+        if (!thumb) { return; }
+
+        var view   = el.clientHeight,
+            track  = view - 4,
+            range  = el.scrollHeight - view,
+            height = Math.max(16, Math.round(track * view / el.scrollHeight));
+
+        thumb.style.height = height + 'px';
+        thumb.style.top    = (2 + (track - height) * (range > 0 ? el.scrollTop / range : 0)) + 'px';
+
+    }
+
+    // The bar is an anchor without height that sticks to the timeline's top left corner while its
+    // contents scroll either way; the thumb hangs at its right end. It comes before the scroller
+    // (after it, it would be below the rows and never stick to the top), and is made here, after
+    // registerTimeline() wrapped the timeline's children into the scroller.
+    function createRowsBar(el) {
+
+        var bar   = document.createElement('div'),
+            thumb = document.createElement('div'),
+            drag  = null;
+
+        bar.className   = 'timelineRowsBar';
+        thumb.className = 'timelineRowsThumb';
+        bar.appendChild(thumb);
+        el.insertBefore(bar, el.firstChild);
+
+        thumb.addEventListener('pointerdown', function(evt) {
+            if (evt.button !== undefined && evt.button !== 0) { return; }
+            evt.preventDefault();
+            evt.stopPropagation();
+            drag = { y: evt.clientY, top: el.scrollTop, moved: false };
+            thumb.setPointerCapture(evt.pointerId);
+            thumb.classList.add('dragging');
+        });
+
+        thumb.addEventListener('pointermove', function(evt) {
+            if (!drag) { return; }
+            var track = el.clientHeight - 4 - thumb.offsetHeight;
+            if (track <= 0) { return; }
+            if (Math.abs(evt.clientY - drag.y) > 3) { drag.moved = true; }
+            el.scrollTop = drag.top + (evt.clientY - drag.y) * (el.scrollHeight - el.clientHeight) / track;
+        });
+
+        var dragEnd = function() {
+            // A drag of the thumb is not a click on the timeline (which would deselect)
+            if (drag && drag.moved) { FrameTrail.module('ViewVideo').swallowNextClick(); }
+            drag = null;
+            thumb.classList.remove('dragging');
+        };
+        thumb.addEventListener('pointerup', dragEnd);
+        thumb.addEventListener('pointercancel', dragEnd);
+        thumb.addEventListener('click', function(evt) { evt.stopPropagation(); });
+
+        return bar;
+
     }
 
 
@@ -953,7 +1197,7 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
         });
 
         // Use CollisionDetection to stack items (same mechanism as timelines)
-        CollisionDetection(track, { spacing: 0, includeVerticalMargins: true, containerPadding: 5 });
+        CollisionDetection(track, { spacing: 0, includeVerticalMargins: true, containerPadding: MINIMAP_PADDING });
 
         // CollisionDetection counts margin-bottom in height, which adds extra space
         // below the bottom row. Subtract it so top and bottom padding are equal.
@@ -963,6 +1207,25 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
             itemMargin = parseFloat(getComputedStyle(firstItem).marginBottom) || 0;
         }
         var trackHeight = Math.max(track.offsetHeight - itemMargin, 12);
+
+        // More rows than fit: the same rows, thinner and closer together, so that the minimap
+        // keeps its height however many items overlap (it took 210 px for 29 rows).
+        if (trackHeight > MINIMAP_MAX_HEIGHT) {
+            var items = Array.from(track.querySelectorAll('.timelineMinimapItem')),
+                rows  = items.reduce(function(most, item) { return Math.max(most, (item._cdLevel || 0) + 1); }, 1),
+                pitch = (MINIMAP_MAX_HEIGHT - 2 * MINIMAP_PADDING) / rows,
+                thick = Math.max(1, Math.min(4, pitch - 1));
+
+            items.forEach(function(item) {
+                item.style.bottom       = (MINIMAP_PADDING + (item._cdLevel || 0) * pitch) + 'px';
+                item.style.height       = thick + 'px';
+                item.style.marginBottom = '0';
+            });
+
+            trackHeight = MINIMAP_MAX_HEIGHT;
+            track.style.height = trackHeight + 'px';
+        }
+
         minimapElement.style.height = trackHeight + 'px';
     }
 
@@ -1126,6 +1389,10 @@ FrameTrail.defineModule('TimelineController', function(FrameTrail) {
 
         refreshMinimap:         refreshMinimap,
         setupPreviewPopup:      setupPreviewPopup,
+
+        stackTimeline:          stackTimeline,
+        unstackTimeline:        unstackTimeline,
+        revealRow:              revealRow,
 
         /**
          * @attribute initialized

@@ -143,29 +143,17 @@
      */
     function stackTimelineView() {
 
-        var scroller = ViewVideo.AnnotationTimeline.querySelector('.timelineScroller');
-        if (scroller) {
-            // Reset inline heights first so elements resolve to their CSS-defined height
-            // (avoids circular dependency: elements height:100% → scroller min-height:100% → inflated)
-            scroller.style.height = '';
-            scroller.style.flexBasis = '';
-            ViewVideo.AnnotationTimeline.style.height = '';
-            ViewVideo.AnnotationTimeline.style.minHeight = '';
-            ViewVideo.AnnotationTimeline.style.flexBasis = '';
-            CollisionDetection(scroller, {spacing:0, includeVerticalMargins: true, exclude: '.timelinePlayhead', containerPadding: 4});
-            // Read the inline value CollisionDetection just wrote (not .css() which is affected by CSS min-height:100%)
-            var stackedHeight = scroller.style.height;
-            ViewVideo.AnnotationTimeline.style.height = stackedHeight;
-            ViewVideo.AnnotationTimeline.style.flexBasis = stackedHeight;
-            ViewVideo.AnnotationTimeline.style.flexShrink = '0';
-        } else {
-            CollisionDetection(ViewVideo.AnnotationTimeline, {spacing:0, includeVerticalMargins: true});
-        }
+        var TimelineController = FrameTrail.module('TimelineController');
+
+        // Rows, the timeline's height (it scrolls when there is no room for all rows) and the minimap
+        TimelineController.stackTimeline(ViewVideo.AnnotationTimeline);
+
         ViewVideo.adjustLayout();
         ViewVideo.adjustHypervideo();
 
-        if (FrameTrail.module('TimelineController').initialized) {
-            FrameTrail.module('TimelineController').refreshMinimap();
+        // The selected annotation stays in view, whichever row it is in now
+        if (annotationInFocus) {
+            TimelineController.revealRow(annotationInFocus.timelineElement);
         }
 
     }
@@ -181,22 +169,7 @@
      */
     function resetTimelineView() {
 
-        ViewVideo.AnnotationTimeline.style.height = '';
-        ViewVideo.AnnotationTimeline.style.minHeight = '';
-        ViewVideo.AnnotationTimeline.style.flexBasis = '';
-        ViewVideo.AnnotationTimeline.style.flexShrink = '';
-        var target = ViewVideo.AnnotationTimeline.querySelector('.timelineScroller');
-        if (target) {
-            target.style.height = '';
-            target.style.flexBasis = '';
-        }
-        var _timelineSource = target || ViewVideo.AnnotationTimeline;
-        _timelineSource.querySelectorAll('.timelineElement').forEach(function(el) {
-            el.style.top = '';
-            el.style.right = '';
-            el.style.bottom = '';
-            el.style.height = '';
-        });
+        FrameTrail.module('TimelineController').unstackTimeline(ViewVideo.AnnotationTimeline);
 
     }
 
@@ -383,6 +356,8 @@
 
         if (annotationInFocus) {
             annotationInFocus.gotInFocus();
+            // Its row may be scrolled out of the timeline
+            FrameTrail.module('TimelineController').revealRow(annotationInFocus.timelineElement);
         }
 
         updateStatesOfAnnotations(FrameTrail.module('HypervideoController').currentTime);

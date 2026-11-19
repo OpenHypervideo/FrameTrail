@@ -413,7 +413,9 @@
 .otherUsersContainer {
     display: none;
     width: 100%;
-    flex: 0 0 auto;
+    /* It gives way too (it scrolls): fixed at up to 180px it pushed the timeline out of small windows */
+    flex: 0 1 auto;
+    min-height: 44px;
     max-height: 180px;
     padding-top: 10px;
     background: var(--primary-fg-color);
@@ -1228,7 +1230,61 @@
     background-image: repeating-linear-gradient(90deg, rgba(255,255,255,0.3) -1px, rgba(255,255,255,0.3) 1px, transparent 1px, transparent 3px);
     pointer-events: auto;
     overflow-x: auto;
-    overflow-y: hidden;
+    /* Rows that do not fit scroll (TimelineController.stackTimeline) */
+    overflow-y: auto;
+    /* No native scrollbars: where they are always shown, a vertical one makes the timeline narrower
+       than the ruler (items and playhead drift from it) and a horizontal one takes the height of a
+       row. The rows have a thumb of their own; the minimap and the ruler scroll sideways. */
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.playerContainer .annotationTimeline.editable::-webkit-scrollbar,
+.playerContainer .overlayTimeline.editable::-webkit-scrollbar,
+.playerContainer .audioTimeline.editable::-webkit-scrollbar {
+    display: none;
+}
+
+/* While overlays or annotations are edited, the video and the edit panel keep a minimum height,
+   however many rows the timeline stacks: the basis is that minimum and it does not shrink, so the
+   timeline alone gives way (it scrolls) and the split never depends on what the edit panel holds. */
+.editActive[data-edit-mode="overlays"] .hypervideoContainer,
+.editActive[data-edit-mode="annotations"] .hypervideoContainer {
+    --edit-video-min-height: clamp(120px, min(calc(var(--ft-height, 100vh) * 0.4), calc(var(--ft-height, 100vh) - 400px)), 480px);
+    flex: 1 0 var(--edit-video-min-height);
+    min-height: var(--edit-video-min-height);
+}
+
+/* The thumb of a timeline whose rows do not fit: an anchor without height, stuck to the timeline's
+   top left corner while its contents scroll, with the thumb at its right end. Above every timeline
+   element (a selected one has z-index 100000). */
+.playerContainer .timeline > .timelineRowsBar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 0;
+    z-index: 100001;
+    pointer-events: none;
+}
+
+.playerContainer .timeline > .timelineRowsBar > .timelineRowsThumb {
+    position: absolute;
+    right: 3px;
+    width: 6px;
+    border-radius: 3px;
+    /* Dark with a light edge: it lies over the dark timeline and over light elements alike */
+    background-color: rgba(30, 30, 30, 0.75);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.75);
+    pointer-events: auto;
+    cursor: ns-resize;
+    touch-action: none;
+}
+
+.playerContainer .timeline > .timelineRowsBar > .timelineRowsThumb:hover,
+.playerContainer .timeline > .timelineRowsBar > .timelineRowsThumb.dragging {
+    background-color: rgba(30, 30, 30, 1);
+    box-shadow: 0 0 0 1px rgba(255, 255, 255, 1);
 }
 
 /* Timeline Element - Visual Identification (icon + label in edit mode) */
