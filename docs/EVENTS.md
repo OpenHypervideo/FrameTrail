@@ -47,7 +47,7 @@ Events are dispatched as `CustomEvent`s; payload fields are on `evt.detail`.
 | Event | When | Payload (`evt.detail`) |
 |---|---|---|
 | `ready` | Player finished initializing | `{}` |
-| `play` / `pause` / `ended` | Playback state changes | `{}` |
+| `play` / `pause` / `ended` | Playback state changes. Under a transition between hypervideos (`config.json` → `hypervideoTransition`) `play` comes when the cover is gone, and a hypervideo that is being left does not report `ended` any more | `{}` |
 | `timeupdate` | Playback position changed | `{}` (read `instance.currentTime`) |
 | `seeking` / `seeked` | Scrubbing | `{}` |
 | `userAction` | Editor/viewer interactions (`VideoJumpTime`, `OverlayAdd`, `OverlayChange`, …) | `{ action, ... }` (action-specific fields) |

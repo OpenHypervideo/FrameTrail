@@ -241,7 +241,7 @@ FrameTrail.defineType(
                     hotspotElement.addEventListener('click', function(e) {
                         e.preventDefault();
                         if (FrameTrail.getState('editMode') === 'overlays') { return; }
-                        self.executeOverlayAction(self.resourceData.attributes || {});
+                        self.executeOverlayAction(self.resourceData.attributes || {}, hotspotElement.closest('.overlayElement'));
                     });
 
                     resourceDetail.appendChild(this.buildResourceOptions({

@@ -1,0 +1,47 @@
+/* The cover of a transition between hypervideos (config.json → hypervideoTransition): over the whole player, above the title bar, only while a transition runs. */
+
+.hypervideoTransitionCover {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 150;
+    display: none;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.hypervideoTransitionCover.active {
+    display: block;
+    pointer-events: auto;
+}
+
+/* The built-in looks (fade, wipe, iris) animate a black cover, whatever the theme. An extension's transition paints its own stage. */
+
+.hypervideoTransitionCover[data-kind="builtin"] {
+    background: #000;
+    --primary-fg-color: #fff;
+    --primary-bg-color: #000;
+}
+
+.hypervideoTransitionCover .workingSpinner {
+    display: none;
+}
+
+.hypervideoTransitionCover[data-kind="builtin"].waiting .workingSpinner {
+    display: block;
+}
+
+.hypervideoTransitionStage {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: none;
+}
+
+.hypervideoTransitionStage.active {
+    display: block;
+}

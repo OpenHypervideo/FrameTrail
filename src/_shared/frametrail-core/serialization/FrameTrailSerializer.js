@@ -106,7 +106,7 @@
 
     // The playback-relevant keys of config.json, the only ones a project bundle carries: how its pages play,
     // and how they pair with phones (so a project file can do that too, docs/PAIRING.md).
-    var PLAYBACK_CONFIG_KEYS = ['theme', 'defaultLanguage', 'videoFit', 'overviewMode', 'overviewTitle', 'overviewShowSearchBar',
+    var PLAYBACK_CONFIG_KEYS = ['theme', 'defaultLanguage', 'videoFit', 'hypervideoTransition', 'overviewMode', 'overviewTitle', 'overviewShowSearchBar',
                                 'pairingBrokerURL', 'pairingButtonVisible', 'pairingCompanionURL'];
 
     // Keys of annotations/_index.json that are not legacy per-user entries.
@@ -1211,6 +1211,8 @@
                 "slidingMode":      config.slidingMode,
                 "slidingTrigger":   config.slidingTrigger,
                 "autohideControls": config.autohideControls,
+                // Optional: written only for a hypervideo that has it.
+                "autoplay":         config.autoplay,
                 "captionsVisible":  config.captionsVisible,
                 "clipTimeVisible":  config.clipTimeVisible,
                 "layoutArea":       layout

@@ -44,8 +44,9 @@ FrameTrail.defineType(
                  *
                  * @method executeOverlayAction
                  * @param {Object} attributes
+                 * @param {HTMLElement} [source] The element that was clicked (an overlay's element): a transition between hypervideos hands it to an extension
                  */
-                executeOverlayAction: function(attributes) {
+                executeOverlayAction: function(attributes, source) {
 
                     var action = attributes.action,
                         target = attributes.actionTarget;
@@ -69,12 +70,14 @@ FrameTrail.defineType(
                             break;
                         case 'jumpToHypervideo':
                             if (target) {
-                                var hash = 'hypervideo=' + target,
-                                    jumpTime = parseFloat(attributes.actionTargetTime);
-                                if (!isNaN(jumpTime) && jumpTime > 0) {
-                                    hash += '&t=' + jumpTime;
+                                // Writes the address ("#hypervideo=<id>&t=<seconds>"); the route change does the rest.
+                                var RouteNavigation = FrameTrail.module('RouteNavigation');
+                                if (RouteNavigation && RouteNavigation.navigateToHypervideo) {
+                                    RouteNavigation.navigateToHypervideo(target, {
+                                        time:   attributes.actionTargetTime,
+                                        source: source || null
+                                    });
                                 }
-                                window.location.hash = hash;
                             }
                             break;
                     }

@@ -97,6 +97,7 @@ CSS_FILES=(
     "player/modules/FreeformShapeEditor/style.css"
     "player/modules/TextInlineEditor/style.css"
     "player/modules/QuizController/style.css"
+    "player/modules/HypervideoTransition/style.css"
     "player/modules/ChaptersController/style.css"
     "player/modules/TranscriptsEditor/style.css"
     "player/modules/ViewLayout/style.css"
@@ -137,6 +138,7 @@ JS_FILES=(
     "_shared/frametrail-core/serialization/FrameTrailKeyframes.js"
     "_shared/frametrail-core/layout/FrameTrailRingLayout.js"
     "_shared/frametrail-core/quiz/FrameTrailQuiz.js"
+    "_shared/frametrail-core/transition/FrameTrailTransition.js"
     "_shared/frametrail-core/serialization/FrameTrailSerializer.js"
     "_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js"
     "_shared/frametrail-core/serialization/FrameTrailLint.js"
@@ -259,6 +261,7 @@ JS_FILES=(
     "player/modules/ImportDialog/module.js"
     "player/modules/ExportDialog/module.js"
     "player/modules/Extensions/module.js"
+    "player/modules/HypervideoTransition/module.js"
     "player/modules/PairingHost/module.js"
     "player/modules/PairingDialog/module.js"
 

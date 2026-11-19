@@ -395,7 +395,7 @@ Extensions are loaded after the data, which is when `config.json` is known, and 
 
 Two things to know:
 
-- Switching to another hypervideo rebuilds the video view and clears every timer pending on the page (`setTimeout` and `setInterval`). Restart yours in `onHypervideoChange`, and keep your DOM in your slots, which survive the switch.
+- Switching to another hypervideo rebuilds the video view and clears every timer pending on the page (`setTimeout` and `setInterval`). Restart yours in `onHypervideoChange`, and keep your DOM in your slots, which survive the switch. To show something of your own while the hypervideo changes, use the `transition` slot, which is told when to start and when the new hypervideo is ready.
 - Types are read once, when the instance starts, before any extension is loaded: an extension cannot add overlay or resource types.
 
 ### Slots
@@ -469,6 +469,39 @@ transcriber: {
 ```
 
 The promise resolves with the WebVTT text and its language (a code of letters, digits, `_` and `-`; when missing, the language asked for). FrameTrail checks the text as the player reads it (`FrameTrailLint.checkVTT`) and asks before it replaces a transcript that has cues. A rejection is shown to the user with its message. Cue times are on the video's timeline, so a clip with an in point starts later than 0. A run goes on while the user works in other edit modes.
+
+**`transition`**: what the viewer sees while a link leads from one hypervideo to another, in place of the built-in looks (fade, wipe, iris). It runs when the instance's setting names the extension (`config.json` → `"hypervideoTransition": "<extension name>"`, or Administration → Advanced Settings, where it is listed by its `label`), and only for a jump from inside a hypervideo: a "Jump to hypervideo" action of a hotspot or a quiz answer, event code that writes the address, Back and Forward between hypervideos. Opening a hypervideo from the overview and every change while editing have no transition. FrameTrail does the rest: it holds the jump back, covers the whole player so that nothing can be clicked, changes the hypervideo, keeps it from playing under the cover, and leaves out its "Loading …" message.
+
+```javascript
+transition: {
+    label:     'Wind',
+    available: function() {
+        // false while it cannot run (its files are still loading, or failed): the hypervideo then changes at once.
+        return true;
+    },
+    leave: function(ctx) {
+        // The viewer chose another hypervideo. The one on screen plays on under ctx.cover.
+        // FrameTrail changes the hypervideo when the returned promise resolves (or at once, without one).
+        ctx.cover.appendChild(myElement);
+        return fadeIn(myElement);
+    },
+    wait: function(ctx) {
+        // The hypervideo is changing now (optional). Called again when a newer jump is taken up under the cover.
+    },
+    enter: function(ctx) {
+        // The new hypervideo is ready and paused. FrameTrail removes its cover when the returned promise resolves.
+        // ctx.release() lets the hypervideo start before that, under what is left of your picture.
+        return fadeOut(myElement);
+    },
+    cancel: function(ctx) {
+        // It ends before its time: stop everything now.
+    }
+}
+```
+
+`ctx` is the same object through one transition: `from` and `to` (hypervideo ids; `to` changes when a newer jump is taken up), `time` (the seconds to arrive at, or `null`), `source` (the element that started the jump, a clicked overlay's `.overlayElement`, or `null`; it leaves the page when the hypervideo changes), `cover` (an element of your own inside FrameTrail's cover, the size of the player, kept between transitions: put your DOM there), `muted` (whether the player's sound is off, for sounds of your own), `signal` (an `AbortSignal`, aborted when the transition ends early) and `release()`. The slot needs `leave` or `enter`; everything else is optional.
+
+A transition ends early, with `cancel(ctx)`, when the viewer goes Back while `leave` runs (the jump is taken back), when the hypervideo does not come (an error, a login that was cancelled), and when a phase takes too long: `leave` and `enter` are cut off after 10 seconds, the wait for the hypervideo after 30. Timers are safe inside `leave` and inside `enter`, but none survives from `leave` into `enter`: the change of hypervideo between them clears them. While `leave` runs, the hypervideo on screen counts as left: it plays on, but its end is not reported (no `ended` event, no `onEnded` code). With reduced motion requested by the viewer (`prefers-reduced-motion`), FrameTrail shows a short fade instead and does not call the extension.
 
 ### Labels
 
@@ -809,6 +842,8 @@ Users can add JavaScript that runs at specific lifecycle points via the `globalE
     }
 }
 ```
+
+To start a hypervideo when the viewer gets to it, switch on Autoplay in the same Advanced Options (`config.autoplay`) instead of calling `hypervideo.play()` in `onReady`: it plays after a jump from another hypervideo and when opened from the overview, and leaves a freshly loaded page alone, where the browser would refuse it.
 
 Event code, here and in an overlay's actions (onReady, onClick, onStart, onEnd), is the body of a function called with `FrameTrail` (the instance) and `hypervideo` (the player's controller). Besides `hypervideo.play()`, `hypervideo.pause()` and `hypervideo.currentTime`, it can open and close the layout areas:
 

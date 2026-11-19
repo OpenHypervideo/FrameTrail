@@ -110,6 +110,9 @@
             FrameTrail.changeState('hv_config_' + key, hypervideo.config[key]);
         }
 
+        // The loop sets what this hypervideo has, so a setting missing here would keep the last hypervideo's value. Autoplay is optional.
+        FrameTrail.changeState('hv_config_autoplay', !!hypervideo.config && hypervideo.config.autoplay === true);
+
         /**
         * This state (as well as the "livestream" boolean) should 
         * only be changed to true by the HypervideoController 
@@ -2032,10 +2035,16 @@
      * @param {String} newHypervideoID
      * @param {Boolean} restartEditMode
      * @param {Boolean} update
+     * @param {Boolean} arrival The viewer comes to this hypervideo inside the page (a jump from another one, or the overview): a hypervideo with config.autoplay then starts. Not for reloads, new hypervideos and forks.
      */
-    function updateHypervideo(newHypervideoID, restartEditMode, update) {
+    function updateHypervideo(newHypervideoID, restartEditMode, update, arrival) {
 
-        FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateLoading']);
+        // A transition between hypervideos (HypervideoTransition) covers the player meanwhile: then no message.
+        var transitionModule = FrameTrail.module('HypervideoTransition');
+
+        if (!transitionModule || !transitionModule.switching(newHypervideoID)) {
+            FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateLoading']);
+        }
 
         // What was unsaved goes with this model: the user was asked before
         // (confirmUnsaved), and the model loaded next starts clean — so must
@@ -2105,7 +2114,12 @@
                 FrameTrail.module('InterfaceModal').hideMessage();
                 FrameTrail.module('UserManagement').ensureAuthenticated(function() {
                     reInitHypervideo();
-                }, function() {}, true);
+                }, function() {
+                    // Nobody signed in: the hypervideo does not come, a transition's cover goes away.
+                    if (FrameTrail.module('HypervideoTransition')) {
+                        FrameTrail.module('HypervideoTransition').failed();
+                    }
+                }, true);
             } else {
                 reInitHypervideo();
             }
@@ -2148,6 +2162,11 @@
                             // The switch cleared the pairing's timers too; a paired phone gets the new hypervideo.
                             if (FrameTrail.module('PairingHost')) {
                                 FrameTrail.module('PairingHost').hypervideoChanged(newHypervideoID);
+                            }
+
+                            // The cover of a transition goes out, and a hypervideo with config.autoplay starts (never while editing).
+                            if (FrameTrail.module('HypervideoTransition')) {
+                                FrameTrail.module('HypervideoTransition').arrived(newHypervideoID, !!arrival && !restartEditMode);
                             }
 
                             window.setTimeout(function() {

@@ -469,6 +469,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
         var sourceChangeConfirmed = false;
 
         var autohideControls = hypervideo.config && hypervideo.config.autohideControls && hypervideo.config.autohideControls.toString() === 'true';
+        var autoplay = !!hypervideo.config && hypervideo.config.autoplay === true;
 
         var _efw = document.createElement('div');
         _efw.innerHTML = '<form method="POST" class="editHypervideoForm">'
@@ -489,6 +490,8 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                         + '        <div class="layoutRow">'
                         + '            <div class="column-12">'
                         + '                <div class="checkboxRow"><label class="switch"><input type="checkbox" name="config[autohideControls]" id="autohideControls" '+ (autohideControls ? 'checked' : '') +'><span class="slider round"></span></label><label for="autohideControls">'+ labels['SettingsAutohideControls'] +'</label></div>'
+                        + '                <div class="checkboxRow mt-1"><label class="switch"><input type="checkbox" name="config[autoplay]" id="autoplay" '+ (autoplay ? 'checked' : '') +'><span class="slider round"></span></label><label for="autoplay">'+ labels['SettingsAutoplay'] +'</label></div>'
+                        + '                <div class="fieldHint">'+ labels['MessageAutoplay'] +'</div>'
                         + '            </div>'
                         + '        </div>'
                         + '        <hr>'
@@ -838,7 +841,7 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
 
             if (DatabaseEntry.config) {
                 for (var configKey in DatabaseEntry.config) {
-                    if (configKey === 'layoutArea' || configKey === 'theme' || configKey === 'autohideControls') { continue; }
+                    if (configKey === 'layoutArea' || configKey === 'theme' || configKey === 'autohideControls' || configKey === 'autoplay') { continue; }
                     var newConfigVal = (EditHypervideoForm.querySelector('input[data-configkey="' + configKey + '"]') || {value: undefined}).value;
                     newConfigVal = (newConfigVal === 'true')
                                     ? true
@@ -854,6 +857,14 @@ FrameTrail.defineModule('HypervideoSettingsDialog', function(FrameTrail){
                     DatabaseEntry.config.autohideControls = autohideCheckbox.checked;
                     if (thisID == FrameTrail.module('RouteNavigation').hypervideoID) {
                         FrameTrail.changeState('hv_config_autohideControls', autohideCheckbox.checked);
+                    }
+                }
+                // Autoplay is optional: written once it is on, or when the hypervideo has the key already.
+                var autoplayCheckbox = EditHypervideoForm.querySelector('input[name="config[autoplay]"]');
+                if (autoplayCheckbox && (autoplayCheckbox.checked || DatabaseEntry.config.autoplay !== undefined)) {
+                    DatabaseEntry.config.autoplay = autoplayCheckbox.checked;
+                    if (thisID == FrameTrail.module('RouteNavigation').hypervideoID) {
+                        FrameTrail.changeState('hv_config_autoplay', autoplayCheckbox.checked);
                     }
                 }
             }

@@ -183,7 +183,13 @@ Extensions are code outside FrameTrail that plugs in without changing its files 
 
 The instance keeps its extensions next to its modules: `changeState()` calls their `onChange` handlers after all modules' handlers, each in a `try`/`catch`, so a failing extension cannot stop the state loop. `onReady` and `onHypervideoChange` are called by `PlayerLauncher` and `HypervideoModel.updateHypervideo()`; `destroy()` unloads them.
 
-Slots: a side panel (`.sidePanel`, docked right of `.mainContainer`, which narrows by `--ft-side-panel-width`; `ViewVideo.adjustHypervideo()` subtracts `Extensions.sidePanelWidth`), title bar buttons (`Titlebar.addActionButton()`) and edit modes (`Sidebar.addEditModeButton()`; `ViewVideo` gives them the shared edit panel, `Interface` marks them with `.extensionEditMode` and `.lockGated`).
+Slots: a side panel (`.sidePanel`, docked right of `.mainContainer`, which narrows by `--ft-side-panel-width`; `ViewVideo.adjustHypervideo()` subtracts `Extensions.sidePanelWidth`), title bar buttons (`Titlebar.addActionButton()`), edit modes (`Sidebar.addEditModeButton()`; `ViewVideo` gives them the shared edit panel, `Interface` marks them with `.extensionEditMode` and `.lockGated`), and two without an element in the interface: a transcriber (`Extensions.transcribers()`, used by the transcripts edit mode) and a transition between hypervideos (`Extensions.transitions()`, run by `HypervideoTransition`, below).
+
+### Transitions Between Hypervideos
+
+`HypervideoTransition` (`src/player/modules/HypervideoTransition/`) covers the player while a jump leads from one hypervideo to another (`config.json` → `hypervideoTransition`: `fade`, `wipe`, `iris`, or the name of an extension with a `transition` slot), and starts a hypervideo that has `config.autoplay`. Its rules are the pure `FrameTrailTransition` (`src/_shared/frametrail-core/transition/`, tested in Node): the states `idle`, `leave`, `covered`, `wait`, `arrived`, `enter`, and what a change of the address means in each.
+
+The hooks: `RouteNavigation.routeHasChanged()` asks `takes(id)` / `stays(overview)` before it applies a route (while a phase runs, a jump waits, and `applyRoute()` reads the address again when the phase is over); `HypervideoModel.updateHypervideo()` reports `switching(id)` (no "Loading …" message under the cover) and `arrived(id, cameHere)`; `InterfaceModal.showErrorMessage()` reports `failed()`; `HypervideoController.play()` asks `holdPlay()`, and its `reportEnded()` skips a hypervideo that is being left. `updateHypervideo()` clears every timer on the page, so the module uses none: a phase ends with its animation (`Animation.finished`) or the extension's promise, and the caps are checked on animation frames.
 
 ### Edit API
 

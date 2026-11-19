@@ -31,6 +31,9 @@
  * * transcriber: makes the transcript of the open hypervideo's video, which the
  *   transcripts edit mode offers as "Generate" (see TranscriptsEditor). No
  *   element of its own.
+ * * transition: what the viewer sees while a link leads from one hypervideo to
+ *   another, when config.json → hypervideoTransition names the extension (see
+ *   HypervideoTransition). It draws into an element of the transition's cover.
  *
  * Lifecycle: init(settings) once loaded, onReady() once the interface is up,
  * onHypervideoChange(hypervideoID) whenever a hypervideo has been (re)loaded,
@@ -80,7 +83,8 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
         editPanels      = {},       // name → { slot, button }
         activeEditPanel = null,
 
-        transcribers    = [];       // [{ name, slot }] in load order
+        transcribers    = [],       // [{ name, slot }] in load order
+        transitions     = [];       // [{ name, slot }] in load order
 
 
     /**
@@ -481,6 +485,7 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
                 if (slots.titlebarAction) createTitlebarAction(item.name, slots.titlebarAction);
                 if (slots.editPanel)      createEditPanel(item.name, slots.editPanel);
                 if (slots.transcriber)    createTranscriber(item.name, slots.transcriber);
+                if (slots.transition)     createTransition(item.name, slots.transition);
             } catch (e) {
                 console.error('FrameTrail extension "' + item.name + '": its slots could not be created.', e);
             }
@@ -508,6 +513,26 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
         }
 
         transcribers.push({ name: name, slot: slot });
+
+    }
+
+
+    /**
+     * A transition between hypervideos: { label?, available?(), leave?(ctx), wait?(ctx), enter?(ctx), cancel?(ctx) }.
+     * It needs leave() or enter(); it runs when config.json → hypervideoTransition names the extension
+     * (HypervideoTransition calls it, each call guarded there).
+     *
+     * @method createTransition
+     * @private
+     */
+    function createTransition(name, slot) {
+
+        if (typeof slot !== 'object' || (typeof slot.leave !== 'function' && typeof slot.enter !== 'function')) {
+            console.warn('FrameTrail extension "' + name + '": its transition has neither leave() nor enter() and is left out.');
+            return;
+        }
+
+        transitions.push({ name: name, slot: slot });
 
     }
 
@@ -977,6 +1002,7 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
         titlebarActions = {};
         editPanels = {};
         transcribers = [];
+        transitions = [];
         wantedSidePanel = null;
         shownSidePanel = null;
 
@@ -1012,6 +1038,15 @@ FrameTrail.defineModule('Extensions', function(FrameTrail){
          */
         transcribers: function() {
             return transcribers.slice();
+        },
+
+        /**
+         * I list the extensions' transitions between hypervideos, [{ name, slot }], in load order.
+         * @method transitions
+         * @return {Array}
+         */
+        transitions: function() {
+            return transitions.slice();
         },
 
         /**

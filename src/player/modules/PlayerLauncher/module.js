@@ -244,6 +244,11 @@
     // Set up the loader of extensions (they are loaded once the config is known)
     FrameTrail.initModule('Extensions');
 
+    // Set up transitions between hypervideos and autoplay (config.json → hypervideoTransition, a hypervideo's config.autoplay); a phone follows its player
+    if (!FrameTrail.getState('companion')) {
+        FrameTrail.initModule('HypervideoTransition');
+    }
+
     // Set up pairing with a phone (docs/PAIRING.md); not on the phone's own player
     if (!FrameTrail.getState('companion')) {
         FrameTrail.initModule('PairingHost');

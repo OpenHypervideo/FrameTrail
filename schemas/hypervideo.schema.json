@@ -604,6 +604,11 @@
                     "type": "boolean",
                     "default": false
                 },
+                "autoplay": {
+                    "description": "Start playing when the viewer comes to this hypervideo inside the page: after a jump from another hypervideo (once a transition between them is over, see config.json → hypervideoTransition) or when it is opened from the overview. Never on a freshly loaded page, where the browser would refuse sound before a click, and never while editing. Optional: written once it is switched on.",
+                    "type": "boolean",
+                    "default": false
+                },
                 "captionsVisible": {
                     "description": "Show subtitles from the start.",
                     "type": "boolean",

@@ -631,16 +631,12 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
     });
 
+    // The button shows the "muted" state, which outlives a change of hypervideo (this view is made again for each).
+    VolumeButton.classList.toggle('active', !!FrameTrail.getState('muted'));
+
     VolumeButton.addEventListener('click', function() {
 
-        if ( this.classList.contains('active') ) {
-            FrameTrail.module('HypervideoController').muted = false;
-            this.classList.remove('active');
-        } else {
-            FrameTrail.module('HypervideoController').muted = true;
-            this.classList.add('active');
-        }
-
+        FrameTrail.module('HypervideoController').muted = !FrameTrail.getState('muted');
 
     });
 
@@ -2143,6 +2139,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             videoWorking:    toggleVideoWorking,
             userActive:      toggleUserActive,
             livestream:      toggleLivestream,
+            muted:           function(muted) { VolumeButton.classList.toggle('active', !!muted); },
 
             hv_config_areaTopVisible:               toggleConfig_areaTopVisible,
             hv_config_areaBottomVisible:            toggleConfig_areaBottomVisible,

@@ -602,7 +602,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
                 HC.play();
                 break;
             case 'jumpToHypervideo':
-                entry.overlay.resourceItem.executeOverlayAction({ action: 'jumpToHypervideo', actionTarget: act.target, actionTargetTime: act.targetTime });
+                entry.overlay.resourceItem.executeOverlayAction({ action: 'jumpToHypervideo', actionTarget: act.target, actionTargetTime: act.targetTime }, entry.overlay.overlayElement || null);
                 break;
             case 'openUrl':
                 if (!isLink(act)) {

@@ -41,6 +41,7 @@ const Lint       = require('../src/_shared/frametrail-core/serialization/FrameTr
 const WebVTT     = require('../src/_shared/frametrail-core/serialization/FrameTrailWebVTT.js');
 const Pairing    = require('../src/_shared/frametrail-core/pairing/FrameTrailPairing.js');
 const Quiz       = require('../src/_shared/frametrail-core/quiz/FrameTrailQuiz.js');
+const Transition = require('../src/_shared/frametrail-core/transition/FrameTrailTransition.js');
 
 const NOW = 1999999999999;
 
@@ -1965,6 +1966,162 @@ describe('FrameTrailQuiz', () => {
         );
         assert.deepStrictEqual(Quiz.score(null, null), { total: 0, gradable: 0, right: 0, retried: 0, wrong: 0, answered: 0, open: 0, done: 0 });
         assert.deepStrictEqual(Quiz.RESULT_STATES, ['open', 'right', 'retried', 'wrong', 'answered']);
+    });
+
+});
+
+
+describe('FrameTrailTransition', () => {
+
+    const css = fs.readFileSync(path.join(ROOT, 'src', '_shared', 'modules', 'AnimationLibrary', 'presets.css'), 'utf8');
+
+    test('every built-in look names keyframes the overlay animations have', () => {
+        Object.keys(Transition.LOOKS).concat(['reduced']).forEach((id) => {
+            const look = (id === 'reduced') ? Transition.REDUCED_LOOK : Transition.LOOKS[id];
+            ['leave', 'enter'].forEach((phase) => {
+                assert.ok(css.includes('@keyframes ' + look[phase] + ' '), id + ' ' + phase + ': ' + look[phase]);
+            });
+            assert.ok(look.duration > 0);
+        });
+    });
+
+    test('the built-in looks are what the config schema describes, and names it allows', () => {
+        const setting = readJSON(path.join(ROOT, 'schemas', 'config.schema.json')).properties.hypervideoTransition;
+        const description = setting.description;
+        const pattern = new RegExp(setting.pattern);
+        assert.equal(setting.default, 'none');
+        assert.equal(pattern.source, Transition.NAME_PATTERN.source, 'the pattern of extension names');
+        ['none'].concat(Object.keys(Transition.LOOKS)).forEach((id) => {
+            assert.ok(pattern.test(id), id);
+            assert.ok(description.includes(id), id + ' is described');
+        });
+    });
+
+    test('resolveLook: none, a built-in look, an extension that is loaded', () => {
+        const none = { kind: 'none', id: 'none' };
+        assert.deepStrictEqual(Transition.resolveLook(undefined, [], false), none);
+        assert.deepStrictEqual(Transition.resolveLook('', [], false), none);
+        assert.deepStrictEqual(Transition.resolveLook('none', ['none'], false), none, 'none is none, whatever an extension is called');
+        assert.deepStrictEqual(Transition.resolveLook(7, [], false), none);
+        assert.deepStrictEqual(Transition.resolveLook('fade', [], false), { kind: 'builtin', id: 'fade' });
+        assert.deepStrictEqual(Transition.resolveLook('iris', ['iris'], false), { kind: 'builtin', id: 'iris' }, 'a built-in name wins over an extension of that name');
+        assert.deepStrictEqual(Transition.resolveLook('wind', ['hello', 'wind'], false), { kind: 'extension', id: 'wind' });
+        assert.deepStrictEqual(Transition.resolveLook('wind', ['hello'], false), none, 'an extension that is not loaded is no transition');
+        assert.deepStrictEqual(Transition.resolveLook('wind', undefined, false), none);
+        assert.deepStrictEqual(Transition.resolveLook('toString', [], false), none, 'no inherited name is a look');
+    });
+
+    test('resolveLook: reduced motion turns every transition into the short fade, and none stays none', () => {
+        const reduced = { kind: 'builtin', id: 'fade', reduced: true };
+        assert.deepStrictEqual(Transition.resolveLook('wipe', [], true), reduced);
+        assert.deepStrictEqual(Transition.resolveLook('wind', ['wind'], true), reduced, 'the extension is not asked');
+        assert.deepStrictEqual(Transition.resolveLook('wind', [], true), { kind: 'none', id: 'none' });
+        assert.deepStrictEqual(Transition.resolveLook('none', [], true), { kind: 'none', id: 'none' });
+        assert.equal(Transition.lookOf(reduced), Transition.REDUCED_LOOK);
+        assert.equal(Transition.lookOf({ kind: 'builtin', id: 'wipe' }), Transition.LOOKS.wipe);
+        assert.equal(Transition.lookOf({ kind: 'extension', id: 'wind' }), null);
+        assert.equal(Transition.lookOf({ kind: 'none', id: 'none' }), null);
+        assert.ok(Transition.REDUCED_LOOK.duration <= 250);
+    });
+
+    test('route: nothing runs', () => {
+        assert.deepStrictEqual(Transition.route('idle', { other: true, eligible: true }), { state: 'leave', held: true, action: 'leave' }, 'a jump starts the cover and waits');
+        assert.deepStrictEqual(Transition.route('idle', { other: true, eligible: false }), { state: 'idle', held: false, action: null }, 'no transition: as before');
+        assert.deepStrictEqual(Transition.route('idle', { other: false, overview: true, eligible: true }), { state: 'idle', held: false, action: null });
+        assert.deepStrictEqual(Transition.route('idle', { other: false, eligible: true }), { state: 'idle', held: false, action: null });
+        assert.deepStrictEqual(Transition.route('nonsense', { other: false }), { state: 'idle', held: false, action: null });
+        assert.deepStrictEqual(Transition.route('idle'), { state: 'idle', held: false, action: null });
+    });
+
+    test('route: while a phase runs, the address waits', () => {
+        ['leave', 'wait', 'enter'].forEach((state) => {
+            [{ other: true, eligible: true }, { other: true, eligible: false }].forEach((facts) => {
+                assert.deepStrictEqual(Transition.route(state, facts), { state: state, held: true, action: null }, state + ' ' + JSON.stringify(facts));
+            });
+        });
+        ['wait', 'enter'].forEach((state) => {
+            [{ other: false, overview: true }, { other: false }].forEach((facts) => {
+                assert.deepStrictEqual(Transition.route(state, facts), { state: state, held: true, action: null }, state + ' ' + JSON.stringify(facts));
+            });
+        });
+    });
+
+    test('route: during leave, Back and the overview take the jump back at once', () => {
+        assert.deepStrictEqual(Transition.route('leave', { other: false }), { state: 'idle', held: false, action: 'uncover' }, 'the hypervideo on screen is named again');
+        assert.deepStrictEqual(Transition.route('leave', { other: false, overview: true }), { state: 'idle', held: false, action: 'uncover' });
+    });
+
+    test('route: at the end of leave the address decides', () => {
+        assert.deepStrictEqual(Transition.route('covered', { other: true, eligible: true }), { state: 'wait', held: false, action: 'switch' });
+        assert.deepStrictEqual(Transition.route('covered', { other: true, eligible: false }), { state: 'idle', held: false, action: 'uncover' }, 'editing began meanwhile: the change goes on without the cover');
+        assert.deepStrictEqual(Transition.route('covered', { other: false }), { state: 'idle', held: false, action: 'uncover' }, 'Back to the hypervideo on screen cancels the jump');
+        assert.deepStrictEqual(Transition.route('covered', { other: false, overview: true }), { state: 'idle', held: false, action: 'uncover' });
+    });
+
+    test('route: on arrival the address decides again', () => {
+        assert.deepStrictEqual(Transition.route('arrived', { other: false }), { state: 'enter', held: false, action: 'enter' });
+        assert.deepStrictEqual(Transition.route('arrived', { other: true, eligible: false }), { state: 'wait', held: false, action: 'switch' }, 'a newer jump is taken up under the cover');
+        assert.deepStrictEqual(Transition.route('arrived', { other: false, overview: true }), { state: 'idle', held: false, action: 'uncover' });
+    });
+
+    test('next: each event belongs to one state; an abort ends everything', () => {
+        assert.equal(Transition.next('leave', 'leaveDone'), 'covered');
+        assert.equal(Transition.next('wait', 'arrived'), 'arrived');
+        assert.equal(Transition.next('enter', 'enterDone'), 'idle');
+        assert.equal(Transition.next('wait', 'leaveDone'), 'wait', 'a late end of leave changes nothing');
+        assert.equal(Transition.next('idle', 'arrived'), 'idle', 'an arrival without a transition');
+        assert.equal(Transition.next('leave', 'enterDone'), 'leave');
+        Transition.STATES.forEach((state) => assert.equal(Transition.next(state, 'abort'), 'idle'));
+    });
+
+    test('a whole transition, and one with a second jump while the first loads', () => {
+        let step = Transition.route('idle', { other: true, eligible: true });
+        assert.equal(step.state, 'leave');
+        let state = Transition.next(step.state, 'leaveDone');
+        step = Transition.route(state, { other: true, eligible: true });
+        assert.deepStrictEqual([step.state, step.action], ['wait', 'switch']);
+        // the address changes to a third hypervideo while the second loads
+        assert.equal(Transition.route(step.state, { other: true, eligible: true }).held, true);
+        state = Transition.next(step.state, 'arrived');
+        step = Transition.route(state, { other: true, eligible: true });
+        assert.deepStrictEqual([step.state, step.action], ['wait', 'switch'], 'the third is loaded under the same cover');
+        state = Transition.next(step.state, 'arrived');
+        step = Transition.route(state, { other: false });
+        assert.deepStrictEqual([step.state, step.action], ['enter', 'enter']);
+        assert.equal(Transition.next(step.state, 'enterDone'), 'idle');
+    });
+
+    test('covers, holds, leaving: what each state means for the player', () => {
+        const table = {
+            idle:    [false, false, false],
+            leave:   [true,  false, true],
+            covered: [true,  false, true],
+            wait:    [true,  true,  true],
+            arrived: [true,  true,  false],
+            enter:   [true,  true,  false]
+        };
+        assert.deepStrictEqual(Object.keys(table), Transition.STATES);
+        Transition.STATES.forEach((state) => {
+            assert.deepStrictEqual([Transition.covers(state), Transition.holds(state), Transition.leaving(state)], table[state], state);
+        });
+        assert.equal(Transition.covers('nonsense'), false);
+    });
+
+    test('autoplays: only when the viewer came to the hypervideo inside the page', () => {
+        const yes = { cameHere: true, autoplay: true, editMode: false, viewMode: 'video' };
+        assert.equal(Transition.autoplays(yes), true);
+        assert.equal(Transition.autoplays(Object.assign({}, yes, { cameHere: false })), false, 'a reload, a new hypervideo, a fork');
+        assert.equal(Transition.autoplays(Object.assign({}, yes, { autoplay: false })), false);
+        assert.equal(Transition.autoplays(Object.assign({}, yes, { autoplay: 'true' })), false, 'only the literal true');
+        assert.equal(Transition.autoplays(Object.assign({}, yes, { editMode: 'preview' })), false, 'never while editing');
+        assert.equal(Transition.autoplays(Object.assign({}, yes, { viewMode: 'overview' })), false);
+        assert.equal(Transition.autoplays(), false);
+    });
+
+    test('a phase that does not end by itself is capped, the wait longest', () => {
+        assert.deepStrictEqual(Object.keys(Transition.CAPS).sort(), ['enter', 'leave', 'wait']);
+        assert.ok(Transition.CAPS.wait > Transition.CAPS.leave && Transition.CAPS.wait > Transition.CAPS.enter);
+        assert.ok(Transition.SPINNER_DELAY < Transition.CAPS.wait);
     });
 
 });

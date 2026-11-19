@@ -35,7 +35,11 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
 
         // The hypervideo a route asks to open while the user is asked about
         // unsaved changes first (see routeHasChanged), or null.
-        askingToSwitchTo = null;
+        askingToSwitchTo = null,
+
+        // { id, source } of a jump navigateToHypervideo() just wrote into the
+        // address, for the route change that follows; or null.
+        pendingJump = null;
 
 
     // "#overview" is a request for the overview, and it outranks the startID
@@ -265,6 +269,36 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
 
 
     /**
+     * I go to another hypervideo (or to a time in the open one) by writing the address, as a link does:
+     * the route change does the rest, so unsaved changes are asked about and a transition between
+     * hypervideos can run. This is what the "Jump to hypervideo" action of hotspots and quiz answers calls.
+     *
+     * @method navigateToHypervideo
+     * @param {String} id
+     * @param {Object} [options] { time: seconds to arrive at, source: the element that started the jump (handed to an extension's transition) }
+     */
+    function navigateToHypervideo(id, options) {
+
+        if (id === undefined || id === null || id === '') { return; }
+
+        var hash = 'hypervideo=' + id,
+            time = options ? parseFloat(options.time) : NaN;
+
+        if (!isNaN(time) && time > 0) {
+            hash += '&t=' + time;
+        }
+
+        // Writing the same address again changes nothing, and no route change would take the source up.
+        pendingJump = (window.location.hash.replace(/^#/, '') !== hash)
+            ? { id: id, source: (options && options.source) || null }
+            : null;
+
+        window.location.hash = hash;
+
+    }
+
+
+    /**
      * I switch the view and record it in the URL, so that what is on screen can
      * be linked to and walked back to.
      *
@@ -337,7 +371,13 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
 
         var RouteNavigation = FrameTrail.module('RouteNavigation'),
             hypervideoID = getHashVariable('hypervideo'),
-            hypervideoChange = ( hypervideoID && RouteNavigation && RouteNavigation.hypervideoID != hypervideoID );
+            hypervideoChange = ( hypervideoID && RouteNavigation && RouteNavigation.hypervideoID != hypervideoID ),
+            // Transitions between hypervideos (the player only; not on a paired phone, not in the resource manager).
+            Transition = FrameTrail.module('HypervideoTransition'),
+            // What started a jump (navigateToHypervideo) belongs to this call only.
+            jumpSource = (pendingJump && hypervideoID && String(pendingJump.id) === String(hypervideoID)) ? pendingJump.source : null;
+
+        pendingJump = null;
 
         // The very first call runs from inside my own factory, before the
         // module is registered — there is nothing to route yet, and the
@@ -354,13 +394,16 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
                     FrameTrail.changeState('editMode', false);
                     HypervideoModel.updateHypervideo(hypervideoID, true);
                 } else {
-                    HypervideoModel.updateHypervideo(hypervideoID);
+                    // The viewer comes to it from another hypervideo: one with config.autoplay starts.
+                    HypervideoModel.updateHypervideo(hypervideoID, false, undefined, true);
                 }
             };
 
             // A link, a jumpToHypervideo action or Back/Forward must not take
             // unsaved changes with them unasked.
             if (HypervideoModel.confirmUnsaved && FrameTrail.getState('unsavedChanges')) {
+                // No transition over a question.
+                if (Transition) { Transition.abort(); }
                 // Writing location.hash fires popstate and hashchange: one question for both.
                 if (askingToSwitchTo === hypervideoID) { applyingRoute = false; return; }
                 askingToSwitchTo = hypervideoID;
@@ -375,6 +418,11 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
                         setHashVariables({ overview: null, hypervideo: stayOn }, { replace: true });
                     }
                 });
+            } else if (Transition && Transition.takes(hypervideoID, { time: getHashVariable('t'), source: jumpSource })) {
+                // A transition between hypervideos took it: it leaves the open one first, or one of its
+                // phases runs. It calls me again (applyRoute) when the address is to be read.
+                applyingRoute = false;
+                return;
             } else {
                 switchHypervideo();
             }
@@ -385,6 +433,12 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
             // nothing is loaded or unloaded — only which view is on screen
             // changes, and the hypervideo stays exactly where the user left it.
             var wantsOverview = (getHashVariable('overview') !== undefined) || !hypervideoID;
+
+            // While a phase of a transition runs, this waits too (Back during its first phase cancels the jump).
+            if (Transition && Transition.stays(wantsOverview)) {
+                applyingRoute = false;
+                return;
+            }
 
             if (wantsOverview) {
                 if (FrameTrail.getState('viewMode') !== 'overview') {
@@ -503,6 +557,15 @@ FrameTrail.defineModule('RouteNavigation', function(FrameTrail){
          * @method navigateToView
          */
         navigateToView:   navigateToView,
+
+        navigateToHypervideo: navigateToHypervideo,
+
+        /**
+         * I read the address again and apply it, as after a history event. A transition between
+         * hypervideos calls me between its phases, during which changes of the address wait.
+         * @method applyRoute
+         */
+        applyRoute:       routeHasChanged,
 
         /**
          * True when the page was opened on "#overview". Distinguishes "show me

@@ -362,6 +362,7 @@ The keys the dialog used to write, with what FrameTrail does when a key is missi
 | `overviewShowSearchBar` | boolean | off | at once |
 | `defaultLanguage` | `"en"`, `"de"`, `"fr"` | `en` | on reload |
 | `videoFit` | `"contain"`, `"cover"` | `contain` | at once |
+| `hypervideoTransition` | `"none"`, `"fade"`, `"wipe"`, `"iris"`, or the name of a loaded extension that has a transition | none: a jump changes the hypervideo at once | with the next jump between hypervideos |
 | `allowUploads` | boolean | **allowed** | at once |
 | `alwaysForceLogin` | boolean | public | at once, once `_data/.htaccess` routes `_data/**` through `serve.php` — the platform writes that rule too, see [Private instances](DEPLOYMENT.md#private-instances-alwaysforcelogin). Phones paired with a player then load the media with pairing grants, which need nothing from the platform ([PAIRING.md](PAIRING.md#private-instances)) |
 | `captureUserTraces` | boolean | off | on reload |

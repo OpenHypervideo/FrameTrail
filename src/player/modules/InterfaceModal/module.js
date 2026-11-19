@@ -56,6 +56,10 @@ FrameTrail.defineModule('InterfaceModal', function(FrameTrail){
      * @param {String} msg
      */
     function showErrorMessage(msg){
+        // A hypervideo that does not come must not stay behind a transition's cover.
+        if (FrameTrail.module('HypervideoTransition')) {
+            FrameTrail.module('HypervideoTransition').failed();
+        }
         statusMessage.textContent = msg;
         statusMessage.classList.add('active', 'error');
         statusMessage.classList.remove('success');

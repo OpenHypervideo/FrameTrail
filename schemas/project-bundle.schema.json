@@ -34,6 +34,7 @@
                 "theme": { "$ref": "config.schema.json#/properties/theme" },
                 "defaultLanguage": { "$ref": "config.schema.json#/properties/defaultLanguage" },
                 "videoFit": { "$ref": "config.schema.json#/properties/videoFit" },
+                "hypervideoTransition": { "$ref": "config.schema.json#/properties/hypervideoTransition" },
                 "overviewMode": { "$ref": "config.schema.json#/properties/overviewMode" },
                 "overviewTitle": { "$ref": "config.schema.json#/properties/overviewTitle" },
                 "overviewShowSearchBar": { "$ref": "config.schema.json#/properties/overviewShowSearchBar" },

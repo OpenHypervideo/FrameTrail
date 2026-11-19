@@ -420,7 +420,8 @@ FrameTrail.defineModule('ViewOverview', function(FrameTrail){
                                     FrameTrail.changeState('editMode', false);
                                 }
 
-                                FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, wasEditing, update);
+                                // The viewer comes to it from the overview: one with config.autoplay starts (never while editing).
+                                FrameTrail.module('HypervideoModel').updateHypervideo(newHypervideoID, wasEditing, update, true);
 
                             }
                         });

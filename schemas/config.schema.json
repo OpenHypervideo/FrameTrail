@@ -39,6 +39,12 @@
             "enum": ["contain", "cover"],
             "default": "contain"
         },
+        "hypervideoTransition": {
+            "description": "What the viewer sees while a link, a quiz answer, event code or Back / Forward leads from one hypervideo to another: none (the hypervideo changes at once, with a \"Loading …\" message), one of the built-in looks fade, wipe and iris (a black cover comes in over the hypervideo that is left and goes out over the next one), or the name of a loaded extension that has a transition (docs/EXTENDING.md). A name that is neither means none. Opening a hypervideo from the overview and every change while editing have no transition. With reduced motion requested by the viewer, every transition is a short fade.",
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]*$",
+            "default": "none"
+        },
         "allowUploads": {
             "description": "Allow file uploads. Only false (the boolean) forbids them.",
             "type": "boolean",

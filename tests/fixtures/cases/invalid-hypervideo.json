@@ -682,6 +682,25 @@
             ]
         },
         {
+            "name": "autoplay that is no switch",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Lecture"
+                },
+                "config": {
+                    "autoplay": "true"
+                },
+                "clips": []
+            },
+            "errors": [
+                {
+                    "path": "/config/autoplay",
+                    "message": "must be boolean, is string"
+                }
+            ]
+        },
+        {
             "name": "Quiz Results view with rows that are neither chapters nor questions, and a score switch that is no switch",
             "schema": "hypervideo.schema.json",
             "data": {

@@ -556,6 +556,19 @@
                     "message": "must be boolean, is string"
                 }
             ]
+        },
+        {
+            "name": "transition between hypervideos that is neither a look nor an extension's name",
+            "schema": "config.schema.json",
+            "data": {
+                "hypervideoTransition": "Fade Out"
+            },
+            "errors": [
+                {
+                    "path": "/hypervideoTransition",
+                    "message": "must match the pattern ^[a-z0-9][a-z0-9-]*$"
+                }
+            ]
         }
     ]
 }

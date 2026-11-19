@@ -43,7 +43,6 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         stallRequestedBy       = [],
         currentTime            = 0,
         previousTime           = 0,
-        muted                  = false,
         nullVideoStartDate     = 0,
 
         sliderHandle           = null,
@@ -176,17 +175,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             videoElement.addEventListener('ended', function() {
 
                 showEnd();
-                FrameTrail.triggerEvent('ended', {});
-
-                if (HypervideoModel.events.onEnded) {
-                    try {
-                        var endedEvent = new Function('FrameTrail', 'hypervideo', HypervideoModel.events.onEnded);
-                        endedEvent(FrameTrail, FrameTrail.module('HypervideoController'));
-                    } catch (exception) {
-                        // could not parse and compile JS code!
-                        console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
-                    }
-                }
+                reportEnded();
 
             });
 
@@ -215,6 +204,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                     CodeSnippetsController.initController();
                     ChaptersController.initController();
                     SubtitlesController.initController();
+
+                    // A mute chosen before outlives the change of hypervideo: it goes to the new player and the new overlay media.
+                    // (Only then: a video element that came muted from the page stays as it is.)
+                    if (FrameTrail.getState('muted')) { applyMuted(); }
 
                     initPlayButton();
                     initProgressBar();
@@ -323,6 +316,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                     ChaptersController.initController();
                     SubtitlesController.initController();
 
+                    // A mute chosen before outlives the change of hypervideo: it goes to the new player and the new overlay media.
+                    // (Only then: a video element that came muted from the page stays as it is.)
+                    if (FrameTrail.getState('muted')) { applyMuted(); }
+
                     initPlayButton();
                     initProgressBar();
 
@@ -368,6 +365,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                             break;
                         case 1:
                             // playing
+                            // Under the cover of a transition nothing plays yet (the first seek can start the player).
+                            if (FrameTrail.module('HypervideoTransition') && FrameTrail.module('HypervideoTransition').holding) {
+                                event.target.pauseVideo();
+                                break;
+                            }
                             disableYoutubeCaptions(event.target);
                             _play();
                             onPlaySuccess();
@@ -497,6 +499,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                                 initVimeoDuration(vimeo_duration);
                             }
                         });
+                    } else if (FrameTrail.module('HypervideoTransition') && FrameTrail.module('HypervideoTransition').holding) {
+                        // Under the cover of a transition nothing plays yet (the embed starts by itself).
+                        window.player_vimeo[FrameTrail.getState('lastVimeoPlayerID')].pause();
                     } else {
                         _play();
                     }
@@ -559,17 +564,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
                     _pause();
                     showEnd();
-                    FrameTrail.triggerEvent('ended', {});
-
-                    if (HypervideoModel.events.onEnded) {
-                        try {
-                            var endedEvent = new Function('FrameTrail', 'hypervideo', HypervideoModel.events.onEnded);
-                            endedEvent(FrameTrail, FrameTrail.module('HypervideoController'));
-                        } catch (exception) {
-                            // could not parse and compile JS code!
-                            console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
-                        }
-                    }
+                    reportEnded();
 
                 });
 
@@ -631,6 +626,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 ChaptersController.initController();
                 SubtitlesController.initController();
 
+                // A mute chosen before outlives the change of hypervideo: it goes to the new player and the new overlay media.
+                // (Only then: a video element that came muted from the page stays as it is.)
+                if (FrameTrail.getState('muted')) { applyMuted(); }
+
                 initPlayButton();
                 initProgressBar();
 
@@ -691,6 +690,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 CodeSnippetsController.initController();
                 ChaptersController.initController();
                 SubtitlesController.initController();
+
+                // A mute chosen before outlives the change of hypervideo: it goes to the new player and the new overlay media.
+                // (Only then: a video element that came muted from the page stays as it is.)
+                if (FrameTrail.getState('muted')) { applyMuted(); }
 
                 initPlayButton();
                 initProgressBar();
@@ -1450,6 +1453,36 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 
     /**
+     * I report that the hypervideo has ended: the public "ended" event, then the hypervideo's own onEnded code.
+     * The three kinds of video that have an end come here (native, Vimeo, and a hypervideo without a video, from pause()).
+     *
+     * @method reportEnded
+     * @private
+     */
+    function reportEnded() {
+
+        // A hypervideo being left by a transition plays on under the cover, but the viewer has gone:
+        // its end is not reported, so its onEnded code cannot lead somewhere else than the viewer chose.
+        if (FrameTrail.module('HypervideoTransition') && FrameTrail.module('HypervideoTransition').leaving) {
+            return;
+        }
+
+        FrameTrail.triggerEvent('ended', {});
+
+        if (HypervideoModel.events.onEnded) {
+            try {
+                var endedEvent = new Function('FrameTrail', 'hypervideo', HypervideoModel.events.onEnded);
+                endedEvent(FrameTrail, FrameTrail.module('HypervideoController'));
+            } catch (exception) {
+                // could not parse and compile JS code!
+                console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
+            }
+        }
+
+    };
+
+
+    /**
      * I am the function, which starts the playback of the hypervideo.
      *
      * When there is a HTML5 video present, i simply call its .play() method,
@@ -1475,6 +1508,12 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             FrameTrail.module('QuizController').playRequested();
         }
 
+        // Under the cover of a transition between hypervideos the hypervideo is changing or not shown yet:
+        // the play() is kept and carried out when the cover is gone. (After the quiz's turn: it can start the change itself.)
+        if (FrameTrail.module('HypervideoTransition') && FrameTrail.module('HypervideoTransition').holdPlay()) {
+            return;
+        }
+
         FrameTrail.changeState('videoWorking', false);
 
         if (HypervideoModel.videoType == 'native') {
@@ -1487,6 +1526,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                     onPlaySuccess();
                 }).catch(function(error) {
                     // play error (most likely autoplay prevented)
+                    // A change of hypervideo hid the start button; when the browser refuses to play, it is the way to start.
+                    if (error && error.name === 'NotAllowedError' && !FrameTrail.getState('editMode')) {
+                        ViewVideo.VideoStartOverlay.classList.remove('inactive');
+                        ViewVideo.VideoStartOverlay.style.display = '';
+                    }
                 });
 
             }
@@ -1502,10 +1546,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         } else if (HypervideoModel.videoType == 'vimeo') {
 
             var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
-            setMuted(false);
+            // The embed starts silent (autoplay); it gets the sound the mute state says.
+            applyMuted();
 
             window.player_vimeo[lastVimeoPlayerID].play().then(function() {
-                setMuted(false);
+                applyMuted();
                 _play();
                 onPlaySuccess();
             }).catch(function(error) {
@@ -1515,6 +1560,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                     break;
                     case 'PrivacyError':
                         FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo '+ labels['ErrorVideoNotFoundOrPrivate']);
+                    break;
+                    case 'NotAllowedError':
+                        // The browser refuses to play without a click (autoplay): the viewer presses play.
                     break;
                     default:
                         // Some other error occurred
@@ -1561,6 +1609,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             return;
         }
 
+        // A play() kept for the end of a transition between hypervideos is taken back.
+        if (FrameTrail.module('HypervideoTransition')) {
+            FrameTrail.module('HypervideoTransition').forgetPlay();
+        }
+
         if (HypervideoModel.videoType == 'native') {
 
             videoElement.pause();
@@ -1605,18 +1658,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         } else if (HypervideoModel.videoType == 'canvas' && currentTime == HypervideoModel.offsetIn+HypervideoModel.duration) {
 
-            FrameTrail.triggerEvent('ended', {});
-
-            // Hack to fire ended event in NullVideo
-            if (HypervideoModel.events.onEnded) {
-                try {
-                    var endedEvent = new Function('FrameTrail', 'hypervideo', HypervideoModel.events.onEnded);
-                    endedEvent(FrameTrail, FrameTrail.module('HypervideoController'));
-                } catch (exception) {
-                    // could not parse and compile JS code!
-                    console.warn(labels['MessageEventHandlerContainsErrors'] +': '+ exception.message);
-                }
-            }
+            // A hypervideo without a video has no "ended" of its own: pausing at its end is its end.
+            reportEnded();
 
         }
 
@@ -1963,39 +2006,54 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 
     /**
-     * The HypervideoController stores the {{#crossLink "HypervideoController/muted:attribute"}}muted{{/crossLink}}.
-     * When this property is being set, the muted attribute of the &lt;video&gt; element has to be updated
-     * (only when there is a video source file)
+     * Whether the sound is off is a state of the instance ("muted"), not of this module:
+     * the module is made again for every hypervideo, and the mute must outlive that.
+     * I only change the state; {{#crossLink "HypervideoController/applyMuted:method"}}applyMuted(){{/crossLink}} hears it.
      *
      * @method setMuted
-     * @param {Boolean} muted
-     * @return muted
+     * @param {Boolean} aBoolean
      * @private
      */
-    function setMuted(muted) {
+    function setMuted(aBoolean) {
+
+        FrameTrail.changeState('muted', !!aBoolean);
+
+    };
+
+
+    /**
+     * I give the "muted" state to the video (element or embedded player) and to the overlays' media.
+     * I am called when the state changes and when a hypervideo is ready, so a new player starts as the last one was left.
+     *
+     * @method applyMuted
+     * @private
+     */
+    function applyMuted() {
+
+        var muted = !!FrameTrail.getState('muted');
 
         if (HypervideoModel.videoType == 'native') {
 
-            videoElement.muted = muted;
+            if (videoElement) { videoElement.muted = muted; }
 
         } else if (HypervideoModel.videoType == 'youtube') {
 
-            var lastYoutubePlayerID = FrameTrail.getState('lastYoutubePlayerID');
+            var youtubePlayer = window.player_youtube && window.player_youtube[FrameTrail.getState('lastYoutubePlayerID')];
 
-            if (muted) {
-                window.player_youtube[lastYoutubePlayerID].mute();
-            } else {
-                window.player_youtube[lastYoutubePlayerID].unMute();
+            if (youtubePlayer && typeof youtubePlayer.mute === 'function') {
+                if (muted) {
+                    youtubePlayer.mute();
+                } else {
+                    youtubePlayer.unMute();
+                }
             }
 
         } else if (HypervideoModel.videoType == 'vimeo') {
 
-            var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
+            var vimeoPlayer = window.player_vimeo && window.player_vimeo[FrameTrail.getState('lastVimeoPlayerID')];
 
-            if (muted) {
-                window.player_vimeo[lastVimeoPlayerID].setVolume(0);
-            } else {
-                window.player_vimeo[lastVimeoPlayerID].setVolume(1);
+            if (vimeoPlayer && typeof vimeoPlayer.setVolume === 'function') {
+                vimeoPlayer.setVolume(muted ? 0 : 1);
             }
 
         }
@@ -2085,6 +2143,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 
     return {
+
+        onChange: {
+            muted: applyMuted
+        },
 
         initController: initController,
 
@@ -2193,9 +2255,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         set currentTime(aNumber)                { return setCurrentTime(aNumber) },
 
         /**
-         * These attributes store the muted state of the hypervideo.
+         * Whether the sound is off: the instance's "muted" state, which outlives a change of hypervideo.
          *
-         * The muted state is set like this:
+         * It is set like this:
          *
          *     FrameTrail.module('HypervideoController').muted = true
          *
@@ -2203,7 +2265,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
          *
          * @attribute muted
          */
-        get muted()              { return muted                   },
+        get muted()              { return !!FrameTrail.getState('muted') },
         set muted(aBoolean)      { return setMuted(aBoolean)      }
 
     }

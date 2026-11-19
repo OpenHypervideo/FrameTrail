@@ -167,6 +167,25 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
             return String(value == null ? '' : value).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
         }
 
+        // The transition between hypervideos: the built-in looks, and the transitions of loaded extensions.
+        function transitionOptions(currentValue) {
+
+            var Transition = FrameTrail.module('HypervideoTransition'),
+                selected   = (typeof currentValue === 'string' && currentValue) ? currentValue : 'none',
+                list       = Transition ? Transition.looks() : [{ id: 'none', label: labels['SettingsTransitionNone'] }];
+
+            // A stored name that is not offered here is an extension this installation does not have (a _data
+            // folder is portable). Carry it through instead of letting the select quietly rewrite it on the next Apply.
+            if (!list.some(function(item) { return item.id === selected; })) {
+                list = list.concat([{ id: selected, label: selected + ' (' + labels['SettingsTransitionNotInstalled'] + ')' }]);
+            }
+
+            return list.map(function(item) {
+                return '<option value="'+ escapeAttribute(item.id) +'"'+ (item.id === selected ? ' selected' : '') +'>'+ escapeAttribute(item.label) +'</option>';
+            }).join('');
+
+        }
+
         var _cuw = document.createElement('div');
         // Two groups, not one run of four equal columns: everything on the left
         // is a plain instance option, while user action capture is a feature of
@@ -197,6 +216,13 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
                             +   '            </select>'
                             +   '        </div>'
                             +   '        <div class="fieldHint">'+ labels['MessageVideoFit'] +'</div>'
+                            +   '        <label class="mt-1" for="hypervideoTransition">'+ labels['SettingsHypervideoTransition'] +'</label>'
+                            +   '        <div class="custom-select">'
+                            +   '            <select name="hypervideoTransition" id="hypervideoTransition">'
+                            +                    transitionOptions(configData.hypervideoTransition)
+                            +   '            </select>'
+                            +   '        </div>'
+                            +   '        <div class="fieldHint">'+ labels['MessageHypervideoTransition'] +'</div>'
                             // Checked unless the value is literally false: the
                             // server refuses uploads only on === false, so a
                             // missing key means allowed, and showing it as off

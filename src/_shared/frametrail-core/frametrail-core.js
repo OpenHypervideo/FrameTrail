@@ -346,6 +346,8 @@
                 slidePosition:      'middle',
                 sidebarOpen:        false,
                 fullscreen:         false,
+                // The sound is off (the volume button). A state, so it outlives a change of hypervideo.
+                muted:              false,
                 viewSize:           [0,0],
                 unsavedChanges:     false,
                 overviewSearchQuery: ''
