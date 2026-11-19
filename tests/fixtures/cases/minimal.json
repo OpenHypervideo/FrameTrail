@@ -268,6 +268,37 @@
             }
         },
         {
+            "name": "hypervideo with Quiz Results views: one with every setting changed, one for the phones with none",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Quiz"
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaRight": [
+                            {
+                                "type": "QuizResults",
+                                "name": "Learning path",
+                                "contentSize": "large",
+                                "quizRows": "questions",
+                                "showQuizScore": false,
+                                "showQuizLegend": false,
+                                "showQuizRestart": true,
+                                "rememberQuizResults": true
+                            }
+                        ],
+                        "areaCompanion": [
+                            {
+                                "type": "QuizResults"
+                            }
+                        ]
+                    }
+                },
+                "clips": []
+            }
+        },
+        {
             "name": "empty config.json",
             "schema": "config.schema.json",
             "data": {}

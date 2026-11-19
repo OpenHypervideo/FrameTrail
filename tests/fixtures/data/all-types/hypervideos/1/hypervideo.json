@@ -70,6 +70,20 @@
                         "users": [],
                         "text": ""
                     }
+                },
+                {
+                    "type": "QuizResults",
+                    "name": "Quiz results",
+                    "description": "",
+                    "icon": "icon-ok-circled",
+                    "cssClass": "",
+                    "contentSize": "medium",
+                    "initClosed": false,
+                    "quizRows": "questions",
+                    "showQuizScore": true,
+                    "showQuizLegend": false,
+                    "showQuizRestart": true,
+                    "rememberQuizResults": false
                 }
             ],
             "areaRight": [
@@ -126,6 +140,11 @@
                         "users": [],
                         "text": ""
                     }
+                },
+                {
+                    "type": "QuizResults",
+                    "name": "Quiz results",
+                    "contentSize": "large"
                 }
             ],
             "areaCircular": [

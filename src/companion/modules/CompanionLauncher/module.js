@@ -93,6 +93,7 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         overview    = false,
         grant       = null,      // the pairing grant the player gave last, to remove its cookie when pairing ends
         lastQuiz    = null,      // the player's last question message (kept across players: the phone's player reads it when it is ready)
+        lastResults = null,      // the player's last results message (the states of the hypervideo's questions), kept the same way
         unknownSent = {},        // questions this phone said it does not have, once each
         wakeLock    = null,
         pendingSeek = null,
@@ -128,7 +129,13 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
 
         answer: answer,
 
-        // fn({ type: 'state', moved }), fn({ type: 'control' }) or fn({ type: 'quiz' }); returns the unsubscribe function.
+        // The questions of the hypervideo shown, as the player lists them ({ key, start, end, question, questionType,
+        // gradable }): its quiz overlays are not in this phone's copy. And what the player says of them: the state
+        // of every question that is no longer open, by key (a results message). The Quiz Results view shows both.
+        get quizzes() { return (payload && Array.isArray(payload.quizzes)) ? payload.quizzes : []; },
+        get results() { return (lastResults && payload && lastResults.hypervideo === String(payload.bundle.id)) ? lastResults.states : {}; },
+
+        // fn({ type: 'state', moved }), fn({ type: 'control' }), fn({ type: 'quiz' }) or fn({ type: 'results' }); returns the unsubscribe function.
         subscribe: function(fn) {
             subscribers.push(fn);
             return function() {
@@ -528,6 +535,11 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
                 if (playerReady) { notify({ type: 'quiz' }); }
                 break;
 
+            case 'results':
+                lastResults = message;
+                if (playerReady) { notify({ type: 'results' }); }
+                break;
+
             case 'pong':
                 if (pings[message.id]) {
                     var sample = Date.now() - pings[message.id];
@@ -598,6 +610,7 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
 
         data.bundle = Pairing.companionBundle(data.bundle);
         if (data.bundle.id == null || data.bundle.id === '') { data.bundle.id = '0'; }
+        data.quizzes = Pairing.readQuizzes(data.quizzes);
 
         startPlayer(data, done.id);
 

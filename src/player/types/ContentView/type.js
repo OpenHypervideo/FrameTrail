@@ -412,7 +412,8 @@ FrameTrail.defineType(
 
                         case 'TimedContent':
 
-                            self.contentViewContainer.querySelectorAll('.customhtmlContainer, .transcriptContainer').forEach(function(el) { el.remove(); });
+                            // What another type left behind (the type can be changed in the settings)
+                            self.contentViewContainer.querySelectorAll('.customhtmlContainer, .transcriptContainer, .chaptersContainer, .timelinesContainer, .quizResultsSummary').forEach(function(el) { el.remove(); });
 
                             if (!self.contentViewData.collectionFilter) {
                                 return;
@@ -653,6 +654,14 @@ FrameTrail.defineType(
                             self._clearContentCollection();
 
                             self.renderChapterCards();
+
+                            break;
+
+                        case 'QuizResults':
+
+                            self._clearContentCollection();
+
+                            self.renderQuizResults();
 
                             break;
 
@@ -1111,6 +1120,29 @@ FrameTrail.defineType(
                                     }
                                 } else if ( card.classList.contains('active') ) {
                                     card.classList.remove('active');
+                                }
+
+                            });
+
+                            break;
+
+                        case 'QuizResults':
+
+                            // The row the playhead is in: a chapter, or the question asked last
+                            self.contentViewContainer.querySelectorAll('.quizResultRow').forEach(function(row) {
+
+                                var isActive = parseFloat(row.getAttribute('data-start')) <= currentTime
+                                            && currentTime < parseFloat(row.getAttribute('data-end'));
+
+                                if (isActive) {
+                                    if ( !row.classList.contains('active') ) {
+                                        row.classList.add('active');
+                                        if (!self.isMouseOver) {
+                                            self._scrollRangeIntoCenter(row, row);
+                                        }
+                                    }
+                                } else if ( row.classList.contains('active') ) {
+                                    row.classList.remove('active');
                                 }
 
                             });
@@ -2252,6 +2284,340 @@ FrameTrail.defineType(
 
 
                 /**
+                 * I render the hypervideo's questions and what was answered: a Quiz Results view.
+                 *
+                 * The questions are the QuizController's (quiz overlays, and the quiz annotations a
+                 * collection view shows; on a phone the list its player sent). They are shown as dots,
+                 * one per question, in rows: one row per chapter with the dots of the questions in it
+                 * (quizRows "chapters", and there are chapters), or one row per question. Below (in the
+                 * top and bottom areas: at the end) a summary: the score, a legend, "Start again".
+                 *
+                 * The rows are the Chapters view's cards (.chapterElement in .chaptersContainer), so
+                 * every size in every area is laid out by the same rules; a row's click seeks to its
+                 * chapter or question. What changes with an answer is only written by
+                 * updateQuizResultStates(), so that a result never rebuilds (and scrolls) the list.
+                 *
+                 * @method renderQuizResults
+                 */
+                renderQuizResults: function() {
+
+                    var self = this;
+
+                    if (self.contentViewData.type !== 'QuizResults' || !self.contentViewContainer) { return; }
+
+                    var HypervideoModel = FrameTrail.module('HypervideoModel'),
+                        Controller      = FrameTrail.module('HypervideoController'),
+                        QuizController  = FrameTrail.module('QuizController'),
+                        offsetIn        = HypervideoModel.offsetIn,
+                        duration        = HypervideoModel.duration,
+                        videoEnd        = offsetIn + duration,
+                        size            = self.contentViewData.contentSize,
+                        isVertical      = self.isVerticalArea(),
+                        contents        = self.contentViewContainer.querySelector('.contentViewContents'),
+                        questions       = QuizController ? QuizController.questions() : [],
+                        chapters        = FrameTrail.module('ChaptersController').getSortedChapters(),
+                        byChapters      = self.contentViewData.quizRows !== 'questions' && chapters.length > 0;
+
+                    contents.innerHTML = '';
+
+                    var container = document.createElement('div');
+                    container.className = 'chaptersContainer quizResultsContainer';
+                    container.setAttribute('data-rows', byChapters ? 'chapters' : 'questions');
+                    contents.appendChild(container);
+
+                    // Without a question there is nothing to show: an empty area, as a Chapters view
+                    // without chapters. The settings say why.
+                    if (!questions.length) { return; }
+
+                    var rows = [];
+
+                    if (byChapters) {
+
+                        chapters.forEach(function(chapter, index) {
+                            rows.push({
+                                start:       chapter.data.start,
+                                end:         (index + 1 < chapters.length) ? chapters[index + 1].data.start : videoEnd,
+                                title:       chapter.data.title || self.labels['ChapterUntitled'],
+                                placeholder: !chapter.data.title,
+                                questions:   []
+                            });
+                        });
+
+                        // A question belongs to the chapter it is asked in; one before the first chapter to the first
+                        questions.forEach(function(question) {
+                            var row = rows[0];
+                            for (var r = 0; r < rows.length; r++) {
+                                if (rows[r].start <= question.start) { row = rows[r]; }
+                            }
+                            row.questions.push(question);
+                        });
+
+                    } else {
+
+                        questions.forEach(function(question, index) {
+                            rows.push({
+                                start:       question.start,
+                                end:         (index + 1 < questions.length) ? questions[index + 1].start : videoEnd,
+                                title:       question.question || self.labels['QuizResultsQuestion'].replace('%s', index + 1),
+                                placeholder: !question.question,
+                                questions:   [question],
+                                key:         question.key
+                            });
+                        });
+
+                    }
+
+                    // As in the Chapters view: in a narrow vertical strip the text moves into a tooltip that points
+                    // away from the video, and in a compact horizontal strip a chapter's width is its share of the time.
+                    var tooltipAttribute = (isVertical && size == 'small')
+                            ? ((self.whichArea == 'left') ? 'data-tooltip-left-left' : 'data-tooltip-right-right')
+                            : null,
+                        proportional = byChapters && !isVertical && (size == 'small' || size == 'medium') && duration > 0;
+
+                    if (proportional && rows[0].start > offsetIn) {
+                        var spacer = document.createElement('div');
+                        spacer.className = 'chapterCardSpacer';
+                        spacer.style.width = (100 * (rows[0].start - offsetIn) / duration) + '%';
+                        container.appendChild(spacer);
+                    }
+
+                    rows.forEach(function(row) {
+
+                        var timeLabel = Controller.formatTime(row.start - offsetIn),
+                            card      = document.createElement('div');
+
+                        card.className = 'collectionElement chapterElement quizResultRow';
+                        card.setAttribute('data-start', row.start);
+                        card.setAttribute('data-end', row.end);
+                        if (row.key) { card.setAttribute('data-key', row.key); }
+
+                        if (proportional) {
+                            card.style.width = 'calc(' + (100 * Math.max(0, row.end - row.start) / duration) + '% - var(--chapter-gap))';
+                        }
+
+                        var textElement = document.createElement('div');
+                        textElement.className = 'chapterCardText';
+
+                        var timeElement = document.createElement('div');
+                        timeElement.className = 'chapterCardTime';
+                        timeElement.textContent = timeLabel;
+                        textElement.appendChild(timeElement);
+
+                        var titleElement = document.createElement('div');
+                        titleElement.className = 'chapterCardTitle';
+                        // textContent, not innerHTML: titles and questions are user input
+                        titleElement.textContent = row.title;
+                        if (row.placeholder) { titleElement.classList.add('placeholder'); }
+                        textElement.appendChild(titleElement);
+
+                        // A question's state in words, where there is room for it (CSS: large)
+                        if (row.key) {
+                            var stateElement = document.createElement('div');
+                            stateElement.className = 'quizResultStateText';
+                            textElement.appendChild(stateElement);
+                        }
+
+                        card.appendChild(textElement);
+
+                        var dots = document.createElement('div');
+                        dots.className = 'quizDots';
+
+                        row.questions.forEach(function(question) {
+
+                            var item = document.createElement('span'),
+                                dot  = document.createElement('span');
+
+                            item.className = 'quizDotItem';
+                            dot.setAttribute('data-key', question.key);
+                            self._setQuizDotState(dot, 'open');
+                            item.appendChild(dot);
+
+                            if (byChapters) {
+                                // Among a chapter's questions, each dot is its own question: it jumps there, says which
+                                // one it is (a tooltip), and where there is room (CSS: large) has its text beside it.
+                                dot._ftQuestion = question.question;
+                                var label = document.createElement('span');
+                                label.className = 'quizDotLabel';
+                                label.textContent = question.question;
+                                item.appendChild(label);
+                                item.addEventListener('click', function(evt) {
+                                    evt.stopPropagation();
+                                    FrameTrail.module('HypervideoController').currentTime = question.start;
+                                });
+                            }
+
+                            dots.appendChild(item);
+
+                        });
+
+                        card.appendChild(dots);
+
+                        if (tooltipAttribute) {
+                            card.setAttribute(tooltipAttribute, timeLabel + '  ' + row.title);
+                            card.setAttribute('data-tooltip-variant', 'resourceTitle');
+                        }
+
+                        card.addEventListener('click', function() {
+                            FrameTrail.module('HypervideoController').currentTime = row.start;
+                        });
+
+                        container.appendChild(card);
+
+                    });
+
+                    // The summary: a sibling of the rows, so that in a horizontal strip the rows' shares are
+                    // shares of what the summary leaves, and in a list it can stay in view below them.
+                    var summary = document.createElement('div');
+                    summary.className = 'quizResultsSummary';
+
+                    if (self.contentViewData.showQuizScore !== false) {
+                        var score = document.createElement('div');
+                        score.className = 'quizResultsScore';
+                        score.innerHTML = '<span class="quizResultsScoreValue"></span> <span class="quizResultsScoreText"></span>';
+                        summary.appendChild(score);
+                    }
+
+                    if (self.contentViewData.showQuizLegend !== false) {
+                        var legend = document.createElement('div');
+                        legend.className = 'quizResultsLegend';
+                        var legendStates = ['right', 'retried', 'wrong'];
+                        // "answered" only where a question has no right answer to tell
+                        if (questions.some(function(question) { return !question.gradable; })) { legendStates.push('answered'); }
+                        legendStates.forEach(function(state) {
+                            var entry = document.createElement('span');
+                            entry.className = 'quizResultsLegendEntry';
+                            var dot = document.createElement('span');
+                            self._setQuizDotState(dot, state);
+                            entry.appendChild(dot);
+                            entry.appendChild(document.createTextNode(' ' + self.labels['QuizResultsLegend' + state.charAt(0).toUpperCase() + state.slice(1)]));
+                            legend.appendChild(entry);
+                        });
+                        summary.appendChild(legend);
+                    }
+
+                    // Starting again is the player's to do: a phone only shows the results
+                    if (self.contentViewData.showQuizRestart === true && !FrameTrail.getState('companion')) {
+                        var restart = document.createElement('button');
+                        restart.type = 'button';
+                        restart.className = 'quizResultsRestart';
+                        restart.innerHTML = '<span class="icon-ccw"></span><span class="quizResultsRestartLabel"></span>';
+                        restart.querySelector('.quizResultsRestartLabel').textContent = self.labels['QuizResultsRestart'];
+                        restart.setAttribute('data-tooltip-top', self.labels['QuizResultsRestart']);
+                        restart.addEventListener('click', function(evt) {
+                            evt.stopPropagation();
+                            var controller = FrameTrail.module('QuizController');
+                            if (controller) { controller.restart(); }
+                        });
+                        summary.appendChild(restart);
+                    }
+
+                    if (summary.firstChild) {
+                        contents.appendChild(summary);
+                    }
+
+                    self.updateQuizResultStates();
+
+                    // The row the playhead is in (a view made before the video is there has none yet)
+                    var now;
+                    try { now = Controller.currentTime; } catch (e) { now = undefined; }
+                    if (typeof now === 'number' && isFinite(now)) {
+                        self.updateTimedStateOfContentViews(now);
+                    }
+
+                },
+
+
+                /**
+                 * I give a dot of a Quiz Results view the look of a question's state: an icon of the icon
+                 * font, whose circle is part of the glyph (so the mark sits in its middle at every size).
+                 * A full circle with a check is right at the first try, an outlined one right after a
+                 * replay, an outlined cross not right yet, an empty circle open, a circle with a dot
+                 * answered where there is no right answer to tell. The colours are the stylesheet's.
+                 *
+                 * @method _setQuizDotState
+                 * @private
+                 * @param {HTMLElement} dot
+                 * @param {String} state one of FrameTrailQuiz.RESULT_STATES
+                 */
+                _setQuizDotState: function(dot, state) {
+                    var icons = {
+                        open:     'icon-circle-empty',
+                        right:    'icon-ok-circled',
+                        retried:  'icon-ok-circled2',
+                        wrong:    'icon-cancel-circled2',
+                        answered: 'icon-dot-circled'
+                    };
+                    dot.className = 'quizDot ' + (icons[state] || icons.open);
+                    dot.setAttribute('data-state', state);
+                },
+
+
+                /**
+                 * I write what was answered into a rendered Quiz Results view: the state of every dot
+                 * and question row, and the score. Called for every result (ViewLayout.updateQuizResultViews).
+                 *
+                 * @method updateQuizResultStates
+                 */
+                updateQuizResultStates: function() {
+
+                    var self = this;
+
+                    if (self.contentViewData.type !== 'QuizResults' || !self.contentViewContainer) { return; }
+
+                    var QuizController = FrameTrail.module('QuizController'),
+                        Quiz           = window.FrameTrailQuiz,
+                        container      = self.contentViewContainer.querySelector('.quizResultsContainer');
+
+                    if (!container || !QuizController) { return; }
+
+                    var states    = QuizController.results(),
+                        questions = QuizController.questions();
+
+                    function stateOf(key) {
+                        var state = Object.prototype.hasOwnProperty.call(states, key) ? states[key] : 'open';
+                        return (Quiz.RESULT_STATES.indexOf(state) >= 0) ? state : 'open';
+                    }
+
+                    function stateLabel(state) {
+                        return self.labels['QuizResultsState' + state.charAt(0).toUpperCase() + state.slice(1)];
+                    }
+
+                    container.querySelectorAll('.quizDot[data-key]').forEach(function(dot) {
+                        var state = stateOf(dot.getAttribute('data-key'));
+                        self._setQuizDotState(dot, state);
+                        // Among a chapter's dots, each says which question it is
+                        if (dot._ftQuestion !== undefined) {
+                            dot.setAttribute('data-tooltip-top', (dot._ftQuestion ? dot._ftQuestion + ' · ' : '') + stateLabel(state));
+                        }
+                    });
+
+                    container.querySelectorAll('.quizResultRow[data-key]').forEach(function(row) {
+                        var state     = stateOf(row.getAttribute('data-key')),
+                            stateText = row.querySelector('.quizResultStateText');
+                        row.setAttribute('data-state', state);
+                        if (stateText) { stateText.textContent = stateLabel(state); }
+                    });
+
+                    // The score counts the questions that have a right answer; without any, the questions answered.
+                    var value = self.contentViewContainer.querySelector('.quizResultsScoreValue'),
+                        text  = self.contentViewContainer.querySelector('.quizResultsScoreText');
+
+                    if (value && text) {
+                        var score  = Quiz.score(questions, states),
+                            graded = score.gradable > 0,
+                            count  = graded ? score.right : score.done,
+                            total  = graded ? score.gradable : score.total,
+                            words  = self.labels[graded ? 'QuizResultsRightFirstTry' : 'QuizResultsAnswered'];
+                        value.textContent = self.labels['QuizResultsScoreOf'].replace('%s', count).replace('%s', total);
+                        text.textContent  = words;
+                        // Where only the number fits, the sentence is its tooltip
+                        value.parentElement.setAttribute('data-tooltip-top', value.textContent + ' ' + words);
+                    }
+
+                },
+
+
+                /**
                  * I point an element's background at one tile of the scrub sprite —
                  * the frame closest to the given absolute time.
                  *
@@ -2978,6 +3344,7 @@ FrameTrail.defineType(
                                     + (circular ? '' :
                                      '            <div '+ (contentViewData.type == 'Transcript' ? 'class="active"' : '') +' data-value="Transcript">'+ self.labels['GenericTextTranscript'] +'</div>'
                                     +'            <div '+ (contentViewData.type == 'Chapters' ? 'class="active"' : '') +' data-value="Chapters">'+ self.labels['SettingsChapters'] +'</div>'
+                                    +'            <div '+ (contentViewData.type == 'QuizResults' ? 'class="active"' : '') +' data-value="QuizResults">'+ self.labels['GenericQuizResults'] +'</div>'
                                     +'            <div '+ (contentViewData.type == 'Timelines' ? 'class="active"' : '') +' data-value="Timelines">'+ self.labels['GenericTimelines'] +'</div>'
                                     +'            <div '+ (contentViewData.type == 'CustomHTML' ? 'class="active"' : '') +' data-value="CustomHTML">'+ self.labels['GenericCustomHTML'] +'</div>')
                                     +'        </div>'
@@ -3062,7 +3429,53 @@ FrameTrail.defineType(
                                     +'    </div>'
                                     +'    <div class="typeSpecific '+ (contentViewData.type == 'Chapters' ? 'active' : '') +'" data-type="Chapters">'
                                     +'        <div class="message active chaptersHintMessage"></div>'
+                                    +'    </div>'
+                                    // Quiz Results: its settings are missing in the stored view while they have their default
+                                    // (rows by chapters, score and legend shown, the others off), see getDataFromEditingUI.
+                                    +'    <div class="typeSpecific '+ (contentViewData.type == 'QuizResults' ? 'active' : '') +'" data-type="QuizResults">'
+                                    +'        <div class="message active quizResultsHintMessage"></div>'
+                                    +'        <div class="layoutRow">'
+                                    +'            <div class="column-4">'
+                                    +'                <label for="'+ idPrefix +'-quizRows">'+ self.labels['SettingsQuizRows'] +':</label>'
+                                    +'                <div class="custom-select"><select id="'+ idPrefix +'-quizRows" class="contentViewData" data-property="quizRows">'
+                                    +'                    <option value="chapters" '+ (contentViewData.quizRows !== 'questions' ? 'selected' : '') +'>'+ self.labels['SettingsQuizRowsChapters'] +'</option>'
+                                    +'                    <option value="questions" '+ (contentViewData.quizRows === 'questions' ? 'selected' : '') +'>'+ self.labels['SettingsQuizRowsQuestions'] +'</option>'
+                                    +'                </select></div>'
+                                    +'            </div>'
+                                    +'            <div class="column-4">'
+                                    +'                <div class="checkboxRow">'
+                                    +'                    <label class="switch" style="display: inline-block;"><input type="checkbox" id="'+ idPrefix +'-showQuizScore" class="contentViewData" data-property="showQuizScore" autocomplete="off" '+ (contentViewData.showQuizScore !== false ? 'checked' : '') +'><span class="slider round"></span></label>'
+                                    +'                    <label for="'+ idPrefix +'-showQuizScore">'+ self.labels['SettingsQuizShowScore'] +'</label>'
+                                    +'                </div>'
+                                    +'                <div class="checkboxRow">'
+                                    +'                    <label class="switch" style="display: inline-block;"><input type="checkbox" id="'+ idPrefix +'-showQuizLegend" class="contentViewData" data-property="showQuizLegend" autocomplete="off" '+ (contentViewData.showQuizLegend !== false ? 'checked' : '') +'><span class="slider round"></span></label>'
+                                    +'                    <label for="'+ idPrefix +'-showQuizLegend">'+ self.labels['SettingsQuizShowLegend'] +'</label>'
+                                    +'                </div>'
+                                    +'            </div>'
+                                    +'            <div class="column-4">'
+                                    +'                <div class="checkboxRow">'
+                                    +'                    <label class="switch" style="display: inline-block;"><input type="checkbox" id="'+ idPrefix +'-showQuizRestart" class="contentViewData" data-property="showQuizRestart" autocomplete="off" '+ (contentViewData.showQuizRestart === true ? 'checked' : '') +'><span class="slider round"></span></label>'
+                                    +'                    <label for="'+ idPrefix +'-showQuizRestart">'+ self.labels['SettingsQuizShowRestart'] +'</label>'
+                                    +'                </div>'
+                                    +'                <div class="checkboxRow">'
+                                    +'                    <label class="switch" style="display: inline-block;"><input type="checkbox" id="'+ idPrefix +'-rememberQuizResults" class="contentViewData" data-property="rememberQuizResults" autocomplete="off" '+ (contentViewData.rememberQuizResults === true ? 'checked' : '') +'><span class="slider round"></span></label>'
+                                    +'                    <label for="'+ idPrefix +'-rememberQuizResults">'+ self.labels['SettingsQuizRemember'] +'</label>'
+                                    +'                </div>'
+                                    +'            </div>'
+                                    +'        </div>'
+                                    +'        <div class="message active">'+ self.labels['MessageHintQuizRemember'] +'</div>'
                                     +'    </div>';
+
+                    // What a Quiz Results view lists, and the one thing that leaves it blank: no question.
+                    (function() {
+                        var quizHint = editingUI.querySelector('.quizResultsHintMessage');
+                        if (!quizHint) { return; }
+                        var controller = FrameTrail.module('QuizController'),
+                            count      = controller ? controller.questions().length : 0;
+                        quizHint.textContent = (count === 0)
+                            ? self.labels['MessageHintNoQuizzes']
+                            : self.labels['MessageHintQuizResults'];
+                    })();
 
                     // Chapters have no settings of their own — the panel only says where
                     // chapters are actually edited, and points out an empty chapter list,
@@ -3461,6 +3874,21 @@ FrameTrail.defineType(
                     if ( newDataObject.type !== 'Transcript' ) {
                         newDataObject.transcriptSource = this.contentViewData.transcriptSource || '';
                     }
+
+                    // The Quiz Results panel always has its fields; only a Quiz Results view takes them, and of
+                    // those only what differs from the default (a stored view names a setting once it was changed;
+                    // one that was written before stays written). Other views keep what they had, untouched.
+                    var quizDefaults = { quizRows: 'chapters', showQuizScore: true, showQuizLegend: true, showQuizRestart: false, rememberQuizResults: false },
+                        oldData      = this.contentViewData;
+
+                    Object.keys(quizDefaults).forEach(function(key) {
+                        var had = Object.prototype.hasOwnProperty.call(oldData, key);
+                        if ( newDataObject.type !== 'QuizResults' ) {
+                            if (had) { newDataObject[key] = oldData[key]; } else { delete newDataObject[key]; }
+                        } else if ( newDataObject[key] === quizDefaults[key] && !had ) {
+                            delete newDataObject[key];
+                        }
+                    });
 
                     return newDataObject;
 

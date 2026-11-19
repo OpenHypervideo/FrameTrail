@@ -533,6 +533,9 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
                     // A question being asked, for a phone that joins or comes back while it is.
                     var question = FrameTrail.module('QuizController') ? FrameTrail.module('QuizController').quizMessage() : null;
                     if (question) { send(g, question); }
+                    // And what has been answered so far (the Quiz Results view)
+                    var results = FrameTrail.module('QuizController') ? FrameTrail.module('QuizController').resultsMessage() : null;
+                    if (results) { send(g, results); }
                 }
                 break;
 
@@ -748,12 +751,15 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
             made     = { key: key, id: bundleID };
 
         made.texts = Export.bundle('hypervideo', id).then(function(bundle) {
+            var Quizzes = FrameTrail.module('QuizController');
             var payload = {
                 bundle:   Pairing.companionBundle(bundle),
                 datapath: Export.pageDatapath(),
                 config:   Export.pageConfig('hypervideo'),
                 offsetIn: Model.offsetIn || 0,
-                duration: Model.duration || 0
+                duration: Model.duration || 0,
+                // The hypervideo's questions: the phone's copy has no overlays, and a Quiz Results view lists them
+                quizzes:  Quizzes ? Quizzes.questions() : []
             };
             return Pairing.bundleMessages(bundleID, JSON.stringify(payload)).map(Pairing.encode);
         });
@@ -835,7 +841,7 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
     }
 
     /**
-     * I send a question message (QuizController) to every phone: encoded once.
+     * I send a question message, or a results message, (QuizController) to every phone: encoded once.
      *
      * @method sendQuiz
      * @param {Object} message

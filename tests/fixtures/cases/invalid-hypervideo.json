@@ -148,7 +148,7 @@
             "errors": [
                 {
                     "path": "/config/layoutArea/areaTop/0/type",
-                    "message": "must be one of \"TimedContent\", \"CustomHTML\", \"Transcript\", \"Timelines\", \"Chapters\""
+                    "message": "must be one of \"TimedContent\", \"CustomHTML\", \"Transcript\", \"Timelines\", \"Chapters\", \"QuizResults\""
                 }
             ]
         },
@@ -621,7 +621,7 @@
             "errors": [
                 {
                     "path": "/config/layoutArea/areaCompanion/0/type",
-                    "message": "must be one of \"TimedContent\", \"CustomHTML\", \"Transcript\", \"Timelines\", \"Chapters\""
+                    "message": "must be one of \"TimedContent\", \"CustomHTML\", \"Transcript\", \"Timelines\", \"Chapters\", \"QuizResults\""
                 }
             ]
         },
@@ -678,6 +678,37 @@
                 {
                     "path": "/config/layoutArea/areaCircular/0/ringGap",
                     "message": "must be >= 0"
+                }
+            ]
+        },
+        {
+            "name": "Quiz Results view with rows that are neither chapters nor questions, and a score switch that is no switch",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Quiz"
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaRight": [
+                            {
+                                "type": "QuizResults",
+                                "quizRows": "answers",
+                                "showQuizScore": "yes"
+                            }
+                        ]
+                    }
+                },
+                "clips": []
+            },
+            "errors": [
+                {
+                    "path": "/config/layoutArea/areaRight/0/quizRows",
+                    "message": "must be one of \"chapters\", \"questions\""
+                },
+                {
+                    "path": "/config/layoutArea/areaRight/0/showQuizScore",
+                    "message": "must be boolean, is string"
                 }
             ]
         },

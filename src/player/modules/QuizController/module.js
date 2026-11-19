@@ -58,6 +58,11 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         lastSent        = 0,
         timers          = {},
         panel           = null,
+        // What was decided so far, for the Quiz Results views: { hypervideo id: { item key: { first, solved, tries } } }.
+        // It outlives reset(): coming back to a hypervideo shows what was answered there.
+        records         = {},
+        stored          = {},       // hypervideos whose records may be in the browser's storage
+        storageWarned   = false,
         // On a phone:
         mine            = {},       // this phone's answers, by key
         sheet           = null,
@@ -242,6 +247,11 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         session.decision = decision;
         session.act      = act;
         session.endsAt   = null;
+
+        // A countdown that ran out with no answer decides too, but nobody answered: no result.
+        if (votes.length) {
+            record(session.key, decision.correct);
+        }
 
         FrameTrail.triggerEvent('quizDecided', {
             question:     attrs.question,
@@ -559,6 +569,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
 
         overlayAnswered[key] = entry;
         emitAnswered(attrs, choice, 'player');
+        record(key, decision.correct);
 
         if (isLink(act)) {
             window.open(String(act.target), '_blank', 'noopener');
@@ -897,6 +908,214 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
 
 
     /* ------------------------------------------------------------------ */
+    /*  Results (the Quiz Results views)                                  */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * I list the questions of the open hypervideo, in the order of their start, as
+     * FrameTrailQuiz.digest() describes them: its quiz overlays, and the quiz annotations a
+     * collection view of its layout shows (around the video or on the phones; others are never
+     * asked). On a phone: the list the player sent with the hypervideo.
+     *
+     * @method questions
+     * @return {Array}
+     */
+    function questions() {
+
+        if (companion) {
+            return Array.isArray(companion.quizzes) ? companion.quizzes : [];
+        }
+
+        var Model      = FrameTrail.module('HypervideoModel'),
+            ViewLayout = FrameTrail.module('ViewLayout'),
+            list       = [];
+
+        if (!Model) { return list; }
+
+        (Model.overlays || []).forEach(function(overlay) {
+            if (overlay.data.type === 'quiz') { list.push(Quiz.digest(overlay.data)); }
+        });
+
+        (Model.annotations || []).forEach(function(annotation) {
+            if (annotation.data.type === 'quiz' && ViewLayout && ViewLayout.isInCollectionView(annotation)) {
+                list.push(Quiz.digest(annotation.data));
+            }
+        });
+
+        return list.sort(function(a, b) { return a.start - b.start; });
+
+    }
+
+    /**
+     * I return the state of every question of the open hypervideo that is no longer open:
+     * { item key: "right" | "retried" | "wrong" | "answered" } (FrameTrailQuiz.resultState()).
+     * On a phone: what the player sent.
+     *
+     * @method results
+     * @return {Object}
+     */
+    function results() {
+        if (companion) {
+            return (companion.results && typeof companion.results === 'object') ? companion.results : {};
+        }
+        var id = openID();
+        return Quiz.resultStates(id ? records[id] : null);
+    }
+
+    // A quiz was decided: the decision is its result (for a vote with phones, the room's).
+    function record(key, correct) {
+        var id = openID();
+        if (companion || !id) { return; }
+        records[id] = records[id] || {};
+        records[id][key] = Quiz.recordResult(records[id][key], correct);
+        resultsChanged();
+    }
+
+    // The views show the change, the phones hear of it, and it is kept where a view says so.
+    function resultsChanged() {
+        storeResults();
+        var ViewLayout = FrameTrail.module('ViewLayout');
+        if (ViewLayout && ViewLayout.updateQuizResultViews) { ViewLayout.updateQuizResultViews(); }
+        var Host    = FrameTrail.module('PairingHost'),
+            message = resultsMessage();
+        if (Host && Host.sendQuiz && message) { Host.sendQuiz(message); }
+    }
+
+    /**
+     * I return the results message for the phones (docs/PAIRING.md), or null where there is none to send.
+     *
+     * @method resultsMessage
+     * @return {Object|null}
+     */
+    function resultsMessage() {
+        if (companion || !openID()) { return null; }
+        return { type: 'results', hypervideo: openID(), states: results() };
+    }
+
+    /**
+     * I start the open hypervideo's questions again (the Quiz Results view's "Start again"): a quiz
+     * being asked is called off, the results are forgotten, here and in the browser's storage, and
+     * the video goes back to its start.
+     *
+     * @method restart
+     */
+    function restart() {
+
+        if (companion) { return; }
+
+        var id       = openID(),
+            answered = Object.keys(overlayAnswered).map(function(key) { return overlayAnswered[key].overlay; });
+
+        reset();
+        answered.forEach(refresh);
+
+        if (id) { records[id] = {}; }
+        resultsChanged();
+
+        var Model = FrameTrail.module('HypervideoModel');
+        controller().currentTime = (Model && Model.offsetIn) || 0;
+
+    }
+
+    // Results are kept in the browser's storage, per data folder and hypervideo, while a Quiz Results view of
+    // the hypervideo says so (its "Remember on this device"). The storage may be missing, full or forbidden:
+    // then nothing is kept, and everything else works as without the setting.
+    function storageKey(id) {
+        var folder = '';
+        try {
+            folder = new URL(FrameTrail.module('RouteNavigation').resolveDataURL(''), window.location.href).href;
+        } catch (e) {
+            folder = window.location.origin + window.location.pathname;
+        }
+        return 'frametrail-quiz-results:' + folder + '#' + id;
+    }
+
+    function remembers() {
+        var ViewLayout = FrameTrail.module('ViewLayout');
+        return !!(ViewLayout && ViewLayout.quizResultsRemembered && ViewLayout.quizResultsRemembered());
+    }
+
+    function storageProblem(e) {
+        if (storageWarned) { return; }
+        storageWarned = true;
+        console.warn('FrameTrail: quiz results cannot be kept on this device.', e);
+    }
+
+    function storeResults() {
+
+        var id = openID();
+        if (companion || !id) { return; }
+
+        var keep = {}, known = {};
+
+        // Only the questions the hypervideo still has
+        var Model = FrameTrail.module('HypervideoModel');
+        ((Model && Model.overlays) || []).concat((Model && Model.annotations) || []).forEach(function(item) {
+            if (item.data.type === 'quiz') { known[Quiz.itemKey(item.data)] = true; }
+        });
+        Object.keys(records[id] || {}).forEach(function(key) {
+            if (known[key]) { keep[key] = records[id][key]; }
+        });
+
+        try {
+            if (remembers() && Object.keys(keep).length) {
+                window.localStorage.setItem(storageKey(id), JSON.stringify({ v: 1, results: keep }));
+                stored[id] = true;
+            } else if (stored[id]) {
+                window.localStorage.removeItem(storageKey(id));
+                stored[id] = false;
+            }
+        } catch (e) {
+            storageProblem(e);
+        }
+
+    }
+
+    /**
+     * I read the results kept on this device for the hypervideo that was just opened (ViewLayout
+     * calls me when its views are made: they say whether results are kept). What this page already
+     * knows of the hypervideo stays. Where no view keeps results, what an earlier version of the
+     * hypervideo kept is removed.
+     *
+     * @method loadResults
+     */
+    function loadResults() {
+
+        var id = openID();
+        if (companion || !id) { return; }
+
+        try {
+
+            if (!remembers()) {
+                window.localStorage.removeItem(storageKey(id));
+                stored[id] = false;
+                return;
+            }
+
+            var text = window.localStorage.getItem(storageKey(id));
+            stored[id] = text !== null;
+
+            if (text === null || (records[id] && Object.keys(records[id]).length)) { return; }
+
+            var kept = JSON.parse(text),
+                list = (kept && kept.v === 1 && kept.results && typeof kept.results === 'object' && !Array.isArray(kept.results)) ? kept.results : {},
+                read = {};
+
+            Object.keys(list).forEach(function(key) {
+                var known = Quiz.readRecord(list[key]);
+                if (known) { read[key] = known; }
+            });
+
+            records[id] = read;
+
+        } catch (e) {
+            storageProblem(e);
+        }
+
+    }
+
+
+    /* ------------------------------------------------------------------ */
     /*  On a phone                                                        */
     /* ------------------------------------------------------------------ */
 
@@ -991,6 +1210,10 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
     if (companion) {
         companion.subscribe(function(event) {
             if (event.type === 'quiz') { questionChanged(); }
+            if (event.type === 'results') {
+                var ViewLayout = FrameTrail.module('ViewLayout');
+                if (ViewLayout && ViewLayout.updateQuizResultViews) { ViewLayout.updateQuizResultViews(); }
+            }
         });
     }
 
@@ -1015,7 +1238,14 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         phoneAnswer:   phoneAnswer,
         quizMessage:   quizMessage,
         stateOf:       stateOf,
-        reset:         reset
+        reset:         reset,
+
+        questions:      questions,
+        results:        results,
+        resultsMessage: resultsMessage,
+        loadResults:    loadResults,
+        storeResults:   storeResults,
+        restart:        restart
 
     };
 

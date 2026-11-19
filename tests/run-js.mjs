@@ -1888,6 +1888,85 @@ describe('FrameTrailQuiz', () => {
         assert.equal(Quiz.itemKey({ creatorId: 1, created: 1700000000123 }), '1/1700000000123', 'ids as numbers and strings are one');
     });
 
+    test('gradable and digest: what a list of questions needs of a quiz', () => {
+        assert.equal(Quiz.gradable(mc()), true);
+        assert.equal(Quiz.gradable(mc({ answers: [{ text: 'a' }, { text: 'b' }] })), false, 'no answer marked correct');
+        assert.equal(Quiz.gradable({ questionType: 'multiSelect', answers: [{ text: 'a', correct: true }] }), true);
+        assert.equal(Quiz.gradable({ questionType: 'rating', answers: [{ text: 'a', correct: true }] }), false, 'a rating has no right answer');
+        assert.equal(Quiz.gradable({ questionType: 'freeText' }), false);
+        assert.deepStrictEqual(
+            Quiz.digest({ creatorId: '1', created: 1700000000123, start: 12.5, end: 13, type: 'quiz', attributes: mc() }),
+            { key: '1/1700000000123', start: 12.5, end: 13, question: 'Which way?', questionType: 'multipleChoice', gradable: true }
+        );
+        assert.deepStrictEqual(
+            Quiz.digest({ creatorId: 2, created: 5, attributes: { questionType: 'freeText', question: 7 } }),
+            { key: '2/5', start: 0, end: 0, question: '', questionType: 'freeText', gradable: false },
+            'answers never leave with a digest; what is missing has a default'
+        );
+    });
+
+    test('recordResult and resultState: the first try counts, a later right one is a retry', () => {
+        assert.equal(Quiz.resultState(null), 'open');
+        assert.equal(Quiz.resultState({}), 'open');
+
+        const right = Quiz.recordResult(null, true);
+        assert.deepStrictEqual(right, { first: true, solved: true, tries: 1 });
+        assert.equal(Quiz.resultState(right), 'right');
+        assert.equal(Quiz.resultState(Quiz.recordResult(right, false)), 'right', 'a wrong answer later does not take the first try back');
+
+        const wrong = Quiz.recordResult(undefined, false);
+        assert.deepStrictEqual(wrong, { first: false, solved: false, tries: 1 });
+        assert.equal(Quiz.resultState(wrong), 'wrong');
+        const again = Quiz.recordResult(wrong, false);
+        assert.deepStrictEqual(again, { first: false, solved: false, tries: 2 });
+        assert.deepStrictEqual(wrong, { first: false, solved: false, tries: 1 }, 'the record given is not changed');
+        const solved = Quiz.recordResult(again, true);
+        assert.deepStrictEqual(solved, { first: false, solved: true, tries: 3 });
+        assert.equal(Quiz.resultState(solved), 'retried');
+
+        const plain = Quiz.recordResult(null, null);
+        assert.deepStrictEqual(plain, { first: null, solved: false, tries: 1 });
+        assert.equal(Quiz.resultState(plain), 'answered', 'nothing right or wrong to tell');
+        assert.equal(Quiz.resultState(Quiz.recordResult(null, undefined)), 'answered');
+    });
+
+    test('readRecord: only what is a record comes back from storage', () => {
+        assert.deepStrictEqual(Quiz.readRecord({ first: true, solved: true, tries: 2, extra: 1 }), { first: true, solved: true, tries: 2 });
+        assert.deepStrictEqual(Quiz.readRecord({ first: 'yes', solved: 1, tries: 1.9 }), { first: null, solved: false, tries: 1 });
+        for (const junk of [null, 'x', 3, [], {}, { tries: 0 }, { tries: '2' }, { tries: NaN }, { first: true }]) {
+            assert.equal(Quiz.readRecord(junk), null, JSON.stringify(junk));
+        }
+    });
+
+    test('resultStates and score: the questions with a right answer count', () => {
+        const records = {
+            a: { first: true, solved: true, tries: 1 },
+            b: { first: false, solved: true, tries: 2 },
+            c: { first: false, solved: false, tries: 1 },
+            d: { first: null, solved: false, tries: 1 },
+            e: 'junk'
+        };
+        const states = Quiz.resultStates(records);
+        assert.deepStrictEqual(states, { a: 'right', b: 'retried', c: 'wrong', d: 'answered' }, 'open questions are not listed');
+        assert.deepStrictEqual(Quiz.resultStates(null), {});
+
+        const questions = [
+            { key: 'a', gradable: true }, { key: 'b', gradable: true }, { key: 'c', gradable: true },
+            { key: 'd', gradable: false }, { key: 'f', gradable: true }, null
+        ];
+        assert.deepStrictEqual(
+            Quiz.score(questions, states),
+            { total: 5, gradable: 4, right: 1, retried: 1, wrong: 1, answered: 1, open: 1, done: 4 }
+        );
+        assert.deepStrictEqual(
+            Quiz.score(questions, { a: 'nonsense', toString: 'right' }),
+            { total: 5, gradable: 4, right: 0, retried: 0, wrong: 0, answered: 0, open: 5, done: 0 },
+            'an unknown state is open, and only own keys are states'
+        );
+        assert.deepStrictEqual(Quiz.score(null, null), { total: 0, gradable: 0, right: 0, retried: 0, wrong: 0, answered: 0, open: 0, done: 0 });
+        assert.deepStrictEqual(Quiz.RESULT_STATES, ['open', 'right', 'retried', 'wrong', 'answered']);
+    });
+
 });
 
 
@@ -1974,6 +2053,8 @@ describe('FrameTrailPairing', () => {
     test('messages: what each side may send', () => {
         const valid = {
             host: [
+                { type: 'results', hypervideo: '3', states: {} },
+                { type: 'results', hypervideo: '3', states: { '1/1700000000000': 'right', '2/1700000000001': 'retried', '1/5': 'wrong', '1/6': 'answered' } },
                 { type: 'welcome', v: 1, canControl: true, resume: 'r', label: 'Lecture' },
                 { type: 'state', hypervideo: '3', playing: true, time: 12.5, rate: 1, waiting: false, seq: 4 },
                 { type: 'control', canControl: false },
@@ -2020,6 +2101,18 @@ describe('FrameTrailPairing', () => {
         assert.equal(Pairing.validateMessage(Object.assign({ choice: { a: 1 } }, answer), 'guest'), 'choice must be a number, a text or a list of numbers');
         assert.equal(Pairing.validateMessage(Object.assign({ choice: [1, 'x'] }, answer), 'guest'), 'choice must hold numbers');
         assert.equal(Pairing.validateMessage(Object.assign({ choice: 'x'.repeat(2001) }, answer), 'guest'), 'choice is too long');
+
+        // Results: the state of every question that is no longer open, by item key
+        const results = { type: 'results', hypervideo: '3' };
+        assert.equal(Pairing.validateMessage(results, 'host'), 'states must be an object');
+        assert.equal(Pairing.validateMessage(Object.assign({ states: [] }, results), 'host'), 'states must be an object');
+        assert.equal(Pairing.validateMessage(Object.assign({ states: { a: 'open' } }, results), 'host'), 'a state must be one of right, retried, wrong, answered');
+        assert.equal(Pairing.validateMessage(Object.assign({ states: { a: true } }, results), 'host'), 'a state must be one of right, retried, wrong, answered');
+        assert.equal(Pairing.validateMessage(Object.assign({ states: { ['k'.repeat(201)]: 'right' } }, results), 'host'), 'an item key is too long');
+        const many = {};
+        for (let i = 0; i < 501; i++) { many['1/' + i] = 'right'; }
+        assert.equal(Pairing.validateMessage(Object.assign({ states: many }, results), 'host'), 'states has too many items');
+        assert.equal(Pairing.decode(Pairing.encode(Object.assign({ states: {} }, results)), 'guest'), null, 'a phone cannot send results');
         assert.equal(Pairing.validateMessage(Object.assign({ choice: Infinity }, answer), 'guest'), 'choice must be a finite number');
         assert.equal(Pairing.validateMessage({ type: 'quiz', hypervideo: '3', item: 'i', status: 'over', answered: 0, voters: 1 }, 'host'), 'status must be one of open, decided, closed, cancelled');
         assert.equal(Pairing.decode(Pairing.encode(valid.guest[6]), 'host'), null, 'the host does not answer quizzes');
@@ -2150,6 +2243,21 @@ describe('FrameTrailPairing', () => {
         assert.equal(phone.hypervideo.config.layoutArea.areaCompanion[0].html, '<b>x</b>', 'authored HTML stays (the page\'s CSP keeps it from running anything)');
         assert.equal(phone.hypervideo.customCSS, '.x { color: red }');
         assert.equal(bundle.hypervideo.contents.length, 1, 'the bundle given is not changed');
+    });
+
+    test('readQuizzes: the questions that come with a bundle, as a phone reads them', () => {
+        const digest = Quiz.digest({ creatorId: '1', created: 1700000000123, start: 12.5, end: 13, attributes: { question: 'Which way?', answers: [{ text: 'a', correct: true }] } });
+        assert.deepStrictEqual(Pairing.readQuizzes([digest]), [digest], 'what FrameTrailQuiz.digest() makes is read as it is');
+        assert.deepStrictEqual(Pairing.readQuizzes(undefined), [], 'an older player sends none');
+        assert.deepStrictEqual(Pairing.readQuizzes({ 0: digest }), []);
+        assert.deepStrictEqual(
+            Pairing.readQuizzes([null, 'x', { key: 7, start: 1 }, { key: 'a', start: 'soon' }, { key: 'a', start: NaN }, { key: 'k'.repeat(201), start: 1 },
+                { key: 'b', start: 3, question: 'q'.repeat(3000), questionType: 5, gradable: 'yes', answers: [{ correct: true }] }]),
+            [{ key: 'b', start: 3, end: 3, question: 'q'.repeat(2000), questionType: '', gradable: false }],
+            'what is no entry is left out, and an entry carries nothing but the known fields'
+        );
+        assert.equal(Pairing.readQuizzes(new Array(700).fill(digest)).length, 500);
+        assert.deepStrictEqual(Pairing.RESULT_STATES, Quiz.RESULT_STATES.filter((state) => state !== 'open'), 'a results message knows every state but open');
     });
 
 });

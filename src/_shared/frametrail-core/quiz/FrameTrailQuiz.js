@@ -512,11 +512,156 @@
     }
 
 
+    /* ------------------------------------------------------------------ */
+    /*  Results                                                           */
+    /* ------------------------------------------------------------------ */
+
+    // What a list of results (the Quiz Results view) says about a question:
+    //   open      not decided yet
+    //   right     the first decision was right
+    //   retried   the first was not, a later one was (the part was played again)
+    //   wrong     decided, and not right yet
+    //   answered  decided, with no right or wrong to tell (free text, rating, no answer marked correct)
+    var RESULT_STATES = ['open', 'right', 'retried', 'wrong', 'answered'];
+
+    /**
+     * I say whether a quiz has a right answer to tell: a multipleChoice or multiSelect quiz with an
+     * answer marked as correct. Only such questions count for a score.
+     * @method gradable
+     * @param {Object} attrs
+     * @return {Boolean}
+     */
+    function gradable(attrs) {
+        return isChoice(attrs) && answersOf(attrs).some(function(answer) { return answer.correct === true; });
+    }
+
+    /**
+     * I return what a list of questions needs of a quiz item, without its answers:
+     * { key, start, end, question, questionType, gradable }. A paired phone gets these for the quiz
+     * overlays, which are not in its copy of the hypervideo.
+     * @method digest
+     * @param {Object} data an overlay's or annotation's data
+     * @return {Object}
+     */
+    function digest(data) {
+        var attrs = (isObject(data) && isObject(data.attributes)) ? data.attributes : {};
+        return {
+            key:          itemKey(data),
+            start:        (isObject(data) && isFinite(data.start)) ? Number(data.start) : 0,
+            end:          (isObject(data) && isFinite(data.end)) ? Number(data.end) : 0,
+            question:     (typeof attrs.question === 'string') ? attrs.question : '',
+            questionType: questionType(attrs),
+            gradable:     gradable(attrs)
+        };
+    }
+
+    /**
+     * I read a question's record as it was kept ({ first, solved, tries }), or null when it is none:
+     * records come back from the browser's storage, where anything may have been written.
+     * @method readRecord
+     * @param {*} value
+     * @return {Object|null}
+     */
+    function readRecord(value) {
+        if (!isObject(value) || typeof value.tries !== 'number' || !isFinite(value.tries) || value.tries < 1) { return null; }
+        return {
+            first:  (value.first === true) ? true : (value.first === false ? false : null),
+            solved: value.solved === true,
+            tries:  Math.floor(value.tries)
+        };
+    }
+
+    /**
+     * I add a decision to a question's record and return the new record: { first, solved, tries }.
+     * first is whether the first decision was right (null: nothing right or wrong to tell), solved
+     * whether any was, tries how often the question was decided. correct is a decision's "correct"
+     * (decide()). The record given is not changed.
+     * @method recordResult
+     * @param {Object|null} record the record so far
+     * @param {Boolean|null} correct
+     * @return {Object}
+     */
+    function recordResult(record, correct) {
+
+        var known = readRecord(record);
+
+        correct = (correct === true) ? true : (correct === false ? false : null);
+
+        if (!known) {
+            return { first: correct, solved: correct === true, tries: 1 };
+        }
+
+        return { first: known.first, solved: known.solved || correct === true, tries: known.tries + 1 };
+
+    }
+
+    /**
+     * I return the state of a question from its record: one of RESULT_STATES.
+     * @method resultState
+     * @param {Object|null} record
+     * @return {String}
+     */
+    function resultState(record) {
+        var known = readRecord(record);
+        if (!known)               { return 'open'; }
+        if (known.first === true) { return 'right'; }
+        if (known.solved)         { return 'retried'; }
+        return (known.first === false) ? 'wrong' : 'answered';
+    }
+
+    /**
+     * I return the states of the questions that have a record: { key: state }.
+     * @method resultStates
+     * @param {Object} records { key: record }
+     * @return {Object}
+     */
+    function resultStates(records) {
+        var states = {};
+        if (isObject(records)) {
+            Object.keys(records).forEach(function(key) {
+                var state = resultState(records[key]);
+                if (state !== 'open') { states[key] = state; }
+            });
+        }
+        return states;
+    }
+
+    /**
+     * I count a list of questions by their states: { total, gradable, right, retried, wrong,
+     * answered, open, done }. gradable are the questions with a right answer to tell, of which
+     * right were right at the first try; done are the questions that are no longer open.
+     * @method score
+     * @param {Array} questions digests ({ key, gradable })
+     * @param {Object} states { key: state }
+     * @return {Object}
+     */
+    function score(questions, states) {
+
+        var result = { total: 0, gradable: 0, right: 0, retried: 0, wrong: 0, answered: 0, open: 0, done: 0 };
+
+        states = isObject(states) ? states : {};
+
+        (Array.isArray(questions) ? questions : []).forEach(function(question) {
+            if (!isObject(question)) { return; }
+            var state = has(states, question.key) ? states[question.key] : 'open';
+            if (RESULT_STATES.indexOf(state) < 0) { state = 'open'; }
+            result.total++;
+            result[state]++;
+            if (question.gradable) { result.gradable++; }
+            if (state !== 'open')  { result.done++; }
+        });
+
+        return result;
+
+    }
+
+
     return {
 
         TYPES:           TYPES,
         ACTIONS:         ACTIONS,
         MAX_TEXT:        MAX_TEXT,
+        RESULT_STATES:   RESULT_STATES,
 
         questionType:    questionType,
         isChoice:        isChoice,
@@ -531,7 +676,15 @@
         fromLegacy:      fromLegacy,
         changeType:      changeType,
         newAttributes:   newAttributes,
-        itemKey:         itemKey
+        itemKey:         itemKey,
+
+        gradable:        gradable,
+        digest:          digest,
+        readRecord:      readRecord,
+        recordResult:    recordResult,
+        resultState:     resultState,
+        resultStates:    resultStates,
+        score:           score
 
     };
 

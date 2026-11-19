@@ -567,6 +567,7 @@
             'grant':        { token: 'string', ttl: 'number', cookie: 'string', path: 'string' },
             'quiz':         { hypervideo: 'string', item: 'string', status: ['open', 'decided', 'closed', 'cancelled'], answered: 'number', voters: 'number',
                               endsIn: 'number?', decided: 'number?', feedback: 'string?' },
+            'results':      { hypervideo: 'string' },
             'bye':          { reason: 'string' }
         },
         guest: {
@@ -582,6 +583,50 @@
     // An answer's choice: an answer's index or a rating (a number), a free text, or the answers chosen (a list of numbers).
     var MAX_CHOICE_TEXT  = 2000,
         MAX_CHOICE_ITEMS = 100;
+
+    // The results of a hypervideo's questions (a results message, and the questions that come with a bundle): the
+    // state of every question that is no longer open, by its item key. A phone shows them (the Quiz Results view).
+    var RESULT_STATES    = ['right', 'retried', 'wrong', 'answered'],
+        MAX_RESULT_ITEMS = 500,
+        MAX_ITEM_KEY     = 200,
+        MAX_QUESTION     = 2000;
+
+    function statesProblem(states) {
+        if (!isObject(states)) { return 'states must be an object'; }
+        var keys = Object.keys(states);
+        if (keys.length > MAX_RESULT_ITEMS) { return 'states has too many items'; }
+        for (var i = 0; i < keys.length; i++) {
+            if (keys[i].length > MAX_ITEM_KEY) { return 'an item key is too long'; }
+            if (RESULT_STATES.indexOf(states[keys[i]]) < 0) { return 'a state must be one of ' + RESULT_STATES.join(', '); }
+        }
+        return null;
+    }
+
+    /**
+     * The questions a player sends with a bundle (its "quizzes"), as a phone reads them: a list of
+     * { key, start, end, question, questionType, gradable }. Quiz overlays are not in a phone's copy of the
+     * hypervideo, so this list is how it knows them. Anything that is no such entry is left out.
+     *
+     * @method readQuizzes
+     * @param {*} list
+     * @return {Array}
+     */
+    function readQuizzes(list) {
+        if (!Array.isArray(list)) { return []; }
+        return list.slice(0, MAX_RESULT_ITEMS).filter(function(entry) {
+            return isObject(entry) && typeof entry.key === 'string' && entry.key.length <= MAX_ITEM_KEY
+                && typeof entry.start === 'number' && isFinite(entry.start);
+        }).map(function(entry) {
+            return {
+                key:          entry.key,
+                start:        entry.start,
+                end:          (typeof entry.end === 'number' && isFinite(entry.end)) ? entry.end : entry.start,
+                question:     (typeof entry.question === 'string') ? entry.question.slice(0, MAX_QUESTION) : '',
+                questionType: (typeof entry.questionType === 'string') ? entry.questionType.slice(0, 40) : '',
+                gradable:     entry.gradable === true
+            };
+        });
+    }
 
     function choiceProblem(choice) {
         if (typeof choice === 'number') { return isFinite(choice) ? null : 'choice must be a finite number'; }
@@ -622,6 +667,7 @@
             if ((message.choice === undefined) === (message.unknown !== true)) { return 'an answer has a choice, or says the item is unknown'; }
             if (message.choice !== undefined) { return choiceProblem(message.choice); }
         }
+        if (message.type === 'results') { return statesProblem(message.states); }
         return null;
     }
 
@@ -973,7 +1019,9 @@
         gatherComplete:   gatherComplete,
         selectedPath:     selectedPath,
 
-        companionBundle:  companionBundle
+        companionBundle:  companionBundle,
+        readQuizzes:      readQuizzes,
+        RESULT_STATES:    RESULT_STATES
 
     };
 

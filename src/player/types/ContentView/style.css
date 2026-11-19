@@ -767,7 +767,10 @@
 * Chapters ContentView
 *******************/
 
-/* Chapter cards are .collectionElement nodes, so they inherit the active/hover
+/* The rules of this section also lay out the Quiz Results view, whose rows are the
+   same cards (see "Quiz Results ContentView" below for what it adds and changes).
+
+   Chapter cards are .collectionElement nodes, so they inherit the active/hover
    states and the area-driven scroll container. The rules below only re-shape
    them: the generic item sizes are tuned for square resource thumbnails and are
    far too narrow to carry a chapter title.
@@ -781,7 +784,7 @@
    card width is what made it grow to 250px tall in a 108px row and clip the
    text away; it also kept the 160x90 sprite tile upscaled several times over. */
 
-.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer {
+.layoutArea .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chaptersContainer {
     display: flex;
     align-items: stretch;
     box-sizing: border-box;
@@ -793,8 +796,8 @@
 
 /* Horizontal areas: one row of cards that fills the strip */
 
-.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="Chapters"] .chaptersContainer,
-.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="Chapters"] .chaptersContainer {
+.layoutArea[data-area="areaTop"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chaptersContainer,
+.layoutArea[data-area="areaBottom"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chaptersContainer {
     flex-direction: row;
     flex-wrap: nowrap;
     height: 100%;
@@ -804,30 +807,30 @@
 /* The contents box normally sizes to its content (width: max-content) so that
    TimedContent can position items by time. Chapters instead spreads its cards
    across the available width, so the box has to be the reference. */
-.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="Chapters"] .contentViewContents,
-.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="Chapters"] .contentViewContents {
+.layoutArea[data-area="areaTop"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents,
+.layoutArea[data-area="areaBottom"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents {
     width: 100%;
     min-width: 100%;
 }
 
 /* Vertical areas: a scrolling list */
 
-.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="Chapters"] .chaptersContainer,
-.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="Chapters"] .chaptersContainer {
+.layoutArea[data-area="areaLeft"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chaptersContainer,
+.layoutArea[data-area="areaRight"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chaptersContainer {
     flex-direction: column;
     height: auto;
     min-height: 100%;
 }
 
-.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="Chapters"] .contentViewContents,
-.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="Chapters"] .contentViewContents {
+.layoutArea[data-area="areaLeft"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents,
+.layoutArea[data-area="areaRight"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents {
     height: auto;
     min-height: 100%;
 }
 
 /* The card */
 
-.layoutArea .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     float: none;
     display: flex;
     overflow: hidden;
@@ -836,7 +839,7 @@
     box-sizing: border-box;
 }
 
-.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardText {
+.layoutArea .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardText {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -844,7 +847,7 @@
     overflow: hidden;
 }
 
-.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardThumb {
+.layoutArea .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb {
     aspect-ratio: 16 / 9;
     width: auto;
     background-repeat: no-repeat;
@@ -852,7 +855,7 @@
     flex-shrink: 0;
 }
 
-.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardTime {
+.layoutArea .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardTime {
     font-size: 11px;
     line-height: 1.2;
     opacity: 0.65;
@@ -861,22 +864,22 @@
     color: var(--primary-fg-color);
 }
 
-.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardTitle {
+.layoutArea .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardTitle {
     font-size: 12px;
     line-height: 1.3;
     overflow: hidden;
     color: var(--primary-fg-color);
 }
 
-.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardTitle.placeholder {
+.layoutArea .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardTitle.placeholder {
     font-style: italic;
     opacity: 0.55;
 }
 
 /* Horizontal: poster card — thumb above the text, both left aligned */
 
-.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea[data-area="areaTop"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaBottom"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     flex-direction: column;
     justify-content: flex-start;
     align-items: flex-start;
@@ -887,18 +890,18 @@
     flex: 1 1 auto;
 }
 
-.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="Chapters"] .chapterCardText,
-.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="Chapters"] .chapterCardText {
+.layoutArea[data-area="areaTop"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardText,
+.layoutArea[data-area="areaBottom"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardText {
     width: 100%;
 }
 
-.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     min-width: 150px;
 }
 
-.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     min-width: 180px;
 }
 
@@ -911,17 +914,17 @@
 
 /* The strip's own left padding would offset and compress the mapping, so a
    time-mapped strip starts flush at the edge like the timeline does. */
-.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer[data-type="Chapters"] .contentViewContents,
-.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="Chapters"] .contentViewContents,
-.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .contentViewContents,
-.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .contentViewContents {
+.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents,
+.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents,
+.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents,
+.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents {
     padding-left: 0;
 }
 
-.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     /* The width comes from renderChapterCards as a percentage of the strip minus
        --chapter-gap; the cards are border-box, so padding and border sit inside
        that share. Width and margin together therefore add up to the exact share,
@@ -933,71 +936,71 @@
 
 /* Stands in for the run of video before the first chapter, so the cards line up
    with the timeline rather than starting flush left. Inert and invisible. */
-.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardSpacer {
+.layoutArea .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardSpacer {
     flex: 0 1 auto;
     min-width: 0;
     pointer-events: none;
 }
 
-.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     min-width: 260px;
 }
 
-.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb,
-.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb {
+.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb,
+.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb {
     height: 66px;
 }
 
-.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb,
-.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb {
+.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb,
+.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb {
     height: 90px;
 }
 
 /* Vertical: list row — thumb beside the text */
 
-.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea[data-area="areaLeft"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaRight"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     flex-direction: row;
     align-items: center;
     gap: 8px;
     flex-shrink: 0;
 }
 
-.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="Chapters"] .chapterCardText,
-.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="Chapters"] .chapterCardText {
+.layoutArea[data-area="areaLeft"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardText,
+.layoutArea[data-area="areaRight"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardText {
     flex: 1;
 }
 
-.layoutArea[data-area="areaLeft"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb,
-.layoutArea[data-area="areaRight"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb {
+.layoutArea[data-area="areaLeft"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb,
+.layoutArea[data-area="areaRight"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb {
     height: 66px;
 }
 
-.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb,
-.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardThumb {
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb {
     height: 89px;
 }
 
-.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardTitle,
-.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterCardTitle {
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardTitle,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardTitle {
     font-size: 13px;
 }
 
 /* Small: a single line of text, never a thumbnail */
 
-.layoutArea[data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterCardText {
+.layoutArea[data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardText {
     flex-direction: row;
     align-items: baseline;
     gap: 6px;
     width: 100%;
 }
 
-.layoutArea[data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea[data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     align-items: center;
 }
 
-.layoutArea[data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterCardTitle {
+.layoutArea[data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardTitle {
     white-space: nowrap;
     text-overflow: ellipsis;
     overflow: hidden;
@@ -1006,25 +1009,25 @@
 /* A vertical area at "small" is only ~44px wide — far too narrow for a timecode
    and a title side by side. The title identifies the chapter, so it keeps the
    space and the time moves into the card's tooltip (set in renderChapterCards). */
-.layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterCardTime,
-.layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterCardTime {
+.layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardTime,
+.layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardTime {
     display: none;
 }
 
 /* Chapter card sizes */
 
-.layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     height: 32px;
 }
 
-.layoutArea[data-area="areaLeft"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaRight"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea[data-area="areaLeft"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaRight"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     height: 84px;
 }
 
-.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     height: 108px;
 }
 
@@ -1032,17 +1035,372 @@
    a time (see "Content View Items" above). A chapter list is the opposite: every
    chapter stays on screen and the active one is merely highlighted. */
 
-.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement,
-.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement {
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     position: relative;
     top: auto;
     display: flex;
     border: 2px solid var(--primary-bg-color);
 }
 
-.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement.active,
-.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chapterElement.active {
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement.active,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement.active {
     border-color: var(--primary-fg-color);
+}
+
+/*******************
+* Quiz Results ContentView
+*******************/
+
+/* A Quiz Results view's rows are Chapters cards (.chapterElement in .chaptersContainer),
+   laid out by the rules above in every area and size. Here is what it adds: the dots of
+   a row's questions, the summary (score, legend, "Start again") beside or below the rows,
+   and rows without a thumbnail, which are as high as their text.
+
+   The colours of a dot are the quiz's own for a right and a wrong answer. A dot is a
+   full circle with a check when the first answer was right, an outlined one when a later
+   one was, an outlined cross while it is not right yet, and an empty circle while the
+   question is open (icons of the icon font, see ContentView._setQuizDotState). */
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] {
+    --quiz-result-right: #8fc743;
+    --quiz-result-wrong: #dc8c8c;
+    --quiz-result-open: color-mix(in srgb, var(--primary-fg-color) 45%, transparent);
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizDots {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    flex: 0 0 auto;
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizDot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    font-size: 18px;
+    line-height: 1;
+    color: var(--quiz-result-open);
+}
+
+/* The dot is an icon of the icon font (ContentView._setQuizDotState), circle and mark in one
+   glyph. The font's side margins belong to icons in a line of text. */
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizDot::before {
+    display: block;
+    width: auto;
+    margin: 0;
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizDots .quizDot {
+    cursor: pointer;
+}
+
+/* A dot and, in a chapter's row, its question's text: shown at large (below), a tooltip otherwise */
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizDotItem {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizDotLabel {
+    display: none;
+    font-size: 12px;
+    line-height: 1.3;
+    color: var(--primary-fg-color);
+    cursor: pointer;
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizDot[data-state="right"],
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizDot[data-state="retried"] {
+    color: var(--quiz-result-right);
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizDot[data-state="wrong"] {
+    color: var(--quiz-result-wrong);
+}
+
+/* A question's state in words: only where a row has room for a third line */
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizResultStateText {
+    display: none;
+    font-size: 11px;
+    line-height: 1.3;
+    opacity: 0.75;
+    color: var(--primary-fg-color);
+}
+
+.layoutArea[data-size="large"] .contentViewContainer[data-type="QuizResults"] .quizResultStateText {
+    display: block;
+}
+
+/* The summary */
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    padding: 8px 10px;
+    background: var(--primary-bg-color);
+    color: var(--primary-fg-color);
+    font-size: 12px;
+    line-height: 1.3;
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizResultsScoreValue {
+    display: block;
+    font-size: 18px;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizResultsLegend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    font-size: 11px;
+    opacity: 0.85;
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizResultsLegendEntry {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    white-space: nowrap;
+}
+
+
+/* A button in a view has the view's colours (the generic button is drawn for the dark edit panels) */
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizResultsRestart {
+    align-self: flex-start;
+    margin: 0;
+    padding: 4px 8px;
+    border: 1px solid color-mix(in srgb, var(--primary-fg-color) 50%, transparent);
+    background: transparent;
+    color: var(--primary-fg-color);
+    font-size: 12px;
+    line-height: 1.3;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizResultsRestart:hover {
+    background: var(--semi-transparent-fg-color);
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] .quizResultsRestartLabel {
+    margin-left: 4px;
+}
+
+/* Small: the score's number and the button's icon, the rest is their tooltips */
+.layoutArea[data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsScoreText,
+.layoutArea[data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsLegend,
+.layoutArea[data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsRestartLabel {
+    display: none;
+}
+
+.layoutArea[data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsScoreValue {
+    font-size: 13px;
+}
+
+.layoutArea[data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
+    padding: 4px 8px;
+    gap: 4px;
+}
+
+/* The marks of the legend are the size of the ones in the rows, at every size of the view */
+.layoutArea[data-size="large"] .contentViewContainer[data-type="QuizResults"] .quizDot {
+    font-size: 22px;
+}
+
+/* Large: a chapter's questions are a list below its title, each with its text */
+.layoutArea[data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDots {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 6px;
+    width: 100%;
+    max-width: none;
+    margin-top: 0;
+}
+
+.layoutArea[data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotItem {
+    align-items: flex-start;
+}
+
+.layoutArea[data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotLabel {
+    display: block;
+    padding-top: 3px;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterElement,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterElement {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterCardText,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterCardText {
+    flex: 0 0 auto;
+}
+
+/* A large card of a horizontal area is 460px wide for an annotation's content; a row here holds
+   a few lines, so the cards share the strip down to a width that still reads. */
+.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chapterElement {
+    width: auto;
+    min-width: 160px;
+    flex: 1 1 0;
+}
+
+/* Horizontal areas: the rows take what the summary at their end leaves. The rows' box keeps
+   its content's minimum width (a flex item's default), so once the cards' minimum widths no
+   longer fit, rows and summary scroll together. */
+
+.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer {
+    width: auto;
+    flex: 1 1 0;
+}
+
+/* The summary stays in view at the strip's end while the rows scroll under it */
+.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
+    flex: 0 0 auto;
+    max-width: 260px;
+    margin: 4px 4px 4px 0;
+    position: sticky;
+    right: 4px;
+    z-index: 2;
+}
+
+.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
+.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
+    margin: 10px 10px 10px 0;
+}
+
+.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
+.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
+    flex-direction: row;
+    align-items: center;
+}
+
+/* A card's dots are below its text; in the one line of a small strip, beside it */
+.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .quizDots,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .quizDots {
+    margin-top: auto;
+}
+
+.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .chapterElement {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+}
+
+.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .chapterCardText,
+.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .chapterCardText {
+    width: auto;
+    flex: 1 1 0;
+}
+
+.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizDots,
+.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizDots {
+    margin-top: 0;
+    flex-wrap: nowrap;
+}
+
+/* One row per question: the cards share the strip (a chapter's card has its share of the time) */
+.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="questions"] .chapterElement,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="questions"] .chapterElement {
+    flex: 1 1 0;
+}
+
+/* Vertical areas: rows as high as their text (a chapter's row is as high as its thumbnail),
+   the dots at their end, and the summary below them, kept in view while the rows scroll. */
+
+.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer,
+.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer {
+    min-height: 0;
+}
+
+.layoutArea[data-area="areaLeft"][data-size] .contentViewContainer[data-type="QuizResults"] .chapterElement,
+.layoutArea[data-area="areaRight"][data-size] .contentViewContainer[data-type="QuizResults"] .chapterElement {
+    height: auto;
+    min-height: 34px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+}
+
+.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="QuizResults"] .quizDots,
+.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="QuizResults"] .quizDots {
+    justify-content: flex-end;
+    max-width: 50%;
+}
+
+.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
+.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    margin-top: 4px;
+}
+
+/* Large: the summary is the foot of the area, whatever the number of rows. The contents are at
+   least as high as the area (the Chapters rules above), so in a column the summary's auto margin
+   takes it to the bottom; with more rows than fit, it sticks there and they scroll above it. */
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .contentViewContents,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .contentViewContents {
+    display: flex;
+    flex-direction: column;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer {
+    flex: 0 0 auto;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
+.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
+    margin-top: auto;
+    padding: 12px 14px;
+    border-top: 1px solid var(--semi-transparent-fg-color);
+}
+
+/* A narrow strip: the dots alone, the row's text is its tooltip (as a chapter's time is) */
+.layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .chapterCardText,
+.layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .chapterCardText {
+    display: none;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .chapterElement,
+.layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .chapterElement {
+    justify-content: center;
+    padding-left: 4px;
+    padding-right: 4px;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizDots,
+.layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizDots {
+    justify-content: center;
+    max-width: none;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
+.layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
+    align-items: center;
+    padding: 6px 2px;
+}
+
+.layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsRestart,
+.layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsRestart {
+    align-self: center;
 }
 
 /*******************
@@ -1396,6 +1754,99 @@
 
 :is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard.vertical[data-size="large"] {
     height: 36px;
+}
+
+/* Quiz Results: the Chapters rows and cards without a thumbnail, each with the state of its
+   question where the view has its dots: at the end of a row, below the text of a card. The state
+   is an icon of the icon font (a check in a full circle, a cross, an empty circle) in the colours
+   the view gives the states, large enough to be seen at a glance: it is what tells this view
+   from a chapter list. */
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow .schematicQuizIcon {
+    flex-shrink: 0;
+    font-size: 13px;
+    line-height: 1;
+    color: rgba(127,127,127,0.8);
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow .schematicQuizIcon::before {
+    display: block;
+    width: auto;
+    margin: 0;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow .schematicQuizIcon[data-state="right"],
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow .schematicQuizIcon[data-state="retried"] {
+    color: #7fb832;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow .schematicQuizIcon[data-state="wrong"] {
+    color: #d77c7c;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow[data-size="small"] .schematicQuizIcon {
+    font-size: 10px;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow[data-size="large"] .schematicQuizIcon {
+    font-size: 17px;
+}
+
+/* A card of a horizontal area: the state below the text; in the one line of a small card, beside it */
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow:not(.rowLayout) {
+    justify-content: flex-start;
+    align-items: flex-start;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow:not(.rowLayout) .schematicChapterText {
+    flex: 0 0 auto;
+    width: 100%;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow:not(.rowLayout) .schematicQuizIcon {
+    margin-top: auto;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow:not(.rowLayout)[data-size="small"] {
+    flex-direction: row;
+    align-items: center;
+    gap: 3px;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow:not(.rowLayout)[data-size="small"] .schematicChapterText {
+    flex: 1;
+    width: auto;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicQuizRow:not(.rowLayout)[data-size="small"] .schematicQuizIcon {
+    margin-top: 0;
+}
+
+/* The type's emblem (the palette's tile, the settings' type card): three rows of the list fit it */
+.contentViewOptionThumb .schematicQuizEmblem .schematicQuizRow.vertical[data-size] {
+    height: 13px;
+    margin: 0 0 2px 0;
+    width: 100%;
+    padding: 1px 3px;
+}
+
+.contentViewOptionThumb .schematicQuizEmblem .schematicQuizRow[data-size] .schematicQuizIcon {
+    font-size: 10px;
+}
+
+.contentViewOptionThumb .schematicQuizEmblem .schematicQuizRow[data-size] .schematicChapterText {
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+}
+
+.contentViewOptionThumb .schematicQuizEmblem .schematicQuizRow[data-size] .schematicChapterTime {
+    margin-bottom: 0;
+    width: 22%;
+}
+
+.contentViewOptionThumb .schematicQuizEmblem .schematicQuizRow[data-size] .schematicChapterTitle {
+    flex: 1;
 }
 
 /* Transcript Search */

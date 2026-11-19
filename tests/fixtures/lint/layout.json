@@ -160,6 +160,73 @@
             ]
         },
         {
+            "name": "a Quiz Results view in a hypervideo without a question",
+            "patch": [
+                {
+                    "op": "add",
+                    "path": "/hypervideo/config/layoutArea/areaRight/-",
+                    "value": { "type": "QuizResults", "contentSize": "medium" }
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "quiz-results-empty",
+                    "severity": "warning",
+                    "kind": "hypervideo",
+                    "message": "The layout has a Quiz Results view, but there is no question for it to list: no quiz overlay, and no quiz annotation that a collection view (TimedContent) shows. The view stays empty."
+                }
+            ]
+        },
+        {
+            "name": "a Quiz Results view and a quiz annotation, but no collection view that could show it",
+            "rules": ["quiz-results-empty"],
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/config/layoutArea/areaBottom",
+                    "value": [{ "type": "QuizResults", "contentSize": "small" }]
+                },
+                {
+                    "op": "replace",
+                    "path": "/annotations/files/1/0/body",
+                    "value": {
+                        "frametrail:type": "quiz",
+                        "value": "",
+                        "frametrail:attributes": { "question": "Which?", "answers": [{ "text": "A", "correct": true, "action": "" }, { "text": "B", "action": "" }] }
+                    }
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "quiz-results-empty",
+                    "severity": "warning",
+                    "kind": "hypervideo",
+                    "message": "The layout has a Quiz Results view, but there is no question for it to list: no quiz overlay, and no quiz annotation that a collection view (TimedContent) shows. The view stays empty."
+                }
+            ]
+        },
+        {
+            "name": "a Quiz Results view with a quiz annotation beside a collection view",
+            "rules": ["quiz-results-empty"],
+            "patch": [
+                {
+                    "op": "add",
+                    "path": "/hypervideo/config/layoutArea/areaRight/-",
+                    "value": { "type": "QuizResults", "contentSize": "medium" }
+                },
+                {
+                    "op": "replace",
+                    "path": "/annotations/files/1/0/body",
+                    "value": {
+                        "frametrail:type": "quiz",
+                        "value": "",
+                        "frametrail:attributes": { "question": "Which?", "answers": [{ "text": "A", "correct": true, "action": "" }, { "text": "B", "action": "" }] }
+                    }
+                }
+            ],
+            "findings": []
+        },
+        {
             "name": "only the rules asked for",
             "rules": ["chapter-order", "missing-license"],
             "patch": [

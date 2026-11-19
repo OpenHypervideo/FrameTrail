@@ -26,7 +26,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
      * and reach me via FrameTrail.module('ViewLayout').generateSchematic().
      *
      * @method generateSchematic
-     * @param {String} type - ContentView type ('TimedContent', 'Transcript', 'Chapters', 'Timelines', 'CustomHTML')
+     * @param {String} type - ContentView type ('TimedContent', 'Transcript', 'Chapters', 'QuizResults', 'Timelines', 'CustomHTML')
      * @param {String} size - 'small', 'medium' or 'large'
      * @param {String} axis - 'x' for the top/bottom areas, 'y' for left/right, 'ring' for the circular area
      * @param {Boolean} thumbnail - Draw a single representative item instead of a full set
@@ -177,6 +177,46 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                     schematic.appendChild(chapterCard);
                 }
                 break;
+
+            case 'QuizResults':
+                // The view as it looks: the Chapters view's rows without thumbnails, each with the state of
+                // its question at its end, as the view draws it (ContentView._setQuizDotState): right, not
+                // right yet, open. In the vertical areas and as a thumbnail these are full-width rows, in
+                // the horizontal areas cards side by side. As the type's emblem (the palette's tile and the
+                // settings' type card, which ask for maxCards) it is always the list of rows, whatever the
+                // axis: that list with its marks is what tells the view from the others.
+                var quizEmblem = !!maxCards && !thumbnail,
+                    quizList   = thumbnail || !isHorizontal || quizEmblem;
+                var quizClass = 'schematicChapterCard schematicQuizRow'
+                    + (quizList ? ' vertical rowLayout' : '');
+                var quizCount = thumbnail ? 1 : (quizList
+                    ? ((size == 'small') ? 6 : (size == 'medium') ? 4 : 3)
+                    : ((size == 'small') ? 4 : (size == 'medium') ? 3 : 2));
+                if (maxCards) quizCount = Math.min(quizCount, maxCards);
+                if (quizEmblem) schematic.classList.add('schematicQuizEmblem');
+                var quizStates = [
+                    { state: 'right',   icon: 'icon-ok-circled' },
+                    { state: 'wrong',   icon: 'icon-cancel-circled2' },
+                    { state: 'open',    icon: 'icon-circle-empty' },
+                    { state: 'retried', icon: 'icon-ok-circled2' },
+                    { state: 'open',    icon: 'icon-circle-empty' },
+                    { state: 'open',    icon: 'icon-circle-empty' }
+                ];
+                for (var i = 0; i < quizCount; i++) {
+                    var quizRow   = document.createElement('div'),
+                        quizState = quizStates[i % quizStates.length];
+                    quizRow.className = quizClass;
+                    quizRow.setAttribute('data-size', size);
+                    quizRow.insertAdjacentHTML('beforeend',
+                        '<div class="schematicChapterText">'
+                      + '    <div class="schematicChapterTime"></div>'
+                      + '    <div class="schematicChapterTitle"></div>'
+                      + '</div>'
+                      + '<span class="schematicQuizIcon ' + quizState.icon + '" data-state="' + quizState.state + '"></span>');
+                    if (thumbnail || i === ((isHorizontal && !quizList) ? 1 : 0)) quizRow.classList.add('active');
+                    schematic.appendChild(quizRow);
+                }
+                break;
         }
 
         return schematic;
@@ -212,6 +252,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         { type: 'TimedContent', icon: 'icon-docs',        label: 'GenericAnnotationCollection', size: 'medium' },
         { type: 'Transcript',   icon: 'icon-doc-text',    label: 'GenericTextTranscript',       size: 'large'  },
         { type: 'Chapters',     icon: 'icon-list-bullet', label: 'SettingsChapters',            size: 'small'  },
+        { type: 'QuizResults',  icon: 'icon-ok-circled',  label: 'GenericQuizResults',          size: 'medium' },
         { type: 'Timelines',    icon: 'icon-tasks',       label: 'GenericTimelines',            size: 'large'  },
         { type: 'CustomHTML',   icon: 'icon-file-code',   label: 'GenericCustomHTML',           size: 'medium' }
     ];
@@ -318,6 +359,10 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         updateHiddenTabs();
 
         updateManagedContent();
+
+        // The views say whether the results of the hypervideo's questions are kept on this device
+        var QuizController = FrameTrail.module('QuizController');
+        if (QuizController && QuizController.loadResults) { QuizController.loadResults(); }
 
     }
 
@@ -560,6 +605,77 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             }
         });
 
+        // Which questions there are depends on what the collection views show
+        scheduleQuizResultViews();
+
+    }
+
+
+    /* Quiz Results views */
+
+    function quizResultViews() {
+        return allContentViews().filter(function(contentView) { return contentView.contentViewData.type === 'QuizResults'; });
+    }
+
+    /**
+     * I say whether a collection view (TimedContent) of the layout shows an annotation: around the video or on the
+     * phones, on screen or not. A quiz annotation that none shows is never asked (see viewsShowing).
+     *
+     * @method isInCollectionView
+     * @param {Annotation} annotation
+     * @return {Boolean}
+     */
+    function isInCollectionView(annotation) {
+        return managedAnnotations.some(function(pair) {
+            return pair[0] === annotation && pair[1].contentViewData.type === 'TimedContent';
+        });
+    }
+
+    /**
+     * I say whether the results of the hypervideo's questions are kept on this device: when one of its Quiz Results
+     * views says so (rememberQuizResults). The results are the hypervideo's, not a view's.
+     *
+     * @method quizResultsRemembered
+     * @return {Boolean}
+     */
+    function quizResultsRemembered() {
+        return quizResultViews().some(function(contentView) { return contentView.contentViewData.rememberQuizResults === true; });
+    }
+
+    /**
+     * I let the Quiz Results views show a new result: only their dots and score change (QuizController).
+     *
+     * @method updateQuizResultViews
+     */
+    function updateQuizResultViews() {
+        quizResultViews().forEach(function(contentView) { contentView.updateQuizResultStates(); });
+    }
+
+    // The Quiz Results views are rendered again once whatever changed the views, their contents or the chapters is
+    // done: a view is made before it is in my lists, and before the views after it exist. Once, however many
+    // changes come together. A microtask, not a timer: HypervideoModel.updateHypervideo() clears every timer.
+    var quizResultsScheduled = false;
+
+    function scheduleQuizResultViews() {
+
+        if (quizResultsScheduled) { return; }
+        quizResultsScheduled = true;
+
+        Promise.resolve().then(function() {
+
+            quizResultsScheduled = false;
+
+            var views = quizResultViews();
+            if (!views.length) { return; }
+
+            views.forEach(function(contentView) { contentView.renderQuizResults(); });
+
+            // A view's "remember" setting may be what changed
+            var QuizController = FrameTrail.module('QuizController');
+            if (QuizController && QuizController.storeResults) { QuizController.storeResults(); }
+
+        });
+
     }
 
 
@@ -587,6 +703,9 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     function updateChaptersContentViews() {
 
         var found = false;
+
+        // A Quiz Results view lists its questions by chapter
+        scheduleQuizResultViews();
 
         allContentViews().forEach(function(contentView) {
             if (contentView.contentViewData.type === 'Chapters') {
@@ -1397,6 +1516,10 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         updateTimedStateOfContentViews: updateTimedStateOfContentViews,
         viewsShowing: viewsShowing,
+
+        isInCollectionView:    isInCollectionView,
+        quizResultsRemembered: quizResultsRemembered,
+        updateQuizResultViews: updateQuizResultViews,
 
         initLayoutEditor: initLayoutEditor,
 

@@ -92,7 +92,12 @@
                             "minimum": 0,
                             "maximum": 100,
                             "default": 6
-                        }
+                        },
+                        "quizRows": { "description": "Not used by this view." },
+                        "showQuizScore": { "description": "Not used by this view." },
+                        "showQuizLegend": { "description": "Not used by this view." },
+                        "showQuizRestart": { "description": "Not used by this view." },
+                        "rememberQuizResults": { "description": "Not used by this view." }
                     }
                 },
                 {
@@ -178,7 +183,12 @@
                         "showTranscriptSearch": { "description": "Not used by this view." },
                         "filterAspect": { "description": "Not used by this view." },
                         "zoomControls": { "description": "Not used by this view." },
-                        "ringGap": { "description": "Not used by this view." }
+                        "ringGap": { "description": "Not used by this view." },
+                        "quizRows": { "description": "Not used by this view." },
+                        "showQuizScore": { "description": "Not used by this view." },
+                        "showQuizLegend": { "description": "Not used by this view." },
+                        "showQuizRestart": { "description": "Not used by this view." },
+                        "rememberQuizResults": { "description": "Not used by this view." }
                     }
                 },
                 {
@@ -272,7 +282,12 @@
                         },
                         "filterAspect": { "description": "Not used by this view." },
                         "zoomControls": { "description": "Not used by this view." },
-                        "ringGap": { "description": "Not used by this view." }
+                        "ringGap": { "description": "Not used by this view." },
+                        "quizRows": { "description": "Not used by this view." },
+                        "showQuizScore": { "description": "Not used by this view." },
+                        "showQuizLegend": { "description": "Not used by this view." },
+                        "showQuizRestart": { "description": "Not used by this view." },
+                        "rememberQuizResults": { "description": "Not used by this view." }
                     }
                 },
                 {
@@ -358,7 +373,12 @@
                         "transcriptSource": { "description": "Not used by this view." },
                         "showTranscriptSearch": { "description": "Not used by this view." },
                         "html": { "description": "Not used by this view." },
-                        "onClickContentItem": { "description": "Not used by this view." }
+                        "onClickContentItem": { "description": "Not used by this view." },
+                        "quizRows": { "description": "Not used by this view." },
+                        "showQuizScore": { "description": "Not used by this view." },
+                        "showQuizLegend": { "description": "Not used by this view." },
+                        "showQuizRestart": { "description": "Not used by this view." },
+                        "rememberQuizResults": { "description": "Not used by this view." }
                     }
                 },
                 {
@@ -430,6 +450,85 @@
                                 }
                             }
                         },
+                        "transcriptSource": { "description": "Not used by this view." },
+                        "showTranscriptSearch": { "description": "Not used by this view." },
+                        "html": { "description": "Not used by this view." },
+                        "onClickContentItem": { "description": "Not used by this view." },
+                        "filterAspect": { "description": "Not used by this view." },
+                        "zoomControls": { "description": "Not used by this view." },
+                        "ringGap": { "description": "Not used by this view." },
+                        "quizRows": { "description": "Not used by this view." },
+                        "showQuizScore": { "description": "Not used by this view." },
+                        "showQuizLegend": { "description": "Not used by this view." },
+                        "showQuizRestart": { "description": "Not used by this view." },
+                        "rememberQuizResults": { "description": "Not used by this view." }
+                    }
+                },
+                {
+                    "type": "object",
+                    "required": ["type"],
+                    "properties": {
+                        "type": {
+                            "description": "The hypervideo's questions and what was answered: its quiz overlays, and the quiz annotations a TimedContent view of the layout shows, each as a dot (open, right at the first try, right after the part was played again, not right yet, or answered where there is no right answer to tell). Not shown in the circular area.",
+                            "const": "QuizResults"
+                        },
+                        "name": {
+                            "description": "Title of the view (tab label).",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "icon": {
+                            "description": "CSS class of an icon from the FrameTrail icon font.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "cssClass": {
+                            "description": "Extra CSS class(es) on the view.",
+                            "type": "string",
+                            "default": ""
+                        },
+                        "contentSize": {
+                            "description": "Size of the view's rows.",
+                            "type": "string",
+                            "enum": ["small", "medium", "large"],
+                            "default": "small"
+                        },
+                        "initClosed": {
+                            "description": "Start with the layout area collapsed.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "quizRows": {
+                            "description": "What a row is: \"chapters\" lists the chapters, each with the dots of the questions asked in it (without chapters: as \"questions\"); \"questions\" lists the questions, each with its text.",
+                            "type": "string",
+                            "enum": ["chapters", "questions"],
+                            "default": "chapters"
+                        },
+                        "showQuizScore": {
+                            "description": "Show the score: how many of the questions that have a right answer were right at the first try (without such questions: how many were answered).",
+                            "type": "boolean",
+                            "default": true
+                        },
+                        "showQuizLegend": {
+                            "description": "Show what the dots mean, where there is room (not at small).",
+                            "type": "boolean",
+                            "default": true
+                        },
+                        "showQuizRestart": {
+                            "description": "Show a button that forgets the results and jumps to the start of the video. On the player only, not on paired phones.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "rememberQuizResults": {
+                            "description": "Keep the results in the browser's storage, so that they survive a reload. The results are the hypervideo's: they are kept when any of its QuizResults views says so.",
+                            "type": "boolean",
+                            "default": false
+                        },
+                        "description": {
+                            "description": "Not used.",
+                            "type": "string"
+                        },
+                        "collectionFilter": { "description": "Not used by this view." },
                         "transcriptSource": { "description": "Not used by this view." },
                         "showTranscriptSearch": { "description": "Not used by this view." },
                         "html": { "description": "Not used by this view." },

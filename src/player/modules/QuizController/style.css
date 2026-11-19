@@ -75,8 +75,18 @@
     font-weight: 700;
 }
 
+/* The right answer's mark: the icon the answers themselves carry (ResourceQuiz/style.css) */
 .quizSessionPanel .quizSessionRow.correct .quizSessionLabel::after {
-    content: " \2713";
+    content: "\e80f";
+    display: inline-block;
+    margin-left: .4em;
+    font-family: "FrameTrail";
+    font-style: normal;
+    font-weight: normal;
+    line-height: 1;
+    vertical-align: -0.08em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 .quizSessionPanel .quizSessionStatus {

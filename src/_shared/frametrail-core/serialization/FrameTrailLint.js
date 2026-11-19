@@ -109,6 +109,11 @@
             "id": "quiz-defaults",
             "severity": "warning",
             "description": "A quiz marks more than one answer as default (the answer decided on a tie or when nobody answers). Only the first counts."
+        },
+        {
+            "id": "quiz-results-empty",
+            "severity": "warning",
+            "description": "The layout has a Quiz Results view (QuizResults), but the hypervideo has no question for it to list: no quiz overlay, and no quiz annotation together with a collection view (TimedContent) that could show it. The view stays empty."
         }
     ];
 
@@ -651,6 +656,32 @@
             } else if (view.contentSize === 'large') {
                 report({ kind: 'hypervideo' }, 'The ring around the video holds a large view; it is shown, and saved, as medium.');
             }
+
+        },
+
+        'quiz-results-empty': function(data, report) {
+
+            var layout = isObject(data.hypervideo.config) && isObject(data.hypervideo.config.layoutArea) ? data.hypervideo.config.layoutArea : {},
+                views  = [];
+
+            Object.keys(layout).forEach(function(area) {
+                Array.prototype.push.apply(views, objects(layout[area]));
+            });
+
+            if (!views.some(function(view) { return view.type === 'QuizResults'; })) { return; }
+
+            var collection = views.some(function(view) { return view.type === 'TimedContent'; });
+
+            // A quiz annotation is only asked where a collection view shows it; which annotations a view's
+            // filter lets through is not looked at here.
+            var hasQuestion = data.items.some(function(entry) {
+                return bodyOf(entry.item)['frametrail:type'] === 'quiz'
+                    && (entry.where.kind === 'overlays' || (entry.where.kind === 'annotations' && collection));
+            });
+
+            if (hasQuestion) { return; }
+
+            report({ kind: 'hypervideo' }, 'The layout has a Quiz Results view, but there is no question for it to list: no quiz overlay, and no quiz annotation that a collection view (TimedContent) shows. The view stays empty.');
 
         }
 

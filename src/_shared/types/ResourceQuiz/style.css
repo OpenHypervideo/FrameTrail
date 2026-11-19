@@ -107,6 +107,32 @@
     color: var(--primary-bg-color);
 }
 
+/* A decided answer says right or wrong with a mark, not by its colour alone: an icon of the icon
+   font after its text (icon-ok-circled, icon-cancel-circled; the same marks as the dots of a Quiz
+   Results view). It is part of the line, so it never lies over a long answer. */
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.correct::after,
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.wrong::after {
+    display: inline-block;
+    margin-left: .4em;
+    font-family: "FrameTrail";
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+    vertical-align: -0.08em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.correct::after {
+    content: "\e80f";
+}
+
+.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.wrong::after {
+    content: "\e811";
+}
+
 .resourceThumb[data-type="quiz"] .resourceOverlay {
     background: transparent;
 }
