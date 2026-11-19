@@ -153,15 +153,59 @@ FrameTrail.defineModule('HypervideoFormBuilder', function(FrameTrail){
             { label: labels['ActionPresetShowMessage'],      code: "window.alert('" + labels['ActionPresetShowMessageDefault'] + "');" }
         ];
 
+        // Open / close a layout area: one preset per area, so there is nothing to edit in the code.
+        // All four are always offered: the picker also serves the events of hypervideos that are not
+        // open, whose areas are not known here. A call for an area without views does nothing.
+        var areas = [
+            { name: 'top',    label: labels['LayoutAreaTop'] },
+            { name: 'bottom', label: labels['LayoutAreaBottom'] },
+            { name: 'left',   label: labels['LayoutAreaLeft'] },
+            { name: 'right',  label: labels['LayoutAreaRight'] }
+        ];
+        [
+            { group: labels['ActionPresetOpenLayoutArea'],  method: 'openLayoutArea' },
+            { group: labels['ActionPresetCloseLayoutArea'], method: 'closeLayoutArea' }
+        ].forEach(function(action) {
+            areas.forEach(function(area) {
+                presets.push({
+                    group: action.group,
+                    label: area.label.charAt(0).toUpperCase() + area.label.slice(1),
+                    code:  'hypervideo.' + action.method + "('" + area.name + "');"
+                });
+            });
+        });
+
         var wrapper = document.createElement('div');
         wrapper.className = 'custom-select actionPresetPicker';
 
         var select = document.createElement('select');
-        var optionsHTML = '<option value="" disabled selected style="display:none;">'+ labels['ActionPresetInsert'] +'</option>';
-        for (var i = 0; i < presets.length; i++) {
-            optionsHTML += '<option value="'+ i +'">'+ presets[i].label +'</option>';
-        }
-        select.innerHTML = optionsHTML;
+
+        var placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        placeholder.style.display = 'none';
+        placeholder.textContent = labels['ActionPresetInsert'];
+        select.appendChild(placeholder);
+
+        // Presets with a group are listed under it; the option's value stays the preset's index
+        var groups = {};
+        presets.forEach(function(preset, index) {
+            var option = document.createElement('option');
+            option.value = index;
+            option.textContent = preset.label;
+
+            if (!preset.group) {
+                select.appendChild(option);
+                return;
+            }
+            if (!groups[preset.group]) {
+                groups[preset.group] = document.createElement('optgroup');
+                groups[preset.group].label = preset.group;
+                select.appendChild(groups[preset.group]);
+            }
+            groups[preset.group].appendChild(option);
+        });
 
         select.addEventListener('change', function() {
             var preset = presets[parseInt(this.value, 10)];

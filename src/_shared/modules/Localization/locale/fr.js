@@ -8,11 +8,13 @@
 
 window.FrameTrail_L10n['fr'] = {
     "ActionOpenUrl": "Ouvrir une URL",
+    "ActionPresetCloseLayoutArea": "Fermer une zone de mise en page",
     "ActionPresetInsert": "Insérer une action …",
     "ActionPresetJumpToHypervideo": "Aller à l'Hypervideo",
     "ActionPresetJumpToHypervideoHint": "remplacer HYPERVIDEO_ID par l'ID de l'Hypervideo cible",
     "ActionPresetJumpToTime": "Aller au moment",
     "ActionPresetJumpToTimeHint": "temps cible en secondes",
+    "ActionPresetOpenLayoutArea": "Ouvrir une zone de mise en page",
     "ActionPresetPause": "Mettre la vidéo en pause",
     "ActionPresetPlay": "Lire la vidéo",
     "ActionPresetShowMessage": "Afficher un message",

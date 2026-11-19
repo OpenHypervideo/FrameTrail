@@ -430,35 +430,83 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         evt.stopPropagation();
     });
 
+    // The areas that can be opened and closed, by the names scripts and the Edit API use
+    var layoutAreaContainers = {
+            top:      AreaTopContainer,
+            bottom:   AreaBottomContainer,
+            left:     AreaLeftContainer,
+            right:    AreaRightContainer,
+            circular: AreaCircularContainer
+        },
+        layoutAreasDiagram    = null,
+        layoutAreaAdjustTimer = null;
+
     // The layout areas as the player has them, with their views (ViewLayout.renderLayoutDiagram): a click on an area
     // opens or closes it. The ring around the video is toggled on its band.
     function updateLayoutAreasPanel() {
 
-        var diagram    = FrameTrail.module('ViewLayout').renderLayoutDiagram({ unused: 'hide', live: true }),
-            containers = {
-                top:      AreaTopContainer,
-                bottom:   AreaBottomContainer,
-                left:     AreaLeftContainer,
-                right:    AreaRightContainer,
-                circular: AreaCircularContainer
-            };
+        var diagram = FrameTrail.module('ViewLayout').renderLayoutDiagram({ unused: 'hide', live: true });
 
         Object.keys(diagram.areas).forEach(function(name) {
-            var areaEl    = diagram.areas[name],
-                container = containers[name];
+            var areaEl = diagram.areas[name];
 
-            areaEl.classList.toggle('active', !container.classList.contains('closed'));
+            areaEl.classList.toggle('active', !layoutAreaContainers[name].classList.contains('closed'));
             areaEl.addEventListener('click', function() {
-                container.classList.toggle('closed');
-                areaEl.classList.toggle('active');
-                if (name !== 'circular') {
-                    FrameTrail.changeState('slidePosition', 'middle');
-                }
-                window.setTimeout(function() { adjustHypervideo(); }, 250);
+                setLayoutAreaOpen(name);
             });
         });
 
+        layoutAreasDiagram = diagram.areas;
         layoutAreasPanel.replaceChildren(diagram.element);
+
+    }
+
+    /**
+     * I open or close a layout area. The layout areas panel, the arrow in an area's tabs and event
+     * code (hypervideo.openLayoutArea() and its siblings on the HypervideoController) all come here.
+     *
+     * Nothing happens (and false comes back)
+     * * for an area without views, and for one that already is as asked: an overlay's onStart runs on
+     *   every activation, and the slide position's reset below would close open details each time;
+     * * in the editing modes other than Preview: the areas are hidden there, and a change made
+     *   unseen would show up in the player afterwards;
+     * * on a phone, which has no areas to open.
+     *
+     * @method setLayoutAreaOpen
+     * @param {String} name top, bottom, left, right or circular (areaTop … as well)
+     * @param {Boolean} [open] true opens, false closes, missing toggles
+     * @return {Boolean} whether the area changed
+     */
+    function setLayoutAreaOpen(name, open) {
+
+        var key       = String(name || '').replace(/^area/i, '').toLowerCase(),
+            container = Object.prototype.hasOwnProperty.call(layoutAreaContainers, key) ? layoutAreaContainers[key] : null,
+            editMode  = FrameTrail.getState('editMode');
+
+        if (!container || FrameTrail.getState('companion')) { return false; }
+        if (editMode && editMode !== 'preview') { return false; }
+        if (!FrameTrail.getState('hv_config_area' + key.charAt(0).toUpperCase() + key.slice(1) + 'Visible')) { return false; }
+
+        var isOpen = !container.classList.contains('closed');
+
+        open = (open === undefined || open === null) ? !isOpen : !!open;
+        if (open === isOpen) { return false; }
+
+        container.classList.toggle('closed', !open);
+
+        if (key !== 'circular') {
+            FrameTrail.changeState('slidePosition', 'middle');
+        }
+
+        if (layoutAreasDiagram && layoutAreasDiagram[key] && layoutAreasPanel.classList.contains('active')) {
+            layoutAreasDiagram[key].classList.toggle('active', open);
+        }
+
+        // Once for an area's transition, however many areas an action opens and closes
+        window.clearTimeout(layoutAreaAdjustTimer);
+        layoutAreaAdjustTimer = window.setTimeout(function() { adjustHypervideo(); }, 250);
+
+        return true;
 
     }
 
@@ -2113,6 +2161,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         toggleSidebarOpen:              toggleSidebarOpen,
         adjustLayout:                   adjustLayout,
         adjustHypervideo:               adjustHypervideo,
+        setLayoutAreaOpen:              setLayoutAreaOpen,
         updateCircularProgress:         updateCircularProgress,
         toggleNativeFullscreenState:    toggleNativeFullscreenState,
         switchInfoTab:                  switchInfoTab,

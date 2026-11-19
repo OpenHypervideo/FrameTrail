@@ -2091,6 +2091,36 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         play: play,
         pause: pause,
 
+        /**
+         * I open a layout area (top, bottom, left, right or circular). Event code gets me as
+         * "hypervideo", so an overlay's onStart can say hypervideo.openLayoutArea('right').
+         * Nothing happens while editing (the areas are hidden there, Preview shows it), for an
+         * area without views and for one that is open already.
+         *
+         * @method openLayoutArea
+         * @param {String} name
+         * @return {Boolean} whether the area changed
+         */
+        openLayoutArea:   function(name) { return FrameTrail.module('ViewVideo').setLayoutAreaOpen(name, true); },
+
+        /**
+         * I close a layout area: see {{#crossLink "HypervideoController/openLayoutArea:method"}}openLayoutArea{{/crossLink}}.
+         *
+         * @method closeLayoutArea
+         * @param {String} name
+         * @return {Boolean} whether the area changed
+         */
+        closeLayoutArea:  function(name) { return FrameTrail.module('ViewVideo').setLayoutAreaOpen(name, false); },
+
+        /**
+         * I open a closed layout area and close an open one.
+         *
+         * @method toggleLayoutArea
+         * @param {String} name
+         * @return {Boolean} whether the area changed
+         */
+        toggleLayoutArea: function(name) { return FrameTrail.module('ViewVideo').setLayoutAreaOpen(name); },
+
         playbackStalled: playbackStalled,
 
         updateDescriptions: updateDescriptions,

@@ -810,6 +810,16 @@ Users can add JavaScript that runs at specific lifecycle points via the `globalE
 }
 ```
 
+Event code, here and in an overlay's actions (onReady, onClick, onStart, onEnd), is the body of a function called with `FrameTrail` (the instance) and `hypervideo` (the player's controller). Besides `hypervideo.play()`, `hypervideo.pause()` and `hypervideo.currentTime`, it can open and close the layout areas:
+
+```js
+hypervideo.openLayoutArea('right');     // 'top', 'bottom', 'left', 'right' or 'circular'
+hypervideo.closeLayoutArea('right');
+hypervideo.toggleLayoutArea('bottom');
+```
+
+Each returns whether the area changed. Nothing happens for an area without views, for one that already is as asked, and while editing (the areas are hidden there, so "Test Code" shows nothing: use Preview). A view's "Start collapsed" only says how its area starts, so an overlay can open such an area when it starts and close it again when it ends. The editors' "Insert action …" menu has these calls ready for every area.
+
 ## Undo/Redo Support
 
 When making changes that should be undoable:

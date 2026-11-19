@@ -396,9 +396,17 @@ FrameTrail.defineType(
                     }
                     self._prevCssClass = self.contentViewData.cssClass;
 
-                    if (self.contentViewData.initClosed) {
-                        self.getLayoutAreaContainer().classList.add('closed');
+                    // "Start collapsed" says how the area starts, not how it stays: it is applied when the view is
+                    // made and when the setting changes, never by a later rendering. (A Chapters view renders again
+                    // once the scrub sprite has loaded, seconds into playback; by then the viewer or an action
+                    // may have opened the area.)
+                    var initClosed = !!self.contentViewData.initClosed;
+                    if (self._initClosed === undefined) {
+                        if (initClosed) { self.getLayoutAreaContainer().classList.add('closed'); }
+                    } else if (self._initClosed !== initClosed) {
+                        self.getLayoutAreaContainer().classList.toggle('closed', initClosed);
                     }
+                    self._initClosed = initClosed;
 
                     switch (this.contentViewData.type) {
 
@@ -1438,11 +1446,7 @@ FrameTrail.defineType(
                     if (withCloseButton) {
                         tabElement.querySelector('.layoutAreaToggleCloseButton').addEventListener('click', function(evt) {
                             evt.stopPropagation();
-                            evt.currentTarget.closest('.layoutArea').classList.toggle('closed');
-                            FrameTrail.changeState('slidePosition', 'middle');
-                            window.setTimeout(function() {
-                                FrameTrail.module('ViewVideo').adjustHypervideo();
-                            }, 250);
+                            FrameTrail.module('ViewVideo').setLayoutAreaOpen(self.whichArea);
                         });
                     }
                     return tabElement;
