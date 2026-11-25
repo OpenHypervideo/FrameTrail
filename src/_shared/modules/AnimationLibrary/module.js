@@ -625,6 +625,9 @@ FrameTrail.defineModule('AnimationLibrary', function(FrameTrail){
         sampleKeyframes:    Keyframes.sampleKeyframes,
         sampleRotation:     Keyframes.sampleRotation,
         unionBox:           Keyframes.unionBox,
+        morphs:             Keyframes.morphs,
+        samplePoints:       Keyframes.samplePoints,
+        inheritPoints:      Keyframes.inheritPoints,
         boxAnimation:       boxAnimation,
 
         splitText:          splitText,

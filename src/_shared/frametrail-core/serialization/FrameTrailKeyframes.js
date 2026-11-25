@@ -16,7 +16,17 @@
  *
  * Keyframe shape: { t: absolute seconds, xywh: [left, top, width, height] in
  * percent of the video frame, r?: rotation in degrees (missing = 0),
- * ease?: id of the segment to the next keyframe }
+ * ease?: id of the segment to the next keyframe, points?: the outline of a
+ * freeform hotspot at this keyframe }
+ *
+ * An outline is a closed list of points [{ x, y, smooth? }] in 0–100
+ * coordinates of the keyframe's box. A track morphs (its outline changes with
+ * the keyframes) when every keyframe has an outline with the same number of
+ * points, three or more; the points are matched by index. Whether a point is
+ * a corner or a curve (smooth) is the same in every keyframe: the first
+ * keyframe says. I also know the geometry of an outline (its curve segments
+ * and bounds) and the edits of a morphing track's points, so that they can be
+ * tested without a browser.
  *
  * The spring and wiggle eases are ported from HyperFrames
  * (https://github.com/heygen-com/hyperframes, packages/core/src/parsers/springEase.ts
@@ -193,9 +203,34 @@
     /*  Box motion keyframes                                              */
     /* ------------------------------------------------------------------ */
 
+    // An outline as [{ x, y, smooth? }]; undefined for anything that is not a
+    // list of points with numbers for x and y.
+    function normalizePoints(raw) {
+
+        if (!Array.isArray(raw) || !raw.length) { return undefined; }
+
+        var points = [];
+
+        for (var i = 0; i < raw.length; i++) {
+            var p = raw[i];
+            if (!p || typeof p !== 'object') { return undefined; }
+            var x = parseFloat(p.x),
+                y = parseFloat(p.y);
+            if (!isFinite(x) || !isFinite(y)) { return undefined; }
+            var point = { x: x, y: y };
+            if (p.smooth) { point.smooth = true; }
+            points.push(point);
+        }
+
+        return points;
+
+    }
+
     /**
      * I validate, sort and de-duplicate raw keyframes. I return undefined when
-     * nothing valid is left, so the caller can drop the key.
+     * nothing valid is left, so the caller can drop the key. A keyframe keeps
+     * its outline (points) when that is a list of points; whether the outlines
+     * of a track fit together is another question (see morphs).
      *
      * @method normalizeKeyframes
      * @param {Array} raw
@@ -221,6 +256,10 @@
             }
             if (kf.ease && kf.ease !== 'linear' && hasEase(kf.ease)) {
                 clean.ease = kf.ease;
+            }
+            var points = normalizePoints(kf.points);
+            if (points) {
+                clean.points = points;
             }
             valid.push(clean);
         });
@@ -357,6 +396,329 @@
 
 
     /* ------------------------------------------------------------------ */
+    /*  Outlines that change with the keyframes                           */
+    /* ------------------------------------------------------------------ */
+
+    /**
+     * I tell whether the outline of a track changes with its keyframes: every
+     * keyframe has an outline, all with the same number of points, three or
+     * more. Anything else is shown with the static outline.
+     * @method morphs
+     * @param {Array} kfs
+     * @return {Boolean}
+     */
+    function morphs(kfs) {
+
+        if (!Array.isArray(kfs) || !kfs.length) { return false; }
+
+        var count = (kfs[0] && Array.isArray(kfs[0].points)) ? kfs[0].points.length : 0;
+        if (count < 3) { return false; }
+
+        for (var i = 1; i < kfs.length; i++) {
+            if (!kfs[i] || !Array.isArray(kfs[i].points) || kfs[i].points.length !== count) { return false; }
+        }
+
+        return true;
+
+    }
+
+    /**
+     * I sample the outline of a morphing track at time t (seconds): each point
+     * moves in a straight line in box coordinates, with the eased progress of
+     * the segment, as the box does (sampleKeyframes). Before the first
+     * keyframe the first outline holds, after the last the last one. Corner
+     * or curve is what the first keyframe says. I return null when the
+     * keyframes I read have no outlines that fit together.
+     * @method samplePoints
+     * @param {Array} kfs
+     * @param {Number} t
+     * @return {Array|null} [{ x, y, smooth? }]
+     */
+    function samplePoints(kfs, t) {
+
+        if (!kfs || !kfs.length) { return null; }
+
+        var first = kfs[0].points,
+            last  = kfs[kfs.length - 1],
+            a, b, e = 0;
+
+        if (!Array.isArray(first) || first.length < 3) { return null; }
+
+        if (!(t > kfs[0].t)) {
+            a = b = kfs[0];
+        } else if (t >= last.t) {
+            a = b = last;
+        } else {
+            var lo = 0, hi = kfs.length - 1;
+            while (hi - lo > 1) {
+                var mid = (lo + hi) >> 1;
+                if (kfs[mid].t <= t) { lo = mid; } else { hi = mid; }
+            }
+            a = kfs[lo];
+            b = kfs[hi];
+            e = easeFn(a.ease || 'linear')((t - a.t) / (b.t - a.t));
+        }
+
+        if (!Array.isArray(a.points) || !Array.isArray(b.points)
+                || a.points.length !== first.length || b.points.length !== first.length) {
+            return null;
+        }
+
+        var out = [];
+
+        for (var i = 0; i < first.length; i++) {
+            var pa = a.points[i],
+                pb = b.points[i],
+                point = { x: pa.x + (pb.x - pa.x) * e, y: pa.y + (pb.y - pa.y) * e };
+            if (first[i].smooth) { point.smooth = true; }
+            out.push(point);
+        }
+
+        return out;
+
+    }
+
+    function round2(v) {
+        return Math.round(v * 100) / 100;
+    }
+
+    function clonePoint(p) {
+        var point = { x: p.x, y: p.y };
+        if (p.smooth) { point.smooth = true; }
+        return point;
+    }
+
+    // A copy of a keyframe with other points (none when points is undefined).
+    function withPoints(kf, points) {
+        var copy = {};
+        Object.keys(kf).forEach(function(key) {
+            if (key !== 'points') { copy[key] = kf[key]; }
+        });
+        if (points) { copy.points = points; }
+        return copy;
+    }
+
+    /**
+     * I give every keyframe of next that has no outline the outline prev has
+     * at its time, when prev morphs. So a keyframe that is made at a time
+     * without one (a box change at the playhead, the keyframe toggle), or one
+     * rebuilt without its points, keeps a morphing track morphing. Keyframes
+     * that have an outline are returned as they are.
+     * @method inheritPoints
+     * @param {Array} next
+     * @param {Array} prev
+     * @return {Array}
+     */
+    function inheritPoints(next, prev) {
+
+        if (!Array.isArray(next) || !morphs(prev)) { return next; }
+
+        return next.map(function(kf) {
+            if (!kf || typeof kf !== 'object' || Array.isArray(kf.points)) { return kf; }
+            var points = samplePoints(prev, parseFloat(kf.t));
+            if (!points) { return kf; }
+            return withPoints(kf, points.map(function(p) {
+                var point = { x: round2(p.x), y: round2(p.y) };
+                if (p.smooth) { point.smooth = true; }
+                return point;
+            }));
+        });
+
+    }
+
+    /**
+     * I return the segments of an outline, one from each point to the next
+     * (the last one back to the first), as cubic Béziers { a, c1, c2, b,
+     * straight }. Smooth points get Catmull-Rom tangents, so the outline
+     * curves through them; corners have none.
+     * @method outlineSegments
+     * @param {Array} points
+     * @return {Array}
+     */
+    function outlineSegments(points) {
+
+        var n = points.length,
+            tangent = function(i) {
+                var p = points[i], prev = points[(i - 1 + n) % n], next = points[(i + 1) % n];
+                return p.smooth ? [(next.x - prev.x) / 6, (next.y - prev.y) / 6] : [0, 0];
+            };
+
+        return points.map(function(a, i) {
+            var j  = (i + 1) % n,
+                b  = points[j],
+                ta = tangent(i),
+                tb = tangent(j);
+            return {
+                a:        a,
+                c1:       { x: a.x + ta[0], y: a.y + ta[1] },
+                c2:       { x: b.x - tb[0], y: b.y - tb[1] },
+                b:        b,
+                straight: !a.smooth && !b.smooth
+            };
+        });
+
+    }
+
+    /**
+     * I return the bounds [x0, y0, x1, y1] of an outline: of the outline
+     * itself, not of its points (a curve through smooth points can bulge past
+     * them).
+     * @method outlineBounds
+     * @param {Array} points
+     * @return {Array}
+     */
+    function outlineBounds(points) {
+
+        var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+
+        outlineSegments(points).forEach(function(seg) {
+            for (var i = 0; i <= (seg.straight ? 1 : 16); i++) {
+                var t = seg.straight ? i : i / 16, mt = 1 - t,
+                    x = mt * mt * mt * seg.a.x + 3 * mt * mt * t * seg.c1.x + 3 * mt * t * t * seg.c2.x + t * t * t * seg.b.x,
+                    y = mt * mt * mt * seg.a.y + 3 * mt * mt * t * seg.c1.y + 3 * mt * t * t * seg.c2.y + t * t * t * seg.b.y;
+                x0 = Math.min(x0, x); x1 = Math.max(x1, x);
+                y0 = Math.min(y0, y); y1 = Math.max(y1, y);
+            }
+        });
+
+        return [x0, y0, x1, y1];
+
+    }
+
+    /**
+     * I return the point in the middle of the segment that starts at point
+     * index: where a new point is put. It is a curve unless the segment is
+     * straight.
+     * @method outlineMidpoint
+     * @param {Array} points
+     * @param {Number} index
+     * @return {Object} { x, y, smooth? }
+     */
+    function outlineMidpoint(points, index) {
+
+        var seg   = outlineSegments(points)[index],
+            point = {
+                x: (seg.a.x + 3 * seg.c1.x + 3 * seg.c2.x + seg.b.x) / 8,
+                y: (seg.a.y + 3 * seg.c1.y + 3 * seg.c2.y + seg.b.y) / 8
+            };
+
+        if (!seg.straight) { point.smooth = true; }
+
+        return point;
+
+    }
+
+    /**
+     * I return an outline in the coordinates of the box [x0, y0, x1, y1]
+     * (given in the outline's own coordinates), rounded to two decimals: what
+     * the points are once that box is the overlay's box.
+     * @method fitPoints
+     * @param {Array} points
+     * @param {Array} bounds
+     * @return {Array}
+     */
+    function fitPoints(points, bounds) {
+
+        var w = (bounds[2] - bounds[0]) || 1,
+            h = (bounds[3] - bounds[1]) || 1;
+
+        return points.map(function(p) {
+            var point = { x: round2((p.x - bounds[0]) / w * 100), y: round2((p.y - bounds[1]) / h * 100) };
+            if (p.smooth) { point.smooth = true; }
+            return point;
+        });
+
+    }
+
+    // The points of every keyframe changed by change(points, kf), with corner
+    // or curve as the first keyframe has it.
+    function editPoints(kfs, change) {
+
+        var flags = kfs[0].points.map(function(p) { return !!p.smooth; });
+
+        return kfs.map(function(kf) {
+            return withPoints(kf, change(kf.points.map(function(p, i) {
+                var point = { x: p.x, y: p.y };
+                if (flags[i]) { point.smooth = true; }
+                return point;
+            }), kf));
+        });
+
+    }
+
+    /**
+     * I give every keyframe the same outline: how a track starts to morph.
+     * @method seedPoints
+     * @param {Array} kfs
+     * @param {Array} points
+     * @return {Array} a new track
+     */
+    function seedPoints(kfs, points) {
+        return kfs.map(function(kf) {
+            return withPoints(kf, points.map(clonePoint));
+        });
+    }
+
+    /**
+     * I add a point to every outline of a morphing track, after point index,
+     * in the middle of each keyframe's own segment to the next point. The
+     * outlines keep their shapes.
+     * @method insertPoint
+     * @param {Array} kfs
+     * @param {Number} index
+     * @return {Array} a new track
+     */
+    function insertPoint(kfs, index) {
+        return editPoints(kfs, function(points) {
+            points.splice(index + 1, 0, outlineMidpoint(points, index));
+            return points;
+        });
+    }
+
+    /**
+     * I remove point index from every outline of a morphing track.
+     * @method removePoint
+     * @param {Array} kfs
+     * @param {Number} index
+     * @return {Array} a new track
+     */
+    function removePoint(kfs, index) {
+        return editPoints(kfs, function(points) {
+            points.splice(index, 1);
+            return points;
+        });
+    }
+
+    /**
+     * I make point index a curve (smooth) or a corner in every outline of a
+     * morphing track.
+     * @method smoothPoint
+     * @param {Array} kfs
+     * @param {Number} index
+     * @param {Boolean} smooth
+     * @return {Array} a new track
+     */
+    function smoothPoint(kfs, index, smooth) {
+        return editPoints(kfs, function(points) {
+            if (smooth) { points[index].smooth = true; } else { delete points[index].smooth; }
+            return points;
+        });
+    }
+
+    /**
+     * I take the outlines off the keyframes: the track moves its box only.
+     * @method stripPoints
+     * @param {Array} kfs
+     * @return {Array} a new track
+     */
+    function stripPoints(kfs) {
+        return kfs.map(function(kf) {
+            return withPoints(kf);
+        });
+    }
+
+
+    /* ------------------------------------------------------------------ */
 
     return {
 
@@ -368,7 +730,22 @@
         normalizeKeyframes: normalizeKeyframes,
         sampleKeyframes:    sampleKeyframes,
         sampleRotation:     sampleRotation,
-        unionBox:           unionBox
+        unionBox:           unionBox,
+
+        morphs:             morphs,
+        samplePoints:       samplePoints,
+        inheritPoints:      inheritPoints,
+
+        outlineSegments:    outlineSegments,
+        outlineBounds:      outlineBounds,
+        outlineMidpoint:    outlineMidpoint,
+        fitPoints:          fitPoints,
+
+        seedPoints:         seedPoints,
+        insertPoint:        insertPoint,
+        removePoint:        removePoint,
+        smoothPoint:        smoothPoint,
+        stripPoints:        stripPoints
 
     };
 

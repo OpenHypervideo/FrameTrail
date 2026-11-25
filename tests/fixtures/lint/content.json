@@ -476,6 +476,144 @@
                 { "op": "replace", "path": "/hypervideo/contents/2/body/frametrail:resourceId", "value": "99" }
             ],
             "findings": []
+        },
+        {
+            "name": "a freeform hotspot whose outline changes with its keyframes",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/3/body/frametrail:attributes",
+                    "value": { "shape": "freeform", "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 50, "smooth": true }, { "x": 0, "y": 100 }], "path": "M0,0 C16.67,0 100,33.33 100,50 C100,66.67 16.67,100 0,100 Z" }
+                },
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/3/target/selector/frametrail:keyframes",
+                    "value": [
+                        { "t": 200, "xywh": [10, 10, 10, 10], "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 50, "smooth": true }, { "x": 0, "y": 100 }] },
+                        { "t": 230, "xywh": [60, 40, 10, 10], "ease": "easeInOut", "points": [{ "x": 20, "y": 0 }, { "x": 100, "y": 30, "smooth": true }, { "x": 40, "y": 100 }] }
+                    ]
+                }
+            ],
+            "findings": []
+        },
+        {
+            "name": "a keyframe without an outline: the outline does not change",
+            "patch": [
+                { "op": "replace", "path": "/hypervideo/contents/3/body/frametrail:attributes", "value": { "shape": "freeform", "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 50 }, { "x": 0, "y": 100 }] } },
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/3/target/selector/frametrail:keyframes",
+                    "value": [
+                        { "t": 200, "xywh": [10, 10, 10, 10], "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 50 }, { "x": 0, "y": 100 }] },
+                        { "t": 230, "xywh": [60, 40, 10, 10] }
+                    ]
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "keyframe-points-uneven",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:03.000Z",
+                    "message": "Only 1 of its 2 keyframes has an outline (points); every keyframe needs one. The outline does not change over time: the player shows the outline of the attributes (points) all the time."
+                }
+            ]
+        },
+        {
+            "name": "outlines of different numbers of points",
+            "patch": [
+                { "op": "replace", "path": "/hypervideo/contents/3/body/frametrail:attributes", "value": { "shape": "freeform", "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 50 }, { "x": 0, "y": 100 }] } },
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/3/target/selector/frametrail:keyframes",
+                    "value": [
+                        { "t": 200, "xywh": [10, 10, 10, 10], "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 50 }, { "x": 0, "y": 100 }] },
+                        { "t": 230, "xywh": [60, 40, 10, 10], "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 0 }, { "x": 100, "y": 100 }, { "x": 0, "y": 100 }] }
+                    ]
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "keyframe-points-uneven",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:03.000Z",
+                    "message": "The outlines on its keyframes have different numbers of points (3, 4); the points are matched by their place in the list, so every outline needs the same number. The outline does not change over time: the player shows the outline of the attributes (points) all the time."
+                }
+            ]
+        },
+        {
+            "name": "outlines of two points",
+            "patch": [
+                { "op": "replace", "path": "/hypervideo/contents/3/body/frametrail:attributes", "value": { "shape": "freeform", "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 50 }, { "x": 0, "y": 100 }] } },
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/3/target/selector/frametrail:keyframes",
+                    "value": [
+                        { "t": 200, "xywh": [10, 10, 10, 10], "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 100 }] },
+                        { "t": 230, "xywh": [60, 40, 10, 10], "points": [{ "x": 0, "y": 100 }, { "x": 100, "y": 0 }] }
+                    ]
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "keyframe-points-uneven",
+                    "severity": "error",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:03.000Z",
+                    "message": "The outlines on its keyframes have 2 points; an outline needs at least three. The outline does not change over time: the player shows the outline of the attributes (points) all the time."
+                }
+            ]
+        },
+        {
+            "name": "outlines on the keyframes of a circle: only a freeform hotspot has one",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/3/target/selector/frametrail:keyframes",
+                    "value": [
+                        { "t": 200, "xywh": [10, 10, 10, 10], "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 50 }, { "x": 0, "y": 100 }] },
+                        { "t": 230, "xywh": [60, 40, 10, 10], "ease": "easeInOut", "points": [{ "x": 20, "y": 0 }, { "x": 100, "y": 30 }, { "x": 40, "y": 100 }] }
+                    ]
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "keyframe-points-unused",
+                    "severity": "warning",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:03.000Z",
+                    "message": "Its keyframes carry outlines (points), but it is a hotspot with the shape \"circle\": only a freeform hotspot has an outline. The points are ignored."
+                }
+            ]
+        },
+        {
+            "name": "outlines on the keyframes of a text overlay, even on one keyframe only",
+            "rules": ["keyframe-points-uneven", "keyframe-points-unused"],
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/3/body",
+                    "value": { "type": "TextualBody", "frametrail:type": "text", "format": "text/html", "value": "", "frametrail:attributes": { "text": "Protein" } }
+                },
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/contents/3/target/selector/frametrail:keyframes",
+                    "value": [
+                        { "t": 200, "xywh": [10, 10, 10, 10], "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 50 }, { "x": 0, "y": 100 }] },
+                        { "t": 230, "xywh": [60, 40, 10, 10] }
+                    ]
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "keyframe-points-unused",
+                    "severity": "warning",
+                    "kind": "overlays",
+                    "ref": "2026-10-01T10:00:03.000Z",
+                    "message": "Its keyframes carry outlines (points), but it is an overlay of the type \"text\": only a freeform hotspot has an outline. The points are ignored."
+                }
+            ]
         }
     ]
 }

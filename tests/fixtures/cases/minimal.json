@@ -859,6 +859,99 @@
                 },
                 "frametrail:events": {}
             }
+        },
+        {
+            "name": "freeform hotspot whose outline changes over time: points on every keyframe, the first keyframe's also in the attributes",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-11-25T09:30:00.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=81,100&xywh=percent:23,18.4,38.9,52.3",
+                        "frametrail:keyframes": [
+                            { "t": 81, "xywh": [24.8, 20.1, 36.2, 48.9],
+                              "points": [{ "x": 12.5, "y": 0, "smooth": true }, { "x": 100, "y": 31 }, { "x": 64, "y": 100 }] },
+                            { "t": 84.5, "xywh": [23, 18.4, 38.9, 52.3], "r": -4, "ease": "easeInOut",
+                              "points": [{ "x": 9, "y": 4, "smooth": true }, { "x": 100, "y": 27.5 }, { "x": 71, "y": 100 }] }
+                        ]
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "hotspot",
+                    "format": "text/html",
+                    "frametrail:name": "Enzyme",
+                    "frametrail:attributes": {
+                        "shape": "freeform",
+                        "color": "#ffd23f",
+                        "borderWidth": 4,
+                        "points": [{ "x": 12.5, "y": 0, "smooth": true }, { "x": 100, "y": 31 }, { "x": 64, "y": 100 }],
+                        "path": "M12.5,0 C18.5,-11.5 100,31 100,31 L64,100 C64,100 6.5,11.5 12.5,0 Z",
+                        "action": "jumpToTime",
+                        "actionTarget": 120
+                    }
+                },
+                "frametrail:events": {}
+            }
+        },
+        {
+            "name": "points on the keyframes of an overlay that is no freeform hotspot (ignored and kept), on one keyframe only, with a property FrameTrail does not know",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-11-25T09:30:01.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,50,30",
+                        "frametrail:keyframes": [
+                            { "t": 4, "xywh": [10, 20, 30, 30], "points": [{ "x": 0, "y": 0, "handle": "in" }, { "x": 100, "y": 0 }] },
+                            { "t": 12, "xywh": [30, 20, 30, 30] }
+                        ]
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "text",
+                    "format": "text/html",
+                    "value": "",
+                    "frametrail:name": "Text",
+                    "frametrail:attributes": {
+                        "text": "&lt;p&gt;Moving&lt;/p&gt;"
+                    }
+                },
+                "frametrail:events": {}
+            }
         }
     ]
 }

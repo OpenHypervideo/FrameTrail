@@ -923,6 +923,63 @@
             ]
         },
         {
+            "name": "point of a keyframe's outline without y; another keyframe's points not a list",
+            "schema": "content-item.schema.json",
+            "data": {
+                "@context": [
+                    "http://www.w3.org/ns/anno.jsonld",
+                    "https://frametrail.org/ns/context.jsonld"
+                ],
+                "creator": {
+                    "nickname": "demo",
+                    "type": "Person",
+                    "id": "1"
+                },
+                "created": "2026-11-25T09:30:02.137Z",
+                "type": "Annotation",
+                "frametrail:type": "Overlay",
+                "frametrail:tags": [],
+                "target": {
+                    "type": "Video",
+                    "source": "video.mp4",
+                    "selector": {
+                        "conformsTo": "http://www.w3.org/TR/media-frags/",
+                        "type": "FragmentSelector",
+                        "value": "t=4,12&xywh=percent:10,20,50,30",
+                        "frametrail:keyframes": [
+                            { "t": 4, "xywh": [10, 20, 30, 30], "points": [{ "x": 0, "y": 0 }, { "x": 100 }, { "x": 50, "y": 100, "smooth": "yes" }] },
+                            { "t": 12, "xywh": [30, 20, 30, 30], "points": "M0,0 L100,0 L50,100 Z" }
+                        ]
+                    }
+                },
+                "body": {
+                    "type": "TextualBody",
+                    "frametrail:type": "hotspot",
+                    "format": "text/html",
+                    "frametrail:name": "Hotspot",
+                    "frametrail:attributes": {
+                        "shape": "freeform",
+                        "points": [{ "x": 0, "y": 0 }, { "x": 100, "y": 0 }, { "x": 50, "y": 100 }]
+                    }
+                },
+                "frametrail:events": {}
+            },
+            "errors": [
+                {
+                    "path": "/target/selector/frametrail:keyframes/0/points/1/y",
+                    "message": "is required"
+                },
+                {
+                    "path": "/target/selector/frametrail:keyframes/0/points/2/smooth",
+                    "message": "must be boolean, is string"
+                },
+                {
+                    "path": "/target/selector/frametrail:keyframes/1/points",
+                    "message": "must be array, is string"
+                }
+            ]
+        },
+        {
             "name": "unknown hotspot action",
             "schema": "content-item.schema.json",
             "data": {

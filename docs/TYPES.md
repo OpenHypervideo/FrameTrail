@@ -144,7 +144,7 @@ Overlay. It has no src. Schema: [`attributes/hotspot.schema.json`](../schemas/at
 | `textColor` | string |  | `#ffffff` | CSS colour of the label. |
 | `direction` | string | `right`, `left`, `up`, `down`, `upRight`, `upLeft`, `downRight`, `downLeft` | `right` | arrow only: where the arrow points. |
 | `curve` | string | `straight`, `curved`, `swoop` | `straight` | arrow only: straight, curved (one bend) or swoop (S-like). |
-| `points` | array of objects |  |  | freeform only: the outline as points in 0–100 box coordinates. Smooth points let the outline curve through them, the others are corners. |
+| `points` | array of objects |  |  | freeform only: the outline as points in 0–100 box coordinates. Smooth points let the outline curve through them, the others are corners. An outline that changes over time has points on the keyframes of the overlay's box motion as well (frametrail:keyframes); this is then the outline of the first keyframe, which a consumer shows that does not know them. |
 | `points[].x` | number |  |  | Required. Horizontal position in percent of the box. |
 | `points[].y` | number |  |  | Required. Vertical position in percent of the box. |
 | `points[].smooth` | boolean |  | `false` | Curve through this point instead of a corner. |

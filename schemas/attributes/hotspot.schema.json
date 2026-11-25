@@ -61,27 +61,9 @@
             "default": "straight"
         },
         "points": {
-            "description": "freeform only: the outline as points in 0–100 box coordinates. Smooth points let the outline curve through them, the others are corners.",
+            "description": "freeform only: the outline as points in 0–100 box coordinates. Smooth points let the outline curve through them, the others are corners. An outline that changes over time has points on the keyframes of the overlay's box motion as well (frametrail:keyframes); this is then the outline of the first keyframe, which a consumer shows that does not know them.",
             "type": "array",
-            "items": {
-                "type": "object",
-                "required": ["x", "y"],
-                "properties": {
-                    "x": {
-                        "description": "Horizontal position in percent of the box.",
-                        "type": "number"
-                    },
-                    "y": {
-                        "description": "Vertical position in percent of the box.",
-                        "type": "number"
-                    },
-                    "smooth": {
-                        "description": "Curve through this point instead of a corner.",
-                        "type": "boolean",
-                        "default": false
-                    }
-                }
-            }
+            "items": { "$ref": "../common.schema.json#/$defs/outlinePoint" }
         },
         "path": {
             "description": "freeform only: the outline as an SVG path in 0–100 box coordinates. Derived from points and written for other consumers; a shape that has only a path (older data) is drawn from it and converted to points on its first edit.",

@@ -116,7 +116,7 @@ FrameTrail.defineModule('ModuleName', function(FrameTrail) {
 | `HypervideoFormBuilder` | Hypervideo creation/edit forms |
 | `UserTraces` | User activity tracking |
 | `UndoManager` | Undo/redo for editing operations |
-| `AnimationLibrary` | Overlay animation data and math: ease and preset registries, timing windows, text splitting; re-exports the box-motion keyframe math of `FrameTrailKeyframes` |
+| `AnimationLibrary` | Overlay animation data and math: ease and preset registries, timing windows, text splitting; re-exports the box-motion keyframe math of `FrameTrailKeyframes` (which also has the outlines that change with the keyframes) |
 
 #### Player Modules (`src/player/modules/`)
 
@@ -127,7 +127,7 @@ FrameTrail.defineModule('ModuleName', function(FrameTrail) {
 | `HypervideoController` | Playback control, timing |
 | `AnnotationsController` | Annotation lifecycle management |
 | `OverlaysController` | Overlay lifecycle management, Custom Overlay gallery |
-| `OverlayAnimator` | Runs overlay animations (CSS, video-synced): transitions, emphasis, text reveals, content animations, box motion |
+| `OverlayAnimator` | Runs overlay animations (CSS, video-synced): transitions, emphasis, text reveals, content animations, box motion and the outline that changes with it (a freeform hotspot's) |
 | `OverlayAnimationEditor` | Animation tab of the overlay properties panel, keyframe easing menu |
 | `SubtitlesController` | Captions on the video and the CC button's languages (native text tracks where the player cannot go fullscreen itself) |
 | `TranscriptsEditor` | The "transcripts" edit mode: the cues of a language as a list and as blocks on the transcript timeline (moved and resized there), editing, uploading (WebVTT, SubRip), deleting (asking what becomes of the Transcript views showing it), generating through an extension's `transcriber` |

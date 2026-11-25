@@ -22,21 +22,34 @@
  * the outline (see Overlay.fitBoxToLocal), keeping its rotation and, with box
  * motion, changing every keyframe box the same way.
  *
+ * On a hotspot with box motion the outline can change over time: moving a point
+ * writes the outline of the keyframe at the playhead (making the keyframe if
+ * there is none, as a box change does). From the first such move on, every
+ * keyframe carries an outline (points on the keyframes; the first keyframe's is
+ * also attributes.points), and the handles show the outline of the edit time.
+ * Adding or removing a point, and corner or curve, apply to every keyframe.
+ * A new drawing replaces the outline of every keyframe: it is static again.
+ * The rules of such a track, its sampling and its edits are in
+ * FrameTrailKeyframes.
+ *
  * @class FreeformShapeEditor
  * @static
  */
 
 FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
 
-    var labels = FrameTrail.module('Localization').labels;
+    var labels    = FrameTrail.module('Localization').labels,
+        Keyframes = window.FrameTrailKeyframes;
 
     var SVG_NS  = 'http://www.w3.org/2000/svg',
         MIN_PX  = 8,     // smallest extent of a fitted box (px on the stage)
-        SNAP_PX = 8;     // distance to the first point that closes a drawn outline
+        SNAP_PX = 8,     // distance to the first point that closes a drawn outline
+        UNDO_KEYS = ['position', 'rotation', 'keyframes', 'attributes'];
 
     var current       = null,   // the selected overlay (whether freeform or not)
         layer         = null,   // its .freeformHandles layer
-        points        = [],     // the points shown by the layer
+        points        = [],     // the points shown by the layer: the outline at the edit time
+        followed      = null,   // the content element whose outline the handles follow
         selectedIndex = null,
         lastTap       = null,   // { index, time } of the last press on a point
         drag          = null,
@@ -84,42 +97,156 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
         return overlay.getContentHost().querySelector('.resourceDetail');
     }
 
+    function clonePoint(p) {
+        return Object.assign({}, p);
+    }
+
     /**
-     * I write an edited outline: the box is fitted to the outline (whose points
-     * may reach outside it), the points are stored relative to the new box, and
-     * the edit becomes one undo step.
+     * I return the outline of an overlay at its edit time: sampled from its
+     * keyframes while they carry outlines, else the one of its attributes.
      */
-    function commitPoints(overlay, newPoints, description) {
+    function outlineOf(overlay) {
+        return (overlay.hasKeyframeOutlines() && Keyframes.samplePoints(overlay.data.keyframes, overlay.editTime()))
+            || overlay.resourceItem.freeformPoints(overlay.data.attributes);
+    }
 
-        var before = overlay.snapshotState(['position', 'rotation', 'keyframes', 'attributes']),
-            box    = overlay.getBoxPx(overlay.editTime()),
-            minU   = box.w ? MIN_PX / box.w * 100 : 1,
-            minV   = box.h ? MIN_PX / box.h * 100 : 1,
-            u0 = Infinity, v0 = Infinity, u1 = -Infinity, v1 = -Infinity;
+    /**
+     * I return the bounds [u0, v0, u1, v1] of an outline in a box of w × h
+     * pixels: of the outline itself (a curve can bulge past its points), and
+     * never smaller than MIN_PX.
+     */
+    function boundsOf(list, w, h) {
 
-        // Bounds of the outline itself: a curve through smooth points can bulge past them
-        overlay.resourceItem.freeformSegments(newPoints).forEach(function(seg) {
-            for (var i = 0; i <= (seg.straight ? 1 : 16); i++) {
-                var t = seg.straight ? i : i / 16, mt = 1 - t,
-                    x = mt * mt * mt * seg.a.x + 3 * mt * mt * t * seg.c1.x + 3 * mt * t * t * seg.c2.x + t * t * t * seg.b.x,
-                    y = mt * mt * mt * seg.a.y + 3 * mt * mt * t * seg.c1.y + 3 * mt * t * t * seg.c2.y + t * t * t * seg.b.y;
-                u0 = Math.min(u0, x); u1 = Math.max(u1, x);
-                v0 = Math.min(v0, y); v1 = Math.max(v1, y);
-            }
-        });
-        if (u1 - u0 < minU) { var cu = (u0 + u1) / 2; u0 = cu - minU / 2; u1 = cu + minU / 2; }
-        if (v1 - v0 < minV) { var cv = (v0 + v1) / 2; v0 = cv - minV / 2; v1 = cv + minV / 2; }
+        var b    = Keyframes.outlineBounds(list),
+            minU = w ? MIN_PX / w * 100 : 1,
+            minV = h ? MIN_PX / h * 100 : 1;
 
-        overlay.fitBoxToLocal(u0, v0, u1, v1);
+        if (b[2] - b[0] < minU) { var cu = (b[0] + b[2]) / 2; b[0] = cu - minU / 2; b[2] = cu + minU / 2; }
+        if (b[3] - b[1] < minV) { var cv = (b[1] + b[3]) / 2; b[1] = cv - minV / 2; b[3] = cv + minV / 2; }
 
-        var normalized = newPoints.map(function(p) {
-            var point = { x: round2((p.x - u0) / (u1 - u0) * 100), y: round2((p.y - v0) / (v1 - v0) * 100) };
-            if (p.smooth) { point.smooth = true; }
-            return point;
-        });
+        return b;
+
+    }
+
+    /**
+     * I write an outline that is the same at every time: the box is fitted to
+     * it (with box motion every keyframe box the same way), and its points are
+     * stored relative to the new box.
+     */
+    function writeStatic(overlay, list) {
+
+        var box    = overlay.getBoxPx(overlay.editTime()),
+            bounds = boundsOf(list, box.w, box.h);
+
+        overlay.fitBoxToLocal(bounds[0], bounds[1], bounds[2], bounds[3]);
+
+        var normalized = Keyframes.fitPoints(list, bounds);
 
         overlay.data.attributes.points = normalized;
         overlay.data.attributes.path   = overlay.resourceItem.freeformPath(normalized);
+
+    }
+
+    /**
+     * I write a change of an outline into the keyframes of a hotspot with box
+     * motion (see commit for the changes).
+     *
+     * A change of structure goes into every keyframe, so they keep the same
+     * number of points and the same corners and curves. A point that was
+     * moved is the outline of the edit time: of the keyframe there, which is
+     * made when there is none and takes the box that is shown at that time
+     * (the points were dragged in that box). Where an outline changed, the
+     * keyframe's box is fitted to it.
+     */
+    function writeKeyframes(overlay, change) {
+
+        var t         = overlay.editTime(),
+            rect      = overlay.getRectAt(t),
+            stage     = overlay.stageSize(),
+            kfs       = overlay.data.keyframes,
+            structure = (change.op !== 'move'),
+            moved     = (change.op === 'move') || (change.op === 'insert' && change.moved),
+            edited    = -1;
+
+        if (!overlay.hasKeyframeOutlines()) {
+            // From now on the outline changes with the keyframes: each starts with the outline as it is
+            var base = overlay.resourceItem.freeformPoints(overlay.data.attributes);
+            if (change.op === 'insert') {
+                base.splice(change.index + 1, 0, Keyframes.outlineMidpoint(base, change.index));
+            }
+            kfs = Keyframes.seedPoints(kfs, base);
+        } else if (change.op === 'insert') {
+            kfs = Keyframes.insertPoint(kfs, change.index);
+        } else if (change.op === 'remove') {
+            kfs = Keyframes.removePoint(kfs, change.index);
+        } else if (change.op === 'smooth') {
+            kfs = Keyframes.smoothPoint(kfs, change.index, change.smooth);
+        } else {
+            kfs = kfs.slice();
+        }
+
+        if (moved) {
+            var at = {
+                xywh:   [rect.left, rect.top, rect.width, rect.height],
+                r:      rect.rotation,
+                points: change.points.map(clonePoint)
+            };
+            edited = overlay.keyframeIndexAt(t);
+            if (edited !== -1) {
+                kfs[edited] = Object.assign({}, kfs[edited], at);
+            } else {
+                edited = kfs.length;
+                kfs.push(Object.assign({ t: t }, at));
+            }
+        }
+
+        kfs = kfs.map(function(kf, idx) {
+            if (!structure && idx !== edited) { return kf; }
+            var bounds = boundsOf(kf.points, kf.xywh[2] / 100 * stage.width, kf.xywh[3] / 100 * stage.height);
+            return Object.assign({}, kf, {
+                xywh:   overlay.fitRect(kf.xywh, kf.r, bounds[0], bounds[1], bounds[2], bounds[3]),
+                points: Keyframes.fitPoints(kf.points, bounds)
+            });
+        });
+
+        // Normalises, keeps my position and the outline of the attributes (the first keyframe's) in step
+        overlay.setKeyframes(kfs);
+
+    }
+
+    /**
+     * I write an edited outline as one undo step. change is
+     *
+     *     { op: 'move',   points }                 a point was dragged
+     *     { op: 'insert', points, index, moved }   a point was added after point index (and maybe dragged)
+     *     { op: 'remove', points, index }          point index was removed
+     *     { op: 'smooth', points, index, smooth }  point index became a curve or a corner
+     *     { op: 'draw',   points }                 a new outline was drawn
+     *
+     * with points the whole outline after the change, in the box shown at the
+     * edit time (they may reach outside it).
+     *
+     * Without box motion the outline is the one of the attributes. With box
+     * motion a moved point is written into the keyframe at the playhead, and
+     * from then on the keyframes carry the outline; changes of structure
+     * follow where the outline is (attributes or keyframes). A drawing
+     * replaces the outline at every time: the keyframes lose theirs.
+     */
+    function commit(overlay, change, description) {
+
+        var before  = overlay.snapshotState(UNDO_KEYS),
+            atTime  = (change.op === 'move') || (change.op === 'insert' && change.moved);
+
+        if (change.op === 'draw' && overlay.hasKeyframeOutlines()) {
+            overlay.setKeyframes(Keyframes.stripPoints(overlay.data.keyframes), { inherit: false });
+        }
+
+        if (overlay.hasKeyframes() && change.op !== 'draw' && (atTime || overlay.hasKeyframeOutlines())) {
+            writeKeyframes(overlay, change);
+        } else {
+            writeStatic(overlay, change.points);
+        }
+
         overlay.rerenderContent();
 
         var OverlaysController = FrameTrail.module('OverlaysController');
@@ -127,7 +254,7 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
             overlay,
             labels['SidebarOverlays'] + ' ' + description,
             before,
-            overlay.snapshotState(['position', 'rotation', 'keyframes', 'attributes']),
+            overlay.snapshotState(UNDO_KEYS),
             { rerender: true }
         );
         OverlaysController.refreshMotionControls(overlay);
@@ -141,9 +268,38 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
     /* ------------------------------------------------------------------ */
 
     function removeLayer() {
+        unfollow();
         if (layer) {
             layer.remove();
             layer = null;
+        }
+    }
+
+    /**
+     * The handles follow the outline that is shown: an outline that changes
+     * with the keyframes is redrawn with the video time (ResourceHotspot's
+     * animateOutline), and tells me through this listener. Not while a point
+     * is dragged: then the handles lead.
+     */
+    function follow(detail) {
+
+        unfollow();
+        if (!detail) { return; }
+
+        followed = detail;
+        detail._ftOutlineListener = function(shown) {
+            if (drag || !layer || !shown || shown.length !== points.length) { return; }
+            points = shown.map(clonePoint);
+            layout(points);
+        };
+
+    }
+
+    function unfollow() {
+        if (followed) {
+            delete followed._ftOutlineListener;
+            delete followed._ftOutlineHeld;
+            followed = null;
         }
     }
 
@@ -161,7 +317,7 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
             return;
         }
 
-        points = list || current.resourceItem.freeformPoints(current.data.attributes);
+        points = list || outlineOf(current);
         if (selectedIndex !== null && selectedIndex >= points.length) {
             selectedIndex = null;
         }
@@ -199,6 +355,7 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
         current.overlayElement.appendChild(layer);
 
         layout(points);
+        follow(contentDetail(current));
 
     }
 
@@ -210,9 +367,7 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
 
         if (!layer) { return; }
 
-        var Hotspot  = current.resourceItem,
-            pathData = Hotspot.freeformPath(list),
-            segments = Hotspot.freeformSegments(list);
+        var pathData = current.resourceItem.freeformPath(list);
 
         layer.querySelectorAll('.freeformOutline path').forEach(function(path) {
             path.setAttribute('d', pathData);
@@ -228,9 +383,9 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
         });
 
         layer.querySelectorAll('.freeformInsert').forEach(function(handle) {
-            var seg = segments[parseInt(handle.dataset.index, 10)];
-            handle.style.left = ((seg.a.x + 3 * seg.c1.x + 3 * seg.c2.x + seg.b.x) / 8) + '%';
-            handle.style.top  = ((seg.a.y + 3 * seg.c1.y + 3 * seg.c2.y + seg.b.y) / 8) + '%';
+            var middle = Keyframes.outlineMidpoint(list, parseInt(handle.dataset.index, 10));
+            handle.style.left = middle.x + '%';
+            handle.style.top  = middle.y + '%';
         });
 
     }
@@ -244,18 +399,40 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
         var idx = parseInt(this.dataset.index, 10),
             now = Date.now();
 
+        settle();
+
         // Double-click (two presses on the same point): corner <-> smooth
         if (!drag && lastTap && lastTap.index === idx && now - lastTap.time < 400) {
             lastTap = null;
-            var toggled = points.map(function(p) { return Object.assign({}, p); });
-            if (toggled[idx].smooth) { delete toggled[idx].smooth; } else { toggled[idx].smooth = true; }
-            commitPoints(current, toggled, labels['SettingsHotspotShape']);
+            var toggled = points.map(clonePoint),
+                smooth  = !toggled[idx].smooth;
+            if (smooth) { toggled[idx].smooth = true; } else { delete toggled[idx].smooth; }
+            commit(current, { op: 'smooth', points: toggled, index: idx, smooth: smooth }, labels['SettingsHotspotShape']);
             return;
         }
         lastTap = { index: idx, time: now };
 
         selectedIndex = idx;
-        startPointDrag(evt, idx, points.map(function(p) { return Object.assign({}, p); }));
+        startPointDrag(evt, idx, points.map(clonePoint));
+
+    }
+
+    /**
+     * Before the outline is changed at the playhead: an outline that changes
+     * over time is edited with the video standing still, and the points are
+     * those of the edit time, from the data (what is shown can be a frame off).
+     */
+    function settle() {
+
+        if (!current.hasKeyframes()) { return; }
+
+        var HypervideoController = FrameTrail.module('HypervideoController');
+        if (HypervideoController.isPlaying) {
+            HypervideoController.pause();
+        }
+        if (!drag && current.hasKeyframeOutlines()) {
+            points = outlineOf(current);
+        }
 
     }
 
@@ -265,24 +442,19 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
         evt.stopPropagation();
         evt.preventDefault();
 
-        var idx      = parseInt(this.dataset.index, 10),
-            segments = current.resourceItem.freeformSegments(points),
-            seg      = segments[idx],
-            inserted = {
-                x: (seg.a.x + 3 * seg.c1.x + 3 * seg.c2.x + seg.b.x) / 8,
-                y: (seg.a.y + 3 * seg.c1.y + 3 * seg.c2.y + seg.b.y) / 8
-            },
-            list = points.map(function(p) { return Object.assign({}, p); });
+        settle();
 
-        // On a curved stretch the new point keeps the curve going
-        if (!seg.straight) { inserted.smooth = true; }
-        list.splice(idx + 1, 0, inserted);
+        var idx  = parseInt(this.dataset.index, 10),
+            list = points.map(clonePoint);
+
+        // In the middle of the stretch; on a curved one the new point keeps the curve going
+        list.splice(idx + 1, 0, Keyframes.outlineMidpoint(points, idx));
 
         // Show the new point, then drag it (a plain click inserts it where it is)
         selectedIndex = idx + 1;
         lastTap = null;
         render(list);
-        startPointDrag(evt, idx + 1, list.map(function(p) { return Object.assign({}, p); }), true);
+        startPointDrag(evt, idx + 1, list.map(clonePoint), true);
 
     }
 
@@ -302,6 +474,9 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
             moved:    false,
             inserted: !!inserted
         };
+
+        // The outline shown stands still while its points are dragged
+        if (followed) { followed._ftOutlineHeld = true; }
 
         layout(list);
 
@@ -343,11 +518,18 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
         var done = drag;
         drag = null;
 
+        if (followed) { delete followed._ftOutlineHeld; }
+
         if (done.moved || done.inserted) {
             FrameTrail.module('ViewVideo').swallowNextClick();
-            commitPoints(done.overlay, done.points, labels['SettingsHotspotShape']);
+            commit(done.overlay, done.inserted
+                ? { op: 'insert', points: done.points, index: done.index - 1, moved: done.moved }
+                : { op: 'move', points: done.points }, labels['SettingsHotspotShape']);
         } else {
             layout(points);
+            // What was held back while the point was pressed
+            var OverlayAnimator = FrameTrail.module('OverlayAnimator');
+            if (OverlayAnimator) { OverlayAnimator.syncAll(); }
         }
 
     }
@@ -386,10 +568,12 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
             evt.preventDefault();
             evt.stopPropagation();
             if (points.length <= 3) { return; }
-            var list = points.map(function(p) { return Object.assign({}, p); });
-            list.splice(selectedIndex, 1);
+            settle();
+            var list    = points.map(clonePoint),
+                removed = selectedIndex;
+            list.splice(removed, 1);
             selectedIndex = null;
-            commitPoints(current, list, labels['SettingsHotspotShape']);
+            commit(current, { op: 'remove', points: list, index: removed }, labels['SettingsHotspotShape']);
         }
 
     }
@@ -400,13 +584,28 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
     /* ------------------------------------------------------------------ */
 
     /**
-     * I start drawing a new outline for a freeform hotspot on the video.
+     * I start drawing a new outline for a freeform hotspot on the video. An
+     * outline that changes over time is replaced at every time by the
+     * drawing, so I ask first.
      * @method startDrawing
      * @param {Overlay} overlay
+     * @param {Boolean} confirmed (internal) the question was answered
      */
-    function startDrawing(overlay) {
+    function startDrawing(overlay, confirmed) {
 
         if (!overlay || FrameTrail.getState('editMode') !== 'overlays') { return; }
+
+        if (!confirmed && isFreeform(overlay) && overlay.hasKeyframeOutlines()) {
+            ConfirmDialog({
+                title:        labels['SettingsHotspotDrawShape'],
+                icon:         'icon-assembly-reference',
+                message:      labels['MessageFreeformRedraw'],
+                confirmLabel: labels['SettingsHotspotDrawShape'],
+                cancelLabel:  labels['GenericCancel'],
+                onConfirm:    function() { startDrawing(overlay, true); }
+            });
+            return;
+        }
 
         stopDrawing();
 
@@ -550,7 +749,7 @@ FrameTrail.defineModule('FreeformShapeEditor', function(FrameTrail){
 
         stopDrawing();
         FrameTrail.module('ViewVideo').swallowNextClick();
-        commitPoints(overlay, local, labels['SettingsHotspotDrawShape']);
+        commit(overlay, { op: 'draw', points: local }, labels['SettingsHotspotDrawShape']);
 
     }
 

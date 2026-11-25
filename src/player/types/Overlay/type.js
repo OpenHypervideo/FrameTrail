@@ -589,6 +589,36 @@ FrameTrail.defineType(
                 },
 
                 /**
+                 * I tell whether my outline changes with my keyframes: every keyframe
+                 * carries an outline that fits the others (FrameTrailKeyframes.morphs).
+                 * Only a freeform hotspot shows it.
+                 * @method hasKeyframeOutlines
+                 * @return {Boolean}
+                 */
+                hasKeyframeOutlines: function () {
+
+                    return this.hasKeyframes() && FrameTrail.module('AnimationLibrary').morphs(this.data.keyframes);
+
+                },
+
+                /**
+                 * While my outline changes with my keyframes, my attributes hold the
+                 * outline of the first keyframe (the type writes it: points, and the
+                 * path derived from them). It is to the outline what my position is to
+                 * the box: what a consumer shows that does not know the keyframes.
+                 * @method syncOutlineFromKeyframes
+                 * @return {Boolean} whether my attributes changed
+                 */
+                syncOutlineFromKeyframes: function () {
+
+                    if (!this.hasKeyframeOutlines() || !this.resourceItem || typeof this.resourceItem.setFreeformPoints !== 'function') {
+                        return false;
+                    }
+                    return this.resourceItem.setFreeformPoints(this.data.attributes, this.data.keyframes[0].points);
+
+                },
+
+                /**
                  * I apply a new box. Without box motion it becomes my position; with box
                  * motion it becomes (or updates) the keyframe at the playhead (clamped to
                  * my span, see editTime). Without rect.rotation my rotation is kept.
@@ -632,8 +662,10 @@ FrameTrail.defineType(
                         idx  = this.keyframeIndexAt(t);
 
                     if (idx !== -1) {
-                        kfs[idx] = { t: kfs[idx].t, xywh: xywh, r: r, ease: kfs[idx].ease };
+                        // The rest of the keyframe stays: its easing, its outline
+                        kfs[idx] = Object.assign({}, kfs[idx], { xywh: xywh, r: r });
                     } else {
+                        // A new keyframe gets the outline of its time in setKeyframes()
                         kfs.push({ t: t, xywh: xywh, r: r });
                     }
 
@@ -660,16 +692,33 @@ FrameTrail.defineType(
                 /**
                  * I replace my keyframes (normalised), keep my position in sync and
                  * refresh markers and animation.
+                 *
+                 * While my outline changes with my keyframes (a freeform hotspot's:
+                 * every keyframe has points, see FrameTrailKeyframes.morphs), a keyframe
+                 * that comes without an outline gets the one of its time. So whoever
+                 * makes a keyframe (a box change at the playhead, the keyframe toggle)
+                 * or rebuilds one need not know about outlines, and the outline goes on
+                 * changing. options.inherit === false leaves such keyframes as they are:
+                 * that is how the outline stops changing (FreeformShapeEditor, Draw shape).
+                 *
                  * @method setKeyframes
                  * @param {Array} kfs
+                 * @param {Object} options (optional) { inherit: false }
                  */
-                setKeyframes: function (kfs) {
+                setKeyframes: function (kfs, options) {
 
-                    var normalized = FrameTrail.module('AnimationLibrary').normalizeKeyframes(kfs);
+                    var Lib = FrameTrail.module('AnimationLibrary');
+
+                    if (kfs && !(options && options.inherit === false)) {
+                        kfs = Lib.inheritPoints(kfs, this.data.keyframes);
+                    }
+
+                    var normalized = Lib.normalizeKeyframes(kfs);
 
                     if (normalized) {
                         this.data.keyframes = normalized;
                         this.syncPositionFromKeyframes();
+                        this.syncOutlineFromKeyframes();
                     } else {
                         delete this.data.keyframes;
                     }
@@ -706,6 +755,16 @@ FrameTrail.defineType(
                         }]);
                     } else if (!enabled && this.hasKeyframes()) {
                         var rect = this.getRectAt(t);
+                        // An outline that changed with the keyframes stays as it is shown at
+                        // this moment (written first: the animator goes back to my attributes)
+                        if (this.hasKeyframeOutlines() && this.resourceItem && typeof this.resourceItem.setFreeformPoints === 'function') {
+                            var outline = FrameTrail.module('AnimationLibrary').samplePoints(this.data.keyframes, t);
+                            this.resourceItem.setFreeformPoints(this.data.attributes, (outline || []).map(function(p) {
+                                var point = { x: Math.round(p.x * 100) / 100, y: Math.round(p.y * 100) / 100 };
+                                if (p.smooth) { point.smooth = true; }
+                                return point;
+                            }));
+                        }
                         this.setKeyframes(null);
                         this.data.position.top    = rect.top;
                         this.data.position.left   = rect.left;
@@ -830,7 +889,8 @@ FrameTrail.defineType(
 
                     var before = this.snapshotState(['keyframes', 'position', 'rotation']),
                         kfs    = mutate((this.data.keyframes || []).map(function(kf) {
-                            return { t: kf.t, xywh: kf.xywh.slice(), r: kf.r, ease: kf.ease };
+                            // The whole keyframe (with its outline, if it has one); a new one gets the outline of its time in setKeyframes()
+                            return Object.assign({}, kf, { xywh: kf.xywh.slice() });
                         }));
 
                     if (kfs && kfs.length) {
@@ -1167,38 +1227,17 @@ FrameTrail.defineType(
                  */
                 fitBoxToLocal: function (u0, v0, u1, v1) {
 
-                    var stage = this.stageSize();
+                    var self  = this,
+                        stage = this.stageSize();
                     if (!stage.width || !stage.height) { return; }
-
-                    var round = function(v) { return Math.round(v * 10000) / 10000; };
-
-                    var fit = function(left, top, width, height, rotation) {
-                        var w     = width  / 100 * stage.width,
-                            h     = height / 100 * stage.height,
-                            cx    = (left + width  / 2) / 100 * stage.width,
-                            cy    = (top  + height / 2) / 100 * stage.height,
-                            theta = (rotation || 0) * Math.PI / 180,
-                            ox    = ((u0 + u1) / 2 - 50) / 100 * w,
-                            oy    = ((v0 + v1) / 2 - 50) / 100 * h,
-                            nw    = w * (u1 - u0) / 100,
-                            nh    = h * (v1 - v0) / 100,
-                            ncx   = cx + ox * Math.cos(theta) - oy * Math.sin(theta),
-                            ncy   = cy + ox * Math.sin(theta) + oy * Math.cos(theta);
-                        return [
-                            round((ncx - nw / 2) / stage.width  * 100),
-                            round((ncy - nh / 2) / stage.height * 100),
-                            round(nw / stage.width  * 100),
-                            round(nh / stage.height * 100)
-                        ];
-                    };
 
                     if (this.hasKeyframes()) {
                         this.setKeyframes(this.data.keyframes.map(function(kf) {
-                            return { t: kf.t, xywh: fit(kf.xywh[0], kf.xywh[1], kf.xywh[2], kf.xywh[3], kf.r), r: kf.r, ease: kf.ease };
+                            return Object.assign({}, kf, { xywh: self.fitRect(kf.xywh, kf.r, u0, v0, u1, v1) });
                         }));
                     } else {
                         var p   = this.data.position,
-                            box = fit(p.left, p.top, p.width, p.height, this.data.rotation);
+                            box = this.fitRect([p.left, p.top, p.width, p.height], this.data.rotation, u0, v0, u1, v1);
                         p.left   = box[0];
                         p.top    = box[1];
                         p.width  = box[2];
@@ -1206,6 +1245,48 @@ FrameTrail.defineType(
                         this.updateOverlayElement();
                         this.scaleOverlayElement();
                     }
+
+                },
+
+                /**
+                 * I return the box that the region [u0..u1] x [v0..v1] of a box is
+                 * (0..100 in that box, may reach outside it), with the same rotation:
+                 * what fitBoxToLocal makes of my box, for any box. A freeform hotspot
+                 * whose outline changes with its keyframes fits each keyframe's box to
+                 * that keyframe's outline with it.
+                 * @method fitRect
+                 * @param {Array} xywh [left, top, width, height] in percent of the stage
+                 * @param {Number} rotation degrees
+                 * @param {Number} u0
+                 * @param {Number} v0
+                 * @param {Number} u1
+                 * @param {Number} v1
+                 * @return {Array} [left, top, width, height]; the box given when the stage has no size
+                 */
+                fitRect: function (xywh, rotation, u0, v0, u1, v1) {
+
+                    var stage = this.stageSize();
+                    if (!stage.width || !stage.height) { return xywh.slice(); }
+
+                    var round = function(v) { return Math.round(v * 10000) / 10000; },
+                        w     = xywh[2] / 100 * stage.width,
+                        h     = xywh[3] / 100 * stage.height,
+                        cx    = (xywh[0] + xywh[2] / 2) / 100 * stage.width,
+                        cy    = (xywh[1] + xywh[3] / 2) / 100 * stage.height,
+                        theta = (rotation || 0) * Math.PI / 180,
+                        ox    = ((u0 + u1) / 2 - 50) / 100 * w,
+                        oy    = ((v0 + v1) / 2 - 50) / 100 * h,
+                        nw    = w * (u1 - u0) / 100,
+                        nh    = h * (v1 - v0) / 100,
+                        ncx   = cx + ox * Math.cos(theta) - oy * Math.sin(theta),
+                        ncy   = cy + ox * Math.sin(theta) + oy * Math.cos(theta);
+
+                    return [
+                        round((ncx - nw / 2) / stage.width  * 100),
+                        round((ncy - nh / 2) / stage.height * 100),
+                        round(nw / stage.width  * 100),
+                        round(nh / stage.height * 100)
+                    ];
 
                 },
 
@@ -1305,7 +1386,7 @@ FrameTrail.defineType(
                         var kfs = this.data.keyframes.map(function(kf) {
                             var box = fit(kf.xywh[0], kf.xywh[1], kf.xywh[2], kf.xywh[3], kf.r, false);
                             if (box) { changed = true; }
-                            return { t: kf.t, xywh: box || kf.xywh.slice(), r: kf.r, ease: kf.ease };
+                            return Object.assign({}, kf, { xywh: box || kf.xywh.slice() });
                         });
                         if (changed) { this.setKeyframes(kfs); }
                     } else {
@@ -1413,7 +1494,7 @@ FrameTrail.defineType(
                             kfs = this.data.keyframes.map(function(kf) {
                                 var box = fit(kf.xywh[0], kf.xywh[1], kf.xywh[2], kf.xywh[3], 'center');
                                 if (!same(box, kf.xywh)) { changed = true; }
-                                return { t: kf.t, xywh: box, r: kf.r, ease: kf.ease };
+                                return Object.assign({}, kf, { xywh: box });
                             });
                         if (changed) { this.setKeyframes(kfs); }
                         return changed;
@@ -1479,6 +1560,10 @@ FrameTrail.defineType(
 
                     if (!this.data.attributes) { this.data.attributes = {}; }
                     if (!this.data.position)   { this.data.position = {}; }
+
+                    // A snapshot of the keyframes alone brings back their outlines; my
+                    // attributes follow the first one, as after every keyframe change
+                    this.syncOutlineFromKeyframes();
 
                     if (options && options.rerender) {
                         this.rerenderContent();

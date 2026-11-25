@@ -182,7 +182,7 @@ The **folder** format maps a bundle to the `_data` layout: a map of paths relati
 
 The **html** format is the [portable HTML format](HTML-FORMAT.md): a page with the bundle in a JSON data block, which plays anywhere and is read back without running it. `FrameTrailHTMLFormat`, next to the serializer and loaded the same way, registers it (`readBundle(html, 'html')`, `writeBundle(bundle, 'html', { datapath, config, library })`) and also reads FrameTrail's HTML exports from before this format (`parseLegacy`). A page can also be a project file, edited in place: `readProject` reads it as the `_data` folder of a project, `writeProject` writes the folder back into its data block (see [Editing a Page in Place](HTML-FORMAT.md#editing-a-page-in-place)).
 
-The box-motion math — normalising, sampling and bounding keyframes, and the ease functions — is in `FrameTrailKeyframes`, next to the serializer and loaded the same way. So are the checks beyond the schemas, `FrameTrailLint` ([below](#checks-beyond-the-schemas)).
+The box-motion math — normalising, sampling and bounding keyframes, and the ease functions — is in `FrameTrailKeyframes`, next to the serializer and loaded the same way. It also has what an outline that changes with the keyframes needs (`morphs(keyframes)`, `samplePoints(keyframes, t)`, the geometry of an outline and the edits of such a track). So are the checks beyond the schemas, `FrameTrailLint` ([below](#checks-beyond-the-schemas)).
 
 Inside the player, scripts and extensions read and change the open hypervideo in this format through `instance.edit`, which validates against the schemas and keeps what it does not know ([EXTENDING.md](EXTENDING.md#editing-the-hypervideo)).
 
@@ -217,6 +217,8 @@ Lint.checkFolder(files);   // a _data folder in the folder format → [{ path, m
 | `quiz-defaults` | warning | a quiz that marks more than one answer as default (decided on a tie or when nobody answers): only the first counts |
 | `quiz-results-empty` | warning | a Quiz Results view (`QuizResults`) in a hypervideo with no question to list: no quiz overlay, and no quiz annotation together with a collection view (`TimedContent`) to show it |
 | `open-when-active-unused` | warning | a collection view that opens its area only while an annotation is active (`openWhenActive`) where that never happens or does nothing: in a hypervideo without annotations, or in the area for paired phones (`areaCompanion`) |
+| `keyframe-points-uneven` | error | a freeform hotspot whose keyframes carry outlines (`points`) that do not fit together: a keyframe without one, different numbers of points, or fewer than three. The outline then does not change over time |
+| `keyframe-points-unused` | warning | outlines (`points`) on the keyframes of an overlay that is not a freeform hotspot: they are ignored |
 
 `checkFolder()` looks at a whole folder for files that do not agree with each other, and for the files no schema describes: a `.json` file that is not JSON; a `.vtt` file the player cannot read as meant (no `WEBVTT` header, a cue timing it does not read, a cue that ends before it starts; `checkVTT(text)` checks one text); a hypervideo `hypervideos/_index.json` lists without its `hypervideo.json`, or one it does not list; a hypervideo without `annotations/_index.json`; an annotation file without its entry in that index, or an entry without its file; a `subtitles` entry without its `.vtt` file, or a `.vtt` file no entry names. A project file is checked through its folder, `FrameTrailHTMLFormat.readProject(html).files`.
 
@@ -466,6 +468,28 @@ An overlay's box can move, resize and rotate over its time span. Media Fragments
 - The plain `xywh` in `value` is the union of the moving box within `[start, end]`, clamped to 0–100: what a consumer that does not know the extension shows. It is always the unrotated box.
 - Keyframes may lie outside the time span; they still shape the motion at its edges.
 - A box that does not move but is rotated has `frametrail:rotation` (degrees) on the selector instead. It is omitted when 0 and whenever there are keyframes, which carry the rotation themselves.
+
+#### An outline that changes with the keyframes
+
+The outline of a freeform hotspot (`shape: "freeform"`, its attribute `points`) stretches and turns with the box. It can also change its shape over time: each keyframe then carries the outline of its moment as `points`, beside `t`, `xywh`, `r` and `ease`.
+
+```jsonc
+"frametrail:keyframes": [
+    { "t": 81,   "xywh": [24.8, 20.1, 36.2, 48.9],
+      "points": [ { "x": 12.5, "y": 0, "smooth": true }, { "x": 100, "y": 31 }, { "x": 64, "y": 100 } ] },
+    { "t": 84.5, "xywh": [23, 18.4, 38.9, 52.3], "r": -4, "ease": "easeInOut",
+      "points": [ { "x": 9, "y": 4, "smooth": true }, { "x": 100, "y": 27.5 }, { "x": 71, "y": 100 } ] }
+]
+```
+
+- `points` on a keyframe has the shape of the hotspot's `points`: `{ x, y, smooth? }` in 0–100 coordinates of **that keyframe's box** (values outside are allowed; the editor fits each keyframe's box to its outline).
+- **All keyframes or none.** The outline changes over time only when every keyframe of the overlay has `points`, all with the same number of points, three or more. The points are matched by their place in the list. Anything else is shown with the outline of the attributes all the time, and lint reports it (`keyframe-points-uneven`).
+- Between two keyframes each point moves in a straight line in box coordinates, with the eased progress of the segment, as the box does. `ease: "hold"` holds the outline too. Before the first and after the last keyframe the outline holds.
+- **Corner or curve belongs to the point**, not to the keyframe: `smooth` is read from the first keyframe. Write it the same in every keyframe.
+- **The attributes keep an outline**: `points` in the attributes is the outline of the first keyframe, and `path` is derived from it. It is what a consumer shows that does not know the outlines on the keyframes, as the plain `xywh` in `value` is for the box. The editor keeps it so after every change of the keyframes; a script that writes keyframe outlines writes it too.
+- The stroke, the pulse and the click area follow the outline. Like every overlay animation it is a function of the video time: exact when paused or sought.
+- Other overlays ignore `points` on their keyframes and keep them (`keyframe-points-unused`).
+- In the editor a point moved on a hotspot with keyframes writes the outline of the keyframe at the playhead (making the keyframe if there is none); from the first such move on, every keyframe has an outline. Adding or removing a point, and corner or curve, go into every keyframe. A newly drawn shape replaces the outline at every time: the keyframes lose their `points`.
 
 ### Animation
 

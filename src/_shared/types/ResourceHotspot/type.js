@@ -338,17 +338,39 @@ FrameTrail.defineType(
                         // the whole outline)
                         resourceDetail._ftFreeformPoints = this.freeformPoints(attrs);
                         resourceDetail._ftFreeformLegacyPath = this.validFreeformPoints(attrs.points) ? null : (attrs.path || null);
-                        resourceDetail._ftFreeformLayout = function() {
-                            var w = wrapper.offsetWidth, h = wrapper.offsetHeight;
-                            if (!w || !h) { return; }
-                            var legacy = resourceDetail._ftFreeformLegacyPath && hotspot.scalePathData(resourceDetail._ftFreeformLegacyPath, w / 100, h / 100),
+
+                        var measured = null,   // the wrapper's size when it was last measured
+                            drawn    = '';     // what was drawn last
+
+                        var draw = function() {
+                            var w = measured.w, h = measured.h,
+                                legacy = resourceDetail._ftFreeformLegacyPath && hotspot.scalePathData(resourceDetail._ftFreeformLegacyPath, w / 100, h / 100),
                                 sw = Math.max(0, strokeWidth),
-                                d = legacy || hotspot.freeformPath(resourceDetail._ftFreeformPoints, w / 100, h / 100);
+                                d = legacy || hotspot.freeformPath(resourceDetail._ftFreeformPoints, w / 100, h / 100),
+                                key = w + ' ' + h + ' ' + d;
+                            if (key === drawn) { return; }
+                            drawn = key;
                             svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
                             stroke.setAttribute('stroke-width', sw);
                             stroke.setAttribute('d', d);
                             pulse.setAttribute('stroke-width', sw);
                             pulse.setAttribute('d', d);
+                        };
+
+                        // Measure the box and draw (the first frame, and whenever the box changes its size)
+                        resourceDetail._ftFreeformLayout = function() {
+                            var w = wrapper.offsetWidth, h = wrapper.offsetHeight;
+                            if (!w || !h) { return; }
+                            measured = { w: w, h: h };
+                            draw();
+                        };
+
+                        // Draw with the size last measured: an outline that changes in every frame
+                        // (animateOutline) must not force a layout in each. When the box changes its
+                        // size in the same frame, the ResizeObserver measures and draws again before
+                        // the frame is painted.
+                        resourceDetail._ftFreeformDraw = function() {
+                            if (measured) { draw(); } else { resourceDetail._ftFreeformLayout(); }
                         };
 
                         // Clicks only inside the shape
@@ -365,6 +387,8 @@ FrameTrail.defineType(
                         svg.appendChild(defs);
                         link.style.clipPath = 'url(#' + clipId + ')';
                         link.style.borderRadius = '0';
+                        resourceDetail._ftFreeformClip     = clipShape;
+                        resourceDetail._ftFreeformClipPath = pathData;
 
                         this._observeSize(resourceDetail, wrapper, resourceDetail._ftFreeformLayout);
                         return;
@@ -556,25 +580,8 @@ FrameTrail.defineType(
                  */
                 freeformSegments: function(points) {
 
-                    var n = points.length,
-                        tangent = function(i) {
-                            var p = points[i], prev = points[(i - 1 + n) % n], next = points[(i + 1) % n];
-                            return p.smooth ? [(next.x - prev.x) / 6, (next.y - prev.y) / 6] : [0, 0];
-                        };
-
-                    return points.map(function(a, i) {
-                        var j  = (i + 1) % n,
-                            b  = points[j],
-                            ta = tangent(i),
-                            tb = tangent(j);
-                        return {
-                            a:        a,
-                            c1:       { x: a.x + ta[0], y: a.y + ta[1] },
-                            c2:       { x: b.x - tb[0], y: b.y - tb[1] },
-                            b:        b,
-                            straight: !a.smooth && !b.smooth
-                        };
-                    });
+                    // The geometry of an outline is in FrameTrailKeyframes, with the outlines that change with the keyframes
+                    return window.FrameTrailKeyframes.outlineSegments(points);
 
                 },
 
@@ -619,11 +626,123 @@ FrameTrail.defineType(
                 setFreeformPreview: function(resourceDetail, points) {
 
                     if (!resourceDetail || !resourceDetail._ftFreeformLayout) { return; }
+                    this._showOutline(resourceDetail, points, null, true);
+
+                },
+
+                /**
+                 * I show an outline in a rendered freeform hotspot: the stroke, the
+                 * pulse and the click area of the link. Whoever follows the outline
+                 * shown (the handles of the FreeformShapeEditor) is told through
+                 * resourceDetail._ftOutlineListener.
+                 * @method _showOutline
+                 * @param {HTMLElement} resourceDetail
+                 * @param {Array} points
+                 * @param {String} legacyPath a path-only shape of older data, drawn as written (optional)
+                 * @param {Boolean} measure measure the box before drawing; otherwise its last measured size is used
+                 * @private
+                 */
+                _showOutline: function(resourceDetail, points, legacyPath, measure) {
+
                     resourceDetail._ftFreeformPoints     = points;
-                    resourceDetail._ftFreeformLegacyPath = null;
-                    resourceDetail._ftFreeformLayout();
-                    var clipShape = resourceDetail.querySelector('clipPath path');
-                    if (clipShape) { clipShape.setAttribute('d', this.freeformPath(points)); }
+                    resourceDetail._ftFreeformLegacyPath = legacyPath || null;
+
+                    if (measure) {
+                        resourceDetail._ftFreeformLayout();
+                    } else {
+                        resourceDetail._ftFreeformDraw();
+                    }
+
+                    var clipPath = legacyPath || this.freeformPath(points);
+                    if (resourceDetail._ftFreeformClip && resourceDetail._ftFreeformClipPath !== clipPath) {
+                        resourceDetail._ftFreeformClip.setAttribute('d', clipPath);
+                        resourceDetail._ftFreeformClipPath = clipPath;
+                    }
+
+                    if (typeof resourceDetail._ftOutlineListener === 'function') {
+                        resourceDetail._ftOutlineListener(points);
+                    }
+
+                },
+
+                /**
+                 * I write an outline into the attributes of a freeform hotspot: its
+                 * points, and the path derived from them for other consumers. The
+                 * Overlay calls me with the outline of the first keyframe whenever its
+                 * keyframes change, so that the attributes hold what a consumer shows
+                 * that does not know the outlines on the keyframes.
+                 * @method setFreeformPoints
+                 * @param {Object} attrs
+                 * @param {Array} points
+                 * @return {Boolean} whether the attributes changed
+                 */
+                setFreeformPoints: function(attrs, points) {
+
+                    if (!attrs || attrs.shape !== 'freeform' || !this.validFreeformPoints(points)) { return false; }
+
+                    var clean = points.map(function(p) {
+                            var point = { x: p.x, y: p.y };
+                            if (p.smooth) { point.smooth = true; }
+                            return point;
+                        }),
+                        path = this.freeformPath(clean);
+
+                    if (attrs.path === path && JSON.stringify(attrs.points) === JSON.stringify(clean)) { return false; }
+
+                    attrs.points = clean;
+                    attrs.path   = path;
+                    return true;
+
+                },
+
+                /**
+                 * Hook of the OverlayAnimator: the outline of a freeform hotspot that
+                 * changes with the keyframes of its box motion (points on the
+                 * keyframes, see FrameTrailKeyframes.morphs). I return nothing for
+                 * every other hotspot.
+                 *
+                 * update(seconds) shows the outline of a video time. It is called with
+                 * the time of the box animation: in every frame while playing, and on
+                 * every seek and pause, so the outline is exact wherever the video is.
+                 *
+                 * @method animateOutline
+                 * @param {HTMLElement} resourceDetail
+                 * @param {Array} keyframes
+                 * @return {Object} { update(seconds), destroy() } or null
+                 */
+                animateOutline: function(resourceDetail, keyframes) {
+
+                    var Keyframes = window.FrameTrailKeyframes,
+                        self      = this;
+
+                    if (!resourceDetail || !resourceDetail._ftFreeformLayout || !Keyframes.morphs(keyframes)) { return null; }
+
+                    // A copy: a keyframe dragged on the timeline changes its time in place,
+                    // and the box animation is only built again when it is dropped
+                    var track = keyframes.map(function(kf) {
+                        return { t: kf.t, ease: kf.ease, points: kf.points };
+                    });
+
+                    return {
+
+                        update: function(seconds) {
+                            // Held: its points are being dragged (FreeformShapeEditor)
+                            if (typeof seconds !== 'number' || !isFinite(seconds) || resourceDetail._ftOutlineHeld) { return; }
+                            var points = Keyframes.samplePoints(track, seconds);
+                            if (points) {
+                                self._showOutline(resourceDetail, points);
+                            }
+                        },
+
+                        // Back to the outline of the attributes: the keyframes may have lost theirs
+                        destroy: function() {
+                            if (resourceDetail._ftOutlineHeld || !resourceDetail.isConnected) { return; }
+                            var attrs = (self.resourceData && self.resourceData.attributes) || {};
+                            self._showOutline(resourceDetail, self.freeformPoints(attrs),
+                                self.validFreeformPoints(attrs.points) ? null : (attrs.path || null));
+                        }
+
+                    };
 
                 },
 

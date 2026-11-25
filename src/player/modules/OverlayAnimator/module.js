@@ -32,6 +32,12 @@
  * early), and an ftClock animation spans the whole window as the reference for
  * drift checks and per-frame content hooks.
  *
+ * Box motion can carry an outline (a freeform hotspot's, points on the
+ * keyframes). The type gives me a hook for it, animateOutline(), which I call
+ * with the box's time wherever I set that: on every sync, in every frame
+ * while playing, and for a ghost with the playhead clamped to the span. It is
+ * not a content hook: those show a ghost at the end of its span.
+ *
  * @class OverlayAnimator
  * @static
  */
@@ -177,8 +183,13 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
             }
         });
 
+        if (entry.outline && typeof entry.outline.destroy === 'function') {
+            try { entry.outline.destroy(); } catch (e) { console.warn(e); }
+        }
+
         entry.anims         = [];
         entry.hooks         = [];
+        entry.outline       = null;
         entry.strokeTargets = [];
         entry.textRoot      = null;
         entry.clock         = null;
@@ -333,6 +344,17 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
             }
         }
 
+        // An outline that changes with the keyframes (a freeform hotspot's) belongs
+        // to the box: it is shown for the box's time, whatever the content shows.
+        // It needs no box animation, so a single keyframe has it too.
+        if (detail && hasKeyframes(overlay) && overlay.resourceItem && typeof overlay.resourceItem.animateOutline === 'function') {
+            try {
+                entry.outline = overlay.resourceItem.animateOutline(detail, data.keyframes) || null;
+            } catch (e) {
+                console.warn('animateOutline failed for overlay', data.name, e);
+            }
+        }
+
         // Collect what I drive: only ft* animations, never e.g. the hotspot pulse
         var anims = layer.getAnimations({ subtree: true }).filter(function(anim) {
             var name = anim.animationName || anim.id || '';
@@ -372,6 +394,12 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
         });
     }
 
+    // The outline at a video time (seconds), see animateOutline in build()
+    function runOutline(entry, seconds) {
+        if (!entry.outline || typeof entry.outline.update !== 'function') { return; }
+        try { entry.outline.update(seconds); } catch (e) { console.warn(e); }
+    }
+
     function syncEntry(entry, state) {
 
         if (needsRebuild(entry)) {
@@ -395,6 +423,7 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
         });
 
         runHooks(entry, local);
+        runOutline(entry, state.time);
 
     }
 
@@ -438,8 +467,13 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
         var state = playbackState(),
             any = false;
         entries.forEach(function(entry) {
-            if (entry.present && entry.hooks.length && entry.clock) {
-                runHooks(entry, entry.clock.currentTime);
+            if (entry.present && entry.clock && (entry.hooks.length || entry.outline)) {
+                var local = entry.clock.currentTime;
+                runHooks(entry, local);
+                // The clock runs with the box animation: its time is the box's
+                if (local !== null && local !== undefined) {
+                    runOutline(entry, entry.win.origin + local / 1000);
+                }
                 any = true;
             }
         });
@@ -450,7 +484,7 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
 
     function ensureLoop() {
         if (rafID || !playbackState().playing) { return; }
-        var any = entries.some(function(entry) { return entry.present && entry.hooks.length; });
+        var any = entries.some(function(entry) { return entry.present && (entry.hooks.length || entry.outline); });
         if (any) {
             rafID = window.requestAnimationFrame(tick);
         }
@@ -554,6 +588,7 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
         });
 
         runHooks(entry, settled);
+        runOutline(entry, Math.max(data.start, Math.min(data.end, t)));
 
     }
 
@@ -600,6 +635,7 @@ FrameTrail.defineModule('OverlayAnimator', function(FrameTrail){
             win:           null,
             anims:         [],
             hooks:         [],
+            outline:       null,
             strokeTargets: [],
             textRoot:      null,
             clock:         null,

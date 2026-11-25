@@ -1537,6 +1537,219 @@
                 "type": "Person",
                 "id": "1"
             },
+            "created": "2026-10-07T09:30:31.137Z",
+            "type": "Annotation",
+            "frametrail:type": "Overlay",
+            "frametrail:tags": [],
+            "target": {
+                "type": "Video",
+                "source": "1_1790000000_fixture-lecture.mp4",
+                "selector": {
+                    "conformsTo": "http://www.w3.org/TR/media-frags/",
+                    "type": "FragmentSelector",
+                    "value": "t=64,72&xywh=percent:30,30,26,24",
+                    "frametrail:keyframes": [
+                        {
+                            "t": 64,
+                            "xywh": [
+                                30,
+                                32,
+                                16,
+                                22
+                            ],
+                            "points": [
+                                {
+                                    "x": 50,
+                                    "y": 0,
+                                    "smooth": true
+                                },
+                                {
+                                    "x": 100,
+                                    "y": 38
+                                },
+                                {
+                                    "x": 82,
+                                    "y": 100,
+                                    "smooth": true
+                                },
+                                {
+                                    "x": 18,
+                                    "y": 100
+                                },
+                                {
+                                    "x": 0,
+                                    "y": 38,
+                                    "smooth": true
+                                }
+                            ]
+                        },
+                        {
+                            "t": 67,
+                            "xywh": [
+                                36,
+                                30,
+                                18,
+                                24
+                            ],
+                            "r": -6,
+                            "ease": "easeInOut",
+                            "points": [
+                                {
+                                    "x": 42,
+                                    "y": 0,
+                                    "smooth": true
+                                },
+                                {
+                                    "x": 100,
+                                    "y": 30
+                                },
+                                {
+                                    "x": 90,
+                                    "y": 100,
+                                    "smooth": true
+                                },
+                                {
+                                    "x": 10,
+                                    "y": 92
+                                },
+                                {
+                                    "x": 0,
+                                    "y": 44,
+                                    "smooth": true
+                                }
+                            ]
+                        },
+                        {
+                            "t": 70,
+                            "xywh": [
+                                42,
+                                34,
+                                14,
+                                20
+                            ],
+                            "ease": "hold",
+                            "points": [
+                                {
+                                    "x": 58,
+                                    "y": 0,
+                                    "smooth": true
+                                },
+                                {
+                                    "x": 100,
+                                    "y": 46
+                                },
+                                {
+                                    "x": 74,
+                                    "y": 100,
+                                    "smooth": true
+                                },
+                                {
+                                    "x": 24,
+                                    "y": 100
+                                },
+                                {
+                                    "x": 0,
+                                    "y": 30,
+                                    "smooth": true
+                                }
+                            ]
+                        },
+                        {
+                            "t": 72,
+                            "xywh": [
+                                42,
+                                34,
+                                14,
+                                20
+                            ],
+                            "points": [
+                                {
+                                    "x": 50,
+                                    "y": 0,
+                                    "smooth": true
+                                },
+                                {
+                                    "x": 100,
+                                    "y": 38
+                                },
+                                {
+                                    "x": 82,
+                                    "y": 100,
+                                    "smooth": true
+                                },
+                                {
+                                    "x": 18,
+                                    "y": 100
+                                },
+                                {
+                                    "x": 0,
+                                    "y": 38,
+                                    "smooth": true
+                                }
+                            ]
+                        }
+                    ]
+                }
+            },
+            "body": {
+                "type": "TextualBody",
+                "frametrail:type": "hotspot",
+                "format": "text/html",
+                "frametrail:name": "Freeform Hotspot",
+                "frametrail:attributes": {
+                    "shape": "freeform",
+                    "color": "#ffd23f",
+                    "borderWidth": 4,
+                    "borderRadius": 10,
+                    "linkUrl": "",
+                    "points": [
+                        {
+                            "x": 50,
+                            "y": 0,
+                            "smooth": true
+                        },
+                        {
+                            "x": 100,
+                            "y": 38
+                        },
+                        {
+                            "x": 82,
+                            "y": 100,
+                            "smooth": true
+                        },
+                        {
+                            "x": 18,
+                            "y": 100
+                        },
+                        {
+                            "x": 0,
+                            "y": 38,
+                            "smooth": true
+                        }
+                    ],
+                    "path": "M50,0 C66.67,0 100,38 100,38 C100,38 95.67,89.67 82,100 C68.33,110.33 18,100 18,100 C18,100 -5.33,54.67 0,38 C5.33,21.33 33.33,0 50,0 Z",
+                    "animation": {
+                        "in": {
+                            "preset": "draw"
+                        },
+                        "out": {
+                            "preset": "fadeOut"
+                        }
+                    }
+                }
+            },
+            "frametrail:events": {}
+        },
+        {
+            "@context": [
+                "http://www.w3.org/ns/anno.jsonld",
+                "https://frametrail.org/ns/context.jsonld"
+            ],
+            "creator": {
+                "nickname": "demo",
+                "type": "Person",
+                "id": "1"
+            },
             "created": "2026-10-07T09:30:26.137Z",
             "type": "Annotation",
             "frametrail:type": "CodeSnippet",

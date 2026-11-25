@@ -119,6 +119,16 @@
             "id": "open-when-active-unused",
             "severity": "warning",
             "description": "A collection view (TimedContent) opens its layout area only while one of its annotations is active (openWhenActive), but that never happens or does nothing: the hypervideo has no annotations, so the area stays closed, or the view is in the area for paired phones (areaCompanion), where there is no area to open. Which annotations a view's filter lets through is not looked at."
+        },
+        {
+            "id": "keyframe-points-uneven",
+            "severity": "error",
+            "description": "A freeform hotspot has outlines on its keyframes (points in frametrail:keyframes) that do not fit together: a keyframe has none, they have different numbers of points, or fewer than three. The outline then does not change over time: the player shows the outline of the attributes (points) all the time."
+        },
+        {
+            "id": "keyframe-points-unused",
+            "severity": "warning",
+            "description": "Keyframes carry outlines (points in frametrail:keyframes) on an overlay that is not a freeform hotspot. Only a freeform hotspot has an outline; the points are kept and ignored."
         }
     ];
 
@@ -418,6 +428,31 @@
         return typeof value === 'string' && value.trim() !== '';
     }
 
+    function isFreeformHotspot(item) {
+        var body = bodyOf(item);
+        return body['frametrail:type'] === 'hotspot' && attributesOf(body).shape === 'freeform';
+    }
+
+    // The outlines on an overlay's keyframes: for each keyframe the number of
+    // its points, null where it has no outline that can be read (no points, or
+    // not a list of points with numbers for x and y). Null when no keyframe
+    // has points at all.
+    function keyframeOutlines(item) {
+
+        var selector  = (isObject(item.target) && isObject(item.target.selector)) ? item.target.selector : {},
+            keyframes = Array.isArray(selector['frametrail:keyframes']) ? selector['frametrail:keyframes'].filter(isObject) : [];
+
+        if (!keyframes.some(function(kf) { return kf.points !== undefined; })) { return null; }
+
+        return keyframes.map(function(kf) {
+            var readable = Array.isArray(kf.points) && kf.points.every(function(p) {
+                return isObject(p) && typeof p.x === 'number' && isFinite(p.x) && typeof p.y === 'number' && isFinite(p.y);
+            });
+            return readable ? kf.points.length : null;
+        });
+
+    }
+
     // A number as messages show it: seconds as stored.
     // A number of seconds in a message: to the millisecond, as FrameTrail writes times.
     function n(value) {
@@ -709,6 +744,50 @@
                     }
 
                 });
+            });
+
+        },
+
+        'keyframe-points-uneven': function(data, report) {
+
+            var shown = ' The outline does not change over time: the player shows the outline of the attributes (points) all the time.';
+
+            data.overlays.forEach(function(overlay) {
+
+                var sizes = keyframeOutlines(overlay);
+
+                if (!sizes || !isFreeformHotspot(overlay)) { return; }
+
+                var without = sizes.filter(function(size) { return size === null; }).length,
+                    counts  = sizes.filter(function(size, i) { return size !== null && sizes.indexOf(size) === i; });
+
+                if (without) {
+                    report(about('overlays', overlay), 'Only ' + (sizes.length - without) + ' of its ' + sizes.length + ' keyframes ' + (sizes.length - without === 1 ? 'has' : 'have')
+                        + ' an outline (points); every keyframe needs one.' + shown);
+                } else if (counts.length > 1) {
+                    report(about('overlays', overlay), 'The outlines on its keyframes have different numbers of points (' + counts.join(', ')
+                        + '); the points are matched by their place in the list, so every outline needs the same number.' + shown);
+                } else if (counts[0] < 3) {
+                    report(about('overlays', overlay), 'The outlines on its keyframes have ' + counts[0] + ' point' + (counts[0] === 1 ? '' : 's') + '; an outline needs at least three.' + shown);
+                }
+
+            });
+
+        },
+
+        'keyframe-points-unused': function(data, report) {
+
+            data.overlays.forEach(function(overlay) {
+
+                if (!keyframeOutlines(overlay) || isFreeformHotspot(overlay)) { return; }
+
+                var body = bodyOf(overlay),
+                    what = (body['frametrail:type'] === 'hotspot')
+                        ? 'a hotspot with the shape "' + (attributesOf(body).shape || 'circle') + '"'
+                        : 'an overlay of the type "' + body['frametrail:type'] + '"';
+
+                report(about('overlays', overlay), 'Its keyframes carry outlines (points), but it is ' + what + ': only a freeform hotspot has an outline. The points are ignored.');
+
             });
 
         }

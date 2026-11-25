@@ -833,6 +833,28 @@ describe('FrameTrailSerializer', () => {
         assert.equal(out.contents[0].created, '2026-10-06T09:36:45.127Z');
     });
 
+    test('the outlines on keyframes are written as stored while unchanged, and all of them when one keyframe changes', () => {
+        const item = overlayItem('2026-10-06T09:36:45.127Z'),
+              keyframes = [
+                  { t: 2, xywh: [10, 20, 30, 40], points: [{ x: 0, y: 0, smooth: false, note: 'kept as stored' }, { x: 100, y: 50 }, { x: 0, y: 100 }], madeBy: 'a script' },
+                  { t: 8, xywh: [10, 20, 30, 40], ease: 'linear', points: [{ x: 20, y: 0 }, { x: 100, y: 50 }, { x: 20, y: 100 }] }
+              ];
+        item.target.selector['frametrail:keyframes'] = clone(keyframes);
+        const model = Serializer.parseHypervideo(hypervideo([item]));
+        assert.deepStrictEqual(model.overlays[0].keyframes[0].points, [{ x: 0, y: 0 }, { x: 100, y: 50 }, { x: 0, y: 100 }]);
+        let out = Serializer.serializeHypervideo(model, { now: 1 });
+        assert.deepStrictEqual(out.contents[0].target.selector['frametrail:keyframes'], keyframes, 'what the model does not know is kept too');
+        // A text overlay ignores the outlines, and keeps them
+        assert.equal(out.contents[0].body['frametrail:type'], 'text');
+        model.overlays[0].keyframes[1].xywh[0] = 50;
+        out = Serializer.serializeHypervideo(model, { now: 1 });
+        assert.deepStrictEqual(out.contents[0].target.selector['frametrail:keyframes'], [
+            { t: 2, xywh: [10, 20, 30, 40], points: [{ x: 0, y: 0 }, { x: 100, y: 50 }, { x: 0, y: 100 }] },
+            { t: 8, xywh: [50, 20, 30, 40], points: [{ x: 20, y: 0 }, { x: 100, y: 50 }, { x: 20, y: 100 }] }
+        ]);
+        assert.equal(out.contents[0].target.selector.value, 't=2,8&xywh=percent:10,20,70,40');
+    });
+
     test("PHP's [] for {} is read as an object and kept while unchanged", () => {
         const stored = hypervideo([overlayItem(toStringCreated)]);
         stored.contents[0].body['frametrail:attributes'] = [];
@@ -1532,6 +1554,158 @@ describe('FrameTrailKeyframes', () => {
     test('every ease the schemas allow exists', () => {
         const eases = readJSON(path.join(ROOT, 'schemas', 'common.schema.json')).$defs.ease.enum;
         assert.deepStrictEqual(eases.filter((ease) => !Keyframes.hasEase(ease)), []);
+    });
+
+    // Two outlines of four points; the first keyframe says which points are curves.
+    const OUTLINE_A = [{ x: 0, y: 0, smooth: true }, { x: 100, y: 0 }, { x: 100, y: 100 }, { x: 0, y: 100 }],
+          OUTLINE_B = [{ x: 10, y: 20 }, { x: 100, y: 40, smooth: true }, { x: 80, y: 100 }, { x: 20, y: 60 }],
+          morphing  = () => [
+              { t: 10, xywh: [0, 0, 10, 10], points: clone(OUTLINE_A) },
+              { t: 20, xywh: [10, 0, 10, 10], ease: 'hold', points: clone(OUTLINE_B) },
+              { t: 30, xywh: [20, 0, 10, 10], r: 15, points: clone(OUTLINE_A) }
+          ],
+          near = (a, b) => Math.abs(a - b) < 1e-9;
+
+    test('normalizeKeyframes keeps an outline as its last key, and drops one that is not a list of points', () => {
+        const keyframes = Keyframes.normalizeKeyframes([
+            { t: 2, points: [{ x: '1', y: 2, smooth: true, extra: 1 }, { x: 3, y: 4, smooth: false }, { x: 5, y: 6 }], ease: 'hold', r: 5, xywh: [0, 0, 10, 10] },
+            { t: 1, xywh: [0, 0, 10, 10], points: [{ x: 1, y: 2 }, { x: 3 }, { x: 5, y: 6 }] },
+            { t: 3, xywh: [0, 0, 10, 10], points: 'M0,0 L1,1' },
+            { t: 4, xywh: [0, 0, 10, 10], points: [] },
+            { t: 5, xywh: [0, 0, 10, 10], points: [{ x: 1, y: null }, { x: 3, y: 4 }, { x: 5, y: 6 }] }
+        ]);
+        assert.deepStrictEqual(keyframes, [
+            { t: 1, xywh: [0, 0, 10, 10] },
+            { t: 2, xywh: [0, 0, 10, 10], r: 5, ease: 'hold', points: [{ x: 1, y: 2, smooth: true }, { x: 3, y: 4 }, { x: 5, y: 6 }] },
+            { t: 3, xywh: [0, 0, 10, 10] },
+            { t: 4, xywh: [0, 0, 10, 10] },
+            { t: 5, xywh: [0, 0, 10, 10] }
+        ]);
+        assert.deepStrictEqual(Object.keys(keyframes[1]), ['t', 'xywh', 'r', 'ease', 'points']);
+        assert.deepStrictEqual(Keyframes.normalizeKeyframes(morphing()), morphing(), 'a track as the editor writes it stays as it is');
+    });
+
+    test('morphs: every keyframe has an outline of the same number of points, three or more', () => {
+        assert.ok(Keyframes.morphs(morphing()));
+        assert.ok(Keyframes.morphs([morphing()[0]]), 'one keyframe is enough');
+        assert.ok(!Keyframes.morphs([]));
+        assert.ok(!Keyframes.morphs(undefined));
+        assert.ok(!Keyframes.morphs([{ t: 1, xywh: [0, 0, 10, 10] }, { t: 2, xywh: [0, 0, 10, 10] }]), 'box motion only');
+        const some = morphing();
+        delete some[1].points;
+        assert.ok(!Keyframes.morphs(some), 'one keyframe without an outline');
+        const uneven = morphing();
+        uneven[2].points.pop();
+        assert.ok(!Keyframes.morphs(uneven), 'another number of points');
+        const two = morphing().map((kf) => Object.assign(kf, { points: kf.points.slice(0, 2) }));
+        assert.ok(!Keyframes.morphs(two), 'two points are no outline');
+    });
+
+    test('samplePoints: straight lines with the eased progress of the segment, holding at the ends', () => {
+        const track = morphing();
+        track[1].ease = 'easeIn';
+        assert.deepStrictEqual(Keyframes.samplePoints(track, 5), OUTLINE_A, 'before the first keyframe');
+        assert.deepStrictEqual(Keyframes.samplePoints(track, 10), OUTLINE_A);
+        assert.deepStrictEqual(Keyframes.samplePoints(track, 99), OUTLINE_A, 'after the last keyframe');
+        assert.deepStrictEqual(Keyframes.samplePoints(track, 15), [{ x: 5, y: 10, smooth: true }, { x: 100, y: 20 }, { x: 90, y: 100 }, { x: 10, y: 80 }], 'halfway, linear');
+        assert.deepStrictEqual(Keyframes.samplePoints(track, 20), [{ x: 10, y: 20, smooth: true }, { x: 100, y: 40 }, { x: 80, y: 100 }, { x: 20, y: 60 }],
+            'at a keyframe its outline, with corner or curve as the first keyframe says');
+        const eased = Keyframes.samplePoints(track, 22.5)[3],
+              e     = Keyframes.easeFn('easeIn')(0.25);
+        assert.ok(e > 0 && e < 0.25, 'easeIn starts slowly');
+        assert.ok(near(eased.x, 20 + (0 - 20) * e) && near(eased.y, 60 + (100 - 60) * e), 'the same progress as the box');
+        const box = Keyframes.sampleKeyframes(track, 22.5);
+        assert.ok(near(box[0], 10 + 10 * e));
+    });
+
+    test('samplePoints: hold keeps the outline until the next keyframe; no outline without two that fit', () => {
+        const track = morphing();
+        assert.deepStrictEqual(Keyframes.samplePoints(track, 29.9), Keyframes.samplePoints(track, 20), 'hold');
+        assert.deepStrictEqual(Keyframes.samplePoints(track, 30), OUTLINE_A);
+        assert.equal(Keyframes.samplePoints([], 1), null);
+        assert.equal(Keyframes.samplePoints([{ t: 1, xywh: [0, 0, 10, 10] }], 1), null);
+        delete track[1].points;
+        assert.equal(Keyframes.samplePoints(track, 15), null, 'the next keyframe has no outline');
+        const uneven = morphing();
+        uneven[1].points.pop();
+        assert.equal(Keyframes.samplePoints(uneven, 15), null, 'the next keyframe has another number of points');
+    });
+
+    test('inheritPoints: a keyframe without an outline gets the one the track had at its time', () => {
+        const prev = morphing(),
+              own  = [{ x: 1, y: 1 }, { x: 2, y: 1 }, { x: 2, y: 2 }, { x: 1, y: 2 }],
+              next = [
+                  { t: 10, xywh: [5, 5, 10, 10], ease: 'easeOut' },
+                  { t: 13.333, xywh: [0, 0, 10, 10] },
+                  { t: 20, xywh: [0, 0, 10, 10], points: own }
+              ],
+              out  = Keyframes.inheritPoints(next, prev);
+        assert.deepStrictEqual(out[0], { t: 10, xywh: [5, 5, 10, 10], ease: 'easeOut', points: OUTLINE_A }, 'at an unchanged time exactly its outline');
+        assert.deepStrictEqual(out[1].points, [{ x: 3.33, y: 6.67, smooth: true }, { x: 100, y: 13.33 }, { x: 93.33, y: 100 }, { x: 6.67, y: 86.67 }], 'sampled, to two decimals');
+        assert.equal(out[2], next[2], 'a keyframe with an outline is left alone');
+        assert.ok(Keyframes.morphs(out));
+        assert.equal(next[0].points, undefined, 'the keyframes given are not changed');
+        const boxOnly = [{ t: 1, xywh: [0, 0, 10, 10] }];
+        assert.equal(Keyframes.inheritPoints(next, boxOnly), next, 'nothing to inherit from a track that does not morph');
+        assert.equal(Keyframes.inheritPoints(next, undefined), next);
+        assert.equal(Keyframes.inheritPoints(null, prev), null);
+    });
+
+    test('outline geometry: segments, bounds, the middle of a segment, fitting into a box', () => {
+        const corners = [{ x: 10, y: 20 }, { x: 60, y: 20 }, { x: 35, y: 70 }];
+        assert.ok(Keyframes.outlineSegments(corners).every((seg) => seg.straight));
+        assert.equal(Keyframes.outlineSegments(corners).length, 3, 'the last segment closes the outline');
+        assert.deepStrictEqual(Keyframes.outlineBounds(corners), [10, 20, 60, 70]);
+        assert.deepStrictEqual(Keyframes.outlineMidpoint(corners, 0), { x: 35, y: 20 });
+        assert.deepStrictEqual(Keyframes.outlineMidpoint(corners, 2), { x: 22.5, y: 45 }, 'of the closing segment');
+        assert.deepStrictEqual(Keyframes.fitPoints(corners, [10, 20, 60, 70]), [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 50, y: 100 }]);
+
+        const curved = [{ x: 0, y: 0, smooth: true }, { x: 100, y: 0, smooth: true }, { x: 100, y: 100, smooth: true }, { x: 0, y: 100, smooth: true }],
+              bounds = Keyframes.outlineBounds(curved);
+        assert.ok(bounds[0] < 0 && bounds[1] < 0 && bounds[2] > 100 && bounds[3] > 100, 'a curve bulges past its points');
+        assert.equal(Keyframes.outlineMidpoint(curved, 0).smooth, true, 'a point put on a curve is a curve');
+        const fitted = Keyframes.outlineBounds(Keyframes.fitPoints(curved, bounds));
+        assert.ok(fitted.every((v, i) => Math.abs(v - [0, 0, 100, 100][i]) < 0.02), 'fitted, the outline fills its box');
+        assert.equal(Keyframes.fitPoints(curved, bounds)[0].smooth, true);
+    });
+
+    test('edits of a morphing track keep it morphing and leave the track given alone', () => {
+        const track  = morphing(),
+              before = clone(track);
+
+        const seeded = Keyframes.seedPoints(Keyframes.stripPoints(track), OUTLINE_B);
+        assert.ok(Keyframes.morphs(seeded));
+        assert.deepStrictEqual(seeded.map((kf) => kf.points), [OUTLINE_B, OUTLINE_B, OUTLINE_B]);
+        assert.notEqual(seeded[0].points, seeded[1].points, 'each keyframe has its own copy');
+        assert.deepStrictEqual(seeded[1].ease, 'hold', 'the rest of a keyframe is kept');
+
+        const stripped = Keyframes.stripPoints(track);
+        assert.ok(!Keyframes.morphs(stripped));
+        assert.deepStrictEqual(stripped, [{ t: 10, xywh: [0, 0, 10, 10] }, { t: 20, xywh: [10, 0, 10, 10], ease: 'hold' }, { t: 30, xywh: [20, 0, 10, 10], r: 15 }]);
+
+        const inserted = Keyframes.insertPoint(track, 3);
+        assert.ok(Keyframes.morphs(inserted));
+        assert.deepStrictEqual(inserted.map((kf) => kf.points.length), [5, 5, 5]);
+        assert.deepStrictEqual(inserted[0].points[4], { x: -6.25, y: 56.25, smooth: true }, 'in the middle of the closing segment, which curves into the first point');
+        assert.deepStrictEqual(inserted[1].points.map((p) => !!p.smooth), [true, false, false, false, true], 'corner or curve as in the first keyframe');
+        // The middle of a segment is linear in the points: inserting and sampling commute
+        const linear = morphing();
+        delete linear[1].ease;
+        const a = Keyframes.samplePoints(Keyframes.insertPoint(linear, 1), 14)[2],
+              b = Keyframes.outlineMidpoint(Keyframes.samplePoints(linear, 14), 1);
+        assert.ok(near(a.x, b.x) && near(a.y, b.y), 'the outline between the keyframes keeps its shape too');
+
+        const removed = Keyframes.removePoint(track, 1);
+        assert.ok(Keyframes.morphs(removed));
+        assert.deepStrictEqual(removed[1].points, [{ x: 10, y: 20, smooth: true }, { x: 80, y: 100 }, { x: 20, y: 60 }]);
+
+        const curve = Keyframes.smoothPoint(track, 2, true);
+        assert.deepStrictEqual(curve.map((kf) => kf.points.map((p) => !!p.smooth)), [[true, false, true, false], [true, false, true, false], [true, false, true, false]]);
+        const corner = Keyframes.smoothPoint(track, 0, false);
+        assert.ok(corner.every((kf) => kf.points.every((p) => !('smooth' in p))));
+        assert.ok(Keyframes.morphs(curve) && Keyframes.morphs(corner));
+
+        assert.deepStrictEqual(track, before);
     });
 
 });

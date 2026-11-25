@@ -97,6 +97,26 @@
             "type": "string",
             "pattern": "^t=[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?$"
         },
+        "outlinePoint": {
+            "description": "One point of the outline of a freeform hotspot, in 0–100 coordinates of the hotspot's box.",
+            "type": "object",
+            "required": ["x", "y"],
+            "properties": {
+                "x": {
+                    "description": "Horizontal position in percent of the box.",
+                    "type": "number"
+                },
+                "y": {
+                    "description": "Vertical position in percent of the box.",
+                    "type": "number"
+                },
+                "smooth": {
+                    "description": "Curve through this point instead of a corner.",
+                    "type": "boolean",
+                    "default": false
+                }
+            }
+        },
         "keyframe": {
             "description": "One keyframe of an overlay's box motion.",
             "type": "object",
@@ -120,6 +140,11 @@
                 "ease": {
                     "$ref": "#/$defs/ease",
                     "description": "Easing of the segment from this keyframe to the next. Missing means linear; \"hold\" keeps this box until the next keyframe."
+                },
+                "points": {
+                    "description": "Freeform hotspots only: the outline at this keyframe, in 0–100 coordinates of this keyframe's box. Between two keyframes each point moves in a straight line, with the easing of the segment; the points are matched by their place in the list. The outline changes with the keyframes only when every keyframe of the overlay has points, all the same number, three or more; otherwise the outline of the attributes (points) is shown. Whether a point is a curve (smooth) is read from the first keyframe and is the same in all. Other overlays ignore points and keep them.",
+                    "type": "array",
+                    "items": { "$ref": "#/$defs/outlinePoint" }
                 }
             }
         },
@@ -144,7 +169,7 @@
                     "pattern": "^t=[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?&xywh=percent:-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?,-?[0-9]+(\\.[0-9]+)?([eE][-+]?[0-9]+)?$"
                 },
                 "frametrail:keyframes": {
-                    "description": "Box motion: the overlay's box over time, sorted by t. While an overlay has keyframes its rotation lives in each keyframe's r, and frametrail:rotation is not written.",
+                    "description": "Box motion: the overlay's box over time, sorted by t. While an overlay has keyframes its rotation lives in each keyframe's r, and frametrail:rotation is not written. The keyframes of a freeform hotspot can carry its outline too (points), which then changes over time.",
                     "type": "array",
                     "items": { "$ref": "#/$defs/keyframe" }
                 },
