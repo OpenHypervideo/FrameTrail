@@ -3,7 +3,7 @@
  * in schemas/ (with FrameTrailSchema), through FrameTrailSerializer and
  * FrameTrailLint, plus unit tests of FrameTrailSchema, FrameTrailSerializer,
  * FrameTrailHTMLFormat, FrameTrailLint, FrameTrailKeyframes, FrameTrailWebVTT,
- * FrameTrailRingLayout, FrameTrailQuiz and FrameTrailPairing, the pairing broker contract against the stub in
+ * FrameTrailRingLayout, FrameTrailAreaOpening, FrameTrailQuiz and FrameTrailPairing, the pairing broker contract against the stub in
  * scripts/pairing-broker.mjs, and the storage adapters of a local folder and
  * a project file against an in-memory File System Access API.
  * No dependencies, Node 20 or later:
@@ -36,6 +36,7 @@ const Schema     = require('../src/_shared/frametrail-core/schema/FrameTrailSche
 const Serializer = require('../src/_shared/frametrail-core/serialization/FrameTrailSerializer.js');
 const Keyframes  = require('../src/_shared/frametrail-core/serialization/FrameTrailKeyframes.js');
 const RingLayout = require('../src/_shared/frametrail-core/layout/FrameTrailRingLayout.js');
+const AreaOpening = require('../src/_shared/frametrail-core/layout/FrameTrailAreaOpening.js');
 const HTMLFormat = require('../src/_shared/frametrail-core/serialization/FrameTrailHTMLFormat.js');
 const Lint       = require('../src/_shared/frametrail-core/serialization/FrameTrailLint.js');
 const WebVTT     = require('../src/_shared/frametrail-core/serialization/FrameTrailWebVTT.js');
@@ -1688,6 +1689,127 @@ describe('FrameTrailRingLayout', () => {
                 assert.ok(Math.abs(s.video.w / s.video.h - A) < EPS);
             }
         }
+    });
+
+});
+
+describe('FrameTrailAreaOpening', () => {
+
+    const span = (start, end) => ({ start, end });
+
+    // The course of an area over some moments: what step() asks for at each
+    const run = (views, moments, state) => moments.map((moment) => {
+        const [time, busy] = Array.isArray(moment) ? moment : [moment, false];
+        const decision = AreaOpening.step(state, { ...AreaOpening.at(views, time), busy });
+        state = decision.state;
+        return { time, open: decision.open, lead: decision.lead, held: decision.held };
+    });
+
+    test('a gap is a view\'s own, the default without one, and never negative or endless', () => {
+        assert.equal(AreaOpening.gapOf(undefined), AreaOpening.DEFAULT_GAP);
+        assert.equal(AreaOpening.gapOf('5'), AreaOpening.DEFAULT_GAP);
+        assert.equal(AreaOpening.gapOf(NaN), AreaOpening.DEFAULT_GAP);
+        assert.equal(AreaOpening.gapOf(0), 0);
+        assert.equal(AreaOpening.gapOf(7.5), 7.5);
+        assert.equal(AreaOpening.gapOf(-2), 0);
+        assert.equal(AreaOpening.gapOf(1e6), AreaOpening.MAX_GAP);
+    });
+
+    test('annotations that overlap, touch or follow within the gap share a window', () => {
+        const spans = [span(40, 50), span(10, 20), span(15, 25), span(25, 30), span(33, 36), span(60, 61)];
+        assert.deepEqual(AreaOpening.windows(spans, 3), [span(10, 36), span(40, 50), span(60, 61)], 'a gap of exactly 3 s is bridged, one of 4 s is not');
+        assert.deepEqual(AreaOpening.windows(spans, 0), [span(10, 30), span(33, 36), span(40, 50), span(60, 61)], 'without a gap only what overlaps or touches');
+        assert.deepEqual(AreaOpening.windows(spans, 10), [span(10, 61)]);
+        assert.deepEqual(AreaOpening.windows(spans), AreaOpening.windows(spans, AreaOpening.DEFAULT_GAP));
+    });
+
+    test('an annotation inside a longer one does not end its window early', () => {
+        assert.deepEqual(AreaOpening.windows([span(10, 60), span(20, 25), span(62, 70)], 3), [span(10, 70)]);
+    });
+
+    test('spans without a start and an end are left out, and the given ones are not changed', () => {
+        const spans = [span(5, 6), { start: 1 }, null, span(9, 8), { start: '1', end: 2 }, span(NaN, 3)];
+        assert.deepEqual(AreaOpening.windows(spans, 0), [span(5, 6)]);
+        assert.deepEqual(AreaOpening.windows('none', 0), []);
+        const given = [span(1, 2), span(3, 4)];
+        AreaOpening.windows(given, 5);
+        assert.deepEqual(given, [span(1, 2), span(3, 4)]);
+    });
+
+    test('a window holds its start and its end', () => {
+        const list = AreaOpening.windows([span(10, 20), span(30, 40)], 3);
+        assert.deepEqual(AreaOpening.windowAt(list, 10), span(10, 20));
+        assert.deepEqual(AreaOpening.windowAt(list, 20), span(10, 20));
+        assert.equal(AreaOpening.windowAt(list, 9.99), null);
+        assert.equal(AreaOpening.windowAt(list, 25), null);
+        assert.deepEqual(AreaOpening.windowAt(list, 35), span(30, 40));
+        assert.equal(AreaOpening.windowAt(list, undefined), null);
+    });
+
+    test('the views of an area make its windows together, with the largest of their gaps', () => {
+        const views = [{ spans: [span(10, 20), span(50, 60)], gap: 1 }, { spans: [span(24, 30)], gap: 5 }];
+        assert.deepEqual(AreaOpening.plan(views), { gap: 5, windows: [span(10, 30), span(50, 60)] }, 'a follower in another view keeps the area open');
+        assert.deepEqual(AreaOpening.plan([{ spans: [span(10, 20)] }]).gap, AreaOpening.DEFAULT_GAP);
+        assert.deepEqual(AreaOpening.plan([]), { gap: 0, windows: [] });
+    });
+
+    test('the view whose active annotation started last leads', () => {
+        const views = [{ spans: [span(5, 20), span(30, 40)] }, { spans: [span(8, 12), span(30, 35)] }];
+        assert.equal(AreaOpening.leaderAt(views, 4), null);
+        assert.deepEqual(AreaOpening.leaderAt(views, 6), { view: 0, start: 5, key: '0:5' });
+        assert.deepEqual(AreaOpening.leaderAt(views, 10), { view: 1, start: 8, key: '1:8' });
+        assert.deepEqual(AreaOpening.leaderAt(views, 15), { view: 0, start: 5, key: '0:5' }, 'back to the one that is still active');
+        assert.equal(AreaOpening.leaderAt(views, 25), null);
+        assert.deepEqual(AreaOpening.leaderAt(views, 32), { view: 0, start: 30, key: '0:30' }, 'started together: the view listed first');
+    });
+
+    test('an area starts as its annotations say, whatever the viewer does', () => {
+        const views = [{ spans: [span(10, 20)], gap: 3 }];
+        assert.deepEqual(run(views, [[0, true]]), [{ time: 0, open: false, lead: null, held: false }]);
+        assert.deepEqual(run(views, [[12, true]]), [{ time: 12, open: true, lead: 0, held: false }]);
+        assert.deepEqual(AreaOpening.step(undefined, { window: null, lead: null }).state, { window: null, lead: null });
+    });
+
+    test('it opens when an annotation starts and closes when the last one has ended', () => {
+        const views = [{ spans: [span(10, 20), span(22, 30), span(50, 60)], gap: 3 }];
+        assert.deepEqual(run(views, [0, 5, 10, 15, 21, 25, 30.1, 40, 50, 60, 60.2]).map((s) => s.open),
+            [false, null, true, null, null, null, false, null, true, null, false],
+            'nothing is asked while nothing changes: what was done by hand stays');
+    });
+
+    test('a seek into another window opens again, one within the same window does not', () => {
+        const views = [{ spans: [span(10, 20), span(50, 60)], gap: 3 }];
+        assert.deepEqual(run(views, [12, 55, 51, 12]).map((s) => s.open), [true, true, null, true]);
+    });
+
+    test('closing waits while the viewer uses the area; opening does not', () => {
+        const views = [{ spans: [span(10, 20), span(50, 60)], gap: 3 }];
+        const course = run(views, [12, [25, true], [26, true], 27, 28]);
+        assert.deepEqual(course.map((s) => s.open), [true, null, null, false, null]);
+        assert.deepEqual(course.map((s) => s.held), [false, true, true, false, false]);
+        assert.deepEqual(run(views, [12, [25, true], [52, true], 61]).map((s) => s.open), [true, null, true, false], 'the next window comes while the viewer is still there');
+    });
+
+    test('the tab follows the leader, and only when the leader changes', () => {
+        const views = [{ spans: [span(5, 20), span(30, 40)], gap: 3 }, { spans: [span(8, 12), span(22, 26)], gap: 3 }];
+        assert.deepEqual(run(views, [0, 6, 7, 9, 11, 13, 15, 21, 23, 24, 27, 31]).map((s) => s.lead),
+            [null, 0, null, 1, null, 0, null, null, 1, null, null, 0]);
+    });
+
+    test('a tab the viewer picked stays until the next annotation starts; a change of tab waits for the viewer too', () => {
+        const views = [{ spans: [span(5, 20)], gap: 3 }, { spans: [span(8, 12)], gap: 3 }];
+        const course = run(views, [6, [9, true], [10, true], 11]);
+        assert.deepEqual(course.map((s) => s.lead), [0, null, null, 1]);
+        assert.deepEqual(course.map((s) => s.held), [false, true, true, false]);
+        assert.deepEqual(run(views, [6, [9, true], [13, true], 14]).map((s) => s.lead), [0, null, null, null], 'the other view\'s annotation came and went meanwhile');
+    });
+
+    test('an annotation leads again after the playhead was away', () => {
+        const views = [{ spans: [span(5, 20)], gap: 3 }, { spans: [span(40, 50)], gap: 3 }];
+        assert.deepEqual(run(views, [6, 30, 6]).map((s) => s.lead), [0, null, 0]);
+        // Two annotations of one view in one window: the second leads anew, so a tab picked meanwhile gives way
+        const one = [{ spans: [span(5, 10), span(12, 20)], gap: 3 }];
+        assert.deepEqual(run(one, [6, 11, 13]).map((s) => s.lead), [0, null, 0]);
     });
 
 });

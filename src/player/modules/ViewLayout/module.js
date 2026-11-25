@@ -381,6 +381,11 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         updateManagedContent();
 
+        // The areas that are open only while an annotation is active start as the annotations say
+        var controller = FrameTrail.module('HypervideoController'),
+            model      = FrameTrail.module('HypervideoModel');
+        updateAreaOpening(Math.max((controller && controller.currentTime) || 0, (model && model.offsetIn) || 0), true);
+
         // The views say whether the results of the hypervideo's questions are kept on this device
         var QuizController = FrameTrail.module('QuizController');
         if (QuizController && QuizController.loadResults) { QuizController.loadResults(); }
@@ -809,9 +814,158 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         }
 
+        // Before the views follow the playback, and before the PauseController asks which annotations are shown
+        updateAreaOpening(currentTime);
+
         allContentViews().forEach(function(contentView) {
             contentView.updateTimedStateOfContentViews(currentTime);
         });
+
+    }
+
+
+    /* Areas that are open only while an annotation is active (a collection view's openWhenActive) */
+
+    // The areas that can be: all but the phones' (a phone has no area to open).
+    var OPENING_AREAS = ['top', 'bottom', 'left', 'right', 'circular'],
+
+        // What was decided for each of them (FrameTrailAreaOpening.step), by its name
+        areaOpening      = {},
+        // The areas I opened and closed for their annotations, also once their views have lost the option
+        automaticAreas   = {},
+        areaOpeningTimer = null;
+
+    /**
+     * I return the views of an area that open it only while one of their annotations is active. In the circular area only the view the ring shows counts.
+     *
+     * @method openingViews
+     * @param {String} whichArea
+     * @return {Array}
+     */
+    function openingViews(whichArea) {
+
+        var views = (whichArea === 'circular') ? (circularView() ? [circularView()] : []) : contentViews[whichArea];
+
+        return views.filter(function(contentView) { return contentView.opensWhenActive(); });
+
+    }
+
+    // Whether the viewer uses an area right now: closing it, or changing its tab, waits for them.
+    function viewerUsesArea(whichArea) {
+
+        var ViewVideo = FrameTrail.module('ViewVideo'),
+            area      = areaByName(whichArea);
+
+        // Details slid open over the video: closing an area, or changing its tab, closes them
+        if (ViewVideo.shownDetails) { return true; }
+
+        // Somebody looks around in a view: the views stop following the playback for the same reason
+        if (contentViews[whichArea].some(function(contentView) { return contentView.isMouseOver; })) { return true; }
+
+        // On a touch device a tap leaves the browser thinking the pointer is still there
+        if (FrameTrail.isTouchPrimary()) { return false; }
+
+        return [ViewVideo['Area' + area.cap + 'Container'], ViewVideo['Area' + area.cap + 'Details']].some(function(element) {
+            return !!element && element.matches(':hover');
+        });
+
+    }
+
+    function setAreaOpen(whichArea, container, open, direct) {
+
+        // While the hypervideo is made, and in the editing modes that hide the areas, only the class is set (as "Start collapsed" does); the layout follows when the areas are shown. The same where the call does nothing, as for an area that has just lost its last view.
+        if (direct || !FrameTrail.module('ViewVideo').setLayoutAreaOpen(whichArea, open, true)) {
+            container.classList.toggle('closed', !open);
+        }
+
+    }
+
+    /**
+     * I open and close the layout areas whose collection views say so (openWhenActive): an area is open while an annotation of such a view is active, across gaps up to the view's openGap, and shows the view whose annotation started last. The rules are FrameTrailAreaOpening's.
+     *
+     * I only act when what the annotations want changes, so an area the viewer or event code opened or closed (ViewVideo.setLayoutAreaOpen) stays that way until the next change. Closing and changing the tab wait while the viewer uses the area; a timer asks again then, as nothing else does while the video is paused.
+     *
+     * Not on a phone. Not in the editing modes other than Preview, which hide the areas: what was decided is forgotten there, so the areas are as their annotations say when they are shown again.
+     *
+     * @method updateAreaOpening
+     * @param {Number} currentTime
+     * @param {Boolean} [direct] the hypervideo is being made: set the areas' classes, the layout follows
+     */
+    function updateAreaOpening(currentTime, direct) {
+
+        if (FrameTrail.getState('companion')) { return; }
+
+        var ViewVideo = FrameTrail.module('ViewVideo'),
+            Opening   = window.FrameTrailAreaOpening,
+            editMode  = FrameTrail.getState('editMode'),
+            editing   = !!editMode && editMode !== 'preview',
+            held      = false;
+
+        OPENING_AREAS.forEach(function(whichArea) {
+
+            var views     = openingViews(whichArea),
+                container = ViewVideo['Area' + areaByName(whichArea).cap + 'Container'];
+
+            if (!container) { return; }
+
+            if (!views.length) {
+                // The option is gone from the area: it is as its views start it again
+                if (automaticAreas[whichArea]) {
+                    delete automaticAreas[whichArea];
+                    delete areaOpening[whichArea];
+                    setAreaOpen(whichArea, container, !contentViews[whichArea].some(function(contentView) {
+                        return !!contentView.contentViewData.initClosed;
+                    }), direct || editing);
+                }
+                return;
+            }
+
+            automaticAreas[whichArea] = true;
+
+            if (editing) {
+                delete areaOpening[whichArea];
+                return;
+            }
+
+            var facts = Opening.at(views.map(function(contentView) {
+                return {
+                    gap:   contentView.contentViewData.openGap,
+                    spans: contentView.contentCollection.map(function(item) {
+                        return { start: item.data.start, end: item.data.end };
+                    })
+                };
+            }), currentTime);
+
+            facts.busy = !container.classList.contains('closed') && viewerUsesArea(whichArea);
+
+            var decision = Opening.step(areaOpening[whichArea], facts);
+
+            areaOpening[whichArea] = decision.state;
+
+            if (decision.open !== null) {
+                setAreaOpen(whichArea, container, decision.open, direct);
+            }
+
+            // The ring has one view and no tabs
+            if (decision.lead !== null && whichArea !== 'circular') {
+                var leader = views[decision.lead];
+                if (leader.contentViewContainer && !leader.contentViewContainer.classList.contains('active')) {
+                    leader.activateContentView();
+                }
+            }
+
+            held = held || decision.held;
+
+        });
+
+        if (held && !areaOpeningTimer) {
+            areaOpeningTimer = window.setInterval(function() {
+                updateTimedStateOfContentViews(FrameTrail.module('HypervideoController').currentTime);
+            }, 500);
+        } else if (!held && areaOpeningTimer) {
+            window.clearInterval(areaOpeningTimer);
+            areaOpeningTimer = null;
+        }
 
     }
 
@@ -1518,6 +1672,11 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             sidebarOpen:     toggleSidebarOpen,
             viewMode:        toggleViewMode,
             slidePosition:   onChangeSlidePosition
+        },
+
+        onUnload: function() {
+            window.clearInterval(areaOpeningTimer);
+            areaOpeningTimer = null;
         },
 
         create: create,

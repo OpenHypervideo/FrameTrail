@@ -169,6 +169,19 @@ FrameTrail.defineType(
 
 
                 /**
+                 * Whether my layout area is open only while one of my annotations is active (contentViewData.openWhenActive): a collection's choice, in the areas around the video and in the ring. A phone has no area to open. ViewLayout.updateAreaOpening() opens and closes the area.
+                 *
+                 * @method opensWhenActive
+                 * @return {Boolean}
+                 */
+                opensWhenActive: function() {
+                    return this.contentViewData.type == 'TimedContent'
+                        && this.contentViewData.openWhenActive === true
+                        && this.whichArea != 'companion';
+                },
+
+
+                /**
                  * I move a phone's large collection by one annotation (step 1: the next, -1: the previous).
                  *
                  * @method slideBy
@@ -3433,6 +3446,22 @@ FrameTrail.defineType(
                                     +'        </div>'
                                     +'        <div class="message active">'+ self.labels['SettingsItemsInCollection'] +': <span class="collectionCounter"></span></div>'
                                     +'        <hr>'
+                                    // Open only while an annotation is active: missing in the stored view while it is off, as its gap is while it has its default (see getDataFromEditingUI). Not for a phone, which has no area to open.
+                                    + ((self.whichArea == 'companion') ? '' :
+                                     '        <div class="layoutRow">'
+                                    +'            <div class="column-6">'
+                                    +'                <div class="checkboxRow">'
+                                    +'                    <label class="switch" style="display: inline-block;"><input type="checkbox" id="'+ idPrefix +'-openWhenActive" class="contentViewData" data-property="openWhenActive" autocomplete="off" '+ (contentViewData.openWhenActive === true ? 'checked' : '') +'><span class="slider round"></span></label>'
+                                    +'                    <label for="'+ idPrefix +'-openWhenActive">'+ self.labels['SettingsOpenWhenActive'] +'</label>'
+                                    +'                </div>'
+                                    +'            </div>'
+                                    +'            <div class="column-6">'
+                                    +'                <label for="'+ idPrefix +'-openGap">'+ self.labels['SettingsOpenGap'] +':</label>'
+                                    +'                <input type="number" id="'+ idPrefix +'-openGap" class="contentViewData" data-property="openGap" min="0" max="'+ window.FrameTrailAreaOpening.MAX_GAP +'" step="0.5" value="'+ window.FrameTrailAreaOpening.gapOf(contentViewData.openGap) +'">'
+                                    +'            </div>'
+                                    +'        </div>'
+                                    +'        <div class="message active">'+ self.labels['MessageHintOpenWhenActive'] +'</div>'
+                                    +'        <hr>')
                                     +'    </div>'
                                     +'    <details class="typeSpecific advanced codeEditorSmall '+ (contentViewData.type == 'TimedContent' ? 'active' : '') +'" data-type="TimedContent">'
                                     +'        <summary>'+ self.labels['GenericAdvancedOptions'] +'</summary>'
@@ -3515,6 +3544,24 @@ FrameTrail.defineType(
                                     +'        </div>'
                                     +'        <div class="message active">'+ self.labels['MessageHintQuizRemember'] +'</div>'
                                     +'    </div>';
+
+                    // An area that is open only while an annotation is active starts as its annotations say, so "Start collapsed" has no say then and is not offered (it keeps its value); the gap only counts with the option.
+                    (function() {
+                        var openSwitch = editingUI.querySelector('.contentViewData[data-property="openWhenActive"]'),
+                            gapField   = editingUI.querySelector('.contentViewData[data-property="openGap"]'),
+                            initClosed = editingUI.querySelector('.contentViewData[data-property="initClosed"]'),
+                            typeCards  = editingUI.querySelector('.contentViewData[data-property="type"]');
+                        if (!openSwitch) { return; }
+                        function syncOpenWhenActive() {
+                            var opens = openSwitch.checked && typeCards.getAttribute('data-value') == 'TimedContent';
+                            gapField.disabled = !openSwitch.checked;
+                            initClosed.closest('.generic').style.visibility = opens ? 'hidden' : '';
+                        }
+                        openSwitch.addEventListener('change', syncOpenWhenActive);
+                        // After the type's own handler, which is on the cards
+                        typeCards.addEventListener('click', syncOpenWhenActive);
+                        syncOpenWhenActive();
+                    })();
 
                     // What a Quiz Results view lists, and the one thing that leaves it blank: no question.
                     (function() {
@@ -3952,6 +3999,24 @@ FrameTrail.defineType(
                             }
                         });
                     });
+
+                    // The same goes for a collection's "open only while an annotation is active" and its gap: written once the option is on (or was stored before), the gap once it differs from the default. A phone's view is not offered them and keeps what it had.
+                    var openOffered = !!editingUIContainer.querySelector('.contentViewData[data-property="openWhenActive"]'),
+                        hadOpen     = Object.prototype.hasOwnProperty.call(oldData, 'openWhenActive'),
+                        hadGap      = Object.prototype.hasOwnProperty.call(oldData, 'openGap');
+
+                    if ( newDataObject.type !== 'TimedContent' || !openOffered ) {
+                        if (hadOpen) { newDataObject.openWhenActive = oldData.openWhenActive; } else { delete newDataObject.openWhenActive; }
+                        if (hadGap)  { newDataObject.openGap = oldData.openGap; } else { delete newDataObject.openGap; }
+                    } else {
+                        if ( newDataObject.openWhenActive !== true && !hadOpen ) {
+                            delete newDataObject.openWhenActive;
+                        }
+                        if ( newDataObject.openGap === undefined
+                             || (!hadGap && (newDataObject.openWhenActive !== true || newDataObject.openGap === window.FrameTrailAreaOpening.DEFAULT_GAP)) ) {
+                            delete newDataObject.openGap;
+                        }
+                    }
 
                     return newDataObject;
 

@@ -855,6 +855,8 @@ hypervideo.toggleLayoutArea('bottom');
 
 Each returns whether the area changed. Nothing happens for an area without views, for one that already is as asked, and while editing (the areas are hidden there, so "Test Code" shows nothing: use Preview). A view's "Start collapsed" only says how its area starts, so an overlay can open such an area when it starts and close it again when it ends. The editors' "Insert action …" menu has these calls ready for every area.
 
+Annotations have no code. For them a collection view has a setting that needs none: "Open the area only while an annotation is active" (Layout Editor, the view's settings; `openWhenActive` in the [data](DATA-MODEL.md#hypervideosidhypervideojson)). Its area opens when one of the view's annotations starts and closes when the last one has ended. What these calls, or the viewer, open or close in such an area stays until its annotations next want something else: an area closed by hand opens again with the next group of annotations, one opened by hand closes when a group has been shown and has ended.
+
 ## Undo/Redo Support
 
 When making changes that should be undoable:

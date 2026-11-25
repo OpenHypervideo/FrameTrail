@@ -227,6 +227,56 @@
             "findings": []
         },
         {
+            "name": "a view that opens its area only for annotations, in a hypervideo without any",
+            "rules": ["open-when-active-unused"],
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/config/layoutArea/areaBottom",
+                    "value": [{ "type": "TimedContent", "name": "Notes", "contentSize": "medium", "openWhenActive": true, "openGap": 5 }]
+                },
+                { "op": "replace", "path": "/annotations/files", "value": {} }
+            ],
+            "findings": [
+                {
+                    "rule": "open-when-active-unused",
+                    "severity": "warning",
+                    "kind": "hypervideo",
+                    "message": "A view in the bottom area opens its area only while one of its annotations is active (openWhenActive), but the hypervideo has no annotations: the area stays closed."
+                }
+            ]
+        },
+        {
+            "name": "a view for paired phones that is set to open its area only for annotations",
+            "rules": ["open-when-active-unused"],
+            "patch": [
+                {
+                    "op": "add",
+                    "path": "/hypervideo/config/layoutArea/areaCompanion",
+                    "value": [{ "type": "TimedContent", "contentSize": "medium", "openWhenActive": true }]
+                }
+            ],
+            "findings": [
+                {
+                    "rule": "open-when-active-unused",
+                    "severity": "warning",
+                    "kind": "hypervideo",
+                    "message": "A view for paired phones is set to open its area only while an annotation is active (openWhenActive). That does nothing there: a phone has no area to open."
+                }
+            ]
+        },
+        {
+            "name": "a view that opens its area only for annotations, and annotations for it",
+            "patch": [
+                {
+                    "op": "replace",
+                    "path": "/hypervideo/config/layoutArea/areaBottom",
+                    "value": [{ "type": "TimedContent", "name": "Notes", "contentSize": "medium", "openWhenActive": true, "openGap": 5 }]
+                }
+            ],
+            "findings": []
+        },
+        {
             "name": "only the rules asked for",
             "rules": ["chapter-order", "missing-license"],
             "patch": [

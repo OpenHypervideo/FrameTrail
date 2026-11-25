@@ -34,6 +34,26 @@
                     },
                     "filterAspect": "creatorId",
                     "zoomControls": true
+                },
+                {
+                    "type": "TimedContent",
+                    "name": "Now",
+                    "description": "",
+                    "icon": "",
+                    "cssClass": "",
+                    "contentSize": "small",
+                    "initClosed": false,
+                    "openWhenActive": true,
+                    "openGap": 5,
+                    "collectionFilter": {
+                        "tags": [],
+                        "types": [],
+                        "users": [],
+                        "text": ""
+                    },
+                    "onClickContentItem": "",
+                    "filterAspect": "creatorId",
+                    "zoomControls": false
                 }
             ],
             "areaBottom": [

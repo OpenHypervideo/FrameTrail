@@ -472,12 +472,15 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
      *   unseen would show up in the player afterwards;
      * * on a phone, which has no areas to open.
      *
+     * An area that is open only while an annotation is active (a collection view's openWhenActive, see ViewLayout.updateAreaOpening) comes here too, as automatic. What is done here by hand or by event code stays until that area's annotations want something else.
+     *
      * @method setLayoutAreaOpen
      * @param {String} name top, bottom, left, right or circular (areaTop … as well)
      * @param {Boolean} [open] true opens, false closes, missing toggles
+     * @param {Boolean} [automatic] the area's annotations ask, not the viewer or event code
      * @return {Boolean} whether the area changed
      */
-    function setLayoutAreaOpen(name, open) {
+    function setLayoutAreaOpen(name, open, automatic) {
 
         var key       = String(name || '').replace(/^area/i, '').toLowerCase(),
             container = Object.prototype.hasOwnProperty.call(layoutAreaContainers, key) ? layoutAreaContainers[key] : null,
@@ -494,12 +497,18 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
         container.classList.toggle('closed', !open);
 
-        if (key !== 'circular') {
+        // An area that opens for its annotations leaves details alone that the viewer has slid open
+        if (key !== 'circular' && !(automatic && FrameTrail.getState('slidePosition') !== 'middle')) {
             FrameTrail.changeState('slidePosition', 'middle');
         }
 
         if (layoutAreasDiagram && layoutAreasDiagram[key] && layoutAreasPanel.classList.contains('active')) {
             layoutAreasDiagram[key].classList.toggle('active', open);
+        }
+
+        // The ring has no transition to wait for: the video takes or gives its room at once
+        if (key === 'circular') {
+            adjustHypervideo();
         }
 
         // Once for an area's transition, however many areas an action opens and closes

@@ -114,6 +114,11 @@
             "id": "quiz-results-empty",
             "severity": "warning",
             "description": "The layout has a Quiz Results view (QuizResults), but the hypervideo has no question for it to list: no quiz overlay, and no quiz annotation together with a collection view (TimedContent) that could show it. The view stays empty."
+        },
+        {
+            "id": "open-when-active-unused",
+            "severity": "warning",
+            "description": "A collection view (TimedContent) opens its layout area only while one of its annotations is active (openWhenActive), but that never happens or does nothing: the hypervideo has no annotations, so the area stays closed, or the view is in the area for paired phones (areaCompanion), where there is no area to open. Which annotations a view's filter lets through is not looked at."
         }
     ];
 
@@ -682,6 +687,29 @@
             if (hasQuestion) { return; }
 
             report({ kind: 'hypervideo' }, 'The layout has a Quiz Results view, but there is no question for it to list: no quiz overlay, and no quiz annotation that a collection view (TimedContent) shows. The view stays empty.');
+
+        },
+
+        'open-when-active-unused': function(data, report) {
+
+            var layout        = isObject(data.hypervideo.config) && isObject(data.hypervideo.config.layoutArea) ? data.hypervideo.config.layoutArea : {},
+                places        = { areaTop: 'in the top area', areaBottom: 'in the bottom area', areaLeft: 'in the left area', areaRight: 'in the right area', areaCircular: 'in the ring around the video' },
+                hasAnnotation = data.items.some(function(entry) { return entry.where.kind === 'annotations'; });
+
+            Object.keys(layout).forEach(function(area) {
+                objects(layout[area]).forEach(function(view) {
+
+                    // A view without a type is a collection
+                    if (view.openWhenActive !== true || (view.type !== undefined && view.type !== 'TimedContent')) { return; }
+
+                    if (area === 'areaCompanion') {
+                        report({ kind: 'hypervideo' }, 'A view for paired phones is set to open its area only while an annotation is active (openWhenActive). That does nothing there: a phone has no area to open.');
+                    } else if (!hasAnnotation) {
+                        report({ kind: 'hypervideo' }, 'A view ' + (places[area] || 'in ' + area) + ' opens its area only while one of its annotations is active (openWhenActive), but the hypervideo has no annotations: the area stays closed.');
+                    }
+
+                });
+            });
 
         }
 

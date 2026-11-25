@@ -268,6 +268,39 @@
             }
         },
         {
+            "name": "hypervideo with areas that are open only while an annotation is active: one with a gap of its own, the ring with the default",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Lecture"
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaRight": [
+                            {
+                                "type": "TimedContent",
+                                "contentSize": "large",
+                                "openWhenActive": true,
+                                "openGap": 0.5
+                            },
+                            {
+                                "type": "Transcript",
+                                "transcriptSource": "en"
+                            }
+                        ],
+                        "areaCircular": [
+                            {
+                                "type": "TimedContent",
+                                "contentSize": "small",
+                                "openWhenActive": true
+                            }
+                        ]
+                    }
+                },
+                "clips": []
+            }
+        },
+        {
             "name": "hypervideo with Quiz Results views: one with every setting changed, one for the phones with none",
             "schema": "hypervideo.schema.json",
             "data": {
