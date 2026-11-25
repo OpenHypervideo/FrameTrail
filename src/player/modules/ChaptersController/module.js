@@ -181,7 +181,7 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
 
     /**
      * I render the persistent, editable chapter list into the EditingOptions panel.
-     * Each row lets the user edit a chapter's start time and title, or delete it, and stays
+     * Each row lets the user edit a chapter's start time, title and description, or delete it, and stays
      * in sync with the timeline blocks.
      * @method renderChapterList
      */
@@ -235,15 +235,18 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
         _rw.innerHTML = '<div class="chapterRow">'
             + '<input type="time" class="chapterStartInput" step="1">'
             + '<input type="text" class="chapterTitleInput" placeholder="'+ labels['SettingsChapterTitle'] +'">'
+            + '<input type="text" class="chapterDescriptionInput" placeholder="'+ labels['SettingsChapterDescription'] +'">'
             + '<button type="button" class="chapterDeleteButton"><span class="icon-cancel"></span></button>'
             + '</div>';
         var row = _rw.firstElementChild;
 
-        var startInput = row.querySelector('.chapterStartInput'),
-            titleInput = row.querySelector('.chapterTitleInput');
+        var startInput    = row.querySelector('.chapterStartInput'),
+            titleInput    = row.querySelector('.chapterTitleInput'),
+            descriptionInput = row.querySelector('.chapterDescriptionInput');
 
         startInput.value = formBuilder.secondsToTimeString(chapter.data.start);
         titleInput.value = chapter.data.title || '';
+        descriptionInput.value = (typeof chapter.data.description === 'string') ? chapter.data.description : '';
 
         // Cross-reference row <-> chapter for two-way sync
         row._chapter = chapter;
@@ -268,6 +271,29 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
                 registerChangeUndo(dataBeforeEdit, chapter.data);
             }
             dataBeforeEdit = JSON.parse(JSON.stringify(chapter.data));
+        });
+
+        // Description (the optional second line, shown by Chapters views): as the title. An empty one is not stored.
+        var dataBeforeDescription = null;
+
+        descriptionInput.addEventListener('focus', function() {
+            dataBeforeDescription = JSON.parse(JSON.stringify(chapter.data));
+        });
+
+        descriptionInput.addEventListener('input', function() {
+            if (descriptionInput.value) {
+                chapter.data.description = descriptionInput.value;
+            } else {
+                delete chapter.data.description;
+            }
+            FrameTrail.module('HypervideoModel').newUnsavedChange('chapters');
+        });
+
+        descriptionInput.addEventListener('change', function() {
+            if (dataBeforeDescription) {
+                registerChangeUndo(dataBeforeDescription, chapter.data);
+            }
+            dataBeforeDescription = JSON.parse(JSON.stringify(chapter.data));
         });
 
         // Start time: applied on change (blur/enter); may reorder, so re-sort + re-render
@@ -330,7 +356,7 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
 
 
     /**
-     * I add a chapter ({ start, title, … }) to the model, the timeline and, in the chapters editor, the list.
+     * I add a chapter ({ start, title, description?, … }) to the model, the timeline and, in the chapters editor, the list.
      * @method addChapter
      * @param {Object} data
      * @return {Chapter}
@@ -444,7 +470,7 @@ FrameTrail.defineModule('ChaptersController', function(FrameTrail){
 
 
     /**
-     * I register the undo step for a change of a chapter's start or title (from the list or by dragging), given its data before and after.
+     * I register the undo step for a change of a chapter's start, title or description (from the list or by dragging), given its data before and after.
      * @method registerChangeUndo
      * @param {Object} before
      * @param {Object} after

@@ -547,7 +547,7 @@ edit.remove('overlays', overlay.created);
 |------|------------|----------------|
 | `overlays` | overlays, as W3C items | their `created` |
 | `annotations` | annotations of every user, as W3C items | their `created` (the user's own), or `{ creator, created }` |
-| `chapters` | `{ start, title }` | their `start` (seconds) |
+| `chapters` | `{ start, title, description? }` | their `start` (seconds) |
 | `contentViews` | the content views of the layout areas | — (set per area) |
 | `subtitles` | `{ src, srclang }`; `get` adds the WebVTT text as `vtt` | their language |
 

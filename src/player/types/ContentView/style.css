@@ -1048,6 +1048,314 @@
     border-color: var(--primary-fg-color);
 }
 
+/* The chapter's optional second line. Shown where the card has room for a third
+   line of text: not at small (one line), not in a medium poster card (the thumb
+   takes the height). */
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardDescription {
+    font-size: 11px;
+    line-height: 1.3;
+    opacity: 0.65;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: var(--primary-fg-color);
+}
+
+.layoutArea[data-size="small"] .contentViewContainer[data-type="Chapters"] .chapterCardDescription,
+:is(.layoutArea[data-area="areaTop"][data-size="medium"], .layoutArea[data-area="areaBottom"][data-size="medium"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps) .chapterCardDescription {
+    display: none;
+}
+
+/* A word too long for its line ends in an ellipsis, in cards and steps (the title
+   already hides what overflows; at small it is one line with an ellipsis anyway). */
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chapterCardTitle {
+    text-overflow: ellipsis;
+}
+
+/* Chapters as steps (the view's chapterStyle "steps"): a progress indicator.
+
+   One dot per chapter on a line, spread evenly over the area, the title (and the
+   description) beside the dot in the vertical areas and below it in the horizontal
+   ones. A step is a .chapterElement but no .collectionElement, so none of the
+   card rules for sizes, borders and backgrounds reach it; what the Chapters
+   rules above give every .chapterElement is undone here.
+
+   The line is drawn by the steps: ::before runs from the step's start to its dot,
+   ::after from the dot to its end, and neighbouring steps touch. It is filled up
+   to the dot of the chapter that plays: both halves of the chapters before it
+   (.done), the first half of its own (.active).
+
+   Colours come from the theme. The custom properties below are this section's
+   own (the sizes further down change them); they are no setting for custom CSS. */
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps {
+    --chapter-step-color: var(--primary-fg-color);
+    --chapter-step-dot: 14px;
+    --chapter-step-line: 2px;
+    --chapter-step-track: color-mix(in srgb, var(--chapter-step-color) 15%, transparent);
+    --chapter-step-fill: color-mix(in srgb, var(--chapter-step-color) 55%, transparent);
+    --chapter-gap: 0px;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterElement.chapterStep {
+    position: relative;
+    top: auto;
+    left: auto;
+    width: auto;
+    height: auto;
+    min-width: 0;
+    margin: 0;
+    border: none;
+    background: transparent;
+    overflow: visible;
+    opacity: 1;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStepDot {
+    box-sizing: border-box;
+    width: var(--chapter-step-dot);
+    height: var(--chapter-step-dot);
+    border-radius: 50%;
+    border: 1.5px solid color-mix(in srgb, var(--chapter-step-color) 35%, transparent);
+    background: transparent;
+    flex-shrink: 0;
+    transition: border-color 0.3s, background-color 0.3s, scale 0.25s, box-shadow 0.3s;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep.done .chapterStepDot {
+    background: var(--chapter-step-fill);
+    border-color: transparent;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep.active .chapterStepDot {
+    background: var(--chapter-step-color);
+    border-color: transparent;
+    scale: 1.25;
+    box-shadow: 0 0 8px color-mix(in srgb, var(--chapter-step-color) 50%, transparent);
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep:hover .chapterStepDot {
+    border-color: var(--chapter-step-color);
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::before,
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::after {
+    content: '';
+    position: absolute;
+    background: var(--chapter-step-track);
+    /* Rounded only at the dot (see the areas below): where two steps meet the ends
+       are square, or the line shows a notch halfway between two dots. */
+    transition: background-color 0.3s;
+    pointer-events: none;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep:first-child::before,
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep:last-child::after {
+    display: none;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep.done::before,
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep.done::after,
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep.active::before {
+    background: var(--chapter-step-fill);
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardText {
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep.active .chapterCardText,
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep:hover .chapterCardText {
+    opacity: 1;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardTitle {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep.active .chapterCardTitle {
+    color: var(--chapter-step-color);
+}
+
+/* Steps in the vertical areas: a column, the text beside the dots */
+
+/* The contents are a column at least as high as the area, so that the steps can take
+   its whole height (a percentage height has nothing to refer to in a box that is as
+   high as its content). */
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="Chapters"] .contentViewContents:has(> .chapterSteps) {
+    display: flex;
+    flex-direction: column;
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps {
+    flex: 1 0 auto;
+    min-height: 0;
+    padding: 12px 0;
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep {
+    flex: 1 0 auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    min-height: 44px;
+    padding: 4px 16px;
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::before,
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::after {
+    left: calc(16px + var(--chapter-step-dot) / 2 - var(--chapter-step-line) / 2);
+    width: var(--chapter-step-line);
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::before {
+    top: 0;
+    bottom: calc(50% + var(--chapter-step-dot) / 2 + 3px);
+    border-radius: 0 0 var(--chapter-step-line) var(--chapter-step-line);
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::after {
+    top: calc(50% + var(--chapter-step-dot) / 2 + 3px);
+    bottom: 0;
+    border-radius: var(--chapter-step-line) var(--chapter-step-line) 0 0;
+}
+
+/* A small vertical area has room for the dots alone; the title is the step's tooltip */
+
+:is(.layoutArea[data-area="areaLeft"][data-size="small"], .layoutArea[data-area="areaRight"][data-size="small"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep {
+    justify-content: center;
+    min-height: 28px;
+    padding: 4px 0;
+}
+
+:is(.layoutArea[data-area="areaLeft"][data-size="small"], .layoutArea[data-area="areaRight"][data-size="small"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::before,
+:is(.layoutArea[data-area="areaLeft"][data-size="small"], .layoutArea[data-area="areaRight"][data-size="small"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::after {
+    left: calc(50% - var(--chapter-step-line) / 2);
+}
+
+:is(.layoutArea[data-area="areaLeft"][data-size="small"], .layoutArea[data-area="areaRight"][data-size="small"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardText {
+    display: none;
+}
+
+:is(.layoutArea[data-area="areaLeft"][data-size="large"], .layoutArea[data-area="areaRight"][data-size="large"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps {
+    --chapter-step-dot: 16px;
+}
+
+:is(.layoutArea[data-area="areaLeft"][data-size="large"], .layoutArea[data-area="areaRight"][data-size="large"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardTitle {
+    font-size: 15px;
+}
+
+:is(.layoutArea[data-area="areaLeft"][data-size="large"], .layoutArea[data-area="areaRight"][data-size="large"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardDescription {
+    font-size: 12px;
+}
+
+/* Steps in the horizontal areas: a row, the text below the dots. Every step has
+   its dot at the same height (the top of the step), so the line is straight
+   whatever the lengths of the texts; the row as a whole is centred in the area. */
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .contentViewContents:has(> .chapterSteps) {
+    display: flex;
+    align-items: center;
+    padding-left: 0;
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps {
+    height: auto;
+    max-height: 100%;
+    --chapter-step-top: 8px;
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep {
+    flex: 1 0 0;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 6px;
+    min-width: 110px;
+    padding: var(--chapter-step-top) 8px 6px 8px;
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::before,
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::after {
+    top: calc(var(--chapter-step-top) + var(--chapter-step-dot) / 2 - var(--chapter-step-line) / 2);
+    height: var(--chapter-step-line);
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::before {
+    left: 0;
+    right: calc(50% + var(--chapter-step-dot) / 2 + 3px);
+    border-radius: 0 var(--chapter-step-line) var(--chapter-step-line) 0;
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep::after {
+    left: calc(50% + var(--chapter-step-dot) / 2 + 3px);
+    right: 0;
+    border-radius: var(--chapter-step-line) 0 0 var(--chapter-step-line);
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardText {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    width: 100%;
+    text-align: center;
+}
+
+/* The texts are as wide as their step at most, so that what does not fit ends in an
+   ellipsis instead of being cut at both ends of the centred line. */
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardTitle,
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardDescription {
+    max-width: 100%;
+}
+
+/* The title's box is as wide as its text here, and an italic letter leans out of it:
+   room for the last letter of "Untitled chapter". */
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardTitle.placeholder {
+    padding-inline: 0.15em;
+}
+
+/* Small: the dot and one line for the title */
+
+:is(.layoutArea[data-area="areaTop"][data-size="small"], .layoutArea[data-area="areaBottom"][data-size="small"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps {
+    --chapter-step-dot: 12px;
+    --chapter-step-top: 5px;
+}
+
+:is(.layoutArea[data-area="areaTop"][data-size="small"], .layoutArea[data-area="areaBottom"][data-size="small"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep {
+    gap: 3px;
+    min-width: 90px;
+    padding-bottom: 2px;
+}
+
+:is(.layoutArea[data-area="areaTop"][data-size="small"], .layoutArea[data-area="areaBottom"][data-size="small"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardTime {
+    display: none;
+}
+
+:is(.layoutArea[data-area="areaTop"][data-size="small"], .layoutArea[data-area="areaBottom"][data-size="small"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardTitle {
+    font-size: 12px;
+}
+
+:is(.layoutArea[data-area="areaTop"][data-size="large"], .layoutArea[data-area="areaBottom"][data-size="large"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps {
+    --chapter-step-dot: 16px;
+}
+
+:is(.layoutArea[data-area="areaTop"][data-size="large"], .layoutArea[data-area="areaBottom"][data-size="large"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep {
+    min-width: 140px;
+    gap: 10px;
+}
+
+:is(.layoutArea[data-area="areaTop"][data-size="large"], .layoutArea[data-area="areaBottom"][data-size="large"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardTitle {
+    font-size: 15px;
+}
+
+:is(.layoutArea[data-area="areaTop"][data-size="large"], .layoutArea[data-area="areaBottom"][data-size="large"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterCardDescription {
+    font-size: 12px;
+}
+
 /*******************
 * Quiz Results ContentView
 *******************/
@@ -1627,6 +1935,147 @@
 }
 
 /* Chapters */
+
+/* Chapters as steps: dots on a line, the line filled up to the active one */
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps {
+    display: flex;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.vertical {
+    flex-direction: column;
+    padding: 3px 0;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.horizontal {
+    flex-direction: row;
+    align-items: center;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStep {
+    position: relative;
+    flex: 1 1 0;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    min-height: 0;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.vertical .schematicStep {
+    flex-direction: row;
+    padding: 0 8px;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.vertical[data-size="small"] .schematicStep {
+    justify-content: center;
+    padding: 0;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.horizontal .schematicStep {
+    flex-direction: column;
+    justify-content: center;
+    padding: 2px 4px;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStepDot {
+    box-sizing: border-box;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    border: 1px solid rgba(127,127,127,0.6);
+    flex-shrink: 0;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStep.done .schematicStepDot {
+    background: rgba(127,127,127,0.6);
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStep.active .schematicStepDot {
+    background: var(--primary-fg-color);
+    border-color: var(--primary-fg-color);
+    scale: 1.25;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStep::before,
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStep::after {
+    content: '';
+    position: absolute;
+    background: rgba(127,127,127,0.25);
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStep:first-child::before,
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStep:last-child::after {
+    display: none;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStep.done::before,
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStep.done::after,
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStep.active::before {
+    background: rgba(127,127,127,0.7);
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.vertical .schematicStep::before,
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.vertical .schematicStep::after {
+    left: 11px;
+    width: 1px;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.vertical[data-size="small"] .schematicStep::before,
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.vertical[data-size="small"] .schematicStep::after {
+    left: calc(50% - 0.5px);
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.vertical .schematicStep::before { top: 0; bottom: calc(50% + 5px); }
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.vertical .schematicStep::after  { top: calc(50% + 5px); bottom: 0; }
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.horizontal .schematicStep::before,
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.horizontal .schematicStep::after {
+    top: 5px;
+    height: 1px;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.horizontal .schematicStep {
+    justify-content: flex-start;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.horizontal .schematicStep::before { left: 0; right: calc(50% + 5px); }
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.horizontal .schematicStep::after  { left: calc(50% + 5px); right: 0; }
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStepText {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    min-width: 0;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.horizontal .schematicStepText {
+    flex: none;
+    width: 70%;
+    align-items: center;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.vertical[data-size="small"] .schematicStepText {
+    display: none;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStepText .schematicChapterTitle {
+    height: 4px;
+    width: 100%;
+    background: rgba(127,127,127,0.4);
+    border-radius: 1px;
+}
+
+:is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps .schematicStepDescription {
+    height: 3px;
+    width: 60%;
+    background: rgba(127,127,127,0.25);
+    border-radius: 1px;
+}
 
 :is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicChapterCard {
     float: left;

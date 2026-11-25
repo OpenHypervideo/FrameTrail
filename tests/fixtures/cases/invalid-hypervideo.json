@@ -732,6 +732,48 @@
             ]
         },
         {
+            "name": "Chapters view with a display that is neither cards nor steps, a time switch that is no switch, and a chapter whose description is no text",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Steps"
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaLeft": [
+                            {
+                                "type": "Chapters",
+                                "chapterStyle": "dots",
+                                "showChapterTime": "no"
+                            }
+                        ]
+                    }
+                },
+                "clips": [],
+                "chapters": [
+                    {
+                        "start": 0,
+                        "title": "Organism",
+                        "description": 1
+                    }
+                ]
+            },
+            "errors": [
+                {
+                    "path": "/config/layoutArea/areaLeft/0/chapterStyle",
+                    "message": "must be one of \"cards\", \"steps\""
+                },
+                {
+                    "path": "/config/layoutArea/areaLeft/0/showChapterTime",
+                    "message": "must be boolean, is string"
+                },
+                {
+                    "path": "/chapters/0/description",
+                    "message": "must be string, is number"
+                }
+            ]
+        },
+        {
             "name": "chapter without start",
             "schema": "hypervideo.schema.json",
             "data": {

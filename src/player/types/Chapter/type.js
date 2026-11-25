@@ -10,7 +10,7 @@
  * up to the start of the following chapter (the last chapter spans to the end
  * of the video). Chapters are managed by the {{#crossLink "ChaptersController"}}ChaptersController{{/crossLink}}.
  *
- * My data object ({ start, title }) is owned by the {{#crossLink "Database"}}Database{{/crossLink}}
+ * My data object ({ start, title, description? }) is owned by the {{#crossLink "Database"}}Database{{/crossLink}}
  * (database.chapters) and serialized into hypervideo.json — I only wrap it by reference.
  *
  * @class Chapter
@@ -42,7 +42,7 @@ FrameTrail.defineType(
             prototype: {
 
                 /**
-                 * I hold the data object of a Chapter ({ start, title }), which is stored in the
+                 * I hold the data object of a Chapter ({ start, title, description? }), which is stored in the
                  * {{#crossLink "Database"}}Database{{/crossLink}} and saved in the hypervideo.json file.
                  * @attribute data
                  * @type {}

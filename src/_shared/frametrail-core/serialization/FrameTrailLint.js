@@ -742,7 +742,7 @@
      *   clip's in point) and ends, in seconds; end null when not known
      * * overlays, annotations, codeSnippets – the items as stored, the
      *   annotations of every user
-     * * chapters     – { start, title }, sorted by start
+     * * chapters     – { start, title, description? }, sorted by start
      * * subtitles    – [{ lang, vtt }], vtt null when the text is not at hand
      * * resources    – the resource library by id, null when it is not known
      *   (then unknown-resource finds nothing)

@@ -27,7 +27,7 @@ FrameTrail.defineType(
          * drift apart. Every call path runs inside or after the Layout Editor,
          * so the module is initialized by then; the guard is for safety only.
          */
-        function _generateSchematic(type, size, axis, thumbnail, maxCards) {
+        function _generateSchematic(type, size, axis, thumbnail, maxCards, variant) {
             var ViewLayout = FrameTrail.module('ViewLayout');
 
             if (!ViewLayout || !ViewLayout.generateSchematic) {
@@ -36,7 +36,7 @@ FrameTrail.defineType(
                 return fallback;
             }
 
-            return ViewLayout.generateSchematic(type, size, axis, thumbnail, maxCards);
+            return ViewLayout.generateSchematic(type, size, axis, thumbnail, maxCards, variant);
         }
 
         return {
@@ -1108,8 +1108,11 @@ FrameTrail.defineType(
                                 // getChapterIndexAtTime indexes the model array, which is
                                 // not necessarily sorted, while the cards are rendered in
                                 // time order — so match on the start time, not the index.
-                                var isActive = (activeStart !== null)
-                                            && (parseFloat(card.getAttribute('data-start')) === activeStart);
+                                var cardStart = parseFloat(card.getAttribute('data-start')),
+                                    isActive  = (activeStart !== null) && (cardStart === activeStart);
+
+                                // The chapters before the one that plays (the steps display fills its line with them)
+                                card.classList.toggle('done', activeStart !== null && cardStart < activeStart);
 
                                 if (isActive) {
                                     if ( !card.classList.contains('active') ) {
@@ -1900,7 +1903,7 @@ FrameTrail.defineType(
                  */
                 generateSchematicPreview: function() {
                     var axis = this.isCircularArea() ? 'ring' : (this.isHorizontalArea() ? 'x' : 'y');
-                    return _generateSchematic(this.contentViewData.type, this.contentViewData.contentSize, axis);
+                    return _generateSchematic(this.contentViewData.type, this.contentViewData.contentSize, axis, false, undefined, this.contentViewData.chapterStyle);
                 },
 
 
@@ -2150,6 +2153,15 @@ FrameTrail.defineType(
                  * custom scrollbar from the generic ContentView styles; .chapterElement
                  * is what the Chapters-specific size rules hook onto.
                  *
+                 * As steps (contentViewData.chapterStyle "steps") the chapters are dots on a
+                 * line, spread evenly over the area, with the title (and the chapter's
+                 * description) beside or below each: a progress indicator. The elements are
+                 * still .chapterElement, so the active state and the click are the same, but
+                 * not .collectionElement: a step is no card and takes none of its sizes.
+                 * The line is drawn by the steps themselves (::before and ::after, up to
+                 * and from their dot), filled as far as the chapter that plays (.done on
+                 * the chapters before it, see updateTimedStateOfContentViews).
+                 *
                  * @method renderChapterCards
                  */
                 renderChapterCards: function() {
@@ -2164,8 +2176,11 @@ FrameTrail.defineType(
 
                     contents.innerHTML = '';
 
+                    var steps    = self.contentViewData.chapterStyle === 'steps',
+                        showTime = self.contentViewData.showChapterTime !== false;
+
                     var container = document.createElement('div');
-                    container.className = 'chaptersContainer';
+                    container.className = 'chaptersContainer' + (steps ? ' chapterSteps' : '');
                     contents.appendChild(container);
 
                     // The model array is only kept sorted while the chapter editor is
@@ -2179,7 +2194,7 @@ FrameTrail.defineType(
                         return;
                     }
 
-                    var sprite = (size == 'medium' || size == 'large') ? Controller.getScrubSprite() : null,
+                    var sprite = (!steps && (size == 'medium' || size == 'large')) ? Controller.getScrubSprite() : null,
                         isVertical = self.isVerticalArea(),
                         duration   = HypervideoModel.duration;
 
@@ -2207,7 +2222,9 @@ FrameTrail.defineType(
                     // Not at large: a 260px floor plus a 160px thumbnail would swallow
                     // the proportions on all but very long videos. Not in the vertical
                     // areas either, where this would fight the row heights.
+                    // Nor for steps, which are spread evenly whatever their chapters' lengths.
                     var proportional = !isVertical
+                                    && !steps
                                     && (size == 'small' || size == 'medium')
                                     && duration > 0;
 
@@ -2230,9 +2247,15 @@ FrameTrail.defineType(
                             titleLabel = chapter.data.title || self.labels['ChapterUntitled'];
 
                         var card = document.createElement('div');
-                        card.className = 'collectionElement chapterElement';
+                        card.className = steps ? 'chapterElement chapterStep' : 'collectionElement chapterElement';
                         card.setAttribute('data-start', start);
                         card.setAttribute('data-end', end);
+
+                        if (steps) {
+                            var dot = document.createElement('div');
+                            dot.className = 'chapterStepDot';
+                            card.appendChild(dot);
+                        }
 
                         if (proportional) {
                             card.style.width = 'calc(' + (100 * Math.max(0, end - start) / duration)
@@ -2253,10 +2276,12 @@ FrameTrail.defineType(
                         var textElement = document.createElement('div');
                         textElement.className = 'chapterCardText';
 
-                        var timeElement = document.createElement('div');
-                        timeElement.className = 'chapterCardTime';
-                        timeElement.textContent = timeLabel;
-                        textElement.appendChild(timeElement);
+                        if (showTime) {
+                            var timeElement = document.createElement('div');
+                            timeElement.className = 'chapterCardTime';
+                            timeElement.textContent = timeLabel;
+                            textElement.appendChild(timeElement);
+                        }
 
                         var titleElement = document.createElement('div');
                         titleElement.className = 'chapterCardTitle';
@@ -2265,10 +2290,18 @@ FrameTrail.defineType(
                         if (!chapter.data.title) { titleElement.classList.add('placeholder'); }
                         textElement.appendChild(titleElement);
 
+                        // The optional second line (shown where the size leaves room, see the stylesheet)
+                        if (typeof chapter.data.description === 'string' && chapter.data.description) {
+                            var descriptionElement = document.createElement('div');
+                            descriptionElement.className = 'chapterCardDescription';
+                            descriptionElement.textContent = chapter.data.description;
+                            textElement.appendChild(descriptionElement);
+                        }
+
                         card.appendChild(textElement);
 
                         if (tooltipAttribute) {
-                            card.setAttribute(tooltipAttribute, timeLabel + '  ' + titleLabel);
+                            card.setAttribute(tooltipAttribute, (showTime ? timeLabel + '  ' : '') + titleLabel);
                             card.setAttribute('data-tooltip-variant', 'resourceTitle');
                         }
 
@@ -3429,6 +3462,23 @@ FrameTrail.defineType(
                                     +'    </div>'
                                     +'    <div class="typeSpecific '+ (contentViewData.type == 'Chapters' ? 'active' : '') +'" data-type="Chapters">'
                                     +'        <div class="message active chaptersHintMessage"></div>'
+                                    // Its settings are missing in the stored view while they have their default (cards, time shown),
+                                    // see getDataFromEditingUI.
+                                    +'        <div class="layoutRow">'
+                                    +'            <div class="column-4">'
+                                    +'                <label for="'+ idPrefix +'-chapterStyle">'+ self.labels['SettingsChapterStyle'] +':</label>'
+                                    +'                <div class="custom-select"><select id="'+ idPrefix +'-chapterStyle" class="contentViewData" data-property="chapterStyle">'
+                                    +'                    <option value="cards" '+ (contentViewData.chapterStyle !== 'steps' ? 'selected' : '') +'>'+ self.labels['SettingsChapterStyleCards'] +'</option>'
+                                    +'                    <option value="steps" '+ (contentViewData.chapterStyle === 'steps' ? 'selected' : '') +'>'+ self.labels['SettingsChapterStyleSteps'] +'</option>'
+                                    +'                </select></div>'
+                                    +'            </div>'
+                                    +'            <div class="column-4">'
+                                    +'                <div class="checkboxRow">'
+                                    +'                    <label class="switch" style="display: inline-block;"><input type="checkbox" id="'+ idPrefix +'-showChapterTime" class="contentViewData" data-property="showChapterTime" autocomplete="off" '+ (contentViewData.showChapterTime !== false ? 'checked' : '') +'><span class="slider round"></span></label>'
+                                    +'                    <label for="'+ idPrefix +'-showChapterTime">'+ self.labels['SettingsChapterShowTime'] +'</label>'
+                                    +'                </div>'
+                                    +'            </div>'
+                                    +'        </div>'
                                     +'    </div>'
                                     // Quiz Results: its settings are missing in the stored view while they have their default
                                     // (rows by chapters, score and legend shown, the others off), see getDataFromEditingUI.
@@ -3517,17 +3567,19 @@ FrameTrail.defineType(
                     });
 
                     function refreshSizeThumbs(type) {
+                        // A Chapters view's sizes are drawn as it is displayed: cards or steps
+                        var variant = editingUI.querySelector('.contentViewData[data-property="chapterStyle"]').value;
                         editingUI.querySelector('.contentViewData[data-property="contentSize"]').querySelectorAll(':scope > div[data-value]').forEach(function(optionEl) {
                             var thatSize = optionEl.getAttribute('data-value'),
                                 axis = circular ? 'ring' : (self.isHorizontalArea(thatSize, type) ? 'x' : 'y');
                             var existingThumb = optionEl.querySelector('.contentViewOptionThumb');
                             if (existingThumb) {
                                 existingThumb.innerHTML = '';
-                                existingThumb.appendChild(_generateSchematic(type, thatSize, axis, true));
+                                existingThumb.appendChild(_generateSchematic(type, thatSize, axis, true, undefined, variant));
                             } else {
                                 var thumbWrapper = document.createElement('div');
                                 thumbWrapper.className = 'contentViewOptionThumb optionCardThumb';
-                                thumbWrapper.appendChild(_generateSchematic(type, thatSize, axis, true));
+                                thumbWrapper.appendChild(_generateSchematic(type, thatSize, axis, true, undefined, variant));
                                 var labelSpan = document.createElement('span');
                                 labelSpan.textContent = optionEl.textContent;
                                 optionEl.innerHTML = '';
@@ -3537,6 +3589,10 @@ FrameTrail.defineType(
                         });
                     }
                     refreshSizeThumbs(contentViewData.type);
+
+                    editingUI.querySelector('.contentViewData[data-property="chapterStyle"]').addEventListener('change', function() {
+                        refreshSizeThumbs(editingUI.querySelector('.contentViewData[data-property="type"]').getAttribute('data-value'));
+                    });
 
                     editingUI.querySelectorAll('.contentViewData').forEach(function(el) {
 
@@ -3878,16 +3934,23 @@ FrameTrail.defineType(
                     // The Quiz Results panel always has its fields; only a Quiz Results view takes them, and of
                     // those only what differs from the default (a stored view names a setting once it was changed;
                     // one that was written before stays written). Other views keep what they had, untouched.
-                    var quizDefaults = { quizRows: 'chapters', showQuizScore: true, showQuizLegend: true, showQuizRestart: false, rememberQuizResults: false },
+                    // The same goes for the Chapters panel's fields and a Chapters view.
+                    var typeDefaults = {
+                            QuizResults: { quizRows: 'chapters', showQuizScore: true, showQuizLegend: true, showQuizRestart: false, rememberQuizResults: false },
+                            Chapters:    { chapterStyle: 'cards', showChapterTime: true }
+                        },
                         oldData      = this.contentViewData;
 
-                    Object.keys(quizDefaults).forEach(function(key) {
-                        var had = Object.prototype.hasOwnProperty.call(oldData, key);
-                        if ( newDataObject.type !== 'QuizResults' ) {
-                            if (had) { newDataObject[key] = oldData[key]; } else { delete newDataObject[key]; }
-                        } else if ( newDataObject[key] === quizDefaults[key] && !had ) {
-                            delete newDataObject[key];
-                        }
+                    Object.keys(typeDefaults).forEach(function(type) {
+                        var defaults = typeDefaults[type];
+                        Object.keys(defaults).forEach(function(key) {
+                            var had = Object.prototype.hasOwnProperty.call(oldData, key);
+                            if ( newDataObject.type !== type ) {
+                                if (had) { newDataObject[key] = oldData[key]; } else { delete newDataObject[key]; }
+                            } else if ( newDataObject[key] === defaults[key] && !had ) {
+                                delete newDataObject[key];
+                            }
+                        });
                     });
 
                     return newDataObject;

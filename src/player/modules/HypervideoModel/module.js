@@ -270,7 +270,7 @@
      * I create the {{#crossLink "Chapter"}}Chapter{{/crossLink}} objects from the data in the {{#crossLink "Database"}}Database{{/crossLink}} and store them
      * in my {{#crossLink "HypervideoModel/chapters:attribute"}}chapters{{/crossLink}} attribute.
      *
-     * The plain chapter data objects ({ start, title }) remain owned by the Database (database.chapters),
+     * The plain chapter data objects ({ start, title, description? }) remain owned by the Database (database.chapters),
      * which is the live array serialized into hypervideo.json. Each Chapter object wraps one of those
      * data objects by reference, so edits made through the model are reflected on save.
      *
@@ -584,11 +584,11 @@
      *
      * I am called from {{#crossLink "ChaptersController/addChapterAtPlayhead:method"}}ChaptersController{{/crossLink}}.
      *
-     * The new plain data object ({ start, title }) is pushed into the Database's live chapters
+     * The new plain data object ({ start, title, description? }) is pushed into the Database's live chapters
      * array (serialized into hypervideo.json) and wrapped in a Chapter object stored in the model.
      *
      * @method newChapter
-     * @param {} protoData - { start, title }
+     * @param {} protoData - { start, title, description? }
      * @return Chapter
      */
     function newChapter(protoData) {
@@ -2369,7 +2369,7 @@
 
         /**
          * The hypervideo's chapters (array of {{#crossLink "Chapter"}}Chapter{{/crossLink}} objects,
-         * each wrapping a { start, title } data object owned by the Database).
+         * each wrapping a { start, title, description? } data object owned by the Database).
          * @attribute chapters
          * @type Array
          */

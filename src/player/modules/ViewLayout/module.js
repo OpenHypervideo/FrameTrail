@@ -31,9 +31,10 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
      * @param {String} axis - 'x' for the top/bottom areas, 'y' for left/right, 'ring' for the circular area
      * @param {Boolean} thumbnail - Draw a single representative item instead of a full set
      * @param {Number} maxCards - Optional upper bound on the number of items drawn
+     * @param {String} [variant] - How a Chapters view displays its chapters: 'steps' (dots on a line), anything else the cards
      * @return {HTMLElement}
      */
-    function generateSchematic(type, size, axis, thumbnail, maxCards) {
+    function generateSchematic(type, size, axis, thumbnail, maxCards, variant) {
         var isHorizontal = (axis === 'x'),
             schematic = document.createElement('div');
         schematic.className = 'schematicPreview';
@@ -150,6 +151,26 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                 break;
 
             case 'Chapters':
+                // As steps (a view's chapterStyle): dots on a line, each with its title, the line filled
+                // up to the active one. Beside the dots in the vertical areas (dots alone at small),
+                // below them in the horizontal ones.
+                if (variant === 'steps') {
+                    var stepCount = isHorizontal ? ((size == 'small') ? 5 : 4) : ((size == 'small') ? 6 : 5),
+                        activeStep = 1;
+                    if (thumbnail) { stepCount = 3; }
+                    schematic.classList.add('schematicSteps', isHorizontal ? 'horizontal' : 'vertical');
+                    schematic.setAttribute('data-size', size);
+                    for (var stepIndex = 0; stepIndex < stepCount; stepIndex++) {
+                        var step = document.createElement('div');
+                        step.className = 'schematicStep' + (stepIndex < activeStep ? ' done' : '') + (stepIndex === activeStep ? ' active' : '');
+                        step.innerHTML = '<div class="schematicStepDot"></div>'
+                                       + '<div class="schematicStepText"><div class="schematicChapterTitle"></div>'
+                                       + ((size == 'small') ? '' : '<div class="schematicStepDescription"></div>')
+                                       + '</div>';
+                        schematic.appendChild(step);
+                    }
+                    break;
+                }
                 // Two shapes, matching the real cards: a poster card (thumb above the
                 // text) in the horizontal areas, a list row (thumb beside it) in the
                 // vertical ones. "vertical" is the card's own box in the schematic

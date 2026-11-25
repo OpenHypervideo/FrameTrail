@@ -140,7 +140,9 @@
                         "types": [],
                         "users": [],
                         "text": ""
-                    }
+                    },
+                    "chapterStyle": "steps",
+                    "showChapterTime": false
                 },
                 {
                     "type": "QuizResults",
@@ -1547,7 +1549,8 @@
         },
         {
             "start": 20,
-            "title": "Overlays"
+            "title": "Overlays",
+            "description": "On the video"
         },
         {
             "start": 45,

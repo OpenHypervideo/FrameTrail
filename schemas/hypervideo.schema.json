@@ -97,7 +97,9 @@
                         "showQuizScore": { "description": "Not used by this view." },
                         "showQuizLegend": { "description": "Not used by this view." },
                         "showQuizRestart": { "description": "Not used by this view." },
-                        "rememberQuizResults": { "description": "Not used by this view." }
+                        "rememberQuizResults": { "description": "Not used by this view." },
+                        "chapterStyle": { "description": "Not used by this view." },
+                        "showChapterTime": { "description": "Not used by this view." }
                     }
                 },
                 {
@@ -188,7 +190,9 @@
                         "showQuizScore": { "description": "Not used by this view." },
                         "showQuizLegend": { "description": "Not used by this view." },
                         "showQuizRestart": { "description": "Not used by this view." },
-                        "rememberQuizResults": { "description": "Not used by this view." }
+                        "rememberQuizResults": { "description": "Not used by this view." },
+                        "chapterStyle": { "description": "Not used by this view." },
+                        "showChapterTime": { "description": "Not used by this view." }
                     }
                 },
                 {
@@ -287,7 +291,9 @@
                         "showQuizScore": { "description": "Not used by this view." },
                         "showQuizLegend": { "description": "Not used by this view." },
                         "showQuizRestart": { "description": "Not used by this view." },
-                        "rememberQuizResults": { "description": "Not used by this view." }
+                        "rememberQuizResults": { "description": "Not used by this view." },
+                        "chapterStyle": { "description": "Not used by this view." },
+                        "showChapterTime": { "description": "Not used by this view." }
                     }
                 },
                 {
@@ -378,7 +384,9 @@
                         "showQuizScore": { "description": "Not used by this view." },
                         "showQuizLegend": { "description": "Not used by this view." },
                         "showQuizRestart": { "description": "Not used by this view." },
-                        "rememberQuizResults": { "description": "Not used by this view." }
+                        "rememberQuizResults": { "description": "Not used by this view." },
+                        "chapterStyle": { "description": "Not used by this view." },
+                        "showChapterTime": { "description": "Not used by this view." }
                     }
                 },
                 {
@@ -461,7 +469,18 @@
                         "showQuizScore": { "description": "Not used by this view." },
                         "showQuizLegend": { "description": "Not used by this view." },
                         "showQuizRestart": { "description": "Not used by this view." },
-                        "rememberQuizResults": { "description": "Not used by this view." }
+                        "rememberQuizResults": { "description": "Not used by this view." },
+                        "chapterStyle": {
+                            "description": "How the chapters are displayed: \"cards\" (a card per chapter, with a thumbnail where the size has room, in a row whose widths follow the chapters' lengths at small and medium in the top and bottom areas) or \"steps\" (a progress indicator: a dot per chapter on a line, spread evenly over the area, the line filled up to the chapter that plays; no thumbnails).",
+                            "type": "string",
+                            "enum": ["cards", "steps"],
+                            "default": "cards"
+                        },
+                        "showChapterTime": {
+                            "description": "Show each chapter's start time.",
+                            "type": "boolean",
+                            "default": true
+                        }
                     }
                 },
                 {
@@ -740,6 +759,11 @@
                     },
                     "title": {
                         "description": "Title of the chapter.",
+                        "type": "string",
+                        "default": ""
+                    },
+                    "description": {
+                        "description": "Optional second line below the title, shown by Chapters views (e.g. a place, a scale, a speaker). Not written while empty.",
                         "type": "string",
                         "default": ""
                     }

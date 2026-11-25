@@ -476,7 +476,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     }
 
     /**
-     * I return all things of a kind: 'overlays', 'annotations' (everyone's, as W3C items), 'chapters' (`{ start, title }`), 'contentViews' (of all layout areas, top, bottom, left, right, companion — a paired phone's — and circular — the ring around the video; `{ area }` picks one) or 'subtitles' (`{ src, srclang }`).
+     * I return all things of a kind: 'overlays', 'annotations' (everyone's, as W3C items), 'chapters' (`{ start, title, description? }`), 'contentViews' (of all layout areas, top, bottom, left, right, companion — a paired phone's — and circular — the ring around the video; `{ area }` picks one) or 'subtitles' (`{ src, srclang }`).
      *
      * @method list
      * @param {String} kind
@@ -1069,7 +1069,7 @@ FrameTrail.defineModule('EditAPI', function(FrameTrail){
     }
 
     /**
-     * I add an overlay, annotation (W3C items) or chapter (`{ start, title }`) and return it as stored. For items I fill in what is fixed — type, frametrail:type, creator, created, the target's type and source, the selector's type — so the body and `target.selector.value` (with keyframes or rotation, if any) are what is needed.
+     * I add an overlay, annotation (W3C items) or chapter (`{ start, title, description? }`) and return it as stored. For items I fill in what is fixed — type, frametrail:type, creator, created, the target's type and source, the selector's type — so the body and `target.selector.value` (with keyframes or rotation, if any) are what is needed.
      *
      * @method add
      * @param {String} kind

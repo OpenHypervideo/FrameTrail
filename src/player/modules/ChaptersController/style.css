@@ -105,15 +105,25 @@
 .editingOptions .chaptersEditor .chaptersEditorList {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 8px;
 }
 
+/* A row is two lines: start, title and delete, and below the title the chapter's
+   description, as wide as the title (a description is often longer than a title). */
 .editingOptions .chaptersEditor .chapterRow {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
     align-items: center;
-    gap: 6px;
+    gap: 4px 6px;
     padding: 3px;
     border-radius: 3px;
+}
+
+/* The two lines of a row belong together: the fields' own vertical margins would
+   set them as far apart as two chapters. */
+.editingOptions .chaptersEditor .chapterRow input {
+    margin-top: 0;
+    margin-bottom: 0;
 }
 
 .editingOptions .chaptersEditor .chapterRow.highlighted input, 
@@ -122,15 +132,24 @@
 }
 
 .editingOptions .chaptersEditor .chapterRow .chapterStartInput {
-    flex: 0 0 auto;
+    grid-column: 1;
+    grid-row: 1;
     width: 120px;
 }
 
 .editingOptions .chaptersEditor .chapterRow .chapterTitleInput {
-    flex: 1 1 auto;
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+}
+
+.editingOptions .chaptersEditor .chapterRow .chapterDescriptionInput {
+    grid-column: 2;
+    grid-row: 2;
     min-width: 0;
 }
 
 .editingOptions .chaptersEditor .chapterRow .chapterDeleteButton {
-    flex: 0 0 auto;
+    grid-column: 3;
+    grid-row: 1;
 }
