@@ -130,21 +130,34 @@
         return attributes;
     }
 
+    // Where the pattern next matches in html, from index from on, or -1. The
+    // page itself is searched, never a lowercased copy: toLowerCase() makes
+    // "İ" (U+0130) two code units, so every index found after one would be off
+    // by one. Without the u flag, i matches the ASCII letters of these
+    // patterns in either case and nothing else, as HTML compares tag names.
+    var SCRIPT_START = /<script/gi,
+        SCRIPT_END   = /<\/script/gi;
+
+    function indexOfTag(html, pattern, from) {
+        pattern.lastIndex = from;
+        var match = pattern.exec(html);
+        return match ? match.index : -1;
+    }
+
     // Every <script> element: its attributes, its text, and where its start tag
     // begins (start) and its text ends (textEnd). A start tag ends at the
     // first ">" outside quotes; the text ends at the first "</script".
     function scriptElements(html) {
 
         var elements = [],
-            lower    = html.toLowerCase(),
             from     = 0;
 
         while (true) {
 
-            var start = lower.indexOf('<script', from);
+            var start = indexOfTag(html, SCRIPT_START, from);
             if (start < 0) { break; }
 
-            var next = lower.charAt(start + 7);
+            var next = html.charAt(start + 7);
             if (next && !/[\s>\/]/.test(next)) { from = start + 7; continue; }
 
             var i = start + 7, quote = null;
@@ -156,7 +169,7 @@
             }
             if (i >= html.length) { break; }
 
-            var end = lower.indexOf('</script', i + 1);
+            var end = indexOfTag(html, SCRIPT_END, i + 1);
             if (end < 0) { end = html.length; }
 
             elements.push({

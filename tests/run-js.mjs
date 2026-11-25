@@ -1113,6 +1113,19 @@ describe('FrameTrailHTMLFormat', () => {
         assert.deepStrictEqual(HTMLFormat.parse('<script type="application/ld+json">{"other":"data"}</script>'), []);
     });
 
+    test('"İ", longer in lower case, before and in the block: read, and replaced in place', () => {
+        const bundle = { bundle: 'hypervideo', formatVersion: 1, hypervideo: { meta: { name: 'İstanbul' } }, note: 'İskenderun' },
+              before = '<html><head><title>İzmir</title></head><body>\n',
+              after  = '\n</body></html>',
+              page   = before + '<script type="application/ld+json" data-frametrail="hypervideo">\n' + JSON.stringify(bundle) + '\n</script>' + after;
+        assert.deepStrictEqual(HTMLFormat.parse(page).map(block => block.bundle), [bundle]);
+        assert.deepStrictEqual(HTMLFormat.parse(HTMLFormat.write(bundle))[0].bundle, bundle);
+        const next   = Object.assign({}, bundle, { note: 'İnebolu' }),
+              edited = HTMLFormat.replaceBlock(page, next);
+        assert.equal(edited, before + '<script type="application/ld+json" data-frametrail="hypervideo" data-frametrail-format="1">\n' + HTMLFormat.blockJSON(next) + '\n</script>' + after);
+        assert.deepStrictEqual(HTMLFormat.parse(edited)[0].bundle, next);
+    });
+
     test('a newer format or broken JSON is refused, a page without data has no bundle', () => {
         assert.throws(() => HTMLFormat.parse('<script type="application/ld+json" data-frametrail="project" data-frametrail-format="2">{}</script>'), /format 2/);
         assert.throws(() => HTMLFormat.parse('<script type="application/ld+json" data-frametrail="project">{ nope }</script>'), /not valid JSON/);
