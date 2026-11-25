@@ -434,6 +434,7 @@ The overview can present hypervideos as a grid or as pins on a background image.
     "background": "1_1788531102_overview-vector.svg",  // a resource src
     "backgroundColor": "#2f3139",
     "fit": "contain",                                   // or "cover"
+    "cardShape": "rectangle",                           // or "circle": the card a pin opens
     "lastchanged": 1788942480663,                       // compare-and-swap token
     "markers": { "9": { "x": 0.371, "y": 0.182, "size": 6.08 },    // keyed by hypervideoID: one pin,
                  "1": [ { "x": 0.2, "y": 0.6 }, { "x": 0.8, "y": 0.3 } ] }   // or a list when placed more than once
@@ -448,7 +449,8 @@ Why the index rather than `config.json`, where it used to live: the map is part 
 - **Locking:** map editing claims the **`library`** collaboration scope, which already guards `_index.json`. It is claimed only by `ViewOverviewMap.setMapEditing(true)` (the sidebar's "Edit map" toggle) — *not* by the global edit mode.
 - **Saving:** every change (drag, resize, add, remove, settings) auto-saves via a short debounce. There is no dirty flag, no save button and no discard prompt.
 - **Who:** `ViewOverviewMap.mayEditMap()` = edit mode + `userRole === 'admin'` (a guest is one), not whether it can be written. Where nothing can be written (`StorageManager.canSave()` false: a guest on a server, download, static, a page file not yet saved into itself) `saveOverviewMap()` writes nothing and answers `{ inMemory: true }`: the change stays in `Database.overviewMap` and leaves with the project's Export ("Save to this file" too). `Database.hasUnexportedOverviewMap()` says so (badges on the map button and the overview's Export, the `beforeunload` prompt, `confirmUnsaved({ reload: true })` for callers that reload the page); `adoptOverviewMap()` keeps the in-memory map on library reloads while it holds such changes.
-- **Settings:** background / fit / colour are edited in `OverviewMapSettingsDialog`, opened from map editing. `AdminSettingsDialog` only owns the grid/map mode cards.
+- **Settings:** background / fit / colour, the pins (`pinStyle`, `pinIcon`, `pinAnimation`) and the card's shape are edited in `OverviewMapSettingsDialog`, opened from map editing. `AdminSettingsDialog` only owns the grid/map mode cards.
+- **The card** a pin opens (`openPopup()`) is the only `.hypervideoThumb` on the map (`.overviewMapPopup .hypervideoThumb.mapCard`); the pins are `.overviewMapMarker`, always round. `cardShape` `"circle"` (missing: rectangle) makes it a disc with the title below it and the play icon in its centre: the class `cardShape-circle` on `.overviewMap`, set with the pins' classes in `applyPinAppearance()`, so the dialog's option cards preview it with the canvas's rules (`buildCardPreview()`). The title is outside the card's box there; `positionPopup()` measures how far a title reaches below the popup and keeps it inside the canvas (for custom CSS that moves it, too).
 - **Back-compat:** a `_data` directory whose map is still in `config.overviewMap` (markers as an array) is adopted on load and migrated to the index on the first map save, which then drops the legacy key.
 
 ## Tags

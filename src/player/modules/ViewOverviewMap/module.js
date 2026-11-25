@@ -286,6 +286,19 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
 
     /**
+     * I return the shape of the card that opens when a pin is clicked.
+     *
+     * @method getCardShape
+     * @return {String} 'circle' or 'rectangle'
+     */
+    function getCardShape() {
+
+        return (getMapData().cardShape === 'circle') ? 'circle' : 'rectangle';
+
+    }
+
+
+    /**
      * I reduce whatever was typed or stored to something that can be a class
      * name, and prefix the bare glyph name for anyone who typed 'map' rather
      * than 'icon-map'.
@@ -765,6 +778,9 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
 
         MapRoot.classList.toggle('pinStyle-icon', getPinStyle() === 'icon');
 
+        // The card a pin opens is a property of the map in the same way.
+        MapRoot.classList.toggle('cardShape-circle', getCardShape() === 'circle');
+
     }
 
 
@@ -1195,6 +1211,12 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             popupH     = Popup.offsetHeight,
             gap        = 10;
 
+        // A round card has its title below it, outside my box (and custom CSS may put it there for any card). It is measured rather than known, so that the card stays centred on its pin and the title is still kept inside the canvas, however many lines it takes.
+        var title = Popup.querySelector('.hypervideoTitle'),
+            below = title
+                        ? Math.max(0, title.getBoundingClientRect().bottom - Popup.getBoundingClientRect().bottom)
+                        : 0;
+
         // Centred over the pin, covering it, so the card sits exactly on the
         // point of interest rather than pointing at it from below.
         var centerX = markerRect.left + markerRect.width  / 2 - rootRect.left,
@@ -1203,7 +1225,7 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
             top     = centerY - popupH / 2;
 
         left = Math.max(gap, Math.min(rootRect.width - popupW - gap, left));
-        top  = Math.max(gap, Math.min(rootRect.height - popupH - gap, top));
+        top  = Math.max(gap, Math.min(rootRect.height - popupH - below - gap, top));
 
         Popup.style.left = left + 'px';
         Popup.style.top  = top + 'px';

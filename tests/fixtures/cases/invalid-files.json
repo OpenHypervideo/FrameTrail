@@ -223,6 +223,37 @@
             ]
         },
         {
+            "name": "overview map card shape oval",
+            "schema": "hypervideos-index.schema.json",
+            "data": {
+                "hypervideo-increment": 2,
+                "hypervideos": {
+                    "1": "./1",
+                    "2": "./2"
+                },
+                "overviewMap": {
+                    "background": "map.svg",
+                    "backgroundColor": "#2f3139",
+                    "fit": "contain",
+                    "cardShape": "oval",
+                    "lastchanged": 1788942480663,
+                    "markers": {
+                        "1": {
+                            "x": 0.37,
+                            "y": 0.18,
+                            "size": 6
+                        }
+                    }
+                }
+            },
+            "errors": [
+                {
+                    "path": "/overviewMap/cardShape",
+                    "message": "must be one of \"rectangle\", \"circle\""
+                }
+            ]
+        },
+        {
             "name": "map marker without y",
             "schema": "hypervideos-index.schema.json",
             "data": {

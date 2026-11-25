@@ -73,6 +73,12 @@
                     "enum": ["none", "ripple", "pulse", "scale", "wobble", "glow"],
                     "default": "none"
                 },
+                "cardShape": {
+                    "description": "Shape of the card that opens when a pin is clicked: a rectangle with the title inside it, or a circle with the title below it.",
+                    "type": "string",
+                    "enum": ["rectangle", "circle"],
+                    "default": "rectangle"
+                },
                 "lastchanged": {
                     "description": "Compare-and-swap token: when the map was last saved, as a Unix timestamp in milliseconds.",
                     "type": "number"

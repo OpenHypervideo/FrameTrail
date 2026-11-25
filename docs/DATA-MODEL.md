@@ -267,6 +267,12 @@ A video entry may still carry `subtitles` (file names keyed by language) from ea
         "background": "1_1788531102_overview.svg",     // the src of an image resource
         "backgroundColor": "#2f3139",
         "fit": "contain",                              // or "cover"
+        "padding": 5,                                  // space kept clear around the image …
+        "paddingUnit": "percent",                      // … in percent of the map area's width, or "px"
+        "pinStyle": "thumb",                           // or "icon"
+        "pinIcon": "icon-location-2",                  // the icon of icon pins
+        "pinAnimation": "ripple",                      // or "none", "pulse", "scale", "wobble", "glow"
+        "cardShape": "rectangle",                      // or "circle": the card a pin opens
         "lastchanged": 1788942480663,                  // compare-and-swap token, milliseconds
         "markers": {
             "9": { "x": 0.371, "y": 0.182, "size": 6.08 },                       // one pin
@@ -277,6 +283,20 @@ A video entry may still carry `subtitles` (file names keyed by language) from ea
 ```
 
 The overview shows the hypervideos as a grid or, when `config.json` has `overviewMode: "map"`, as pins on the map's background. Markers are keyed by hypervideo id; a marker is one pin, or a list of pins for a hypervideo placed more than once (FrameTrail writes a single pin as the pin itself, never as a list of one). A pin's `x`/`y` are its centre in 0–1 of the background image, `size` its diameter in percent of the stage width; a hypervideo without a marker is not on the map. The map is content, so it lives here rather than in the settings.
+
+The other keys of `overviewMap` say how the map looks (Map Settings, opened while arranging the map). All are optional; a missing key has its default:
+
+| Key | Values | Default | |
+|---|---|---|---|
+| `background` | the `src` of an image resource | none | The image the pins are placed on. Without one the map is an empty area. |
+| `backgroundColor` | a CSS colour | the theme's | Around and behind the image. |
+| `fit` | `"contain"`, `"cover"` | `"contain"` | The whole image is shown, or it fills the map area and its edges are cropped. |
+| `padding` | a number, 0 or more | `0` | Space kept clear between the edges of the map area and the image, the same on all four sides. |
+| `paddingUnit` | `"percent"`, `"px"` | `"percent"` | The unit of `padding`: percent of the map area's width, or pixels. |
+| `pinStyle` | `"thumb"`, `"icon"` | `"thumb"` | A pin shows its hypervideo's thumbnail, or all pins show the same icon. |
+| `pinIcon` | a class of the FrameTrail icon font | `"icon-location-2"` | The icon of icon pins. Kept while `pinStyle` is `"thumb"`, so the choice is not lost. |
+| `pinAnimation` | `"none"`, `"ripple"`, `"pulse"`, `"scale"`, `"wobble"`, `"glow"` | `"none"` | How the pins draw attention. Not shown to viewers who ask for reduced motion. |
+| `cardShape` | `"rectangle"`, `"circle"` | `"rectangle"` | The card a click on a pin opens (the hypervideo's thumbnail, title and play button): a rectangle with the title inside it, or a circle with the title below it. |
 
 ### `hypervideos/<id>/hypervideo.json`
 

@@ -463,6 +463,56 @@
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.45);
 }
 
+/* The round card (overviewMap.cardShape "circle"): the thumbnail as a disc with the title below it, where a pin has its label. Like the pins' appearance it is a class on the viewport box (see applyPinAppearance()), so the settings dialog previews it with these very rules. */
+.overviewMap.cardShape-circle .overviewMapPopup .hypervideoThumb.mapCard {
+    width: 200px;
+    height: 200px;
+    border-radius: 50%;
+    /* A thumb's own 110% (100% on hover) is a share of its width, which leaves a landscape image short of a square's height. */
+    background-size: cover;
+}
+
+.overviewMap.cardShape-circle .overviewMapPopup .hypervideoThumb.mapCard .hypervideoThumbContent {
+    border-radius: 50%;
+    /* Even around the centre. A thumb's shadow is heavier at the top, and in a disc that reads as an icon sitting too low. */
+    box-shadow: 0 0 60px 3px rgba(23, 28, 34, 0.6) inset;
+}
+
+/* The icon in the middle of the disc. A thumb's own rule lifts it by 4px, which nobody sees above a title bar and everybody sees in a circle. In em, so that custom CSS which only changes its size keeps it in the middle. */
+.overviewMap.cardShape-circle .overviewMapPopup .hypervideoThumb.mapCard .hypervideoIcon [class^="icon-"]::before,
+.overviewMap.cardShape-circle .overviewMapPopup .hypervideoThumb.mapCard .hypervideoIcon [class*=" icon-"]::before {
+    margin-left: -0.5em;
+    margin-top: -0.5em;
+}
+
+/* Below the disc, in the pin labels' colours. It is outside the card's box, so positionPopup() measures it to keep it inside the canvas. As wide as its text up to the card's width, then it wraps: max-content, because the automatic width of a box at left: 50% is at most half the card. Custom CSS that allows it more width keeps it centred. */
+.overviewMap.cardShape-circle .overviewMapPopup .hypervideoThumb.mapCard .hypervideoTitle {
+    top: 100%;
+    bottom: auto;
+    left: 50%;
+    transform: translateX(-50%);
+    width: max-content;
+    max-width: 100%;
+    margin-top: 8px;
+    padding: 4px 10px 3px 10px;
+    border-radius: 4px;
+    background: var(--primary-fg-color);
+    color: var(--primary-bg-color);
+    opacity: 1;
+    box-shadow: 0 0 2px 0px var(--primary-bg-color);
+}
+
+/* A row across the top of the disc: the top right corner of its box is outside it. */
+.overviewMap.cardShape-circle .overviewMapPopup .hypervideoThumb.mapCard .hypervideoOptions {
+    left: 0;
+    right: 0;
+    justify-content: center;
+}
+
+.overviewMap.cardShape-circle .overviewMapPopup .hypervideoThumb.mapCard .hypervideoOptions button {
+    margin: 8px 4px;
+}
+
 /*
  * Editing toolbar.
  *

@@ -5,7 +5,8 @@
 /**
  * I am the OverviewMapSettingsDialog. I edit the overview map's background
  * image, how that background is fitted to the viewport, the colour and padding
- * around it, and what the pins on it look like.
+ * around it, what the pins on it look like, and the shape of the card a pin
+ * opens.
  *
  * These used to live in the admin settings dialog, next to the instance
  * settings, because that is where they were stored. They are not settings
@@ -49,6 +50,9 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
     // Used only if the canvas cannot be reached to ask (a partial deploy),
     // where falling back beats throwing inside a dialog nobody can then close.
     var FALLBACK_ANIMATIONS = ['ripple', 'pulse', 'scale', 'wobble', 'glow'];
+
+    // How small the card a pin opens is drawn in its option cards.
+    var CARD_PREVIEW_SCALE = 0.3;
 
 
     /**
@@ -139,6 +143,45 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
 
 
     /**
+     * I build the miniature of the card a pin opens, for an option card's thumb.
+     *
+     * Like buildPinPreview() it is the real thing made small: a real .overviewMap with a real card in its popup, so the canvas's own rules draw it and a card cannot show a shape the map does not have. Only the hypervideo is a stand-in.
+     *
+     * @method buildCardPreview
+     * @param {String} shape 'rectangle' or 'circle'
+     * @return {HTMLElement}
+     */
+    function buildCardPreview(shape) {
+
+        var preview = document.createElement('div');
+        preview.className = 'overviewMap' + ((shape === 'circle') ? ' cardShape-circle' : '');
+
+        // In the middle of the thumb; the round card a little higher, for the title below it. Nothing in it reacts to the pointer: the option card around it is what is clicked.
+        var popup = document.createElement('div');
+        popup.className = 'overviewMapPopup open';
+        popup.style.left          = '50%';
+        popup.style.top           = (shape === 'circle') ? '44%' : '50%';
+        popup.style.transform     = 'translate(-50%, -50%) scale(' + CARD_PREVIEW_SCALE + ')';
+        popup.style.pointerEvents = 'none';
+
+        var card = document.createElement('div');
+        card.className = 'hypervideoThumb mapCard';
+        card.style.backgroundImage = 'linear-gradient(135deg, var(--secondary-fg-color), var(--primary-fg-color))';
+        card.innerHTML = '<div class="hypervideoThumbContent">'
+                       + '    <span class="hypervideoIcon"><span class="icon-play-circled"></span></span>'
+                       + '</div>'
+                       + '<div class="hypervideoTitle"></div>';
+        card.querySelector('.hypervideoTitle').textContent = labels['GenericHypervideo'];
+
+        popup.append(card);
+        preview.append(popup);
+
+        return preview;
+
+    }
+
+
+    /**
      * I open the map settings dialog.
      *
      * @method open
@@ -166,7 +209,8 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
             selectedPaddingUnit     = (mapData.paddingUnit === 'px') ? 'px' : 'percent',
             selectedPinStyle        = (mapData.pinStyle === 'icon') ? 'icon' : 'thumb',
             selectedPinIcon         = sanitizeIconClass(mapData.pinIcon),
-            selectedPinAnimation    = (animations.indexOf(mapData.pinAnimation) !== -1) ? mapData.pinAnimation : 'none';
+            selectedPinAnimation    = (animations.indexOf(mapData.pinAnimation) !== -1) ? mapData.pinAnimation : 'none',
+            selectedCardShape       = (mapData.cardShape === 'circle') ? 'circle' : 'rectangle';
 
         var _w = document.createElement('div');
         _w.innerHTML = '<div class="overviewMapSettingsDialog">'
@@ -222,7 +266,7 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
                      + '                <div class="column-6">'
                      + '                    <label>'+ labels['SettingsOverviewMapPinContent'] +'</label>'
                      + '                    <div class="overviewMapPinStyleSelect optionCards" data-property="pinStyle" data-value="'+ selectedPinStyle +'"></div>'
-                     + '                    <div class="overviewMapIconChoice">'
+                     + '                    <div class="overviewMapIconChoice" style="margin-top:12px;">'
                      + '                        <label>'+ labels['SettingsOverviewMapPinIcon'] +'</label>'
                      + '                        <div class="overviewMapPinIconSelect optionCards" data-property="pinIcon" data-value="'+ selectedPinIcon +'"></div>'
                      + '                        <label for="overviewMapPinIconCustom">'+ labels['SettingsOverviewMapPinIconCustom'] +'</label>'
@@ -236,6 +280,10 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
                      + '                <div class="column-6">'
                      + '                    <label>'+ labels['SettingsOverviewMapPinAnimation'] +'</label>'
                      + '                    <div class="overviewMapPinAnimationSelect optionCards" data-property="pinAnimation" data-value="'+ selectedPinAnimation +'"></div>'
+                     // A label after a group of option cards keeps clear of the outline of the card chosen above it.
+                     + '                    <label style="display:block; margin-top:12px;">'+ labels['SettingsOverviewMapCardShape'] +'</label>'
+                     + '                    <div class="overviewMapCardShapeSelect optionCards" data-property="cardShape" data-value="'+ selectedCardShape +'"></div>'
+                     + '                    <div class="message active">'+ labels['MessageOverviewMapCardShape'] +'</div>'
                      + '                </div>'
                      + '            </div>'
                      + '        </div>'
@@ -355,6 +403,7 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
         var styleSelect     = dialogContent.querySelector('.overviewMapPinStyleSelect'),
             iconSelect      = dialogContent.querySelector('.overviewMapPinIconSelect'),
             animationSelect = dialogContent.querySelector('.overviewMapPinAnimationSelect'),
+            cardShapeSelect = dialogContent.querySelector('.overviewMapCardShapeSelect'),
             iconChoice      = dialogContent.querySelector('.overviewMapIconChoice'),
             iconInput       = dialogContent.querySelector('.overviewMapPinIconCustom'),
             iconEcho        = dialogContent.querySelector('.overviewMapPinIconEcho');
@@ -441,6 +490,25 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
         }
 
         /**
+         * The two shapes of the card a pin opens. Their thumbs are higher than the others', for the round card with its title below it.
+         */
+        function renderCardShapeCards() {
+
+            cardShapeSelect.innerHTML = '';
+
+            appendOptionCard(cardShapeSelect, 'rectangle', labels['SettingsOverviewMapCardShapeRectangle'],
+                             buildCardPreview('rectangle'),
+                             selectedCardShape === 'rectangle', 80);
+
+            appendOptionCard(cardShapeSelect, 'circle', labels['SettingsOverviewMapCardShapeCircle'],
+                             buildCardPreview('circle'),
+                             selectedCardShape === 'circle', 80);
+
+            cardShapeSelect.setAttribute('data-value', selectedCardShape);
+
+        }
+
+        /**
          * The echo is the one honest test of a hand-typed name: a glyph the
          * font does not have renders as nothing, and nothing is what the pins
          * would then show.
@@ -506,6 +574,13 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
             markOptionCard(animationSelect, selectedPinAnimation);
         });
 
+        cardShapeSelect.addEventListener('click', function(evt) {
+            var card = pickedCard(cardShapeSelect, evt);
+            if (!card) return;
+            selectedCardShape = card.getAttribute('data-value');
+            markOptionCard(cardShapeSelect, selectedCardShape);
+        });
+
         // The typed value is not rewritten while typing — that would fight the
         // caret. The cards simply stop matching, which is the honest state: a
         // custom name is not one of the offered ones.
@@ -526,6 +601,7 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
         renderStyleCards();
         renderIconCards();
         renderAnimationCards();
+        renderCardShapeCards();
         syncIconEcho();
         syncIconChoiceVisibility();
 
@@ -536,10 +612,8 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
             modal:     true,
             resizable: false,
             width:     900,
-            // Taller than the background tab needs, so that the pins tab can
-            // show the animation cards without scrolling past the icon grid.
-            // The dialog is capped at 90vh, so a short window still fits.
-            height:    680,
+            // Taller than the background tab needs, so that the pins tab shows all of both its columns, the longer one being the icon picker with its field and hint. The dialog is capped at 90vh, so a short window still fits.
+            height:    760,
             close: function() {
                 dialogCtrl.destroy();
             },
@@ -571,6 +645,7 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
             // not lose the icon that was chosen.
             map.pinIcon         = sanitizeIconClass(selectedPinIcon);
             map.pinAnimation    = selectedPinAnimation;
+            map.cardShape       = selectedCardShape;
 
             if (FrameTrail.module('StorageManager').canSave()) {
                 FrameTrail.module('InterfaceModal').showStatusMessage(labels['MessageStateSaving']);
