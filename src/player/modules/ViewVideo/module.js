@@ -249,6 +249,11 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
     // (e.g. during edit-mode transition layout flux).
     var _pendingHypervideo = null;
 
+    // The size of the video's container at the last fit (adjustHypervideo), and the observer that has the video fitted again when that size changes (followVideoContainer).
+    var _fittedWidth            = null,
+        _fittedHeight           = null,
+        _videoContainerObserver = null;
+
     // When true, changeSlidePosition will NOT add the is-sliding class.
     // Used by leaveEditMode to prevent slide animations during the restore sequence,
     // which internally triggers FrameTrail.changeState('slidePosition', 'middle')
@@ -511,7 +516,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             adjustHypervideo();
         }
 
-        // Once for an area's transition, however many areas an action opens and closes
+        // The video follows the area's transition by itself (followVideoContainer). Once more when it is over, however many areas an action opens and closes: a net for a browser without ResizeObserver, and for an area whose change leaves the video's container as it is
         window.clearTimeout(layoutAreaAdjustTimer);
         layoutAreaAdjustTimer = window.setTimeout(function() { adjustHypervideo(); }, 250);
 
@@ -694,6 +699,40 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         changeSlidePosition('middle');
 
         updatePairingButton();
+
+        followVideoContainer();
+
+    }
+
+
+    /**
+     * I keep the video fitted to its container. Much of what changes the room the video has takes several frames: a layout area that opens or closes (its CSS transition), the sidebar and an extension's side panel sliding in, the areas easing to a new window size. I have the video fitted again in every frame that shows the container at another size, so the video moves with it. Before, the video kept its old size until a timer adjusted it when the transition was over, and jumped.
+     *
+     * A ResizeObserver reports after the layout of a frame and before it is painted, so no frame shows the video at a stale size. What I fit does not change the container's size, so nothing loops.
+     *
+     * @method followVideoContainer
+     */
+    function followVideoContainer() {
+
+        if (_videoContainerObserver || typeof ResizeObserver === 'undefined' || FrameTrail.getState('companion')) { return; }
+
+        _videoContainerObserver = new ResizeObserver(function(entries, observer) {
+
+            // A hypervideo that was left: its view is gone, a new one has its own observer
+            if (!VideoContainer.isConnected) {
+                observer.disconnect();
+                return;
+            }
+
+            // Not before the first fit, not while the video view is hidden, and only for a change
+            if (_fittedWidth === null || FrameTrail.getState('viewMode') != 'video') { return; }
+            if (VideoContainer.offsetWidth === _fittedWidth && VideoContainer.offsetHeight === _fittedHeight) { return; }
+
+            adjustHypervideo(false, true);
+
+        });
+
+        _videoContainerObserver.observe(VideoContainer);
 
     }
 
@@ -1003,12 +1042,13 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
      * I re-adjust the CSS of the main video and its container (without surrounding elements).
      * I try to fill the available space to fit the video elements.
      *
-     * Also I try to animate the transition of the dimensions smoothly, when my single parameter is true.
+     * Whoever changes the room of the video calls me at once. While that room goes on changing (a transition of an area, the sidebar or a side panel), followVideoContainer() calls me for every frame, as following.
      *
      * @method adjustHypervideo
-     * @param {Boolean} animate
+     * @param {Boolean} animate the container's own width transition runs (the sidebar, a side panel); the video follows it frame by frame
+     * @param {Boolean} [following] the container changed size by itself
      */
-    function adjustHypervideo(animate) {
+    function adjustHypervideo(animate, following) {
 
         // A paired phone has no video to fit.
         if (FrameTrail.getState('companion')) { return; }
@@ -1031,10 +1071,13 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             _video              = Video,
             videoFit            = (FrameTrail.module('Database').config.videoFit) ? FrameTrail.module('Database').config.videoFit : 'contain';
 
-        if (animate) {
-            restoreTransitions([VideoContainer, Hypervideo]);
-        } else {
-            disableTransitions([VideoContainer, Hypervideo]);
+        // A fit that follows the container leaves its transitions as the last caller set them
+        if (!following) {
+            if (animate) {
+                restoreTransitions([VideoContainer, Hypervideo]);
+            } else {
+                disableTransitions([VideoContainer, Hypervideo]);
+            }
         }
 
         var widthAuto = (_video.style.width == 'auto');
@@ -1064,6 +1107,10 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             }, 50);
             return;
         }
+
+        // What the video is fitted to now (see followVideoContainer)
+        _fittedWidth  = VideoContainer.offsetWidth;
+        _fittedHeight = _vcH;
 
         //if ( (_video.height() < VideoContainer.height() && widthAuto) || (_video.width() < videoContainerWidth && heightAuto) ) {
         if ( (_video.offsetHeight < _vcH) || (_video.offsetWidth < videoContainerWidth) ) {
@@ -2134,6 +2181,13 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
 
     return {
+
+        onUnload: function() {
+            if (_videoContainerObserver) {
+                _videoContainerObserver.disconnect();
+                _videoContainerObserver = null;
+            }
+        },
 
         onChange: {
 
