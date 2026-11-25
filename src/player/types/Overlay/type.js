@@ -1672,7 +1672,9 @@ FrameTrail.defineType(
                         // W × scaleBase / 100 px there. Fractional widths keep that exact, so
                         // lines break where measureContentHeight() measured them.
                         if (this.isStageScaledType()) {
-                            var stageWidth = FrameTrail.module('ViewVideo').OverlayContainer.getBoundingClientRect().width,
+                            // The stage's width as it is laid out, not as it is shown: while the video glides to a new place (ViewVideo.glideVideo) it is shown scaled
+                            var stage      = FrameTrail.module('ViewVideo').OverlayContainer,
+                                stageWidth = stage.offsetWidth ? parseFloat(window.getComputedStyle(stage).width) : 0,
                                 boxWidth   = parseFloat(window.getComputedStyle(wrapperElement).width);
                             if (!stageWidth || !(boxWidth >= 0)) { return; }
                             var stageScale = stageWidth / scaleBase;

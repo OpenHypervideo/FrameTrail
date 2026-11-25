@@ -254,6 +254,12 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         _fittedHeight           = null,
         _videoContainerObserver = null;
 
+    // The video gliding to a new place (glideVideo): whether one is about to start, the one that runs, and whether the viewer asked for less motion.
+    var GLIDE_DURATION   = 200,
+        _glidePending    = false,
+        _glideAnimation  = null,
+        _reducedMotion   = (window.matchMedia) ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
+
     // When true, changeSlidePosition will NOT add the is-sliding class.
     // Used by leaveEditMode to prevent slide animations during the restore sequence,
     // which internally triggers FrameTrail.changeState('slidePosition', 'middle')
@@ -500,6 +506,11 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         open = (open === undefined || open === null) ? !isOpen : !!open;
         if (open === isOpen) { return false; }
 
+        // The ring comes or goes in one step, and the video with it: it glides
+        if (key === 'circular') {
+            glideVideo();
+        }
+
         container.classList.toggle('closed', !open);
 
         // An area that opens for its annotations leaves details alone that the viewer has slid open
@@ -728,11 +739,81 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
             if (_fittedWidth === null || FrameTrail.getState('viewMode') != 'video') { return; }
             if (VideoContainer.offsetWidth === _fittedWidth && VideoContainer.offsetHeight === _fittedHeight) { return; }
 
+            // The ring is laid out in whole cells: while its container moves, it can change to another arrangement in one step, and the video's block with it (more than the container moved). When that happens while the video glides (editing stops: the ring comes back and the sidebar slides away), the glide goes on to the new block instead of jumping in its middle. Without a glide the video follows as it is: a window that is dragged must not start one.
+            var shown    = (_glideAnimation && VideoContainer.classList.contains('hasCircularArea')) ? Hypervideo.getBoundingClientRect() : null,
+                widthWas = Hypervideo.offsetWidth,
+                moved    = Math.abs(VideoContainer.offsetWidth - _fittedWidth) + Math.abs(VideoContainer.offsetHeight - _fittedHeight);
+
             adjustHypervideo(false, true);
+
+            if (shown && Math.abs(Hypervideo.offsetWidth - widthWas) > moved + 16) {
+                glideVideo(shown);
+            }
 
         });
 
         _videoContainerObserver.observe(VideoContainer);
+
+    }
+
+
+    /**
+     * I let the video glide to where a change of the layout is about to put it. Some changes move the video in one step: another edit mode (the areas go, the edit panel and the timelines come), the ring appearing or going, details opening or closing. Call me right before such a change.
+     *
+     * I note where the video is shown now. When the change is done (after the code that is running, before anything is painted), I look where the video is laid out and show it at its old place, from where it moves to the new one in 200 ms. It is a transform on .hypervideo that plays over the finished layout: the layout is the new one from the first frame on, the fit is not touched, and the panels that came lie over what is outside the video's container. A change that takes several frames itself (a layout area, the sidebar) needs no glide: there the video follows its container, see followVideoContainer.
+     *
+     * Not for viewers who asked for less motion, not on a phone, not while the video view is hidden.
+     *
+     * @method glideVideo
+     * @param {DOMRect} [shown] where the video was shown before a change that is already made (Hypervideo.getBoundingClientRect() taken then)
+     */
+    function glideVideo(shown) {
+
+        if (_glidePending || typeof Hypervideo.animate !== 'function' || !VideoContainer.isConnected || document.hidden
+            || FrameTrail.getState('companion') || FrameTrail.getState('viewMode') != 'video'
+            || (_reducedMotion && _reducedMotion.matches)) { return; }
+
+        // Where it is seen now: with the transform of a glide that still runs, so that the next one goes on from there
+        var from = shown || Hypervideo.getBoundingClientRect();
+
+        if (from.width < 1 || from.height < 1) { return; }
+
+        _glidePending = true;
+
+        Promise.resolve().then(function() {
+
+            _glidePending = false;
+
+            if (_glideAnimation) {
+                _glideAnimation.cancel();
+                _glideAnimation = null;
+            }
+
+            if (!VideoContainer.isConnected || FrameTrail.getState('viewMode') != 'video') { return; }
+
+            var to = Hypervideo.getBoundingClientRect();
+
+            if (to.width < 1 || to.height < 1) { return; }
+
+            var moveX  = (from.left + from.width / 2) - (to.left + to.width / 2),
+                moveY  = (from.top + from.height / 2) - (to.top + to.height / 2),
+                scaleX = from.width / to.width,
+                scaleY = from.height / to.height;
+
+            if (Math.abs(moveX) < 1 && Math.abs(moveY) < 1 && Math.abs(from.width - to.width) < 1 && Math.abs(from.height - to.height) < 1) { return; }
+
+            // .hypervideo is centred by translate(-50%, -50%) in its stylesheet: the glide comes on top of that
+            var animation = Hypervideo.animate([
+                { transform: 'translate(-50%, -50%) translate(' + moveX + 'px, ' + moveY + 'px) scale(' + scaleX + ', ' + scaleY + ')' },
+                { transform: 'translate(-50%, -50%)' }
+            ], { duration: GLIDE_DURATION, easing: 'ease' });
+
+            _glideAnimation = animation;
+            animation.onfinish = animation.oncancel = function() {
+                if (_glideAnimation === animation) { _glideAnimation = null; }
+            };
+
+        });
 
     }
 
@@ -1275,9 +1356,15 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
      * I react to a change in the global state "editMode".
      * @method toggleEditMode
      * @param {} editMode
+     * @param {} oldEditMode
      * @return
      */
-    function toggleEditMode(editMode) {
+    function toggleEditMode(editMode, oldEditMode) {
+
+        // The video takes another place at once: it glides there. Not from or into the Layout Editor, which covers it.
+        if (editMode !== 'layout' && oldEditMode !== 'layout') {
+            glideVideo();
+        }
 
         resetEditMode();
 
@@ -1597,6 +1684,10 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
      * @param {Boolean} oldState
      */
     function toggleConfig_areaCircularVisible(newState, oldState) {
+        // A ring that got its view, or lost it, while it is seen (not the call that restores the areas after editing: the edit mode's own glide covers that)
+        if (oldState !== undefined && newState !== oldState) {
+            glideVideo();
+        }
         AreaCircularContainer.style.display = (newState == true) ? '' : 'none';
         updateLayoutAreasButtonVisibility();
         if (FrameTrail.getState('viewMode') == 'video') {
@@ -1727,6 +1818,8 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         // has not been suppressed (e.g. during the leaveEditMode restore sequence).
         if (!_suppressSlideAnimation && newState !== oldState && oldState !== undefined) {
             slideArea.classList.add('is-sliding');
+            // Details that open or close give the video another size at once: it glides there while the areas slide
+            glideVideo();
         } else {
             // Direct call or suppressed: ensure no stale is-sliding from a prior animation.
             slideArea.classList.remove('is-sliding');

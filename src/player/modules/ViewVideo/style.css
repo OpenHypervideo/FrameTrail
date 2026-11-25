@@ -1007,6 +1007,24 @@
     inset: 0;
     z-index: 30;
     pointer-events: none;
+    transition: opacity 200ms ease;
+}
+
+/* The ring fades in while the video glides into its block (glideVideo in module.js): the style a ring starts
+   with when it comes to be shown. When it goes, it goes at once (its thumbnails lose their places with it) and
+   the video glides out over where it was. */
+@starting-style {
+    .hypervideoContainer .videoContainer .areaCircularContainer,
+    .hypervideoContainer .videoContainer .circularProgress.active {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .hypervideoContainer .videoContainer .areaCircularContainer,
+    .hypervideoContainer .videoContainer .circularProgress {
+        transition: none;
+    }
 }
 
 /* The progress bar around the video while a ring is shown (placeCircularProgress in module.js): along the inner edge
@@ -1019,6 +1037,7 @@
     overflow: visible;
     z-index: 30;
     pointer-events: none;
+    transition: opacity 200ms ease;
 }
 
 .hypervideoContainer .videoContainer .circularProgress.active {
