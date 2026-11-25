@@ -55,6 +55,18 @@
     cursor: pointer;
 }
 
+/* A freeform hotspot takes clicks only inside its outline (its link is clipped
+   to it): the rest of its box lets them through to what lies beneath, another
+   overlay or the video. Not while overlays are edited, where the box is what is
+   selected and dragged. */
+.overlayContainer .overlayElement.active.shapeClicks:not(.ui-draggable) {
+    pointer-events: none;
+}
+
+.overlayContainer .overlayElement.active.shapeClicks:not(.ui-draggable) .hotspot-element {
+    pointer-events: auto;
+}
+
 /* When hotspot-element is an <a> tag, ensure proper link styling */
 a.hotspot-element {
     text-decoration: none;

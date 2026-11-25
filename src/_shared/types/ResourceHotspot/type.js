@@ -666,6 +666,24 @@ FrameTrail.defineType(
                 },
 
                 /**
+                 * Hook of the Overlay: I tell whether only my shape takes clicks, not
+                 * my whole box. A freeform hotspot does: its link is clipped to the
+                 * outline, and a click elsewhere in its box goes to what lies beneath
+                 * (another overlay, the video), so outlines that lie close together,
+                 * or over each other's boxes, can each be clicked. That goes for the
+                 * click action, for onClick code and for the overlayClick event. Not
+                 * while overlays are edited: there the box is selected and dragged
+                 * (see my stylesheet, .shapeClicks).
+                 * @method takesClicksInShapeOnly
+                 * @return {Boolean}
+                 */
+                takesClicksInShapeOnly: function() {
+
+                    return !!(this.resourceData && this.resourceData.attributes && this.resourceData.attributes.shape === 'freeform');
+
+                },
+
+                /**
                  * I write an outline into the attributes of a freeform hotspot: its
                  * points, and the path derived from them for other consumers. The
                  * Overlay calls me with the outline of the first keyframe whenever its

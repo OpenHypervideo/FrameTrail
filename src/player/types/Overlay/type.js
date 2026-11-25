@@ -1683,6 +1683,10 @@ FrameTrail.defineType(
                     this.overlayElement.style.rotate = rotation ? rotation + 'deg' : '';
                     this.overlayElement.style.zIndex = (this.data.attributes.zIndex != null) ? this.data.attributes.zIndex : '';
                     this.overlayElement.classList.toggle('autoHeight', this.hasAutoHeight());
+                    // A type whose shape is not its box (a freeform hotspot's outline) takes
+                    // clicks in its shape only; its stylesheet lets the rest of my box through
+                    this.overlayElement.classList.toggle('shapeClicks', !!(this.resourceItem
+                        && typeof this.resourceItem.takesClicksInShapeOnly === 'function' && this.resourceItem.takesClicksInShapeOnly()));
 
                     var _rdChild = this.overlayElement.querySelector('.resourceDetail');
                     if (_rdChild) {
