@@ -609,7 +609,7 @@ Non-browser clients act as a user with `Authorization: Bearer ft_<id>_<secret>`.
 
 ## Themes
 
-A theme is a set of colours in `src/_shared/styles/variables.css` (46 blocks and the default palette, `classic`), shown by `Database.applyTheme()` (see Server Configuration). User docs: [docs/EXTENDING.md](docs/EXTENDING.md#adding-a-custom-theme), scoping in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#css-custom-properties-theming).
+A theme is a set of colours in `src/_shared/styles/variables.css` (44 blocks and the default palette, `classic`), shown by `Database.applyTheme()` (see Server Configuration). User docs: [docs/EXTENDING.md](docs/EXTENDING.md#adding-a-custom-theme), scoping in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#css-custom-properties-theming).
 
 - **Four core colours and what they are for:** `--primary-bg-color` the ground (of the player, and of cards and previews), `--secondary-bg-color` the tint of panels and buttons over it (60 % opaque), `--primary-fg-color` the theme's own colour (the interface's text and icons), `--secondary-fg-color` lines and scrollbars.
 - **Roles:** `--text-color` is the body text of content (every built-in theme sets it: the hue of its own colour with little chroma, 7 or more on the ground), `--accent-color` the theme's own colour (= `--primary-fg-color`), `--on-accent-color` the text on it (= `--primary-bg-color`). The default palette and elements outside a theme have them through the base rule.

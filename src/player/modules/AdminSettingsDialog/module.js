@@ -334,7 +334,7 @@ FrameTrail.defineModule('AdminSettingsDialog', function(FrameTrail){
             'classic', 'bright', 'dark', 'midnight', 'slate', 'studio', 'lagoon', 'dusk',
             'nordic', 'obsidian', 'jungle', 'carbon', 'aurora', 'terra', 'eclipse', 'parchment',
             'neon', 'navy', 'blue', 'grey', 'plum', 'crimson', 'ocean', 'forest',
-            'emerald', 'green', 'coral', 'violet', 'sunset', 'coffee', 'mocha', 'sand',
+            'emerald', 'coral', 'sunset', 'coffee', 'mocha', 'sand',
             'rose', 'arctic', 'sage', 'mint', 'sky', 'steel', 'lavender', 'peach',
             'blush', 'lemon', 'turquoise', 'grape', 'tangerine', 'tomato', 'orange'
         ];

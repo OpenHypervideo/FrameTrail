@@ -3088,7 +3088,7 @@ describe('themes', () => {
     const names = Object.keys(themes);
 
     test('every theme is read, and every theme has a tile in the settings and in the setup wizard (and the other way round)', () => {
-        assert.ok(names.length >= 46, names.length + ' themes found');
+        assert.ok(names.length >= 44, names.length + ' themes found');
         const setup  = fs.readFileSync(path.join(ROOT, 'src', 'setup.html'), 'utf8'),
               listOf = (source) => { const m = /var THEMES = \[([^\]]+)\]/.exec(source); assert.ok(m, 'the list of themes'); return [...m[1].matchAll(/'([a-z]+)'/g)].map((x) => x[1]); },
               tiles  = listOf(admin);

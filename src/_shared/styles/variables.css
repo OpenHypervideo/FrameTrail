@@ -596,24 +596,6 @@ body > .contentViewPreview,
     --semi-transparent-bg-color: rgba(0, 73, 52, .8);
 }
 
-.frametrail-body[data-frametrail-theme="green"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], [data-edit-mode="transcripts"], .extensionEditMode),
-    .mainContainer[data-edit-mode] .hypervideoContainer,
-    .loadingScreen,
-    .userLoginOverlay,
-    .signInWall,
-    .titlebar:not(.editActive),
-    .sidePanel:not(.editActive),
-    .layoutEditor
-),
-.themeItem[data-theme="green"] {
-    --primary-bg-color: rgba(0, 73, 59, 1);
-    --secondary-bg-color: rgba(40, 104, 88, .6);
-    --primary-fg-color: rgba(250, 255, 255, 1);
-    --secondary-fg-color: rgba(227, 237, 234, 1);
-    --text-color: rgba(250, 255, 255, 1);
-}
-
 /* ── Coral: vibrant coral-red, lively ── */
 .frametrail-body[data-frametrail-theme="coral"] :is(
     .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], [data-edit-mode="transcripts"], .extensionEditMode),
@@ -632,25 +614,6 @@ body > .contentViewPreview,
     --secondary-fg-color: rgba(255, 228, 224, 1);
     --text-color: rgba(255, 252, 248, 1);
     --semi-transparent-bg-color: rgba(93, 45, 40, .8);
-}
-
-/* ── Inspiration 3: medium purple (Dutch Sonnenborgh poster) ── */
-.frametrail-body[data-frametrail-theme="violet"] :is(
-    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], [data-edit-mode="transcripts"], .extensionEditMode),
-    .mainContainer[data-edit-mode] .hypervideoContainer,
-    .loadingScreen,
-    .userLoginOverlay,
-    .signInWall,
-    .titlebar:not(.editActive),
-    .sidePanel:not(.editActive),
-    .layoutEditor
-),
-.themeItem[data-theme="violet"] {
-    --primary-bg-color: rgba(69, 51, 91, 1);
-    --secondary-bg-color: rgba(99, 81, 123, .6);
-    --primary-fg-color: rgba(255, 255, 255, 1);
-    --secondary-fg-color: rgba(235, 220, 252, 1);
-    --text-color: rgba(255, 255, 255, 1);
 }
 
 /* ── Sunset: dark wine-burgundy with warm peach text ── */
