@@ -40,7 +40,7 @@
     align-items: center;
     justify-content: space-between;
     padding: 8px 8px 8px 12px;
-    background: var(--secondary-bg-color);
+    background: var(--primary-bg-color);
     /* the theme's own colour: in a dialog that shows content (the resource preview) --primary-fg-color is the body text */
     color: var(--accent-color, var(--primary-fg-color));
     flex-shrink: 0;
@@ -72,6 +72,7 @@
 
 .ft-dialog-titlebar-close:hover {
     opacity: 1;
+    background: none;
 }
 
 /* ── Content area ────────────────────────────────────────────────────── */

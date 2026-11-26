@@ -530,11 +530,15 @@ FrameTrail.defineType(
                         HypervideoController.pause();
                     }
 
+                    // Opened from where content is shown to the viewer (a content view or its details: the player, and
+                    // Preview while editing), not from the editing interface (resource lists and pickers, properties)
+                    var fromContentArea = !!(elementOrigin && elementOrigin.closest && elementOrigin.closest('.contentViewContainer, .contentViewDetailsContainer'));
+
                     var previewDialogCtrl = Dialog({
                         title:     (self.resourceData.type == 'text' || self.resourceData.type == 'html') ? '' : self.resourceData.name,
                         content:   previewContent,
                         inheritTheme: elementOrigin,
-                        classes:   'resourcePreviewFrame',
+                        classes:   'resourcePreviewFrame' + (fromContentArea ? ' fromContentArea' : ''),
                         resizable: false,
                         width:     WIDTH,
                         height:    HEIGHT,

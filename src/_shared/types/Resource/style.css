@@ -253,6 +253,12 @@ body > .resourceThumb .resourceTitle {
     color: var(--primary-fg-color);
 }
 
+/* Opened from a content view, its title bar has the tint of the panels there (over the dialog's
+   ground); opened from the editing interface it is a title bar like every dialog's */
+.ft-dialog.resourcePreviewFrame.fromContentArea .ft-dialog-titlebar {
+    background: var(--secondary-bg-color);
+}
+
 .ft-dialog.resourcePreviewFrame::backdrop {
     animation: resourcePreviewBackdropIn 300ms ease both;
 }
