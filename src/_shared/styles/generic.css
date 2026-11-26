@@ -683,25 +683,25 @@ input:checked + .slider:before {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #7d93b4, #46587a);
+    background: linear-gradient(135deg, #7d93b442, #46587a5e);
 }
 
 .themeItem .themeSamplePlay {
     position: relative;
-    width: 16px;
-    height: 16px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     background: var(--primary-fg-color);
-    box-shadow: 0 0 0 2px var(--primary-bg-color);
+    box-shadow: 0 0 0 1px var(--primary-bg-color);
 }
 
 .themeItem .themeSamplePlay::after {
     content: "";
     position: absolute;
-    left: 6px;
-    top: 4px;
+    left: 4px;
+    top: 3px;
     border-style: solid;
-    border-width: 4px 0 4px 6px;
+    border-width: 3px 0 3px 5px;
     border-color: transparent transparent transparent var(--primary-bg-color);
 }
 
