@@ -46,7 +46,7 @@
     z-index: 2;
     box-shadow: 0 0 10px rgba(0, 150, 255, 0.5);
     box-sizing: border-box;
-    transition: border-radius 0.2s ease, border-width 0.2s ease, background-color 0.2s ease;
+    transition: border-radius 0.2s ease, border-width 0.2s ease, background-color 0.2s ease, --ft-hotspot-hover-tint 0.15s ease;
     /* Override the UA pointer on <a href> — only interactive hotspots get it back */
     cursor: default;
 }
@@ -65,6 +65,46 @@
 
 .overlayContainer .overlayElement.active.shapeClicks:not(.ui-draggable) .hotspot-element {
     pointer-events: auto;
+}
+
+/* The overlay's hover style (Overlay/style.css, .hasHoverStyle) tints and outlines
+   its box. A hotspot with an area is its shape, not its box: the tint and the
+   border colour are drawn in the shape instead (on the link, which has the shape's
+   border-radius, or a freeform outline's clip), so a hover inside a freeform outline
+   no longer lights the rest of its box. Scale and opacity stay on the box. Lines
+   (arrow, underline) have no area and keep the box's. Not while editing, where the
+   overlay's own rule shows no hover style. */
+@property --ft-hotspot-hover-tint {
+    syntax: '<color>';
+    inherits: false;
+    initial-value: transparent;
+}
+
+.mainContainer:not(.editActive) .overlayContainer .overlayElement.hasHoverStyle.active:hover:has(.resourceDetail[data-type="hotspot"]:not([data-shape="arrow"], [data-shape="underline"])) {
+    outline: none;
+    background-color: transparent;
+}
+
+.mainContainer:not(.editActive) .overlayContainer .overlayElement.hasHoverStyle .resourceDetail[data-type="hotspot"]:not([data-shape="arrow"], [data-shape="underline"]) .hotspot-element {
+    /* Over the fill (the inline background-color), under the label and the border */
+    background-image: linear-gradient(var(--ft-hotspot-hover-tint), var(--ft-hotspot-hover-tint));
+}
+
+.mainContainer:not(.editActive) .overlayContainer .overlayElement.hasHoverStyle.active:hover .resourceDetail[data-type="hotspot"]:not([data-shape="arrow"], [data-shape="underline"]) .hotspot-element {
+    --ft-hotspot-hover-tint: var(--overlay-hover-bg, transparent);
+}
+
+.mainContainer:not(.editActive) .overlayContainer .overlayElement.hasHoverStyle.active:hover .resourceDetail[data-type="hotspot"]:not([data-shape="arrow"], [data-shape="underline"], [data-shape="freeform"]) .hotspot-element {
+    outline: var(--overlay-hover-outline, none);
+}
+
+/* A freeform outline's clip would cut an outline away: its stroke takes the colour */
+.mainContainer:not(.editActive) .overlayContainer .overlayElement.hasHoverStyle.hasHoverBorder.active:hover .resourceDetail[data-type="hotspot"][data-shape="freeform"] .hotspot-stroke {
+    stroke: var(--overlay-hover-border-color);
+}
+
+.mainContainer:not(.editActive) .overlayContainer .overlayElement.hasHoverStyle.hasHoverBorder.active:hover .resourceDetail[data-type="hotspot"][data-shape="freeform"] .hotspot-stroke[stroke-width="0"] {
+    stroke-width: 2px;
 }
 
 /* When hotspot-element is an <a> tag, ensure proper link styling */

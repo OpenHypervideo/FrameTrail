@@ -1855,8 +1855,16 @@ FrameTrail.defineType(
                         el.style.setProperty('--overlay-hover-scale', (hoverStyle.scale != null) ? hoverStyle.scale : 1);
                         el.style.setProperty('--overlay-hover-outline', hoverStyle.borderColor ? '2px solid ' + hoverStyle.borderColor : 'none');
                         el.style.setProperty('--overlay-hover-bg', hoverStyle.backgroundColor || 'transparent');
+                        // The bare colour, for a shape that draws the border itself (a freeform hotspot's stroke)
+                        el.classList.toggle('hasHoverBorder', !!hoverStyle.borderColor);
+                        if (hoverStyle.borderColor) {
+                            el.style.setProperty('--overlay-hover-border-color', hoverStyle.borderColor);
+                        } else {
+                            el.style.removeProperty('--overlay-hover-border-color');
+                        }
                     } else {
-                        el.classList.remove('hasHoverStyle');
+                        el.classList.remove('hasHoverStyle', 'hasHoverBorder');
+                        el.style.removeProperty('--overlay-hover-border-color');
                         el.style.removeProperty('--overlay-hover-opacity');
                         el.style.removeProperty('--overlay-hover-scale');
                         el.style.removeProperty('--overlay-hover-outline');
