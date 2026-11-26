@@ -722,7 +722,7 @@ The built-in themes are checked for all of this by the tests (`node tests/run-js
 
 In your own CSS, inside the content areas (content views, their details, the resource preview, cards and quizzes on the video) `--primary-fg-color` *is* the body text colour, so `color: var(--primary-fg-color)` is right for text everywhere; use `var(--accent-color)` for what should carry the theme's colour there, with `var(--on-accent-color)` for text on it.
 
-The theme is a setting of the instance (`config.json` → `theme`); hypervideos have no theme of their own. To offer the new theme in Administration → Color Theme, add a card for it to the theme list in `AdminSettingsDialog` (and its id to `THEMES` in `setup.html`, for the setup wizard). A theme defined in the global `custom.css` instead can be chosen by setting `theme` in `config.json`.
+The theme is a setting of the instance (`config.json` → `theme`); hypervideos have no theme of their own. To offer the new theme in Administration → Color Theme, add its id to `THEMES` in `AdminSettingsDialog`, and to `THEMES` in `setup.html` for the setup wizard. Its card is drawn from the theme's colours: a small picture of the player, with the title, the start button and the progress line in the theme's own colour, the ground around the video, a panel in its tint, and in it a card with an active frame, a heading and a button in the accent and lines of body text. A theme defined in the global `custom.css` instead can be chosen by setting `theme` in `config.json`.
 
 ### Sizes of the Layout Areas
 

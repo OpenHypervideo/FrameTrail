@@ -409,12 +409,17 @@
         }
 
         /* --- Step 4: Theme (.themeItem comes from generic.css) --- */
-        /* Four rows of theme cards and a sliver of the fifth, so the list reads as scrolling and the step's buttons stay in view. */
+        /* Three rows of theme cards and part of the fourth, so the list reads as scrolling and the step's buttons stay in view. */
         .setup-wizard .themeContainer {
             display: flex;
             flex-wrap: wrap;
             max-height: 360px;
             overflow-y: auto;
+        }
+
+        /* Four cards fill a row (a card's picture takes whatever width it gets) */
+        .setup-wizard .themeContainer .themeItem {
+            width: calc(25% - 12px);
         }
 
         /* --- Step 3: overview cards on the left, the other options stacked on the right (.optionCards comes from generic.css) --- */
@@ -1131,11 +1136,17 @@
         var item = document.createElement('div');
         item.className = 'themeItem' + (theme === 'classic' ? ' active' : '');
         item.setAttribute('data-theme', theme);
+        // The tile of the admin dialog (AdminSettingsDialog, themeTile): a small picture of the player in the theme
         item.innerHTML = '<div class="themeName">' + theme.charAt(0).toUpperCase() + theme.slice(1) + '</div>'
-                       + '<div class="themeColorContainer">'
-                       + '<div class="primary-fg-color"></div>'
-                       + '<div class="secondary-bg-color"></div>'
-                       + '<div class="text-color"></div>'
+                       + '<div class="themeSample">'
+                       + '<div class="themeSampleStage">'
+                       + '<div class="themeSampleVideo"><div class="themeSamplePicture"><span class="themeSamplePlay"></span></div></div>'
+                       + '<div class="themeSampleControls"></div>'
+                       + '</div>'
+                       + '<div class="themeSamplePanel">'
+                       + '<div class="themeSampleCard active"><span class="themeSampleHeading"></span><span class="themeSampleLine"></span><span class="themeSampleLine"></span><span class="themeSampleButton"></span></div>'
+                       + '<div class="themeSampleCard"><span class="themeSampleLine"></span><span class="themeSampleLine"></span></div>'
+                       + '</div>'
                        + '</div>';
         item.addEventListener('click', function () {
             selectTheme(item);

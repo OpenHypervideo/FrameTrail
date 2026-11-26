@@ -625,19 +625,21 @@ input:checked + .slider:before {
 
 /* Theme Items */
 
+/* A tile of the theme picker (settings, setup wizard): a small picture of the player in the theme, whose
+   colours variables.css gives .themeItem[data-theme]. It shows what a theme decides: the ground and the
+   theme's own colour (title, start button, progress), the ground around the video, the tint of a panel,
+   and a card in it with an active frame, a heading and a button in the accent and lines of body text. */
+
 .themeItem {
     float: left;
-    width: 87px;
-    height: 57px;
-    padding: 4px 8px;
+    box-sizing: border-box;
+    width: 132px;
     margin: 6px;
     background: var(--primary-bg-color);
     color: var(--primary-fg-color);
     border: 4px solid #fff;
     outline: 1px solid #dfdfdf;
     cursor: pointer;
-    transition-property: height;
-    transition-duration: 40ms;
     overflow: hidden;
 }
 
@@ -645,27 +647,143 @@ input:checked + .slider:before {
     outline: 4px solid #F90;
 }
 
-.themeItem .themeColorContainer {
+.themeItem .themeName {
+    height: 22px;
+    padding: 0 7px;
+    font-size: 13px;
+    line-height: 22px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.themeItem .themeSample {
+    display: flex;
+    height: 62px;
+}
+
+.themeItem .themeSampleStage {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.themeItem .themeSampleVideo {
+    flex: 1 1 auto;
+    display: flex;
+    align-items: center;
+    background: var(--video-background-color);
+}
+
+/* The film itself is no colour of the theme: the same in every tile */
+.themeItem .themeSamplePicture {
+    width: 100%;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #7d93b4, #46587a);
+}
+
+.themeItem .themeSamplePlay {
+    position: relative;
+    width: 16px;
     height: 16px;
+    border-radius: 50%;
+    background: var(--primary-fg-color);
+    box-shadow: 0 0 0 2px var(--primary-bg-color);
 }
 
-.themeItem .themeColorContainer div {
-    float: left;
-    width: 33.2%;
-    height: 100%;
+.themeItem .themeSamplePlay::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    top: 4px;
+    border-style: solid;
+    border-width: 4px 0 4px 6px;
+    border-color: transparent transparent transparent var(--primary-bg-color);
 }
 
-.themeItem .themeColorContainer div.primary-fg-color {
+.themeItem .themeSampleControls {
+    position: relative;
+    flex: 0 0 9px;
+    background: var(--primary-bg-color);
+}
+
+.themeItem .themeSampleControls::before,
+.themeItem .themeSampleControls::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 2px;
+}
+
+.themeItem .themeSampleControls::before {
+    width: 100%;
+    background: var(--semi-transparent-fg-color);
+}
+
+.themeItem .themeSampleControls::after {
+    width: 40%;
     background: var(--primary-fg-color);
 }
 
-.themeItem .themeColorContainer div.secondary-bg-color {
+.themeItem .themeSamplePanel {
+    flex: 0 0 46px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 3px;
     background: var(--secondary-bg-color);
 }
 
-/* The stripes of a tile: the theme's own colour, its panels, its body text (on the tile's ground) */
-.themeItem .themeColorContainer div.text-color {
+.themeItem .themeSampleCard {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 3px;
+    background: var(--primary-bg-color);
+    border: 1px solid var(--primary-bg-color);
+    opacity: .7;
+}
+
+.themeItem .themeSampleCard.active {
+    flex: 1 1 auto;
+    border-color: var(--accent-color);
+    opacity: 1;
+}
+
+.themeItem .themeSampleHeading,
+.themeItem .themeSampleLine,
+.themeItem .themeSampleButton {
+    display: block;
+    border-radius: 1px;
+}
+
+.themeItem .themeSampleHeading {
+    width: 62%;
+    height: 3px;
+    background: var(--accent-color);
+}
+
+.themeItem .themeSampleLine {
+    height: 2px;
     background: var(--text-color);
+}
+
+/* the last line of a paragraph ends early */
+.themeItem .themeSampleLine + .themeSampleLine {
+    width: 72%;
+}
+
+.themeItem .themeSampleButton {
+    width: 16px;
+    height: 6px;
+    margin-top: auto;
+    background: var(--accent-color);
 }
 
 /* Option Cards */

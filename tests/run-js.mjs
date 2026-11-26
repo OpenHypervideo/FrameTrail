@@ -3087,10 +3087,14 @@ describe('themes', () => {
     });
     const names = Object.keys(themes);
 
-    test('every theme is read, and every theme has a tile in the settings (and the other way round)', () => {
+    test('every theme is read, and every theme has a tile in the settings and in the setup wizard (and the other way round)', () => {
         assert.ok(names.length >= 46, names.length + ' themes found');
-        const tiles = [...admin.matchAll(/class="themeItem[^"]*"[^>]*data-theme="([a-z]+)"/g)].map((m) => m[1]).filter((name) => name !== 'classic');
-        assert.deepStrictEqual(tiles.slice().sort(), names.slice().sort());
+        const setup  = fs.readFileSync(path.join(ROOT, 'src', 'setup.html'), 'utf8'),
+              listOf = (source) => { const m = /var THEMES = \[([^\]]+)\]/.exec(source); assert.ok(m, 'the list of themes'); return [...m[1].matchAll(/'([a-z]+)'/g)].map((x) => x[1]); },
+              tiles  = listOf(admin);
+        assert.deepStrictEqual(tiles, listOf(setup), 'the same themes in the same order');
+        assert.equal(tiles[0], 'classic');
+        assert.deepStrictEqual(tiles.slice(1).sort(), names.slice().sort());
     });
 
     test('the colours a theme derives are declared where the themes set theirs', () => {
