@@ -2546,6 +2546,7 @@ describe('FrameTrailPairing', () => {
                 { type: 'grant', token: '1760000600.' + 'a'.repeat(43), ttl: 600, cookie: 'FTPAIR0123abcd', path: '/_data/resources/' },
                 { type: 'quiz', hypervideo: '3', item: '1/1700000000000', status: 'open', answered: 2, voters: 30, endsIn: 14500 },
                 { type: 'quiz', hypervideo: '3', item: '1/1700000000000', status: 'decided', answered: 30, voters: 30, decided: 1, feedback: 'Off we go' },
+                { type: 'quiz', hypervideo: '3', item: '1/1700000000000', status: 'closed', answered: 30, voters: 30, decided: 1 },
                 { type: 'bye', reason: 'stopped' }
             ],
             guest: [

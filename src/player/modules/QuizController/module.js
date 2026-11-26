@@ -55,6 +55,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
     var session         = null,     // the quiz being asked: see ask()
         queue           = [],       // quizzes that started while another was asked
         overlayAnswered = {},       // quiz overlays answered, by key, until the playhead leaves them
+        decidedShown    = {},       // quiz annotations decided and gone on from, by key, until the playhead leaves them: { annotation, yours, decision, status } (on a phone too, from the closed quiz message)
         lastSent        = 0,
         timers          = {},
         panel           = null,
@@ -155,6 +156,8 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
             if (session.annotation !== annotation && queue.indexOf(annotation) < 0) { queue.push(annotation); }
             return;
         }
+
+        delete decidedShown[Quiz.itemKey(annotation.data)];
 
         var shown     = FrameTrail.module('ViewLayout').viewsShowing(annotation),
             countdown = parseFloat(attributesOf(annotation.data).countdown);
@@ -308,6 +311,14 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
             act   = ended.act || { action: '' },
             HC    = controller();
 
+        // What was decided stays shown while the playhead is in the quiz, as for a quiz overlay (see update)
+        decidedShown[ended.key] = {
+            annotation: ended.annotation,
+            yours:      ended.votes.get('player'),
+            decision:   ended.decision,
+            status:     statusText()
+        };
+
         session = null;
         stop(ended, 'closed');
 
@@ -357,7 +368,10 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         timers.tick = timers.send = null;
         var Host = FrameTrail.module('PairingHost');
         if (Host && Host.sendQuiz && openID()) {
-            Host.sendQuiz({ type: 'quiz', hypervideo: openID(), item: ended.key, status: status, answered: ended.votes.size, voters: ended.votes.size });
+            var message = { type: 'quiz', hypervideo: openID(), item: ended.key, status: status, answered: ended.votes.size, voters: ended.votes.size };
+            // What was decided, so a phone shows it while its playhead is in the quiz, as the player does
+            if (ended.state === 'decided' && ended.decision && ended.decision.index !== null) { message.decided = ended.decision.index; }
+            Host.sendQuiz(message);
         }
         show();
         refresh(ended.annotation);
@@ -401,6 +415,14 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
      * @param {Number} currentTime
      */
     function update(currentTime) {
+
+        Object.keys(decidedShown).forEach(function(key) {
+            var annotation = decidedShown[key].annotation;
+            if (currentTime < annotation.data.start - EARLY || currentTime > annotation.data.end + SLACK) {
+                delete decidedShown[key];
+                refresh(annotation);
+            }
+        });
 
         if (companion) { return; }
 
@@ -637,9 +659,15 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
             attrs = attributesOf(data),
             key   = Quiz.itemKey(data);
 
+        // Decided and gone on from: shown as decided until the playhead leaves it (see update)
+        var shown = decidedShown[key];
+
         if (companion) {
             var question = companion.quiz;
             if (!question || question.item !== key || question.status === 'closed' || question.status === 'cancelled') {
+                if (shown && shown.annotation.data === data) {
+                    return { canAnswer: false, yours: shown.yours, decided: shown.decision, status: shown.status, result: null };
+                }
                 return { canAnswer: false, status: labels['QuizNotYet'] };
             }
             var open = question.status === 'open';
@@ -666,6 +694,9 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         }
 
         if (!session || session.annotation.data !== data) {
+            if (shown && shown.annotation.data === data) {
+                return { canAnswer: false, yours: shown.yours, decided: shown.decision, status: shown.status, result: null };
+            }
             return { canAnswer: false, status: labels['QuizNotYet'] };
         }
 
@@ -1125,9 +1156,30 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         var question = companion.quiz;
         quizAt = Date.now();
 
+        // Over after a decision: the phone shows what was decided while its playhead is in the quiz, as the player does (see update)
+        if (question && question.status === 'closed' && question.decided !== undefined) {
+            var decided = annotationByKey(question.item);
+            if (decided) {
+                decidedShown[question.item] = {
+                    annotation: decided,
+                    yours:      mine[question.item],
+                    decision:   { index: question.decided },
+                    status:     decidedText(attributesOf(decided.data), question.decided)
+                };
+                refresh(decided);
+            }
+        }
+
         if (!question || question.status === 'closed' || question.status === 'cancelled') {
             closeSheet();
             return;
+        }
+
+        // Asked (again): nothing decided to show
+        if (decidedShown[question.item]) {
+            var asked = decidedShown[question.item].annotation;
+            delete decidedShown[question.item];
+            refresh(asked);
         }
 
         var annotation = annotationByKey(question.item);
@@ -1201,6 +1253,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         queue = [];
         cancel();
         overlayAnswered = {};
+        decidedShown = {};
         window.clearInterval(timers.tick);
         window.clearTimeout(timers.send);
         timers.tick = timers.send = null;
