@@ -51,6 +51,12 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         sliderDragging         = false,
         ytSeekPending          = null,
 
+        // A Vimeo embed plays only when play() asks for it (vimeoPlayRequested), and a seek before its first play would
+        // start it (Vimeo's setCurrentTime does): until it has played (vimeoStarted) the time waits in vimeoSeekPending.
+        vimeoPlayRequested     = false,
+        vimeoStarted           = false,
+        vimeoSeekPending       = null,
+
         highPriorityInterval   = 25,
         lowPriorityInterval    = 150,
         nullVideoInterval      = 25,
@@ -452,7 +458,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
             var lastVimeoPlayerID = 'vm_' + Date.now();
             FrameTrail.changeState('lastVimeoPlayerID', lastVimeoPlayerID);
-            var vm_options = 'color=ffffff&portrait=0&byline=0&title=0&badge=0&controls=0&autoplay=1&autopause=0&dnt=1';
+            vimeoPlayRequested = false;
+            vimeoStarted       = false;
+            vimeoSeekPending   = null;
+            // No autoplay: the embed starts when play() asks for it (allow="autoplay" lets the page's click cover that).
+            var vm_options = 'color=ffffff&portrait=0&byline=0&title=0&badge=0&controls=0&autopause=0&dnt=1';
             var vm_iframe = document.createElement('iframe');
             vm_iframe.id = lastVimeoPlayerID;
             vm_iframe.className = 'player_vimeo';
@@ -489,19 +499,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 });
 
                 window.player_vimeo[lastVimeoPlayerID].on('play', function() {
-                    if (HypervideoModel.durationFull == 0) {
-                        var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
-                        window.player_vimeo[lastVimeoPlayerID].getDuration().then(function(vimeo_duration) {
-                            //console.log('Player READY', vimeo_duration);
-                            window.player_vimeo[lastVimeoPlayerID].pause();
-                            if (vimeo_duration != 0) {
-                                ViewVideo.OverlayContainer.style.display = '';
-                                initVimeoDuration(vimeo_duration);
-                            }
-                        });
-                    } else if (FrameTrail.module('HypervideoTransition') && FrameTrail.module('HypervideoTransition').holding) {
-                        // Under the cover of a transition nothing plays yet (the embed starts by itself).
-                        window.player_vimeo[FrameTrail.getState('lastVimeoPlayerID')].pause();
+                    // FrameTrail controls the embed: a start play() did not ask for is taken back, and under the cover
+                    // of a transition nothing plays yet.
+                    if (!vimeoPlayRequested || (FrameTrail.module('HypervideoTransition') && FrameTrail.module('HypervideoTransition').holding)) {
+                        window.player_vimeo[lastVimeoPlayerID].pause();
                     } else {
                         _play();
                     }
@@ -562,6 +563,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
                 window.player_vimeo[lastVimeoPlayerID].on('ended', function() {
 
+                    vimeoPlayRequested = false;
                     _pause();
                     showEnd();
                     reportEnded();
@@ -1322,15 +1324,23 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             OverlayAnimator.checkSync();
         } else if (HypervideoModel.videoType == 'vimeo') {
             var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
-            if (window.player_vimeo[lastVimeoPlayerID]) {
+            var vimeoTimeUpdate = function() {
+                updateProgressBar(currentTime - HypervideoModel.offsetIn);
+
+                FrameTrail.triggerEvent('timeupdate', {});
+
+                OverlaysController.checkMediaSynchronization();
+                OverlayAnimator.checkSync();
+            };
+            if (!vimeoStarted || vimeoSeekPending !== null) {
+                // Before its first play (and until the seek kept for it has landed) the embed is still at its start:
+                // the time is FrameTrail's own.
+                vimeoTimeUpdate();
+            } else if (window.player_vimeo[lastVimeoPlayerID]) {
                 window.player_vimeo[lastVimeoPlayerID].getCurrentTime().then(function(vimeo_currentTime) {
+                    if (vimeoSeekPending !== null) { return; }
                     currentTime = vimeo_currentTime;
-                    updateProgressBar(currentTime - HypervideoModel.offsetIn);
-
-                    FrameTrail.triggerEvent('timeupdate', {});
-
-                    OverlaysController.checkMediaSynchronization();
-                    OverlayAnimator.checkSync();
+                    vimeoTimeUpdate();
                 });
             }
         } else {
@@ -1566,15 +1576,31 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         } else if (HypervideoModel.videoType == 'vimeo') {
 
-            var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
-            // The embed starts silent (autoplay); it gets the sound the mute state says.
+            var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID'),
+                vimeoPlayer       = window.player_vimeo[lastVimeoPlayerID];
+
+            // The embed gets the sound the mute state says.
             applyMuted();
 
-            window.player_vimeo[lastVimeoPlayerID].play().then(function() {
+            vimeoPlayRequested = true;
+
+            // Before the first play the embed is still at its start: the time FrameTrail moved to goes with the play
+            // (sent first, in the same task, so that both come from the viewer's click).
+            if (!vimeoStarted && vimeoSeekPending === 0) { vimeoSeekPending = null; }
+            var vimeoSeekSent = vimeoSeekPending;
+            if (vimeoSeekSent !== null) { sendVimeoSeek(vimeoPlayer, vimeoSeekSent); }
+
+            vimeoPlayer.play().then(function() {
+                vimeoStarted = true;
+                // A seek made while the play was on its way.
+                if (vimeoSeekPending !== null && vimeoSeekPending !== vimeoSeekSent) {
+                    sendVimeoSeek(vimeoPlayer, vimeoSeekPending);
+                }
                 applyMuted();
                 _play();
                 onPlaySuccess();
             }).catch(function(error) {
+                vimeoPlayRequested = false;
                 switch (error.name) {
                     case 'PasswordError':
                         FrameTrail.module('InterfaceModal').showErrorMessage('Vimeo '+ labels['ErrorVideoIsPasswordProtected']);
@@ -1584,6 +1610,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                     break;
                     case 'NotAllowedError':
                         // The browser refuses to play without a click (autoplay): the viewer presses play.
+                        // A change of hypervideo hid the start button; it is the way to start.
+                        if (!FrameTrail.getState('editMode')) {
+                            ViewVideo.VideoStartOverlay.classList.remove('inactive');
+                            ViewVideo.VideoStartOverlay.style.display = '';
+                        }
                     break;
                     default:
                         // Some other error occurred
@@ -1652,6 +1683,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
             var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
 
+            vimeoPlayRequested = false;
             if (window.player_vimeo[lastVimeoPlayerID]) {
                 window.player_vimeo[lastVimeoPlayerID].pause();
             }
@@ -1931,18 +1963,24 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             var lastVimeoPlayerID = FrameTrail.getState('lastVimeoPlayerID');
 
             currentTime = aNumberAsFloat;
-            window.player_vimeo[lastVimeoPlayerID].setCurrentTime(currentTime).then(function(vimeo_currentTime) {
-                // `vimeo_currentTime` indicates the actual time that the player seeks to
-            }).catch(function(error) {
-                switch (error.name) {
-                    case 'RangeError':
-                        // The time is less than 0 or greater than the video's duration
-                    break;
-                    default:
-                        // Some other error occurred
-                    break;
-                }
-            });
+            if (!vimeoStarted) {
+                // Vimeo starts playing when it is told a time before its first play: the time waits for play().
+                vimeoSeekPending = aNumberAsFloat;
+            } else {
+                vimeoSeekPending = null;
+                window.player_vimeo[lastVimeoPlayerID].setCurrentTime(currentTime).then(function(vimeo_currentTime) {
+                    // `vimeo_currentTime` indicates the actual time that the player seeks to
+                }).catch(function(error) {
+                    switch (error.name) {
+                        case 'RangeError':
+                            // The time is less than 0 or greater than the video's duration
+                        break;
+                        default:
+                            // Some other error occurred
+                        break;
+                    }
+                });
+            }
 
         } else {
 
@@ -1959,8 +1997,28 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         OverlaysController.syncMedia();
         OverlayAnimator.syncAll();
-        
+
         return aNumberAsFloat;
+
+    };
+
+
+    /**
+     * I send a Vimeo embed the time that waited for its first play (vimeoSeekPending). Until the embed has it,
+     * the time stays FrameTrail's own (see highPriorityUpdater_HTML5).
+     *
+     * @method sendVimeoSeek
+     * @param {Object} player
+     * @param {Number} time
+     * @private
+     */
+    function sendVimeoSeek(player, time) {
+
+        var done = function() {
+            if (vimeoSeekPending === time) { vimeoSeekPending = null; }
+        };
+
+        player.setCurrentTime(time).then(done, done);
 
     };
 
