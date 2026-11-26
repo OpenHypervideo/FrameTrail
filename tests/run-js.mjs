@@ -3049,3 +3049,78 @@ describe('storage adapters: changes made elsewhere', () => {
 
 });
 
+
+/* ------------------------------------------------------------------ */
+/*  Themes (src/_shared/styles/variables.css)                          */
+/* ------------------------------------------------------------------ */
+
+// What every built-in theme has to hold, so that content can be read in it: see "Themes" in CLAUDE.md
+describe('themes', () => {
+
+    const css   = fs.readFileSync(path.join(ROOT, 'src', '_shared', 'styles', 'variables.css'), 'utf8'),
+          admin = fs.readFileSync(path.join(ROOT, 'src', 'player', 'modules', 'AdminSettingsDialog', 'module.js'), 'utf8');
+
+    const parse = (value) => {
+        const m = /^rgba?\(([^)]+)\)$/.exec(value.trim());
+        assert.ok(m, 'a theme colour is written as rgb() or rgba(): ' + value);
+        return m[1].split(',').map((n) => parseFloat(n)).slice(0, 3);
+    };
+    const linear    = (v) => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const luminance = (c) => 0.2126 * linear(c[0]) + 0.7152 * linear(c[1]) + 0.0722 * linear(c[2]);
+    const contrast  = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+    const oklch     = (c) => {
+        const [r, g, b] = c.map(linear),
+              l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b),
+              m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b),
+              s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+        return { l: 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+                 c: Math.hypot(1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s, 0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s) };
+    };
+
+    const colours = (body) => { const found = {}; body.replace(/--([a-z-]+)\s*:\s*(rgba?\([^)]+\))\s*;/g, (all, name, value) => { if (!(name in found)) { found[name] = value; } return all; }); return found; };
+    const base    = colours(css.slice(0, css.indexOf('}'))),
+          themes  = {}, lists = [];
+    css.replace(/\.frametrail-body\[data-frametrail-theme="([a-z]+)"\] :is\(([^{]*?)\),\s*\.themeItem\[data-theme="\1"\]\s*\{([^}]*)\}/g, (all, name, list, body) => {
+        themes[name] = Object.assign({}, base, colours(body), { own: colours(body) });
+        lists.push(list.replace(/\s+/g, ' ').trim());
+        return all;
+    });
+    const names = Object.keys(themes);
+
+    test('every theme is read, and every theme has a tile in the settings (and the other way round)', () => {
+        assert.ok(names.length >= 46, names.length + ' themes found');
+        const tiles = [...admin.matchAll(/class="themeItem[^"]*"[^>]*data-theme="([a-z]+)"/g)].map((m) => m[1]).filter((name) => name !== 'classic');
+        assert.deepStrictEqual(tiles.slice().sort(), names.slice().sort());
+    });
+
+    test('the colours a theme derives are declared where the themes set theirs', () => {
+        // a custom property that refers to another is worked out on the element that declares it: declared elsewhere, it takes another palette's colours
+        const derived = /\.frametrail-body\[data-frametrail-theme\]:where\(:not\(\[data-frametrail-theme="classic"\]\)\) :is\(([^{]*?)\)\s*\{[^}]*--semi-transparent-fg-color/.exec(css);
+        assert.ok(derived, 'the rule of the derived colours');
+        const list = derived[1].replace(/\s+/g, ' ').trim();
+        lists.forEach((own, i) => assert.equal(own, list, names[i]));
+    });
+
+    test('the interface can be read: the theme’s own colour on its ground, 4.5 or more', () => {
+        const low = names.filter((name) => contrast(parse(themes[name]['primary-fg-color']), parse(themes[name]['primary-bg-color'])) < 4.5);
+        assert.deepStrictEqual(low, []);
+    });
+
+    test('content can be read at length: every theme has a body text colour, 7 or more on its ground, with little colour', () => {
+        const none   = names.filter((name) => !themes[name].own['text-color']),
+              low    = names.filter((name) => themes[name].own['text-color'] && contrast(parse(themes[name]['text-color']), parse(themes[name]['primary-bg-color'])) < 7),
+              strong = names.filter((name) => themes[name].own['text-color'] && oklch(parse(themes[name]['text-color'])).c > 0.05);
+        assert.deepStrictEqual({ none, low, strong }, { none: [], low: [], strong: [] });
+    });
+
+    test('grounds are calm: little chroma, and dark or light enough for text', () => {
+        const strong = [], middle = [];
+        names.forEach((name) => {
+            const ground = oklch(parse(themes[name]['primary-bg-color'])), dark = oklch(parse(themes[name]['primary-fg-color'])).l > ground.l;
+            if (ground.c > (dark ? 0.085 : 0.06) + 0.002) { strong.push(name); }
+            if (dark ? ground.l > 0.365 : ground.l < 0.835) { middle.push(name); }
+        });
+        assert.deepStrictEqual({ strong, middle }, { strong: [], middle: [] });
+    });
+
+});

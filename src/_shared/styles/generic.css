@@ -663,8 +663,9 @@ input:checked + .slider:before {
     background: var(--secondary-bg-color);
 }
 
-.themeItem .themeColorContainer div.secondary-fg-color {
-    background: var(--secondary-fg-color);
+/* The stripes of a tile: the theme's own colour, its panels, its body text (on the tile's ground) */
+.themeItem .themeColorContainer div.text-color {
+    background: var(--text-color);
 }
 
 /* Option Cards */

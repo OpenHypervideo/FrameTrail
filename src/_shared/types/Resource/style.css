@@ -48,8 +48,8 @@
 }
 
 .resourceDetail .resourceButtons .button:hover {
-    background: var(--primary-fg-color);
-    color: var(--primary-bg-color);
+    background: var(--accent-color);
+    color: var(--on-accent-color);
 }
 
 .resourceDetail .resourceButtons .resourcePlayFromHereButton, 
@@ -245,6 +245,13 @@ body > .resourceThumb .resourceTitle {
 }
 
 /* Resource Preview: the dialog grows out of the thumbnail (Resource.openPreview) */
+
+/* The preview's body is a content area on the theme's ground, as the content views are: what is read
+   in it looks as it does in a view (other dialogs are sheets in the text colour, see dialog.css) */
+.ft-dialog.resourcePreviewFrame {
+    background: var(--primary-bg-color);
+    color: var(--primary-fg-color);
+}
 
 .ft-dialog.resourcePreviewFrame::backdrop {
     animation: resourcePreviewBackdropIn 300ms ease both;
@@ -601,6 +608,7 @@ body > .resourceThumb .resourceTitle {
     word-break: break-word;
     hyphens: auto;
     padding-right: 70px;
+    color: var(--accent-color);
 }
 
 .resourceDetail .resourceContent .resourceCard .resourceCardSubtitle {
@@ -644,13 +652,11 @@ body > .resourceThumb .resourceTitle {
 }
 
 .resourceDetail .resourceContent .resourceCard .resourceCardFooter a {
-    color: var(--primary-fg-color);
+    color: var(--accent-color);
     text-decoration: none;
-    opacity: 0.8;
 }
 
 .resourceDetail .resourceContent .resourceCard .resourceCardFooter a:hover {
-    opacity: 1;
     text-decoration: underline;
 }
 

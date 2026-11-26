@@ -479,7 +479,7 @@ index.html#hypervideo=abc123&t=30.5
 
 Themes are defined in `src/_shared/styles/variables.css` using two scoping layers.
 
-**Layer 1 — base selector:** Variables are declared on `.frametrail-body` plus a list of detached elements (`body > .ft-dialog`, drag clones, popups, etc.) that are appended directly to `<body>` and therefore outside the DOM tree. This ensures consistent defaults everywhere. The base block also declares `color-mix()` derivations for the three semi-transparent variants so custom themes need only set 4 core variables:
+**Layer 1 — base selector:** Variables are declared on `.frametrail-body` plus a list of detached elements (`body > .ft-dialog`, drag clones, popups, etc.) that are appended directly to `<body>` and therefore outside the DOM tree. This ensures consistent defaults everywhere. The base block also declares `color-mix()` derivations for the three semi-transparent variants, and the role colours (`--text-color`, `--accent-color`, `--on-accent-color`), from its own four core variables:
 
 ```css
 .frametrail-body, .ft-dialog, /* ... */ {
@@ -508,6 +508,10 @@ Themes are defined in `src/_shared/styles/variables.css` using two scoping layer
     /* ... only variables that differ from base or computed defaults */
 }
 ```
+
+**What a theme derives:** a custom property that refers to another one is worked out on the element that declares it, and its descendants inherit the result. The colours a theme derives from its own (the semi-transparent variants, `--accent-color`, `--on-accent-color`, and `--text-color` for a theme that sets none) are therefore declared once more in a rule with the themes' own list of elements, placed before the theme blocks, so custom themes need only set the 4 core variables. Declared on `.frametrail-body` alone they took the default palette's colours inside the player.
+
+**Layer 3 — content areas:** where annotations, cards, quizzes and transcripts are read (`.layoutArea .contentViewContainer`, `.layoutAreaDetails .contentViewDetailsContainer`, `.overlayContainer .overlayElement .resourceDetail`, and the resource preview, whose dialog copies its colours from the thumbnail it was opened from), `--primary-fg-color` is set to `--text-color`: the body text, calmer than the theme's own colour. Rules there that mean the theme's colour (active and selected items, main buttons, headings, links) use `--accent-color`. The player's own interface (title bar, controls, tabs) is outside these areas and keeps the theme's colour.
 
 Themes are activated by setting `data-frametrail-theme` on `.frametrail-body`. The theme is a setting of the instance, `config.json` → `theme` (chosen under Administration → Color Theme; `defaultTheme`, its former name, is still read): `Database.applyTheme()` sets it whenever the config is loaded or the administration changes it, and the overview and every hypervideo show it. Hypervideos have no theme of their own; a `theme` in an older `hypervideo.json` is not used.
 

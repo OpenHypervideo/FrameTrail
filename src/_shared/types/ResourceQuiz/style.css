@@ -16,20 +16,12 @@
     flex-direction: column;
 }
 
-.resourcePreviewDialog .resourceDetail[data-type="quiz"] {
-    color: var(--primary-bg-color);
-}
-
 .overlayElement .resourceDetail[data-type="quiz"] .resourceContent {
     padding: 3px 8px 8px 8px;
     background: var(--primary-bg-color);
     font-size: 24px;
     color: var(--primary-fg-color);
     border-radius: 4px;
-}
-
-.resourceDetail[data-type="quiz"] .resourceDetailQuizQuestion {
-    text-align: center;
 }
 
 .resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer {
@@ -49,7 +41,7 @@
 }
 
 .resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button:hover:not(:disabled) {
-    border-color: var(--primary-fg-color);
+    border-color: var(--accent-color);
 }
 
 /* Answers are open only while the quiz is asked (QuizController.stateOf) */
@@ -64,14 +56,14 @@
 }
 
 .resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer .quizAnswer.selected {
-    border-color: var(--primary-fg-color);
+    border-color: var(--accent-color);
     font-weight: bold;
 }
 
 .resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer .quizAnswer.decided {
     opacity: 1;
-    border-color: var(--highlight-color);
-    box-shadow: 0 0 0 2px var(--highlight-color);
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px var(--accent-color);
 }
 
 .resourceDetail[data-type="quiz"] .quizStatus:not(:empty) {
@@ -95,22 +87,41 @@
     text-align: center;
 }
 
-.resourceDetail[data-type="quiz"] .quizResultBlock .quizResultButton.main {
-    background-color: var(--primary-fg-color);
-    color: var(--primary-bg-color);
+/* The buttons of a result (Continue): the main one in the theme's own colour, the others in the colour
+   of the text around them (the general button is drawn for the light edit panels: on a quiz its text
+   had the colour of the ground) */
+.resourceDetail[data-type="quiz"] .quizResultBlock .quizResultButton {
+    font-size: max(.7em, 13px);
+    padding: .25em .9em;
+    border-color: currentColor;
+    background: transparent;
+    color: inherit;
 }
 
-.resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.wrong,
+.resourceDetail[data-type="quiz"] .quizResultBlock .quizResultButton:hover {
+    background: color-mix(in srgb, currentColor 16%, transparent);
+    color: inherit;
+}
+
+.resourceDetail[data-type="quiz"] .quizResultBlock .quizResultButton.main,
+.resourceDetail[data-type="quiz"] .quizResultBlock .quizResultButton.main:hover {
+    border-color: var(--accent-color);
+    background-color: var(--accent-color);
+    color: var(--on-accent-color);
+}
+
+/* Right and wrong have a ground of their own in every theme, so their text has a colour of its own too
+   (the theme's ground, used before, is white in the light themes) */
 .resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.wrong {
     background-color: #ddb0b0;
-    color: var(--primary-bg-color);
+    color: #3b1512;
 }
 
 .resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.correct,
 .resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.correct:hover {
     background-color: #A7DB66;
     font-weight: bold;
-    color: var(--primary-bg-color);
+    color: #1b2b0a;
 }
 
 /* A decided answer says right or wrong with a mark, not by its colour alone: an icon of the icon
@@ -189,16 +200,18 @@
 /* Question Type Specific Player Elements */
 
 .resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer .quizSelectableAnswer.selected {
-    border-color: var(--primary-fg-color);
+    border-color: var(--accent-color);
     font-weight: bold;
 }
 
 .resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer .quizSubmitButton {
     flex: 0 0 auto;
-    background-color: var(--primary-fg-color);
-    color: var(--primary-bg-color);
+    background-color: var(--accent-color);
+    color: var(--on-accent-color);
 }
 
+/* The field is part of the quiz, drawn as its answers are (the general text field is a sheet in the
+   text colour: a large light or dark block here) */
 .resourceDetail[data-type="quiz"] .quizFreeTextInput {
     width: 100%;
     flex: 1;
@@ -207,6 +220,13 @@
     resize: none;
     font-size: 20px;
     padding: 6px;
+    background: var(--secondary-bg-color);
+    color: var(--primary-fg-color);
+    border-color: var(--semi-transparent-fg-color);
+}
+
+.resourceDetail[data-type="quiz"] .quizFreeTextInput:focus {
+    border-color: var(--accent-color);
 }
 
 .resourceDetail[data-type="quiz"] .quizRatingRow {
@@ -224,7 +244,7 @@
 }
 
 .resourceDetail[data-type="quiz"] .quizRatingRow .quizRatingButton.selected {
-    background-color: var(--primary-fg-color);
-    color: var(--primary-bg-color);
+    background-color: var(--accent-color);
+    color: var(--on-accent-color);
     font-weight: bold;
 }

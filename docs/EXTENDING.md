@@ -516,7 +516,7 @@ A key that exists already is replaced, so prefix yours with the extension's name
 
 ### Styling
 
-Use FrameTrail's CSS custom properties (`--primary-bg-color`, `--primary-fg-color`, `--secondary-bg-color`, `--highlight-color`, …), so that the themes apply, and the classes in `src/_shared/styles/generic.css` for buttons, inputs, `custom-select`, `message` and `layoutRow`/`column-*`. Scope your selectors to your slots: `.sidePanelItem[data-extension="<name>"]`, `.titlebar [data-extension="<name>"]`, `.mainContainer[data-edit-mode="<name>"]`. A side panel takes the theme in view mode and the editor's palette while editing, through the same variables; the buttons of `generic.css` are drawn to suit both. A stylesheet listed in `config.json` is added before the global `custom.css`, which can override it.
+Use FrameTrail's CSS custom properties (`--primary-bg-color`, `--primary-fg-color`, `--secondary-bg-color`, `--accent-color`, …; see [Adding a Custom Theme](#adding-a-custom-theme) for what each is for), so that the themes apply, and the classes in `src/_shared/styles/generic.css` for buttons, inputs, `custom-select`, `message` and `layoutRow`/`column-*`. Scope your selectors to your slots: `.sidePanelItem[data-extension="<name>"]`, `.titlebar [data-extension="<name>"]`, `.mainContainer[data-edit-mode="<name>"]`. A side panel takes the theme in view mode and the editor's palette while editing, through the same variables; the buttons of `generic.css` are drawn to suit both. A stylesheet listed in `config.json` is added before the global `custom.css`, which can override it.
 
 ## Editing the Hypervideo
 
@@ -686,16 +686,22 @@ Edit `src/_shared/styles/variables.css`:
 ),
 .themeItem[data-theme="mytheme"] {
     /* Required: the 4 core colors */
-    --primary-bg-color: #your-bg;
-    --secondary-bg-color: rgba(r, g, b, .6);  /* keep semi-transparent */
-    --primary-fg-color: #your-text;
-    --secondary-fg-color: #your-secondary-text;
+    --primary-bg-color: #your-ground;           /* the player's ground, and the ground of cards and previews */
+    --secondary-bg-color: rgba(r, g, b, .6);    /* the tint of panels and buttons, over the ground: keep semi-transparent */
+    --primary-fg-color: #your-colour;           /* the theme's own colour: the interface's text and icons, and the accent */
+    --secondary-fg-color: #your-secondary;      /* lines and scrollbars */
+
+    /* Recommended: the body text of annotations, cards, quizzes and transcripts */
+    --text-color: #your-text;
 
     /*
      * These are computed automatically from the 4 above — override only if needed:
      *   --semi-transparent-bg-color       (primary-bg at 80%)
      *   --semi-transparent-fg-color       (primary-fg at 30%)
      *   --semi-transparent-fg-highlight-color  (primary-fg at 40%)
+     *   --accent-color                    (primary-fg)
+     *   --on-accent-color                 (primary-bg: the text on a button in the accent colour)
+     *   --text-color                      (primary-fg with most of its colour taken out)
      *
      * These defaults are shared across all built-in themes — override if needed:
      *   --annotation-preview-bg-color: rgba(100, 100, 100, .2)
@@ -705,6 +711,16 @@ Edit `src/_shared/styles/variables.css`:
      */
 }
 ```
+
+What makes a theme work:
+
+- **The ground is calm, and dark or light.** Text is read on it at length, so it has little colour, and it is clearly dark or clearly light: on a ground of middle lightness neither light nor dark text reads well. A theme's character belongs in its own colour, not in a saturated ground.
+- **`--primary-fg-color` is the theme's own colour.** It may be strong (a pink, a cyan), as long as it reads on the ground (a contrast of 4.5 or more): the title bar, the controls and the tabs are drawn in it, and inside content it is the accent (`--accent-color`): what is active or selected, main buttons, headings and links.
+- **`--text-color` is what is read.** Where annotations, cards, quizzes and transcripts are shown, FrameTrail draws text in it, not in the theme's own colour. Give it the hue of your colour with little of its strength, light or dark enough for a contrast of 7 or more on the ground. Left out, it is your `--primary-fg-color` with most of the colour taken out, as light or dark as that is (in browsers without relative colours: the colour itself).
+
+The built-in themes are checked for all of this by the tests (`node tests/run-js.mjs`, "themes").
+
+In your own CSS, inside the content areas (content views, their details, the resource preview, cards and quizzes on the video) `--primary-fg-color` *is* the body text colour, so `color: var(--primary-fg-color)` is right for text everywhere; use `var(--accent-color)` for what should carry the theme's colour there, with `var(--on-accent-color)` for text on it.
 
 The theme is a setting of the instance (`config.json` → `theme`); hypervideos have no theme of their own. To offer the new theme in Administration → Color Theme, add a card for it to the theme list in `AdminSettingsDialog` (and its id to `THEMES` in `setup.html`, for the setup wizard). A theme defined in the global `custom.css` instead can be chosen by setting `theme` in `config.json`.
 

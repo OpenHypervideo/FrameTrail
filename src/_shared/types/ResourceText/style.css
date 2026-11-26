@@ -9,13 +9,22 @@
     overflow-y: auto;
 }
 
-.resourcePreviewDialog .resourceDetail[data-type="text"] {
-    color: var(--primary-bg-color);
-}
-
 .overlayElement .resourceDetail[data-type="text"] .resourceContent {
     padding: 0px;
     color: #000;
+}
+
+/* Where a text is read (content views, details, the preview) its title, headings and links take the
+   theme's own colour; a colour the author gave them wins. A text in a shape, and every text on the
+   video, has the author's colours: a link there takes the colour of its text. */
+:is(.layoutArea, .layoutAreaDetails, .resourcePreviewDialog) .resourceDetail[data-type="text"] .resourceContent:not(.textOverlayCard) :is(h1, h2, h3, h4, .textOverlayTitle, a) {
+    color: var(--accent-color);
+}
+
+.resourceDetail[data-type="text"] .resourceContent.textOverlayCard a,
+.overlayElement .resourceDetail[data-type="text"] a {
+    color: inherit;
+    text-decoration: underline;
 }
 
 .resourceDetail[data-type="text"] ol, .resourceDetail[data-type="text"] ul {

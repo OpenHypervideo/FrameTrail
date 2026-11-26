@@ -24,13 +24,13 @@
 
 .collectionElement.active {
     opacity: 1;
-    border-color: var(--primary-fg-color);
+    border-color: var(--accent-color);
     pointer-events: all;
 }
 
 .collectionElement.open {
     opacity: 1;
-    outline: 2px solid var(--primary-fg-color);
+    outline: 2px solid var(--accent-color);
     pointer-events: all;
 }
 
@@ -420,7 +420,7 @@
     content: "";
     position: absolute;
     inset: 0;
-    border: 2px solid var(--primary-fg-color);
+    border: 2px solid var(--accent-color);
     pointer-events: none;
     z-index: 11;
 }
@@ -514,7 +514,7 @@
 .layoutArea .contentViewContainer .contentViewContents .transcriptContainer span.active,
 .layoutArea .contentViewContainer .contentViewContents .customhtmlContainer .timebased:hover,
 .layoutArea .contentViewContainer .contentViewContents .customhtmlContainer .timebased.active {
-    border-bottom-color: var(--primary-fg-color);
+    border-bottom-color: var(--accent-color);
     opacity: 1;
     cursor: pointer;
 }
@@ -639,6 +639,7 @@
     width: 100%;
     height: 100%;
     background: var(--secondary-bg-color);
+    color: var(--primary-fg-color);
     box-sizing: border-box;
     overflow: clip;
     display: none;
@@ -1198,7 +1199,7 @@
 
 .layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement.active,
 .layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement.active {
-    border-color: var(--primary-fg-color);
+    border-color: var(--accent-color);
 }
 
 /* The chapter's optional second line. Shown where the card has room for a third
@@ -1244,7 +1245,7 @@
    own (the sizes further down change them); they are no setting for custom CSS. */
 
 .layoutArea .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps {
-    --chapter-step-color: var(--primary-fg-color);
+    --chapter-step-color: var(--accent-color);
     --chapter-step-dot: 14px;
     --chapter-step-line: 2px;
     --chapter-step-track: color-mix(in srgb, var(--chapter-step-color) 15%, transparent);
@@ -2611,7 +2612,7 @@
 }
 
 .layoutArea .contentViewContainer .contentViewContents .transcriptSearchInput:focus {
-    border-color: var(--primary-fg-color);
+    border-color: var(--accent-color);
     background: color-mix(in srgb, var(--primary-bg-color) 60%, transparent);
 }
 

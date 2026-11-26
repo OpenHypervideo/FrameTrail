@@ -41,7 +41,8 @@
     justify-content: space-between;
     padding: 8px 8px 8px 12px;
     background: var(--primary-bg-color);
-    color: var(--primary-fg-color);
+    /* the theme's own colour: in a dialog that shows content (the resource preview) --primary-fg-color is the body text */
+    color: var(--accent-color, var(--primary-fg-color));
     flex-shrink: 0;
     min-height: 20px;
 }
@@ -57,7 +58,7 @@
 .ft-dialog-titlebar-close {
     background: none;
     border: none;
-    color: var(--primary-fg-color);
+    color: var(--accent-color, var(--primary-fg-color));
     cursor: pointer;
     padding: 3px 0;
     opacity: 0.7;

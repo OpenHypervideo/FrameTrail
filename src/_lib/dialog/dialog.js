@@ -137,6 +137,7 @@ window.Dialog = function(opts) {
             '--primary-fg-color', '--secondary-fg-color',
             '--semi-transparent-bg-color', '--semi-transparent-fg-color',
             '--semi-transparent-fg-highlight-color',
+            '--text-color', '--accent-color', '--on-accent-color',
             '--annotation-preview-bg-color', '--highlight-color',
             '--tooltip-bg-color', '--video-background-color'
         ];

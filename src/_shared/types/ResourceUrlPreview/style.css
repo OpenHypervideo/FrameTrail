@@ -14,7 +14,7 @@
 }
 
 .resourceDetail[data-type="urlpreview"] a {
-    color: var(--primary-fg-color);
+    color: var(--accent-color);
 }
 
 .resourceDetail[data-type="urlpreview"][data-original-type="bluesky"] {

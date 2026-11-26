@@ -27,6 +27,15 @@ body > .contentViewPreview,
     --semi-transparent-fg-highlight-color: rgba(255, 255, 255, .4);
     --semi-transparent-fg-highlight-color: color-mix(in srgb, var(--primary-fg-color) 40%, transparent);
 
+    /* Roles: what the content areas draw with (see "Content areas" at the end of this file).
+       --text-color is the body text there: the theme's own colour is often too strong to read at length.
+       --accent-color is the theme's own colour: what is active, selected or pressed, headings and links;
+       --on-accent-color is the text on it. Every built-in theme sets --text-color; a theme that sets
+       none gets its primary-fg with most of the colour taken out (below). */
+    --text-color: var(--primary-fg-color);
+    --accent-color: var(--primary-fg-color);
+    --on-accent-color: var(--primary-bg-color);
+
     /* Defaults — same across all built-in themes, overridable by custom themes */
     --annotation-preview-bg-color: rgba(100, 100, 100, .2);
     --highlight-color: #D8D3AD;
@@ -44,6 +53,46 @@ body > .contentViewPreview,
     --input-border-width: 1px;
 }
 
+/* What a theme derives from its own colours. A custom property that refers to another one is worked out
+   on the element that declares it, so this is declared where the themes set their colours (the list of
+   every theme block below), not on .frametrail-body: there it took the default palette's colours for
+   every theme that did not spell these out. It stands before the theme blocks, whose values win
+   (:where() keeps it as specific as they are). */
+.frametrail-body[data-frametrail-theme]:where(:not([data-frametrail-theme="classic"])) :is(
+    .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], [data-edit-mode="transcripts"], .extensionEditMode),
+    .mainContainer[data-edit-mode] .hypervideoContainer,
+    .loadingScreen,
+    .userLoginOverlay,
+    .signInWall,
+    .titlebar:not(.editActive),
+    .sidePanel:not(.editActive),
+    .layoutEditor
+) {
+    --semi-transparent-bg-color: color-mix(in srgb, var(--primary-bg-color) 80%, transparent);
+    --semi-transparent-fg-color: color-mix(in srgb, var(--primary-fg-color) 30%, transparent);
+    --semi-transparent-fg-highlight-color: color-mix(in srgb, var(--primary-fg-color) 40%, transparent);
+    --text-color: var(--primary-fg-color);
+    --accent-color: var(--primary-fg-color);
+    --on-accent-color: var(--primary-bg-color);
+}
+
+/* A theme without a --text-color of its own (a custom theme of four colours): its primary-fg with most
+   of the colour taken out, as light or dark as it is */
+@supports (color: oklch(from red l c h)) {
+    .frametrail-body[data-frametrail-theme]:where(:not([data-frametrail-theme="classic"])) :is(
+        .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], [data-edit-mode="transcripts"], .extensionEditMode),
+        .mainContainer[data-edit-mode] .hypervideoContainer,
+        .loadingScreen,
+        .userLoginOverlay,
+        .signInWall,
+        .titlebar:not(.editActive),
+        .sidePanel:not(.editActive),
+        .layoutEditor
+    ) {
+        --text-color: oklch(from var(--primary-fg-color) l min(c, 0.035) h);
+    }
+}
+
 .frametrail-body[data-frametrail-theme="bright"] :is(
     .mainContainer:not([data-edit-mode="settings"], [data-edit-mode="overlays"], [data-edit-mode="annotations"], [data-edit-mode="chapters"], [data-edit-mode="transcripts"], .extensionEditMode),
     .mainContainer[data-edit-mode] .hypervideoContainer,
@@ -59,6 +108,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(235, 235, 235, .6);
     --primary-fg-color: rgba(80, 80, 80, 1);
     --secondary-fg-color: rgba(100, 100, 100, 1);
+    --text-color: rgba(80, 80, 80, 1);
     --annotation-preview-bg-color: rgba(255, 255, 255, .2);
     --video-background-color: var(--secondary-bg-color);
 }
@@ -77,6 +127,7 @@ body > .contentViewPreview,
     --primary-bg-color: rgba(0, 0, 0, 1);
     --secondary-bg-color: rgba(50, 50, 50, .6);
     --secondary-fg-color: rgba(210, 210, 210, 1);
+    --text-color: rgba(255, 255, 255, 1);
     /* semi-transparent-bg cannot be derived: 50,50,50 base ≠ primary-bg 0,0,0 */
     --semi-transparent-bg-color: rgba(50, 50, 50, .8);
 }
@@ -97,6 +148,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(22, 27, 34, .6);
     --primary-fg-color: rgba(230, 237, 243, 1);
     --secondary-fg-color: rgba(139, 148, 158, 1);
+    --text-color: rgba(230, 237, 243, 1);
     /* semi-transparent-bg: use slightly lighter base to stay visible on pure-black */
     --semi-transparent-bg-color: rgba(22, 27, 34, .8);
 }
@@ -117,6 +169,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(51, 65, 85, .6);
     --primary-fg-color: rgba(226, 232, 240, 1);
     --secondary-fg-color: rgba(148, 163, 184, 1);
+    --text-color: rgba(226, 232, 240, 1);
 }
 
 /* ── Inspiration 2: warm sandy cream + teal (Ghibli/Totoro poster) ── */
@@ -132,9 +185,10 @@ body > .contentViewPreview,
 ),
 .themeItem[data-theme="studio"] {
     --primary-bg-color: rgba(234, 218, 186, 1);
-    --secondary-bg-color: rgba(215, 195, 155, .6);
+    --secondary-bg-color: rgba(207, 196, 174, .6);
     --primary-fg-color: rgba(32, 78, 102, 1);
-    --secondary-fg-color: rgba(72, 128, 148, 1);
+    --secondary-fg-color: rgba(45, 102, 121, 1);
+    --text-color: rgba(26, 47, 59, 1);
     --annotation-preview-bg-color: rgba(255, 255, 255, .5);
     --video-background-color: var(--secondary-bg-color);
     /* semi-transparent-fg: teal base keeps readability on warm bg */
@@ -158,6 +212,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(28, 90, 95, .6);
     --primary-fg-color: rgba(255, 122, 98, 1);
     --secondary-fg-color: rgba(255, 178, 162, 1);
+    --text-color: rgba(255, 233, 228, 1);
     --semi-transparent-bg-color: rgba(18, 62, 65, .8);
     --semi-transparent-fg-color: rgba(255, 122, 98, .3);
     --semi-transparent-fg-highlight-color: rgba(255, 122, 98, .4);
@@ -179,6 +234,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(28, 38, 80, .6);
     --primary-fg-color: rgba(255, 192, 65, 1);
     --secondary-fg-color: rgba(255, 225, 155, 1);
+    --text-color: rgba(216, 202, 179, 1);
     --semi-transparent-fg-color: rgba(255, 192, 65, .3);
     --semi-transparent-fg-highlight-color: rgba(255, 192, 65, .4);
 }
@@ -195,12 +251,12 @@ body > .contentViewPreview,
     .layoutEditor
 ),
 .themeItem[data-theme="nordic"] {
-    --primary-bg-color: rgba(58, 82, 118, 1);
-    --secondary-bg-color: rgba(44, 64, 96, .6);
+    --primary-bg-color: rgba(38, 61, 96, 1);
+    --secondary-bg-color: rgba(69, 92, 127, .6);
     --primary-fg-color: rgba(255, 178, 88, 1);
     --secondary-fg-color: rgba(255, 212, 152, 1);
-    /* semi-transparent-bg: darker base for better contrast */
-    --semi-transparent-bg-color: rgba(38, 55, 85, .8);
+    --text-color: rgba(255, 247, 239, 1);
+    --semi-transparent-bg-color: rgba(38, 61, 96, .8);
     --semi-transparent-fg-color: rgba(255, 178, 88, .3);
     --semi-transparent-fg-highlight-color: rgba(255, 178, 88, .4);
 }
@@ -221,6 +277,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(32, 25, 28, .6);
     --primary-fg-color: rgba(215, 162, 138, 1);
     --secondary-fg-color: rgba(242, 200, 180, 1);
+    --text-color: rgba(209, 182, 170, 1);
     --semi-transparent-bg-color: rgba(32, 25, 28, .8);
     --semi-transparent-fg-color: rgba(215, 162, 138, .3);
     --semi-transparent-fg-highlight-color: rgba(215, 162, 138, .4);
@@ -242,6 +299,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(60, 70, 30, .6);
     --primary-fg-color: rgba(255, 88, 152, 1);
     --secondary-fg-color: rgba(255, 170, 205, 1);
+    --text-color: rgba(247, 216, 224, 1);
     --semi-transparent-fg-color: rgba(255, 88, 152, .3);
     --semi-transparent-fg-highlight-color: rgba(255, 88, 152, .4);
 }
@@ -262,6 +320,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(36, 44, 56, .6);
     --primary-fg-color: rgba(0, 210, 222, 1);
     --secondary-fg-color: rgba(130, 232, 240, 1);
+    --text-color: rgba(176, 209, 211, 1);
     --semi-transparent-bg-color: rgba(25, 30, 38, .8);
     --semi-transparent-fg-color: rgba(0, 210, 222, .3);
     --semi-transparent-fg-highlight-color: rgba(0, 210, 222, .4);
@@ -283,6 +342,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(20, 52, 62, .6);
     --primary-fg-color: rgba(255, 175, 152, 1);
     --secondary-fg-color: rgba(255, 215, 200, 1);
+    --text-color: rgba(223, 194, 185, 1);
     --semi-transparent-bg-color: rgba(12, 32, 38, .8);
     --semi-transparent-fg-color: rgba(255, 175, 152, .3);
     --semi-transparent-fg-highlight-color: rgba(255, 175, 152, .4);
@@ -300,11 +360,12 @@ body > .contentViewPreview,
     .layoutEditor
 ),
 .themeItem[data-theme="terra"] {
-    --primary-bg-color: rgba(178, 92, 65, 1);
-    --secondary-bg-color: rgba(152, 75, 50, .6);
+    --primary-bg-color: rgba(92, 47, 33, 1);
+    --secondary-bg-color: rgba(125, 77, 61, .6);
     --primary-fg-color: rgba(218, 245, 208, 1);
     --secondary-fg-color: rgba(178, 222, 165, 1);
-    --semi-transparent-bg-color: rgba(140, 65, 42, .8);
+    --text-color: rgba(231, 248, 225, 1);
+    --semi-transparent-bg-color: rgba(92, 47, 33, .8);
     --semi-transparent-fg-color: rgba(218, 245, 208, .3);
     --semi-transparent-fg-highlight-color: rgba(218, 245, 208, .4);
 }
@@ -322,9 +383,10 @@ body > .contentViewPreview,
 ),
 .themeItem[data-theme="eclipse"] {
     --primary-bg-color: rgba(30, 10, 55, 1);
-    --secondary-bg-color: rgba(50, 20, 85, .6);
+    --secondary-bg-color: rgba(47, 29, 72, .6);
     --primary-fg-color: rgba(178, 240, 72, 1);
     --secondary-fg-color: rgba(212, 250, 145, 1);
+    --text-color: rgba(210, 221, 197, 1);
     --semi-transparent-fg-color: rgba(178, 240, 72, .3);
     --semi-transparent-fg-highlight-color: rgba(178, 240, 72, .4);
 }
@@ -345,6 +407,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(235, 222, 195, .6);
     --primary-fg-color: rgba(108, 18, 40, 1);
     --secondary-fg-color: rgba(162, 42, 70, 1);
+    --text-color: rgba(75, 51, 54, 1);
     --annotation-preview-bg-color: rgba(255, 255, 255, .4);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-bg-color: rgba(235, 222, 195, .8);
@@ -368,6 +431,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(18, 22, 40, .6);
     --primary-fg-color: rgba(0, 255, 180, 1);
     --secondary-fg-color: rgba(150, 255, 225, 1);
+    --text-color: rgba(197, 225, 210, 1);
     /* semi-transparent-bg: use slightly lighter base for visibility */
     --semi-transparent-bg-color: rgba(18, 22, 40, .8);
     /* semi-transparent-fg: neon base, reduced opacity */
@@ -391,6 +455,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(52, 58, 100, .6);
     --primary-fg-color: rgba(255, 255, 255, 1);
     --secondary-fg-color: rgba(210, 214, 238, 1);
+    --text-color: rgba(255, 255, 255, 1);
 }
 
 .frametrail-body[data-frametrail-theme="blue"] :is(
@@ -404,12 +469,12 @@ body > .contentViewPreview,
     .layoutEditor
 ),
 .themeItem[data-theme="blue"] {
-    --primary-bg-color: rgba(80, 93, 110, 1);
-    --secondary-bg-color: rgba(107, 125, 148, .6);
+    --primary-bg-color: rgba(50, 62, 78, 1);
+    --secondary-bg-color: rgba(77, 92, 112, .6);
     --primary-fg-color: rgba(238, 243, 249, 1);
     --secondary-fg-color: rgba(218, 222, 230, 1);
-    /* semi-transparent-bg: deliberate different hue, cannot derive from primary-bg */
-    --semi-transparent-bg-color: rgba(44, 62, 80, .8);
+    --text-color: rgba(238, 243, 249, 1);
+    --semi-transparent-bg-color: rgba(50, 62, 78, .8);
 }
 
 .frametrail-body[data-frametrail-theme="grey"] :is(
@@ -426,7 +491,8 @@ body > .contentViewPreview,
     --primary-bg-color: rgba(210, 210, 210, 1);
     --secondary-bg-color: rgba(240, 240, 240, .6);
     --primary-fg-color: rgba(80, 80, 80, 1);
-    --secondary-fg-color: rgba(110, 110, 110, 1);
+    --secondary-fg-color: rgba(90, 90, 90, 1);
+    --text-color: rgba(36, 36, 36, 1);
     /* semi-transparent-fg: darker base than primary-fg — deliberate design choice */
     --semi-transparent-fg-color: rgba(50, 50, 50, .3);
     --semi-transparent-fg-highlight-color: rgba(50, 50, 50, .4);
@@ -444,10 +510,11 @@ body > .contentViewPreview,
     .layoutEditor
 ),
 .themeItem[data-theme="plum"] {
-    --primary-bg-color: rgba(65, 24, 75, 1);
-    --secondary-bg-color: rgba(90, 40, 105, .6);
+    --primary-bg-color: rgba(60, 32, 67, 1);
+    --secondary-bg-color: rgba(89, 61, 98, .6);
     --primary-fg-color: rgba(248, 232, 255, 1);
     --secondary-fg-color: rgba(210, 175, 230, 1);
+    --text-color: rgba(248, 232, 255, 1);
 }
 
 /* ── Crimson: deep red, bold and dramatic ── */
@@ -462,10 +529,11 @@ body > .contentViewPreview,
     .layoutEditor
 ),
 .themeItem[data-theme="crimson"] {
-    --primary-bg-color: rgba(110, 12, 12, 1);
-    --secondary-bg-color: rgba(140, 25, 25, .6);
+    --primary-bg-color: rgba(88, 42, 37, 1);
+    --secondary-bg-color: rgba(121, 71, 66, .6);
     --primary-fg-color: rgba(255, 240, 235, 1);
     --secondary-fg-color: rgba(245, 195, 190, 1);
+    --text-color: rgba(255, 240, 235, 1);
 }
 
 /* ── Ocean: deep teal, modern tech ── */
@@ -484,6 +552,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(0, 78, 110, .6);
     --primary-fg-color: rgba(210, 245, 255, 1);
     --secondary-fg-color: rgba(155, 215, 240, 1);
+    --text-color: rgba(210, 245, 255, 1);
     /* semi-transparent-bg: brighter secondary base, keep primary hue */
     --semi-transparent-bg-color: rgba(0, 48, 73, .8);
 }
@@ -504,6 +573,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(32, 68, 48, .6);
     --primary-fg-color: rgba(198, 232, 210, 1);
     --secondary-fg-color: rgba(148, 192, 165, 1);
+    --text-color: rgba(198, 232, 210, 1);
 }
 
 /* ── Emerald: rich jewel-tone green ── */
@@ -518,11 +588,12 @@ body > .contentViewPreview,
     .layoutEditor
 ),
 .themeItem[data-theme="emerald"] {
-    --primary-bg-color: rgba(5, 90, 65, 1);
-    --secondary-bg-color: rgba(10, 120, 85, .6);
+    --primary-bg-color: rgba(0, 73, 52, 1);
+    --secondary-bg-color: rgba(48, 103, 81, .6);
     --primary-fg-color: rgba(220, 255, 240, 1);
     --secondary-fg-color: rgba(168, 235, 205, 1);
-    --semi-transparent-bg-color: rgba(5, 90, 65, .8);
+    --text-color: rgba(220, 255, 240, 1);
+    --semi-transparent-bg-color: rgba(0, 73, 52, .8);
 }
 
 .frametrail-body[data-frametrail-theme="green"] :is(
@@ -536,10 +607,11 @@ body > .contentViewPreview,
     .layoutEditor
 ),
 .themeItem[data-theme="green"] {
-    --primary-bg-color: rgba(22, 160, 133, 1);
-    --secondary-bg-color: rgba(30, 139, 115, .6);
+    --primary-bg-color: rgba(0, 73, 59, 1);
+    --secondary-bg-color: rgba(40, 104, 88, .6);
     --primary-fg-color: rgba(250, 255, 255, 1);
     --secondary-fg-color: rgba(227, 237, 234, 1);
+    --text-color: rgba(250, 255, 255, 1);
 }
 
 /* ── Coral: vibrant coral-red, lively ── */
@@ -554,12 +626,12 @@ body > .contentViewPreview,
     .layoutEditor
 ),
 .themeItem[data-theme="coral"] {
-    --primary-bg-color: rgba(255, 108, 94, 1);
-    --secondary-bg-color: rgba(240, 85, 72, .6);
+    --primary-bg-color: rgba(93, 45, 40, 1);
+    --secondary-bg-color: rgba(126, 75, 68, .6);
     --primary-fg-color: rgba(255, 252, 248, 1);
     --secondary-fg-color: rgba(255, 228, 224, 1);
-    /* semi-transparent-bg: darker secondary base, use primary */
-    --semi-transparent-bg-color: rgba(255, 108, 94, .8);
+    --text-color: rgba(255, 252, 248, 1);
+    --semi-transparent-bg-color: rgba(93, 45, 40, .8);
 }
 
 /* ── Inspiration 3: medium purple (Dutch Sonnenborgh poster) ── */
@@ -574,10 +646,11 @@ body > .contentViewPreview,
     .layoutEditor
 ),
 .themeItem[data-theme="violet"] {
-    --primary-bg-color: rgba(138, 98, 184, 1);
-    --secondary-bg-color: rgba(118, 80, 160, .6);
+    --primary-bg-color: rgba(69, 51, 91, 1);
+    --secondary-bg-color: rgba(99, 81, 123, .6);
     --primary-fg-color: rgba(255, 255, 255, 1);
     --secondary-fg-color: rgba(235, 220, 252, 1);
+    --text-color: rgba(255, 255, 255, 1);
 }
 
 /* ── Sunset: dark wine-burgundy with warm peach text ── */
@@ -596,6 +669,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(88, 32, 52, .6);
     --primary-fg-color: rgba(255, 200, 160, 1);
     --secondary-fg-color: rgba(230, 160, 110, 1);
+    --text-color: rgba(232, 208, 191, 1);
     /* semi-transparent-fg: warm peach base looks good */
     --semi-transparent-fg-color: rgba(255, 200, 160, .3);
     --semi-transparent-fg-highlight-color: rgba(255, 200, 160, .4);
@@ -617,6 +691,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(67, 46, 30, .6);
     --primary-fg-color: rgba(245, 232, 210, 1);
     --secondary-fg-color: rgba(200, 175, 145, 1);
+    --text-color: rgba(245, 232, 210, 1);
 }
 
 /* ── Mocha: warm medium brown, 2025-trend ── */
@@ -631,12 +706,12 @@ body > .contentViewPreview,
     .layoutEditor
 ),
 .themeItem[data-theme="mocha"] {
-    --primary-bg-color: rgba(158, 128, 108, 1);
-    --secondary-bg-color: rgba(138, 110, 88, .6);
+    --primary-bg-color: rgba(80, 54, 36, 1);
+    --secondary-bg-color: rgba(112, 84, 64, .6);
     --primary-fg-color: rgba(255, 248, 240, 1);
     --secondary-fg-color: rgba(240, 225, 208, 1);
-    /* semi-transparent-bg: slightly darker for contrast on mid-tone bg */
-    --semi-transparent-bg-color: rgba(120, 95, 75, .8);
+    --text-color: rgba(255, 248, 240, 1);
+    --semi-transparent-bg-color: rgba(80, 54, 36, .8);
 }
 
 /* ── Sand: warm terracotta-sand with dark brown text ── */
@@ -651,17 +726,17 @@ body > .contentViewPreview,
     .layoutEditor
 ),
 .themeItem[data-theme="sand"] {
-    --primary-bg-color: rgba(210, 175, 130, 1);
-    --secondary-bg-color: rgba(190, 155, 110, .6);
+    --primary-bg-color: rgba(221, 199, 171, 1);
+    --secondary-bg-color: rgba(193, 179, 161, .6);
     --primary-fg-color: rgba(60, 38, 15, 1);
     --secondary-fg-color: rgba(105, 72, 38, 1);
+    --text-color: rgba(43, 28, 13, 1);
     --annotation-preview-bg-color: rgba(255, 255, 255, .4);
     --video-background-color: var(--secondary-bg-color);
     /* semi-transparent-fg: dark brown base for readability */
     --semi-transparent-fg-color: rgba(60, 38, 15, .3);
     --semi-transparent-fg-highlight-color: rgba(60, 38, 15, .4);
-    /* semi-transparent-bg: slightly darker for visibility */
-    --semi-transparent-bg-color: rgba(175, 140, 95, .8);
+    --semi-transparent-bg-color: rgba(221, 199, 171, .8);
 }
 
 /* ── Rose: soft pink with deep rose text ── */
@@ -680,6 +755,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(245, 210, 218, .6);
     --primary-fg-color: rgba(100, 25, 45, 1);
     --secondary-fg-color: rgba(155, 70, 95, 1);
+    --text-color: rgba(73, 49, 53, 1);
     --annotation-preview-bg-color: rgba(255, 255, 255, .6);
     --video-background-color: var(--secondary-bg-color);
     /* semi-transparent-fg: deep rose base */
@@ -705,6 +781,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(210, 235, 250, .6);
     --primary-fg-color: rgba(15, 50, 90, 1);
     --secondary-fg-color: rgba(55, 100, 155, 1);
+    --text-color: rgba(37, 51, 67, 1);
     --annotation-preview-bg-color: rgba(255, 255, 255, .6);
     --video-background-color: var(--secondary-bg-color);
     /* semi-transparent-fg: dark navy base for clean readability */
@@ -728,7 +805,8 @@ body > .contentViewPreview,
     --primary-bg-color: rgba(198, 214, 192, 1);
     --secondary-bg-color: rgba(172, 192, 165, .6);
     --primary-fg-color: rgba(35, 60, 40, 1);
-    --secondary-fg-color: rgba(75, 110, 80, 1);
+    --secondary-fg-color: rgba(61, 96, 66, 1);
+    --text-color: rgba(23, 41, 27, 1);
     --annotation-preview-bg-color: rgba(255, 255, 255, .4);
     --video-background-color: var(--secondary-bg-color);
     /* semi-transparent-fg: dark forest base */
@@ -753,6 +831,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(195, 238, 220, .6);
     --primary-fg-color: rgba(20, 78, 52, 1);
     --secondary-fg-color: rgba(55, 125, 90, 1);
+    --text-color: rgba(47, 69, 57, 1);
     --annotation-preview-bg-color: rgba(195, 238, 220, .3);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-fg-color: rgba(20, 78, 52, .3);
@@ -775,6 +854,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(198, 228, 250, .6);
     --primary-fg-color: rgba(15, 60, 110, 1);
     --secondary-fg-color: rgba(50, 105, 168, 1);
+    --text-color: rgba(47, 61, 78, 1);
     --annotation-preview-bg-color: rgba(198, 228, 250, .3);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-fg-color: rgba(15, 60, 110, .3);
@@ -797,6 +877,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(178, 192, 208, .6);
     --primary-fg-color: rgba(22, 38, 58, 1);
     --secondary-fg-color: rgba(52, 78, 108, 1);
+    --text-color: rgba(22, 38, 58, 1);
     --annotation-preview-bg-color: rgba(178, 192, 208, .3);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-fg-color: rgba(22, 38, 58, .3);
@@ -819,6 +900,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(218, 210, 248, .6);
     --primary-fg-color: rgba(60, 35, 115, 1);
     --secondary-fg-color: rgba(105, 78, 175, 1);
+    --text-color: rgba(56, 52, 72, 1);
     --annotation-preview-bg-color: rgba(218, 210, 248, .3);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-fg-color: rgba(60, 35, 115, .3);
@@ -841,6 +923,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(255, 215, 190, .6);
     --primary-fg-color: rgba(115, 45, 10, 1);
     --secondary-fg-color: rgba(175, 85, 40, 1);
+    --text-color: rgba(83, 61, 52, 1);
     --annotation-preview-bg-color: rgba(255, 215, 190, .3);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-fg-color: rgba(115, 45, 10, .3);
@@ -863,6 +946,7 @@ body > .contentViewPreview,
     --secondary-bg-color: rgba(255, 205, 218, .6);
     --primary-fg-color: rgba(105, 20, 50, 1);
     --secondary-fg-color: rgba(165, 55, 88, 1);
+    --text-color: rgba(75, 51, 56, 1);
     --annotation-preview-bg-color: rgba(255, 205, 218, .3);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-fg-color: rgba(105, 20, 50, .3);
@@ -882,9 +966,10 @@ body > .contentViewPreview,
 ),
 .themeItem[data-theme="lemon"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
-    --secondary-bg-color: rgba(255, 240, 180, .6);
+    --secondary-bg-color: rgba(249, 240, 203, .6);
     --primary-fg-color: rgba(85, 65, 0, 1);
     --secondary-fg-color: rgba(140, 108, 10, 1);
+    --text-color: rgba(73, 65, 44, 1);
     --annotation-preview-bg-color: rgba(255, 240, 180, .3);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-fg-color: rgba(85, 65, 0, .3);
@@ -904,9 +989,10 @@ body > .contentViewPreview,
 ),
 .themeItem[data-theme="turquoise"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
-    --secondary-bg-color: rgba(155, 228, 215, .6);
+    --secondary-bg-color: rgba(177, 222, 214, .6);
     --primary-fg-color: rgba(10, 95, 75, 1);
-    --secondary-fg-color: rgba(26, 148, 115, 1);
+    --secondary-fg-color: rgba(0, 132, 101, 1);
+    --text-color: rgba(45, 71, 62, 1);
     --annotation-preview-bg-color: rgba(155, 228, 215, .3);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-fg-color: rgba(10, 95, 75, .3);
@@ -926,9 +1012,10 @@ body > .contentViewPreview,
 ),
 .themeItem[data-theme="grape"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
-    --secondary-bg-color: rgba(208, 180, 232, .6);
+    --secondary-bg-color: rgba(203, 185, 219, .6);
     --primary-fg-color: rgba(78, 28, 118, 1);
     --secondary-fg-color: rgba(120, 58, 165, 1);
+    --text-color: rgba(64, 55, 74, 1);
     --annotation-preview-bg-color: rgba(208, 180, 232, .3);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-fg-color: rgba(78, 28, 118, .3);
@@ -948,9 +1035,10 @@ body > .contentViewPreview,
 ),
 .themeItem[data-theme="tangerine"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
-    --secondary-bg-color: rgba(248, 200, 152, .6);
+    --secondary-bg-color: rgba(233, 204, 176, .6);
     --primary-fg-color: rgba(115, 48, 0, 1);
     --secondary-fg-color: rgba(180, 88, 18, 1);
+    --text-color: rgba(81, 60, 49, 1);
     --annotation-preview-bg-color: rgba(248, 200, 152, .3);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-fg-color: rgba(115, 48, 0, .3);
@@ -970,9 +1058,10 @@ body > .contentViewPreview,
 ),
 .themeItem[data-theme="tomato"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
-    --secondary-bg-color: rgba(246, 178, 172, .6);
+    --secondary-bg-color: rgba(230, 185, 181, .6);
     --primary-fg-color: rgba(110, 15, 10, 1);
     --secondary-fg-color: rgba(182, 46, 38, 1);
+    --text-color: rgba(75, 51, 47, 1);
     --annotation-preview-bg-color: rgba(246, 178, 172, .3);
     --video-background-color: var(--secondary-bg-color);
     --semi-transparent-fg-color: rgba(110, 15, 10, .3);
@@ -992,11 +1081,12 @@ body > .contentViewPreview,
 .themeItem[data-theme="orange"] {
     --primary-bg-color: rgba(255, 255, 255, 1);
     --secondary-bg-color: rgba(234, 225, 211, .6);
-    --primary-fg-color: rgba(244, 107, 59, 1);
-    --secondary-fg-color: rgba(125, 120, 120, 1);
+    --primary-fg-color: rgba(205, 71, 13, 1);
+    --secondary-fg-color: rgba(122, 117, 117, 1);
+    --text-color: rgba(83, 60, 52, 1);
     /* semi-transparent-fg: use secondary-fg base — 30% orange looks bad on timelines */
-    --semi-transparent-fg-color: rgba(125, 120, 120, .3);
-    --semi-transparent-fg-highlight-color: rgba(125, 120, 120, .4);
+    --semi-transparent-fg-color: rgba(122, 117, 117, .3);
+    --semi-transparent-fg-highlight-color: rgba(122, 117, 117, .4);
     --annotation-preview-bg-color: rgba(255, 255, 255, .9);
 }
 
@@ -1010,5 +1100,22 @@ body > .contentViewPreview,
     --semi-transparent-bg-color: rgba(47, 50, 58, .8);
     --semi-transparent-fg-color: rgba(255, 255, 255, .3);
     --semi-transparent-fg-highlight-color: rgba(255, 255, 255, .4);
+    --text-color: rgba(255, 255, 255, 1);
+    --accent-color: rgba(255, 255, 255, 1);
+    --on-accent-color: rgba(47, 50, 58, 1);
     --video-background-color: #000;
+}
+
+
+/* Content areas: where annotations, cards, quizzes and transcripts are read. They draw with the body
+   text colour: inside them --primary-fg-color is --text-color, so every rule that colours text with the
+   theme's colour draws calm there, and the theme's own colour is --accent-color (active and selected
+   items, main buttons, headings, links). The player's own interface (title bar, controls, tabs) is
+   outside and keeps the theme's colour. */
+.layoutArea .contentViewContainer,
+.layoutAreaDetails .contentViewDetailsContainer,
+.overlayContainer .overlayElement .resourceDetail {
+    --primary-fg-color: var(--text-color);
+    --semi-transparent-fg-color: color-mix(in srgb, var(--text-color) 30%, transparent);
+    --semi-transparent-fg-highlight-color: color-mix(in srgb, var(--text-color) 40%, transparent);
 }

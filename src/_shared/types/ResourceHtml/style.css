@@ -9,13 +9,20 @@
     overflow-y: auto;
 }
 
-.resourcePreviewDialog .resourceDetail[data-type="html"] {
-    color: var(--primary-bg-color);
-}
-
 .overlayElement .resourceDetail[data-type="html"] .resourceContent {
     padding: 0px;
     color: #000;
+}
+
+/* As for a text: headings and links take the theme's own colour where the HTML is read, the colour of
+   their text on the video */
+:is(.layoutArea, .layoutAreaDetails, .resourcePreviewDialog) .resourceDetail[data-type="html"] :is(h1, h2, h3, h4, a) {
+    color: var(--accent-color);
+}
+
+.overlayElement .resourceDetail[data-type="html"] a {
+    color: inherit;
+    text-decoration: underline;
 }
 
 .resourceDetail[data-type="html"] ol, .resourceDetail[data-type="html"] ul {
