@@ -94,12 +94,12 @@
                             "default": 6
                         },
                         "openWhenActive": {
-                            "description": "The view's layout area is open only while one of the view's annotations is active: it opens when one starts and closes when the last one has ended (see openGap), and it starts closed unless one is active at the start. With several views in an area, the area is open while any view with this option has an active annotation, and shows the view whose active annotation started last. What the viewer or event code opens or closes by hand stays until the annotations next want something else. Around the video and in the ring; not in the area for paired phones (areaCompanion). initClosed has no effect on such a view.",
+                            "description": "The view's layout area is open only while one of the view's annotations is active: it opens when one starts and closes when the last one has ended (see openGap), and it starts closed unless one is active at the start. With several views in an area, only the view in the tab that is shown opens and closes it, and FrameTrail never changes the tab: the views in the other tabs neither open the area nor keep it open, nothing automatic happens while the shown tab's view does not have this option, and when the hypervideo loads the shown tab is the area's last view. What the viewer or event code opens or closes by hand, and a tab the viewer picks, stays until the annotations of the shown tab's view next want something else. Around the video and in the ring; not in the area for paired phones (areaCompanion). initClosed has no effect on such a view.",
                             "type": "boolean",
                             "default": false
                         },
                         "openGap": {
-                            "description": "With openWhenActive: the seconds of video time between two annotations up to which the area stays open. An area with several such views uses the largest of their gaps.",
+                            "description": "With openWhenActive: the seconds of video time between two annotations up to which the area stays open, while this view is the tab that is shown.",
                             "type": "number",
                             "minimum": 0,
                             "maximum": 600,

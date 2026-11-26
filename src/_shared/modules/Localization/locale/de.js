@@ -414,7 +414,7 @@ window.FrameTrail_L10n['de'] = {
     "MessageHintNoChapters": "Dieses Hypervideo hat noch keine Kapitel. Sie können im Editor unter \"Kapitel\" (siehe Seitenleiste) angelegt werden.",
     "MessageHintNoQuizzes": "Dieses Hypervideo hat noch keine Fragen. Füge ein Quiz als benutzerdefiniertes Overlay hinzu, oder als Annotation, die eine Ansicht „Annotationen“ zeigt.",
     "MessageHintNoTranscripts": "Dieses Hypervideo hat noch keine Transkripte. Sie werden im Editor unter \"Transkripte\" (siehe Seitenleiste) angelegt.",
-    "MessageHintOpenWhenActive": "Der Bereich öffnet sich, wenn eine dieser Annotationen beginnt, und schließt sich, wenn die letzte zu Ende ist. Bei mehreren Ansichten in einem Bereich zeigt er die, deren Annotation zuletzt begonnen hat.",
+    "MessageHintOpenWhenActive": "Der Bereich öffnet sich, wenn eine dieser Annotationen beginnt, und schließt sich, wenn die letzte zu Ende ist. Bei mehreren Ansichten in einem Bereich öffnet und schließt ihn nur die, deren Tab gezeigt wird, und der Tab wechselt nie von selbst: Zuschauer wählen ihn.",
     "MessageHintQuizRemember": "Ergebnisse gehören zum Hypervideo, nicht zu einer Ansicht: Sie bleiben auf dem Gerät erhalten, wenn eine seiner Ansichten „Quiz-Ergebnisse“ „Ergebnisse auf diesem Gerät merken“ eingeschaltet hat. Sonst gelten sie, bis die Seite geschlossen wird.",
     "MessageHintQuizResults": "Listet die Fragen dieses Hypervideos (Quiz-Overlays und Quiz-Annotationen, die eine Ansicht „Annotationen“ zeigt) und was beantwortet wurde.",
     "MessageHintTranscriptsEditor": "Transkripte werden im Editor unter \"Transkripte\" (siehe Seitenleiste) angelegt und bearbeitet.",

@@ -412,8 +412,10 @@ FrameTrail.defineType(
                     // "Start collapsed" says how the area starts, not how it stays: it is applied when the view is
                     // made and when the setting changes, never by a later rendering. (A Chapters view renders again
                     // once the scrub sprite has loaded, seconds into playback; by then the viewer or an action
-                    // may have opened the area.)
-                    var initClosed = !!self.contentViewData.initClosed;
+                    // may have opened the area.) A view that opens its area with its annotations has no say here
+                    // (the setting is not offered then): when it is the active tab its annotations decide, and
+                    // when another tab is active, that area starts as its other views say.
+                    var initClosed = !!self.contentViewData.initClosed && !self.opensWhenActive();
                     if (self._initClosed === undefined) {
                         if (initClosed) { self.getLayoutAreaContainer().classList.add('closed'); }
                     } else if (self._initClosed !== initClosed) {
@@ -1508,7 +1510,15 @@ FrameTrail.defineType(
                  * @return {HTMLElement} tabElement
                  */
                 renderContentViewTab: function() {
-                    return this._renderTab(this.activateContentView, true);
+                    return this._renderTab(function() {
+                        this.activateContentView();
+                        // An area that opens with its annotations follows the tab the viewer picks (ViewLayout.updateAreaOpening): at once, also while the video is paused
+                        var ViewLayout = FrameTrail.module('ViewLayout'),
+                            controller = FrameTrail.module('HypervideoController');
+                        if (this.whichArea != 'companion' && ViewLayout && controller) {
+                            ViewLayout.updateTimedStateOfContentViews(controller.currentTime);
+                        }
+                    }, true);
                 },
 
 

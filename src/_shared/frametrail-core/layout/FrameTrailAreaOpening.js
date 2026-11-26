@@ -9,10 +9,9 @@
  * Everything is counted in video time, so what an area should be is a function of the playhead: pausing and seeking never leave a wrong state, and no timer is needed.
  *
  * * A view's annotations make windows: the times at which its area should be open. Annotations that overlap, touch, or follow one another within the view's gap (openGap, seconds) share a window, so the area does not close and open again between them.
- * * An area with several such views has the windows of all their annotations together, with the largest of their gaps.
- * * The area shows the view whose active annotation started last (the leader).
- * * I only say what to do when what the annotations want changes (step): entering a window opens the area, leaving it closes it, a new leader changes the tab. In between nothing is asked, so what the viewer or event code did by hand stays until the next change.
- * * Closing and changing the tab wait while the viewer uses the area (busy); opening does not.
+ * * An area follows the view in its active tab, with that view's own gap; the views in the other tabs neither open it nor keep it open. When the active tab's view does not have the option, nothing is done. I never change the tab: only the viewer does.
+ * * I only say what to do when what the annotations want changes (step): entering a window opens the area, leaving it closes it. A tab the viewer picks is such a change too, as its view's annotations count from then on. In between nothing is asked, so what the viewer or event code did by hand stays until the next change.
+ * * Closing waits while the viewer uses the area (busy); opening does not.
  *
  * @class FrameTrailAreaOpening
  * @static
@@ -118,123 +117,75 @@
 
 
     /**
-     * I return what an area's views make together: the largest of their gaps, and the windows of all their spans with it. So an annotation of one view keeps the area open for a follower in another.
-     *
-     * @method plan
-     * @param {Array} views [{ spans: [{ start, end }], gap }]
-     * @return {Object} { gap, windows }
-     */
-    function plan(views) {
-
-        var gap   = 0,
-            spans = [];
-
-        (Array.isArray(views) ? views : []).forEach(function(view) {
-            gap = Math.max(gap, gapOf(view && view.gap));
-            Array.prototype.push.apply(spans, spansOf(view && view.spans));
-        });
-
-        return { gap: gap, windows: windows(spans, gap) };
-
-    }
-
-
-    /**
-     * I return the leader at a time: the view whose active annotation started last, as { view (its index), start, key }. Of two that started together, the view listed first. Null when no annotation is active (also between two that share a window).
-     *
-     * @method leaderAt
-     * @param {Array} views [{ spans: [{ start, end }] }]
-     * @param {Number} time
-     * @return {Object|null}
-     */
-    function leaderAt(views, time) {
-
-        var leader = null;
-
-        if (typeof time !== 'number' || !isFinite(time)) { return null; }
-
-        (Array.isArray(views) ? views : []).forEach(function(view, index) {
-            spansOf(view && view.spans).forEach(function(span) {
-                if (span.start <= time && time <= span.end && (!leader || span.start > leader.start)) {
-                    leader = { view: index, start: span.start, key: index + ':' + span.start };
-                }
-            });
-        });
-
-        return leader;
-
-    }
-
-
-    /**
-     * I return what an area's annotations want at a time: { window, lead }. window names the window the time lies in (its start), null outside of all; lead is leaderAt(). The caller adds busy, see step.
+     * I return what a view's annotations want at a time: { window }, the start of the window the time lies in, null outside of all. The caller adds view and busy, see step.
      *
      * @method at
-     * @param {Array} views [{ spans: [{ start, end }], gap }]
+     * @param {Object} view { spans: [{ start, end }], gap }
      * @param {Number} time
      * @return {Object}
      */
-    function at(views, time) {
+    function at(view, time) {
 
-        var current = windowAt(plan(views).windows, time);
+        var current = windowAt(windows(view && view.spans, view && view.gap), time);
 
-        return { window: current ? current.start : null, lead: leaderAt(views, time) };
+        return { window: current ? current.start : null };
 
     }
 
 
     /**
-     * I decide what to do with an area, from what was decided before (state, {} at first) and what its annotations want now (facts: at() plus busy, true while the area is open and the viewer uses it).
+     * I decide what to do with an area, from what was decided before (state, {} at first) and what the view in its active tab wants now (facts):
      *
-     * I answer { state, open, lead, held }:
+     * * view: names that view (any value, compared with ===), null when it does not open the area (no openWhenActive);
+     * * window: at() for that view;
+     * * busy: true while the area is open and the viewer uses it.
+     *
+     * I answer { state, open, held }:
      *
      * * state: what to hand me next time.
      * * open: true to open the area, false to close it, null to leave it as it is.
-     * * lead: the index of the view to show, null to leave the tabs as they are.
-     * * held: something waits for the viewer to be done; ask again soon, also while the video is paused.
+     * * held: closing waits for the viewer to be done; ask again soon, also while the video is paused.
      *
-     * The first decision is taken whatever the viewer does: an area starts as its annotations say. Afterwards only a change is acted on. Entering a window (also from another one, after a seek) opens the area; leaving the windows closes it, once the viewer is not busy. A new leader changes the tab, once the viewer is not busy. Between the annotations of a window the leader is forgotten, so the annotation that starts next leads again even if it led before.
+     * The first decision is taken whatever the viewer does: an area starts as its active tab's annotations say. Afterwards only a change is acted on. Entering a window (also from another one, after a seek, or another view's after a change of tab) opens the area; leaving the windows (or changing to a tab whose view has no window now) closes it, once the viewer is not busy. Being outside of all windows is the same for every view, so changing between two tabs that want nothing now changes nothing. While the active tab's view does not open the area, nothing is done and the state is kept: such a tab is passed over, as if the viewer had gone straight from the view before it to the one after it.
      *
      * @method step
      * @param {Object} state
-     * @param {Object} facts { window, lead, busy }
+     * @param {Object} facts { view, window, busy }
      * @return {Object}
      */
     function step(state, facts) {
 
         var before = (state && typeof state === 'object') ? state : {},
             given  = (facts && typeof facts === 'object') ? facts : {},
-            wanted = (given.window === undefined) ? null : given.window,
-            lead   = given.lead || null,
+            view   = (given.view === undefined) ? null : given.view,
+            wanted = (view === null || given.window === undefined) ? null : given.window,
             first  = (before.window === undefined),
             busy   = (given.busy === true) && !first,
-            next   = { window: first ? null : before.window, lead: (before.lead === undefined) ? null : before.lead },
-            result = { state: next, open: null, lead: null, held: false };
+            result = { state: { view: view, window: wanted }, open: null, held: false };
 
-        if (first) {
-            next.window = wanted;
-            result.open = (wanted !== null);
-        } else if (wanted !== before.window) {
-            if (wanted !== null) {
-                next.window = wanted;
-                result.open = true;
-            } else if (!busy) {
-                next.window = null;
-                result.open = false;
-            } else {
-                result.held = true;
-            }
+        // The active tab does not open the area: it stays as it is, and what was decided before is kept, so the tab is passed over
+        if (view === null) {
+            result.state = first ? { view: null, window: null } : { view: before.view, window: before.window };
+            return result;
         }
 
-        if (!lead) {
-            next.lead = null;
-        } else if (lead.key !== next.lead) {
-            if (!busy) {
-                next.lead   = lead.key;
-                result.lead = lead.view;
-            } else {
-                result.held = true;
-            }
+        if (first) {
+            result.open = (wanted !== null);
+            return result;
+        }
+
+        var same = (wanted === null) ? (before.window === null)
+                                     : (before.window === wanted && before.view === view);
+
+        if (same) { return result; }
+
+        if (wanted !== null) {
+            result.open = true;
+        } else if (!busy) {
+            result.open = false;
+        } else {
+            result.state = { view: before.view, window: before.window };
+            result.held  = true;
         }
 
         return result;
@@ -250,8 +201,6 @@
         gapOf:       gapOf,
         windows:     windows,
         windowAt:    windowAt,
-        plan:        plan,
-        leaderAt:    leaderAt,
         at:          at,
         step:        step
 

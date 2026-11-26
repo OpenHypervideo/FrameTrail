@@ -414,7 +414,7 @@ window.FrameTrail_L10n['en'] = {
     "MessageHintNoChapters": "This hypervideo has no chapters yet. They can be added in the \"Chapters\" editor (see sidebar).",
     "MessageHintNoQuizzes": "This hypervideo has no questions yet. Add a Quiz as a custom overlay, or as an annotation that an \"Annotations\" view shows.",
     "MessageHintNoTranscripts": "This hypervideo has no transcripts yet. They are made in the \"Transcripts\" editor (see sidebar).",
-    "MessageHintOpenWhenActive": "The area opens when one of these annotations starts and closes when the last one has ended. With several views in an area, it shows the one whose annotation started last.",
+    "MessageHintOpenWhenActive": "The area opens when one of these annotations starts and closes when the last one has ended. With several views in an area, only the one whose tab is shown opens and closes it, and the tab never changes by itself: viewers pick it.",
     "MessageHintQuizRemember": "Results belong to the hypervideo, not to a view: they are kept on the device when any of its \"Quiz Results\" views has \"Remember results on this device\" switched on. Otherwise they last until the page is closed.",
     "MessageHintQuizResults": "Lists the questions of this hypervideo (quiz overlays, and quiz annotations that an \"Annotations\" view shows) and what was answered.",
     "MessageHintTranscriptsEditor": "Transcripts are made and changed in the \"Transcripts\" editor (see sidebar).",

@@ -366,7 +366,7 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             }
         });
 
-        // A phone opens on its first view. Each view activates itself as it is appended, which leaves the last one shown.
+        // Each view activates itself as it is appended, which leaves an area's last view shown: so it is in the player's areas, and an area that opens with its annotations follows that view until the viewer picks another tab (see activeView). A phone opens on its first view.
         if (contentViews.companion.length) {
             contentViews.companion[0].activateContentView();
         }
@@ -850,13 +850,36 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
     }
 
-    // Whether the viewer uses an area right now: closing it, or changing its tab, waits for them.
+    /**
+     * I return the view in an area's active tab, or null: the view an area that opens with its annotations follows. In the circular area the view the ring shows.
+     *
+     * Only the viewer changes the tab. When a hypervideo is made, a player area shows its last view (each view activates itself as it is appended), a phone and the ring their first (see create).
+     *
+     * @method activeView
+     * @param {String} whichArea
+     * @return {ContentView|null}
+     */
+    function activeView(whichArea) {
+
+        if (whichArea === 'circular') { return circularView(); }
+
+        var views = contentViews[whichArea];
+
+        for (var i = 0; i < views.length; i++) {
+            if (views[i].contentViewContainer && views[i].contentViewContainer.classList.contains('active')) { return views[i]; }
+        }
+
+        return null;
+
+    }
+
+    // Whether the viewer uses an area right now: closing it waits for them.
     function viewerUsesArea(whichArea) {
 
         var ViewVideo = FrameTrail.module('ViewVideo'),
             area      = areaByName(whichArea);
 
-        // Details slid open over the video: closing an area, or changing its tab, closes them
+        // Details slid open over the video: closing an area closes them
         if (ViewVideo.shownDetails) { return true; }
 
         // Somebody looks around in a view: the views stop following the playback for the same reason
@@ -881,9 +904,9 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     }
 
     /**
-     * I open and close the layout areas whose collection views say so (openWhenActive): an area is open while an annotation of such a view is active, across gaps up to the view's openGap, and shows the view whose annotation started last. The rules are FrameTrailAreaOpening's.
+     * I open and close the layout areas whose collection views say so (openWhenActive): an area is open while an annotation of the view in its active tab is active, across gaps up to that view's openGap. The views in the other tabs neither open it nor keep it open, and when the active tab's view does not have the option, I do nothing. I never change the tab. The rules are FrameTrailAreaOpening's.
      *
-     * I only act when what the annotations want changes, so an area the viewer or event code opened or closed (ViewVideo.setLayoutAreaOpen) stays that way until the next change. Closing and changing the tab wait while the viewer uses the area; a timer asks again then, as nothing else does while the video is paused.
+     * I only act when what the annotations want changes, so an area the viewer or event code opened or closed (ViewVideo.setLayoutAreaOpen) stays that way until the next change. A tab the viewer picks is such a change: its view's annotations count from then on. Closing waits while the viewer uses the area; a timer asks again then, as nothing else does while the video is paused.
      *
      * Not on a phone. Not in the editing modes other than Preview, which hide the areas: what was decided is forgotten there, so the areas are as their annotations say when they are shown again.
      *
@@ -903,12 +926,11 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         OPENING_AREAS.forEach(function(whichArea) {
 
-            var views     = openingViews(whichArea),
-                container = ViewVideo['Area' + areaByName(whichArea).cap + 'Container'];
+            var container = ViewVideo['Area' + areaByName(whichArea).cap + 'Container'];
 
             if (!container) { return; }
 
-            if (!views.length) {
+            if (!openingViews(whichArea).length) {
                 // The option is gone from the area: it is as its views start it again
                 if (automaticAreas[whichArea]) {
                     delete automaticAreas[whichArea];
@@ -927,15 +949,17 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                 return;
             }
 
-            var facts = Opening.at(views.map(function(contentView) {
-                return {
-                    gap:   contentView.contentViewData.openGap,
-                    spans: contentView.contentCollection.map(function(item) {
+            // The view in the active tab; one without the option is followed by nobody (view null)
+            var active  = activeView(whichArea),
+                follows = !!active && active.opensWhenActive(),
+                facts   = follows ? Opening.at({
+                    gap:   active.contentViewData.openGap,
+                    spans: active.contentCollection.map(function(item) {
                         return { start: item.data.start, end: item.data.end };
                     })
-                };
-            }), currentTime);
+                }, currentTime) : { window: null };
 
+            facts.view = follows ? contentViews[whichArea].indexOf(active) : null;
             facts.busy = !container.classList.contains('closed') && viewerUsesArea(whichArea);
 
             var decision = Opening.step(areaOpening[whichArea], facts);
@@ -944,14 +968,6 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
             if (decision.open !== null) {
                 setAreaOpen(whichArea, container, decision.open, direct);
-            }
-
-            // The ring has one view and no tabs
-            if (decision.lead !== null && whichArea !== 'circular') {
-                var leader = views[decision.lead];
-                if (leader.contentViewContainer && !leader.contentViewContainer.classList.contains('active')) {
-                    leader.activateContentView();
-                }
             }
 
             held = held || decision.held;
