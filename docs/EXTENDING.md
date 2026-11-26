@@ -574,7 +574,7 @@ Reading works whenever a hypervideo is open; `getUser()`, `permission()` and `li
 | `add(kind, data)` | adds an overlay, annotation or chapter and returns it as stored |
 | `update(kind, ref, patch)` | changes one with a JSON Merge Patch ([RFC 7386](https://www.rfc-editor.org/rfc/rfc7386)) on its stored form: objects are merged, `null` removes a property, everything else is replaced. Returns it as stored |
 | `remove(kind, ref)` | removes one and returns it as it was |
-| `setLayout(area, contentViews)` | replaces the content views of a layout area: `'top'`, `'bottom'`, `'left'`, `'right'`, `'companion'` (the views of a paired phone), `'circular'` (the ring of thumbnails around the video: one collection, `TimedContent`, small or medium) (or `'areaTop'`, …) |
+| `setLayout(area, contentViews)` | replaces the content views of a layout area: `'top'`, `'bottom'`, `'left'`, `'right'`, `'companion'` (the views of a paired phone), `'circular'` (the ring of thumbnails around the video: one collection, `TimedContent`, small or medium) (or `'areaTop'`, …). A size its type does not have in the area (a `small` transcript, timelines or chapter cards in `'left'` or `'right'`, `small` on a phone) is taken as `medium`, which the returned views say |
 | `setSubtitles(lang, vttText)` | sets the subtitles of a language to a WebVTT text, or removes them (`null`). The file is written with the next save |
 | `setConfig(patch)` | changes the hypervideo's settings (its `config`, without `layoutArea`) with a JSON Merge Patch. The theme is not one of them: it is the instance's (`config.json` → `theme`), and a patch naming `theme` is refused |
 
@@ -707,6 +707,26 @@ Edit `src/_shared/styles/variables.css`:
 ```
 
 The theme is a setting of the instance (`config.json` → `theme`); hypervideos have no theme of their own. To offer the new theme in Administration → Color Theme, add a card for it to the theme list in `AdminSettingsDialog` (and its id to `THEMES` in `setup.html`, for the setup wizard). A theme defined in the global `custom.css` instead can be chosen by setting `theme` in `config.json`.
+
+### Sizes of the Layout Areas
+
+A layout area (top, bottom, left, right) is as large as the view in its shown tab. FrameTrail gives every type of view a size of its own for small, medium and large, and in the top and bottom areas chapters as steps, large chapter cards, quiz results, timelines and transcripts are as high as their content (see [DATA-MODEL.md](DATA-MODEL.md#hypervideosidhypervideojson), `config.layoutArea`). The area's container says what it shows: `data-size`, `data-view-type` (`TimedContent`, `Chapters`, …) and `data-view-style` (`steps` for chapters as steps, `text` for chapter cards without thumbnails).
+
+The size itself is the custom property `--view-size`: the view's height in the top and bottom areas, its width at the sides, without the 36 px of the tab bar. To change it in `custom.css`, set it for the area, size and type you mean, with a selector at least as specific as FrameTrail's:
+
+```css
+/* A wider column for chapters as steps in the left area */
+.layoutArea.areaLeftContainer[data-view-type="Chapters"][data-view-style="steps"][data-size="medium"] {
+    --view-size: 300px;
+}
+
+/* A transcript in the bottom area: never more than 200px, however much text */
+.layoutArea.areaBottomContainer[data-view-type="Transcript"][data-size="large"] {
+    --view-size: min(var(--view-fit, 200px), 200px);
+}
+```
+
+`--view-fit` is the height the content needs (set by FrameTrail on the area for the types that are as high as their content, missing for the others). Rules written for earlier versions, which set `flex-basis` and `min-height` (or `flex` and `min-width`) of `.areaBottomContainer[data-size="…"]` and the like, keep working: they outweigh `--view-size`.
 
 ## Extending the Backend
 

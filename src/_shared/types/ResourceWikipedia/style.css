@@ -9,8 +9,11 @@
     display: flex;
 }
 
+/* An article without a picture: a crossed out grey box. As a custom property too, for the places that
+   draw the picture themselves (a medium view of the left and right areas, ContentView/style.css). */
 .resourceThumb[data-type="wikipedia"] {
-    background-image: linear-gradient( 35deg, transparent 49.5%, rgba(0,0,0,0.25) 50%, transparent 50.5% ), linear-gradient( -35deg, transparent 49.5%, rgba(0,0,0,0.25) 50%, transparent 50.5% ), linear-gradient(#bdbdbd, #bdbdbd);
+    --thumb-placeholder: linear-gradient( 35deg, transparent 49.5%, rgba(0,0,0,0.25) 50%, transparent 50.5% ), linear-gradient( -35deg, transparent 49.5%, rgba(0,0,0,0.25) 50%, transparent 50.5% ), linear-gradient(#bdbdbd, #bdbdbd);
+    background-image: var(--thumb-placeholder);
 }
 
 /* Annotation Tile */

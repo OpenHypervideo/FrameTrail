@@ -31,7 +31,7 @@
                             "default": ""
                         },
                         "contentSize": {
-                            "description": "Size of the view's items.",
+                            "description": "Size of the view's annotations: `small` a strip of icons, `medium` thumbnails with their titles, `large` the annotations in full (in the left and right areas the one that plays). A layout area is as large as the view shown in it (its active tab). The circular area has no `large` and a phone no `small`: such a view is shown, and saved, as `medium`.",
                             "type": "string",
                             "enum": ["small", "medium", "large"],
                             "default": "small"
@@ -138,7 +138,7 @@
                             "default": ""
                         },
                         "contentSize": {
-                            "description": "Size of the view's items.",
+                            "description": "Size of the view: that of an annotations view of this size (what is in it is the author's).",
                             "type": "string",
                             "enum": ["small", "medium", "large"],
                             "default": "small"
@@ -233,7 +233,7 @@
                             "default": ""
                         },
                         "contentSize": {
-                            "description": "Size of the view's items.",
+                            "description": "Size of the view. In the top and bottom areas the text runs in columns and the area is as high as the text, up to 3 (`small`), 6 (`medium`) or 12 (`large`) lines; what does not fit goes on in columns to the right. In the left and right areas it is one column, `medium` or `large` wide: there is no `small` there (too narrow to read), such a view is shown, and saved, as `medium`.",
                             "type": "string",
                             "enum": ["small", "medium", "large"],
                             "default": "small"
@@ -336,7 +336,7 @@
                             "default": ""
                         },
                         "contentSize": {
-                            "description": "Size of the view's items.",
+                            "description": "Size of the view. In the top and bottom areas the area is as high as the view's rows, up to 2 (`small`), 4 (`medium`) or 8 (`large`) rows, and scrolls for more. In the left and right areas it is `medium` or `large` wide: there is no `small` there, such a view is shown, and saved, as `medium`.",
                             "type": "string",
                             "enum": ["small", "medium", "large"],
                             "default": "small"
@@ -431,7 +431,7 @@
                             "default": ""
                         },
                         "contentSize": {
-                            "description": "Size of the view's items.",
+                            "description": "Size of the view. As cards: `small` one line per chapter, `medium` a thumbnail (where the video has a scrub sprite) with the start time and the title, `large` a larger thumbnail and the description. As steps: `small` the dots (in the top and bottom areas with their titles), `medium` start time, title and description, `large` the same in larger type; in the top and bottom areas the area is as high as the row of steps, at the sides a little wider at `large` than at `medium`. Cards have no `small` in the left and right areas (shown, and saved, as `medium`); steps have (the dots alone).",
                             "type": "string",
                             "enum": ["small", "medium", "large"],
                             "default": "small"
@@ -527,7 +527,7 @@
                             "default": ""
                         },
                         "contentSize": {
-                            "description": "Size of the view's rows.",
+                            "description": "Size of the view's rows: `small` the dots (in the top and bottom areas with a line of text), `medium` every question with its text and its mark (below its chapter's title when the rows are chapters), `large` the same with larger marks and more air, and with a question's state in words when the rows are questions. In the top and bottom areas the area is as high as the rows and the summary need.",
                             "type": "string",
                             "enum": ["small", "medium", "large"],
                             "default": "small"

@@ -371,10 +371,26 @@
     border-radius: 0;
 }
 
+/* The type's icon in the middle of a strip's thumbnail, centred by the glyph's own width (as in a
+   small view of the player, ContentView/style.css) */
 .companionMode .collectionStripItem .resourceThumb .resourceOverlay .resourceIcon {
-    width: 30px;
-    right: 4px;
-    bottom: 8px;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.companionMode .collectionStripItem .resourceThumb .resourceOverlay .resourceIcon [class^="icon-"]::before,
+.companionMode .collectionStripItem .resourceThumb .resourceOverlay .resourceIcon [class*=" icon-"]::before {
+    display: block;
+    width: auto;
+    margin: 0;
+    line-height: 1;
 }
 
 .companionMode .collectionStripItem .resourceTitle,

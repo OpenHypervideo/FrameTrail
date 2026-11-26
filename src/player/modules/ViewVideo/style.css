@@ -267,77 +267,188 @@
     visibility: visible;
 }
 
-/* LayoutArea Sizes */
+/* LayoutArea Sizes
+
+   An area is as large as its active view (ContentView.resizeLayoutArea): --view-size is the view's own extent, which
+   depends on the area's side and the view's size here, and for the types of view that have a design of their own on
+   the type as well (see "Sizes by type of view" below); --area-tabs is the tab bar's, none with .hiddenTabs. Custom
+   CSS can set --view-size, or the declarations themselves as before (flex-basis and min-height, flex and min-width). */
 
 .areaTopContainer, .areaBottomContainer {
     min-height: 0px;
+    --area-tabs: 36px;
+    /* The most a large view takes of the player's height: types that are as high as their content stop here */
+    --view-size-max: clamp(164px, calc(var(--ft-height, 100vh) * 0.6 - 76px), 364px);
 }
 
 .areaTopContainer[data-size="small"], .areaBottomContainer[data-size="small"] {
-    flex-basis: 76px;
-    min-height: 76px;
+    --view-size: 40px;
+    flex-basis: calc(var(--view-size) + var(--area-tabs));
+    min-height: calc(var(--view-size) + var(--area-tabs));
 }
 
 .areaTopContainer[data-size="medium"], .areaBottomContainer[data-size="medium"] {
-    flex-basis: 156px;
-    min-height: 156px;
+    --view-size: 120px;
+    flex-basis: calc(var(--view-size) + var(--area-tabs));
+    min-height: calc(var(--view-size) + var(--area-tabs));
 }
 
 .areaTopContainer[data-size="large"], .areaBottomContainer[data-size="large"] {
-    flex-basis: clamp(200px, calc(var(--ft-height, 100vh) * 0.6 - 40px), 400px);
-    min-height: clamp(200px, calc(var(--ft-height, 100vh) * 0.6 - 40px), 400px);
+    --view-size: var(--view-size-max);
+    flex-basis: calc(var(--view-size) + var(--area-tabs));
+    min-height: calc(var(--view-size) + var(--area-tabs));
 }
 
 .areaLeftContainer, .areaRightContainer {
     flex: 0 0 0px;
     min-width: 0px;
+    --area-tabs: 36px;
 }
 
 .areaLeftContainer[data-size="small"], .areaRightContainer[data-size="small"] {
-    flex: 0 0 88px;
-    min-width: 88px;
+    --view-size: 52px;
+    flex: 0 0 calc(var(--view-size) + var(--area-tabs));
+    min-width: calc(var(--view-size) + var(--area-tabs));
 }
 
 .areaLeftContainer[data-size="medium"], .areaRightContainer[data-size="medium"] {
-    flex: 0 0 clamp(300px, calc(var(--ft-width, 100vw) * 0.25), 450px);
-    min-width: clamp(300px, calc(var(--ft-width, 100vw) * 0.25), 450px);
+    --view-size: clamp(264px, calc(var(--ft-width, 100vw) * 0.25 - 36px), 414px);
+    flex: 0 0 calc(var(--view-size) + var(--area-tabs));
+    min-width: calc(var(--view-size) + var(--area-tabs));
 }
 
 .areaLeftContainer[data-size="large"], .areaRightContainer[data-size="large"] {
-    flex: 0 0 clamp(350px, calc(var(--ft-width, 100vw) * 0.35), 650px);
-    min-width: clamp(350px, calc(var(--ft-width, 100vw) * 0.35), 650px);
+    --view-size: clamp(314px, calc(var(--ft-width, 100vw) * 0.35 - 36px), 614px);
+    flex: 0 0 calc(var(--view-size) + var(--area-tabs));
+    min-width: calc(var(--view-size) + var(--area-tabs));
 }
 
-/* Hidden tabs: reduce area size by 36px (tab bar height) */
+/* Hidden tabs: the area is the view alone. These rules say the size again (and not only that there are no tabs), so
+   that they keep outweighing custom CSS that sets an area's size without naming .hiddenTabs, as they always did. */
 
-.areaTopContainer.hiddenTabs[data-size="small"], .areaBottomContainer.hiddenTabs[data-size="small"] {
-    flex-basis: 40px;
-    min-height: 40px;
+.areaTopContainer.hiddenTabs[data-size], .areaBottomContainer.hiddenTabs[data-size] {
+    --area-tabs: 0px;
+    flex-basis: calc(var(--view-size) + var(--area-tabs));
+    min-height: calc(var(--view-size) + var(--area-tabs));
 }
 
-.areaTopContainer.hiddenTabs[data-size="medium"], .areaBottomContainer.hiddenTabs[data-size="medium"] {
-    flex-basis: 120px;
-    min-height: 120px;
+.areaLeftContainer.hiddenTabs[data-size], .areaRightContainer.hiddenTabs[data-size] {
+    --area-tabs: 0px;
+    flex: 0 0 calc(var(--view-size) + var(--area-tabs));
+    min-width: calc(var(--view-size) + var(--area-tabs));
 }
 
-.areaTopContainer.hiddenTabs[data-size="large"], .areaBottomContainer.hiddenTabs[data-size="large"] {
-    flex-basis: clamp(164px, calc(var(--ft-height, 100vh) * 0.6 - 76px), 364px);
-    min-height: clamp(164px, calc(var(--ft-height, 100vh) * 0.6 - 76px), 364px);
+/* Sizes by type of view
+
+   The sizes above are those of an annotations view, and of Custom HTML, whose content is the author's. The other types
+   of view have a design of their own for each size. In the top and bottom areas most of them are as high as their
+   content: --view-fit is the height the active view's content takes (measured by ContentView.fitLayoutArea, never
+   more than the size allows), and until it is known the design's usual height stands in. At the sides a view fills
+   the height anyway, and its type and size say how wide it is.
+
+   These rules set --view-size only and outweigh the general ones by naming the type (data-view-type and
+   data-view-style, which the active view writes on its area with data-size). */
+
+/* Chapters as steps: the row of dots and their texts */
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Chapters"][data-view-style="steps"][data-size="small"] {
+    --view-size: clamp(28px, var(--view-fit, 52px), 72px);
 }
 
-.areaLeftContainer.hiddenTabs[data-size="small"], .areaRightContainer.hiddenTabs[data-size="small"] {
-    flex: 0 0 52px;
-    min-width: 52px;
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Chapters"][data-view-style="steps"][data-size="medium"] {
+    --view-size: clamp(40px, var(--view-fit, 76px), 128px);
 }
 
-.areaLeftContainer.hiddenTabs[data-size="medium"], .areaRightContainer.hiddenTabs[data-size="medium"] {
-    flex: 0 0 clamp(264px, calc(var(--ft-width, 100vw) * 0.25 - 36px), 414px);
-    min-width: clamp(264px, calc(var(--ft-width, 100vw) * 0.25 - 36px), 414px);
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Chapters"][data-view-style="steps"][data-size="large"] {
+    --view-size: clamp(48px, var(--view-fit, 92px), 160px);
 }
 
-.areaLeftContainer.hiddenTabs[data-size="large"], .areaRightContainer.hiddenTabs[data-size="large"] {
-    flex: 0 0 clamp(314px, calc(var(--ft-width, 100vw) * 0.35 - 36px), 614px);
-    min-width: clamp(314px, calc(var(--ft-width, 100vw) * 0.35 - 36px), 614px);
+/* … and at the sides a column of them: large is a little wider than medium, for its larger type */
+
+:is(.layoutArea.areaLeftContainer, .layoutArea.areaRightContainer)[data-view-type="Chapters"][data-view-style="steps"][data-size="medium"] {
+    --view-size: clamp(200px, calc(var(--ft-width, 100vw) * 0.17), 250px);
+}
+
+:is(.layoutArea.areaLeftContainer, .layoutArea.areaRightContainer)[data-view-type="Chapters"][data-view-style="steps"][data-size="large"] {
+    --view-size: clamp(230px, calc(var(--ft-width, 100vw) * 0.2), 290px);
+}
+
+/* Chapters as cards: a thumbnail and two or three lines; without thumbnails (data-view-style "text": a video that
+   has none) the lines alone */
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="large"] {
+    --view-size: clamp(120px, var(--view-fit, 184px), 240px);
+}
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Chapters"][data-view-style="text"][data-size="medium"] {
+    --view-size: 52px;
+}
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Chapters"][data-view-style="text"][data-size="large"] {
+    --view-size: 76px;
+}
+
+:is(.layoutArea.areaLeftContainer, .layoutArea.areaRightContainer)[data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="medium"] {
+    --view-size: clamp(240px, calc(var(--ft-width, 100vw) * 0.2), 320px);
+}
+
+:is(.layoutArea.areaLeftContainer, .layoutArea.areaRightContainer)[data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="large"] {
+    --view-size: clamp(300px, calc(var(--ft-width, 100vw) * 0.26), 420px);
+}
+
+/* Quiz Results: rows of a line or two and their dots, at large a chapter's questions as a list */
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="QuizResults"][data-size="small"] {
+    --view-size: clamp(34px, var(--view-fit, 40px), 64px);
+}
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="QuizResults"][data-size="medium"] {
+    --view-size: clamp(48px, var(--view-fit, 96px), 160px);
+}
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="QuizResults"][data-size="large"] {
+    --view-size: clamp(64px, var(--view-fit, 180px), var(--view-size-max));
+}
+
+:is(.layoutArea.areaLeftContainer, .layoutArea.areaRightContainer)[data-view-type="QuizResults"][data-size="medium"] {
+    --view-size: clamp(220px, calc(var(--ft-width, 100vw) * 0.2), 300px);
+}
+
+:is(.layoutArea.areaLeftContainer, .layoutArea.areaRightContainer)[data-view-type="QuizResults"][data-size="large"] {
+    --view-size: clamp(280px, calc(var(--ft-width, 100vw) * 0.26), 400px);
+}
+
+/* Timelines: as high as their rows, up to the rows the size shows (2, 4, 8; ContentView.fitExtent) */
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Timelines"][data-size="small"] {
+    --view-size: clamp(40px, var(--view-fit, 96px), var(--view-size-max));
+}
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Timelines"][data-size="medium"] {
+    --view-size: clamp(40px, var(--view-fit, 184px), var(--view-size-max));
+}
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Timelines"][data-size="large"] {
+    --view-size: clamp(40px, var(--view-fit, 364px), var(--view-size-max));
+}
+
+/* Transcript: as high as its text, up to the lines the size shows (ContentView/style.css); at the sides a large
+   one is not as wide as a large annotation (a line of text gets too long to read) */
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Transcript"][data-size="small"] {
+    --view-size: clamp(36px, var(--view-fit, 84px), var(--view-size-max));
+}
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Transcript"][data-size="medium"] {
+    --view-size: clamp(36px, var(--view-fit, 150px), var(--view-size-max));
+}
+
+:is(.layoutArea.areaTopContainer, .layoutArea.areaBottomContainer)[data-view-type="Transcript"][data-size="large"] {
+    --view-size: clamp(36px, var(--view-fit, 280px), var(--view-size-max));
+}
+
+:is(.layoutArea.areaLeftContainer, .layoutArea.areaRightContainer)[data-view-type="Transcript"][data-size="large"] {
+    --view-size: clamp(314px, calc(var(--ft-width, 100vw) * 0.35 - 36px), 520px);
 }
 
 .areaTopContainer.closed, .areaBottomContainer.closed {
@@ -1439,7 +1550,10 @@
     font-size: 11px;
     min-width: 40px;
     text-align: center;
+    /* An inactive level: the text colour of its surroundings, dimmed (a fixed grey could not be read on
+       the light themes' panels; on the dark ones this is the grey it was) */
     color: #acacb3;
+    color: color-mix(in srgb, var(--primary-fg-color) 68%, transparent);
 }
 
 .playerContainer .timelineZoomPreset.active {
@@ -1670,12 +1784,9 @@
         width: 100%;
     }
 
-    .areaTopContainer[data-size="large"], 
-    .areaBTopContainer.hiddenTabs[data-size="large"],
-    .areaBottomContainer[data-size="large"],
-    .areaBottomContainer.hiddenTabs[data-size="large"] {
-        flex-basis: clamp(200px, calc(var(--ft-height, 100vh) * 0.6 - 40px), 300px);
-        min-height: clamp(200px, calc(var(--ft-height, 100vh) * 0.6 - 40px), 300px);
+    /* A large top or bottom area takes less of a narrow player, with or without tabs (so a view without tabs is the higher one) */
+    .areaTopContainer, .areaBottomContainer {
+        --view-size-max: calc(clamp(200px, calc(var(--ft-height, 100vh) * 0.6 - 40px), 300px) - var(--area-tabs));
     }
 
     .viewVideo.slide-pos-top .areaTopDetails,

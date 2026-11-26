@@ -123,29 +123,30 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
                 break;
 
             case 'Timelines':
+                // One row per user. In the top and bottom areas the view shows as many rows as its size says
+                // before it scrolls (ContentView.fitExtent: 2, 4, 8), which is what its sizes are drawn with;
+                // at the sides, where the size is the view's width, and as the type's emblem a few rows.
                 var container = document.createElement('div');
                 container.className = 'schematicTimelines';
-                var rows = [
-                    { label: 'User 1', offset: '10%', width: '35%' },
-                    { label: 'User 1', offset: '55%', width: '20%' },
-                    { label: 'User 2', offset: '5%',  width: '25%' },
-                    { label: 'User 2', offset: '40%', width: '40%' },
-                    { label: 'User 3', offset: '20%', width: '50%' }
-                ];
-                var currentLabel = '';
-                var row;
-                for (var i = 0; i < rows.length; i++) {
-                    if (rows[i].label !== currentLabel) {
-                        currentLabel = rows[i].label;
-                        row = document.createElement('div');
-                        row.className = 'schematicTimelineRow';
-                        row.insertAdjacentHTML('beforeend', '<span class="schematicTimelineLabel">'+ rows[i].label +'</span>');
-                        row.insertAdjacentHTML('beforeend', '<div class="schematicTimelineTrack"></div>');
-                        container.appendChild(row);
-                    }
-                    row.querySelector('.schematicTimelineTrack').insertAdjacentHTML('beforeend',
-                        '<div class="schematicTimelineBar" style="left:'+ rows[i].offset +';width:'+ rows[i].width +'"></div>'
-                    );
+                var timelineBars = [
+                        [['10%', '35%'], ['55%', '20%']],
+                        [['5%', '25%'], ['40%', '40%']],
+                        [['20%', '50%']],
+                        [['8%', '18%'], ['48%', '30%']]
+                    ],
+                    timelineRows = maxCards ? Math.min(3, maxCards)
+                                 : (isHorizontal ? ({ small: 2, medium: 4, large: 8 }[size] || 4) : 5);
+                for (var t = 0; t < timelineRows; t++) {
+                    var row = document.createElement('div');
+                    row.className = 'schematicTimelineRow';
+                    row.insertAdjacentHTML('beforeend', '<span class="schematicTimelineLabel">User ' + (t + 1) + '</span>');
+                    row.insertAdjacentHTML('beforeend', '<div class="schematicTimelineTrack"></div>');
+                    timelineBars[t % timelineBars.length].forEach(function(bar) {
+                        row.querySelector('.schematicTimelineTrack').insertAdjacentHTML('beforeend',
+                            '<div class="schematicTimelineBar" style="left:' + bar[0] + ';width:' + bar[1] + '"></div>'
+                        );
+                    });
+                    container.appendChild(row);
                 }
                 schematic.appendChild(container);
                 break;
@@ -352,7 +353,51 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
     }
 
+    // The top and bottom areas take a size at once, without their transition, while this counts something: see
+    // withoutAreaTransitions.
+    var areasFrozen = 0;
+
+    function fittedAreaContainers() {
+        var ViewVideo = FrameTrail.module('ViewVideo');
+        return [ViewVideo.AreaTopContainer, ViewVideo.AreaBottomContainer].filter(Boolean);
+    }
+
+    function freezeAreas() {
+        if (areasFrozen++ === 0) {
+            fittedAreaContainers().forEach(function(el) { el.style.transitionDuration = '0ms'; });
+        }
+    }
+
+    function thawAreas() {
+        if (--areasFrozen === 0) {
+            fittedAreaContainers().forEach(function(el) {
+                // The sizes written meanwhile are taken before the transition is back
+                void el.offsetHeight;
+                el.style.transitionDuration = '';
+            });
+        }
+    }
+
+    /**
+     * I run a change of the top and bottom areas' sizes that nobody is to see as a movement: the areas take their
+     * new sizes at once, without their transition. For the sizes they are shown with first, or again: an area that
+     * is as high as its content (ContentView.fitLayoutArea) is measured while it is laid out, which would otherwise
+     * start its transition from the size it had a moment before, at the load of a hypervideo.
+     *
+     * @method withoutAreaTransitions
+     * @param {Function} change
+     */
+    function withoutAreaTransitions(change) {
+        freezeAreas();
+        try { change(); } finally { thawAreas(); }
+    }
+
     function create() {
+
+        // The views are made, and the Quiz Results views render again at the end of this task (scheduleQuizResultViews):
+        // until then the areas take their sizes at once
+        freezeAreas();
+        Promise.resolve().then(function() { return Promise.resolve(); }).then(thawAreas);
 
         configLayoutArea = FrameTrail.module('Database').hypervideo.config.layoutArea;
 
@@ -713,6 +758,36 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         var currentTime = FrameTrail.module('HypervideoController').currentTime;
         updateTimedStateOfContentViews(currentTime);
+
+        // The areas come back as large as their content is now (after an edit mode, which hides them)
+        fitAreas(true);
+    }
+
+
+    /**
+     * I make every layout area as large as its active view's content, for the views that are (see
+     * ContentView.fitLayoutArea). With instant the areas take their sizes at once, without their transition: for
+     * the moments in which they are shown for the first time or again (a hypervideo is opened, the video view comes
+     * back, an edit mode is left), when nobody has seen them at another size.
+     *
+     * @method fitAreas
+     * @param {Boolean} instant
+     */
+    function fitAreas(instant) {
+
+        function fit() {
+            AREAS.forEach(function(area) {
+                for (var i = 0; i < contentViews[area.name].length; i++) {
+                    if (contentViews[area.name][i].syncLayoutArea()) {
+                        contentViews[area.name][i].fitLayoutArea();
+                        break;
+                    }
+                }
+            });
+        }
+
+        if (instant) { withoutAreaTransitions(fit); } else { fit(); }
+
     }
 
 
@@ -1342,6 +1417,11 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         if (views.length) {
             var container = FrameTrail.module('ViewVideo')['Area' + area.cap + 'Container'];
             areaEl.setAttribute('data-size', (container && container.getAttribute('data-size')) || views[0].contentViewData.contentSize);
+            // Its type and style too: an area's size depends on what its view is
+            ['data-view-type', 'data-view-style'].forEach(function(name) {
+                var value = container && container.getAttribute(name);
+                if (value) { areaEl.setAttribute(name, value); }
+            });
         }
 
         views.forEach(function(contentView) {
@@ -1567,10 +1647,9 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             for (var i in allAreas[a]) {
                 allAreas[a][i].updateLayout();
             }
-            // Sync the area container data-size with the active content view
+            // The area is what its active view is (size, type, style)
             for (var i in allAreas[a]) {
-                if (allAreas[a][i].contentViewContainer.classList.contains('active')) {
-                    allAreas[a][i].resizeLayoutArea(false, true);
+                if (allAreas[a][i].syncLayoutArea()) {
                     break;
                 }
             }
@@ -1705,6 +1784,9 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
         updateContentInContentViews: updateContentInContentViews,
         updateChaptersContentViews: updateChaptersContentViews,
+        fitAreas:          fitAreas,
+        withoutAreaTransitions: withoutAreaTransitions,
+        areasFrozen:       function() { return areasFrozen > 0; },
         updateTranscriptContentViews: updateTranscriptContentViews,
         adjustContentViewLayout: adjustContentViewLayout,
 

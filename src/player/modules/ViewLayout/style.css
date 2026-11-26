@@ -497,77 +497,157 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     opacity: 0.4;
 }
 
-/* SIZES */
+/* SIZES
+
+   As in the player (ViewVideo/style.css, "LayoutArea Sizes"), in the editor's own scale: an area is as large as the
+   view in its shown tab (--view-size, by the area's side, the view's size and, for the types with a design of their
+   own, its type and style), plus its tab bar (--area-tabs, none with .hiddenTabs). Nothing is measured here: the
+   types that are as high as their content in the player have their usual height. */
 
 .layoutEditor .layoutArea[data-area="areaTop"], .layoutEditor .layoutArea[data-area="areaBottom"] {
     min-height: calc(10px + 20px);
+    --area-tabs: 38px;
 }
 
 .layoutEditor .layoutArea[data-area="areaTop"][data-size="small"], .layoutEditor .layoutArea[data-area="areaBottom"][data-size="small"] {
-    min-height: calc(50px + 38px + 20px);
+    --view-size: 50px;
+    min-height: calc(var(--view-size) + var(--area-tabs) + 20px);
 }
 
 .layoutEditor .layoutArea[data-area="areaTop"][data-size="medium"], .layoutEditor .layoutArea[data-area="areaBottom"][data-size="medium"] {
-    min-height: calc(90px + 38px + 20px);
+    --view-size: 90px;
+    min-height: calc(var(--view-size) + var(--area-tabs) + 20px);
 }
 
 .layoutEditor .layoutArea[data-area="areaTop"][data-size="large"], .layoutEditor .layoutArea[data-area="areaBottom"][data-size="large"] {
-    min-height: calc(200px + 38px + 20px);
+    --view-size: 200px;
+    min-height: calc(var(--view-size) + var(--area-tabs) + 20px);
 }
 
 .layoutEditor .layoutArea[data-area="areaLeft"], .layoutEditor .layoutArea[data-area="areaRight"] {
     flex: 0 0 30px;
     min-width: 30px;
+    --area-tabs: 36px;
 }
 
 .layoutEditor .layoutArea[data-area="areaLeft"][data-size="small"], .layoutEditor .layoutArea[data-area="areaRight"][data-size="small"] {
-    flex: 0 0 110px;
-    min-width: 110px;
+    --view-size: 74px;
+    flex: 0 0 calc(var(--view-size) + var(--area-tabs));
+    min-width: calc(var(--view-size) + var(--area-tabs));
 }
 
 .layoutEditor .layoutArea[data-area="areaLeft"][data-size="medium"], .layoutEditor .layoutArea[data-area="areaRight"][data-size="medium"] {
-    flex: 0 1 400px;
-    min-width: 110px;
+    --view-size: 364px;
+    flex: 0 1 calc(var(--view-size) + var(--area-tabs));
+    min-width: calc(74px + var(--area-tabs));
 }
 
 .layoutEditor .layoutArea[data-area="areaLeft"][data-size="large"], .layoutEditor .layoutArea[data-area="areaRight"][data-size="large"] {
-    flex: 0 1 400px;
-    min-width: 110px;
+    --view-size: 364px;
+    flex: 0 1 calc(var(--view-size) + var(--area-tabs));
+    min-width: calc(74px + var(--area-tabs));
 }
 
-/* Hidden tabs: reduce layout editor area sizes (remove 38px tab bar) */
+/* Hidden tabs: the area is the view alone */
 
-.layoutEditor .layoutArea.hiddenTabs[data-area="areaTop"][data-size="small"],
-.layoutEditor .layoutArea.hiddenTabs[data-area="areaBottom"][data-size="small"] {
-    min-height: calc(50px + 20px);
-}
-
-.layoutEditor .layoutArea.hiddenTabs[data-area="areaTop"][data-size="medium"],
-.layoutEditor .layoutArea.hiddenTabs[data-area="areaBottom"][data-size="medium"] {
-    min-height: calc(90px + 20px);
-}
-
-.layoutEditor .layoutArea.hiddenTabs[data-area="areaTop"][data-size="large"],
-.layoutEditor .layoutArea.hiddenTabs[data-area="areaBottom"][data-size="large"] {
-    min-height: calc(200px + 20px);
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaTop"][data-size],
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaBottom"][data-size] {
+    --area-tabs: 0px;
+    min-height: calc(var(--view-size) + var(--area-tabs) + 20px);
 }
 
 .layoutEditor .layoutArea.hiddenTabs[data-area="areaLeft"][data-size="small"],
 .layoutEditor .layoutArea.hiddenTabs[data-area="areaRight"][data-size="small"] {
-    flex: 0 0 74px;
-    min-width: 74px;
+    --area-tabs: 0px;
+    flex: 0 0 calc(var(--view-size) + var(--area-tabs));
+    min-width: calc(var(--view-size) + var(--area-tabs));
 }
 
 .layoutEditor .layoutArea.hiddenTabs[data-area="areaLeft"][data-size="medium"],
-.layoutEditor .layoutArea.hiddenTabs[data-area="areaRight"][data-size="medium"] {
-    flex: 0 1 364px;
-    min-width: 74px;
-}
-
+.layoutEditor .layoutArea.hiddenTabs[data-area="areaRight"][data-size="medium"],
 .layoutEditor .layoutArea.hiddenTabs[data-area="areaLeft"][data-size="large"],
 .layoutEditor .layoutArea.hiddenTabs[data-area="areaRight"][data-size="large"] {
-    flex: 0 1 364px;
-    min-width: 74px;
+    --area-tabs: 0px;
+    flex: 0 1 calc(var(--view-size) + var(--area-tabs));
+    min-width: calc(74px + var(--area-tabs));
+}
+
+/* Sizes by type of view (see the player's, ViewVideo/style.css) */
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="Chapters"][data-view-style="steps"][data-size="medium"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="Chapters"][data-view-style="steps"][data-size="medium"] {
+    --view-size: 60px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="Chapters"][data-view-style="steps"][data-size="large"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="Chapters"][data-view-style="steps"][data-size="large"] {
+    --view-size: 72px;
+}
+
+.layoutEditor .layoutArea[data-area="areaLeft"][data-view-type="Chapters"][data-view-style="steps"][data-size="medium"], .layoutEditor .layoutArea[data-area="areaRight"][data-view-type="Chapters"][data-view-style="steps"][data-size="medium"] {
+    --view-size: 230px;
+}
+
+.layoutEditor .layoutArea[data-area="areaLeft"][data-view-type="Chapters"][data-view-style="steps"][data-size="large"], .layoutEditor .layoutArea[data-area="areaRight"][data-view-type="Chapters"][data-view-style="steps"][data-size="large"] {
+    --view-size: 270px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="large"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="large"] {
+    --view-size: 130px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="Chapters"][data-view-style="text"][data-size="medium"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="Chapters"][data-view-style="text"][data-size="medium"] {
+    --view-size: 56px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="Chapters"][data-view-style="text"][data-size="large"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="Chapters"][data-view-style="text"][data-size="large"] {
+    --view-size: 70px;
+}
+
+.layoutEditor .layoutArea[data-area="areaLeft"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="medium"], .layoutEditor .layoutArea[data-area="areaRight"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="medium"] {
+    --view-size: 250px;
+}
+
+.layoutEditor .layoutArea[data-area="areaLeft"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="large"], .layoutEditor .layoutArea[data-area="areaRight"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="large"] {
+    --view-size: 320px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="QuizResults"][data-size="medium"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="QuizResults"][data-size="medium"] {
+    --view-size: 80px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="QuizResults"][data-size="large"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="QuizResults"][data-size="large"] {
+    --view-size: 110px;
+}
+
+.layoutEditor .layoutArea[data-area="areaLeft"][data-view-type="QuizResults"][data-size="medium"], .layoutEditor .layoutArea[data-area="areaRight"][data-view-type="QuizResults"][data-size="medium"] {
+    --view-size: 250px;
+}
+
+.layoutEditor .layoutArea[data-area="areaLeft"][data-view-type="QuizResults"][data-size="large"], .layoutEditor .layoutArea[data-area="areaRight"][data-view-type="QuizResults"][data-size="large"] {
+    --view-size: 320px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="Timelines"][data-size="small"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="Timelines"][data-size="small"] {
+    --view-size: 70px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="Timelines"][data-size="medium"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="Timelines"][data-size="medium"] {
+    --view-size: 110px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="Timelines"][data-size="large"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="Timelines"][data-size="large"] {
+    --view-size: 180px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="Transcript"][data-size="small"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="Transcript"][data-size="small"] {
+    --view-size: 56px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="Transcript"][data-size="medium"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="Transcript"][data-size="medium"] {
+    --view-size: 90px;
+}
+
+.layoutEditor .layoutArea[data-area="areaTop"][data-view-type="Transcript"][data-size="large"], .layoutEditor .layoutArea[data-area="areaBottom"][data-view-type="Transcript"][data-size="large"] {
+    --view-size: 150px;
 }
 
 /* Sortable preview tabs */
@@ -798,6 +878,84 @@ body > .contentViewTemplate .contentViewTemplateLabel {
 .layoutDiagramArea[data-area="left"][data-size="large"],
 .layoutDiagramArea[data-area="right"][data-size="large"] {
     width: 35cqw;
+}
+
+/* The types of view that have sizes of their own in the player (ViewVideo/style.css, "Sizes by type of view"),
+   in the same proportion; those that are as high as their content with their usual height */
+
+.layoutDiagramArea[data-area="top"][data-view-type="Chapters"][data-view-style="steps"][data-size="medium"],
+.layoutDiagramArea[data-area="bottom"][data-view-type="Chapters"][data-view-style="steps"][data-size="medium"] {
+    height: max(26px, 12cqh);
+}
+
+.layoutDiagramArea[data-area="top"][data-view-type="Chapters"][data-view-style="steps"][data-size="large"],
+.layoutDiagramArea[data-area="bottom"][data-view-type="Chapters"][data-view-style="steps"][data-size="large"] {
+    height: max(30px, 14cqh);
+}
+
+.layoutDiagramArea[data-area="left"][data-view-type="Chapters"][data-view-style="steps"][data-size="medium"],
+.layoutDiagramArea[data-area="right"][data-view-type="Chapters"][data-view-style="steps"][data-size="medium"] {
+    width: 16cqw;
+}
+
+.layoutDiagramArea[data-area="left"][data-view-type="Chapters"][data-view-style="steps"][data-size="large"],
+.layoutDiagramArea[data-area="right"][data-view-type="Chapters"][data-view-style="steps"][data-size="large"] {
+    width: 19cqw;
+}
+
+.layoutDiagramArea[data-area="top"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="large"],
+.layoutDiagramArea[data-area="bottom"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="large"] {
+    height: max(34px, 24cqh);
+}
+
+.layoutDiagramArea[data-area="left"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="medium"],
+.layoutDiagramArea[data-area="right"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="medium"] {
+    width: 19cqw;
+}
+
+.layoutDiagramArea[data-area="left"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="large"],
+.layoutDiagramArea[data-area="right"][data-view-type="Chapters"]:not([data-view-style="steps"])[data-size="large"] {
+    width: 24cqw;
+}
+
+.layoutDiagramArea[data-area="top"][data-view-type="QuizResults"][data-size="large"],
+.layoutDiagramArea[data-area="bottom"][data-view-type="QuizResults"][data-size="large"] {
+    height: max(34px, 19cqh);
+}
+
+.layoutDiagramArea[data-area="left"][data-view-type="QuizResults"][data-size="medium"],
+.layoutDiagramArea[data-area="right"][data-view-type="QuizResults"][data-size="medium"] {
+    width: 19cqw;
+}
+
+.layoutDiagramArea[data-area="left"][data-view-type="QuizResults"][data-size="large"],
+.layoutDiagramArea[data-area="right"][data-view-type="QuizResults"][data-size="large"] {
+    width: 24cqw;
+}
+
+.layoutDiagramArea[data-area="top"][data-view-type="Timelines"][data-size="small"],
+.layoutDiagramArea[data-area="bottom"][data-view-type="Timelines"][data-size="small"] {
+    height: max(26px, 14cqh);
+}
+
+.layoutDiagramArea[data-area="top"][data-view-type="Timelines"][data-size="medium"],
+.layoutDiagramArea[data-area="bottom"][data-view-type="Timelines"][data-size="medium"] {
+    height: max(34px, 27cqh);
+}
+
+.layoutDiagramArea[data-area="top"][data-view-type="Transcript"][data-size="small"],
+.layoutDiagramArea[data-area="bottom"][data-view-type="Transcript"][data-size="small"] {
+    height: max(24px, 10cqh);
+}
+
+.layoutDiagramArea[data-area="top"][data-view-type="Transcript"][data-size="large"],
+.layoutDiagramArea[data-area="bottom"][data-view-type="Transcript"][data-size="large"] {
+    height: max(36px, 28cqh);
+}
+
+.layoutDiagramArea[data-area="left"][data-view-type="Transcript"][data-size="large"],
+.layoutDiagramArea[data-area="right"][data-view-type="Transcript"][data-size="large"] {
+    width: 32cqw;
 }
 
 /* A small side area has room for the views' icons only (their names are in the tooltip) */

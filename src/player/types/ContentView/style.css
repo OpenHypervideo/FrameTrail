@@ -34,9 +34,11 @@
     pointer-events: all;
 }
 
+/* (top: the contents' padding does not move an absolutely positioned element, so the 4px of air above
+   it are said here; the item used to touch the area's top edge and leave 8px at the bottom) */
 .layoutArea[data-area="areaLeft"][data-size="large"] .collectionElement, .layoutArea[data-area="areaRight"][data-size="large"] .collectionElement {
     position: absolute;
-    top: 0px;
+    top: 4px;
     display: none;
 }
 
@@ -56,10 +58,35 @@
     /*background: var(--secondary-bg-color);*/
 }
 
-.layoutArea[data-size="small"] .collectionElement .resourceIcon {
-    width: 30px;
-    right: 4px;
-    bottom: 8px;
+/* The type's icon in a view's thumbnail is placed by the glyph's own width: the icon font's 1em box with
+   side margins lets a wide glyph (the W of Wikipedia) hang out to the right, off centre in a small
+   thumbnail and over the edge of a larger one. Bottom right, as everywhere … */
+.layoutArea .collectionElement .resourceThumb .resourceOverlay .resourceIcon {
+    right: 10px;
+    bottom: 7px;
+    width: auto;
+    height: auto;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+}
+
+.layoutArea .collectionElement .resourceThumb .resourceOverlay .resourceIcon [class^="icon-"]::before,
+.layoutArea .collectionElement .resourceThumb .resourceOverlay .resourceIcon [class*=" icon-"]::before {
+    display: block;
+    width: auto;
+    margin: 0;
+    line-height: 1;
+}
+
+/* … and in the middle of a small thumbnail */
+.layoutArea[data-size="small"] .collectionElement .resourceThumb .resourceOverlay .resourceIcon {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    align-items: center;
+    justify-content: center;
 }
 
 .layoutArea[data-area="areaTop"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaBottom"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaCircular"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaLeft"][data-size="small"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaRight"][data-size="small"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaLeft"][data-size="medium"] .collectionElement .resourcePreviewButton, .layoutArea[data-area="areaRight"][data-size="medium"] .collectionElement .resourcePreviewButton {
@@ -174,7 +201,8 @@
     top: 0;
     width: 160px;
     height: 100%;
-    background-image: var(--thumb-bg);
+    /* (the type's placeholder where there is no picture: Wikipedia's crossed out box) */
+    background-image: var(--thumb-bg, var(--thumb-placeholder, none));
     background-size: var(--thumb-size, cover);
     background-position: var(--thumb-position, center top);
     background-repeat: no-repeat;
@@ -207,7 +235,7 @@
 .layoutArea[data-area="areaLeft"][data-size="medium"] .collectionElement .resourceThumb .resourceOverlay .resourceIcon,
 .layoutArea[data-area="areaRight"][data-size="medium"] .collectionElement .resourceThumb .resourceOverlay .resourceIcon {
     right: 8px;
-    bottom: 10px;
+    bottom: 7px;
 }
 
 .layoutArea[data-area="areaLeft"][data-size="medium"] .collectionElement .resourceThumb .resourceEditButton,
@@ -489,6 +517,71 @@
     border-bottom-color: var(--primary-fg-color);
     opacity: 1;
     cursor: pointer;
+}
+
+/* A transcript reads better with air between its lines */
+.layoutArea .contentViewContainer[data-type="Transcript"] .contentViewContents .transcriptContainer {
+    line-height: 1.5;
+}
+
+/* A transcript in the top and bottom areas: columns of text, as many lines high as the view's size
+   shows (3, 6, 12) and never higher than the text needs (columns of equal height), so the area is as
+   high as that (ContentView.fitExtent). Text that does not fit goes on in further columns to the
+   right: the strip scrolls sideways as every strip does, and follows the playback column by column
+   (ContentView._showTranscriptColumn). The general rule for a strip's contents lays its children out
+   in a row as wide as they are, which made a transcript one line that ran out of the area. */
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Transcript"] .contentViewContents {
+    display: block;
+    width: 100%;
+    min-width: 100%;
+    height: auto;
+    padding-left: 0;
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Transcript"] .contentViewContents .transcriptContainer {
+    --transcript-lines: 6;
+    height: auto;
+    max-height: calc(var(--transcript-lines) * 1lh + 14px);
+    margin: 0 4px;
+    overflow: visible;
+    columns: 300px;
+    column-gap: 32px;
+}
+
+:is(.layoutArea[data-area="areaTop"][data-size="small"], .layoutArea[data-area="areaBottom"][data-size="small"]) .contentViewContainer[data-type="Transcript"] .contentViewContents .transcriptContainer {
+    --transcript-lines: 3;
+}
+
+:is(.layoutArea[data-area="areaTop"][data-size="large"], .layoutArea[data-area="areaBottom"][data-size="large"]) .contentViewContainer[data-type="Transcript"] .contentViewContents .transcriptContainer {
+    --transcript-lines: 12;
+}
+
+/* The search field stays at the strip's start while the columns scroll */
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Transcript"] .transcriptSearchInput {
+    position: sticky;
+    left: 8px;
+    z-index: 2;
+    max-width: 300px;
+}
+
+/* Timelines in a view: rows of a label and a bar, with room below the bar for the times of the item
+   that plays or is pointed at. (The rows of the annotations editor's list of other users, which this
+   list is shared with, keep their sizes: Annotation/style.css.) In the top and bottom areas the view is
+   as high as its rows, up to the rows its size shows (ContentView.fitExtent). */
+
+.layoutArea .contentViewContainer[data-type="Timelines"] .timelineList .userTimelineWrapper,
+.layoutArea .contentViewContainer[data-type="Timelines"] .timelineList .userTimelineWrapper:last-child {
+    padding-bottom: 30px;
+}
+
+.layoutArea .contentViewContainer[data-type="Timelines"] .timelineList .timelineZoomScroller > .userTimelineWrapper:first-child {
+    padding-top: 4px;
+}
+
+.layoutArea .contentViewContainer[data-type="Timelines"] .timelineList .userLabel {
+    font-size: 12px;
+    line-height: 16px;
 }
 
 /* Content View Details — Swipe Overlay */
@@ -947,6 +1040,57 @@
     min-width: 260px;
 }
 
+/* A large chapter card is as wide as its thumbnail: the 108px high thumbnail (192px wide)
+   fills it, the lines below are as wide. The cards stand side by side from the left, as
+   an annotations view's thumbnails do, and the strip scrolls when they do not fit. (They
+   used to share the strip at 260 to 460px each, with the thumbnail in a corner.) */
+.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps, .noThumbs) .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps, .noThumbs) .chapterElement {
+    flex: 0 0 auto;
+    width: 210px;
+    min-width: 0;
+    /* The same air on every side of the thumbnail and between it and the text; the card ends
+       below its last line (the area takes its height from the cards, ContentView.fitExtent) */
+    top: 0;
+    height: auto;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    padding: 8px;
+    gap: 8px;
+}
+
+.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="Chapters"] .contentViewContents:has(> .chaptersContainer:not(.chapterSteps, .noThumbs)),
+.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="Chapters"] .contentViewContents:has(> .chaptersContainer:not(.chapterSteps, .noThumbs)) {
+    display: flex;
+    align-items: flex-start;
+}
+
+.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps, .noThumbs),
+.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps, .noThumbs) {
+    height: auto;
+}
+
+/* A medium card: the same air on every side of the thumbnail (4px: thumbnail and two lines fill the height) */
+.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps, .noThumbs) .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps, .noThumbs) .chapterElement {
+    padding: 4px;
+    gap: 4px;
+}
+
+/* A small card is one line in the middle of its height */
+.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps) .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps) .chapterElement {
+    justify-content: center;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps) .chapterCardTitle,
+.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps) .chapterCardTitle {
+    font-size: 13px;
+    white-space: nowrap;
+}
+
 .layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb,
 .layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb {
     height: 66px;
@@ -954,7 +1098,7 @@
 
 .layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb,
 .layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterCardThumb {
-    height: 90px;
+    height: 108px;
 }
 
 /* Vertical: list row — thumb beside the text */
@@ -1029,6 +1173,15 @@
 .layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
 .layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement {
     height: 108px;
+}
+
+/* Cards without thumbnails (.noThumbs: a video that has no scrub sprite) are rows as
+   high as their text; the heights above are those of the thumbnails. */
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"])[data-size] .contentViewContainer[data-type="Chapters"] .chaptersContainer.noThumbs .chapterElement {
+    height: auto;
+    min-height: 44px;
+    padding-top: 6px;
+    padding-bottom: 6px;
 }
 
 /* A large left/right ContentView shows only its active .collectionElement, one at
@@ -1195,6 +1348,12 @@
     flex: 1 0 auto;
     min-height: 0;
     padding: 12px 0;
+    /* The column of steps is as wide as its widest step and stands in the middle of the area, as the row stands in
+       the middle of a top or bottom area's height; the texts stay left aligned beside their dots. A title too long
+       for the area wraps (the column is the area's width at most). */
+    align-self: center;
+    width: fit-content;
+    max-width: 100%;
 }
 
 :is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep {
@@ -1255,17 +1414,24 @@
 
 /* Steps in the horizontal areas: a row, the text below the dots. Every step has
    its dot at the same height (the top of the step), so the line is straight
-   whatever the lengths of the texts; the row as a whole is centred in the area. */
+   whatever the lengths of the texts.
+
+   The row is as high as its steps, whatever the area's height: the area takes its
+   height from it (ContentView.fitExtent; the row's padding is the air above and
+   below). Where the area is higher anyway (custom CSS), the row stands in its
+   middle; where it is lower, the row starts at the top, so that the dots and the
+   line are what stays in view. */
 
 :is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .contentViewContents:has(> .chapterSteps) {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     padding-left: 0;
 }
 
 :is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps {
     height: auto;
-    max-height: 100%;
+    margin-block: auto;
+    padding-block: 6px;
     --chapter-step-top: 8px;
 }
 
@@ -1323,6 +1489,7 @@
 :is(.layoutArea[data-area="areaTop"][data-size="small"], .layoutArea[data-area="areaBottom"][data-size="small"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps {
     --chapter-step-dot: 12px;
     --chapter-step-top: 5px;
+    padding-block: 7px;
 }
 
 :is(.layoutArea[data-area="areaTop"][data-size="small"], .layoutArea[data-area="areaBottom"][data-size="small"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep {
@@ -1341,6 +1508,7 @@
 
 :is(.layoutArea[data-area="areaTop"][data-size="large"], .layoutArea[data-area="areaBottom"][data-size="large"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps {
     --chapter-step-dot: 16px;
+    padding-block: 10px;
 }
 
 :is(.layoutArea[data-area="areaTop"][data-size="large"], .layoutArea[data-area="areaBottom"][data-size="large"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer.chapterSteps .chapterStep {
@@ -1406,7 +1574,7 @@
     cursor: pointer;
 }
 
-/* A dot and, in a chapter's row, its question's text: shown at large (below), a tooltip otherwise */
+/* A dot and, in a chapter's row, its question's text: shown at medium and large (below), a tooltip at small */
 .layoutArea .contentViewContainer[data-type="QuizResults"] .quizDotItem {
     display: inline-flex;
     align-items: center;
@@ -1416,10 +1584,23 @@
 
 .layoutArea .contentViewContainer[data-type="QuizResults"] .quizDotLabel {
     display: none;
-    font-size: 12px;
     line-height: 1.3;
     color: var(--primary-fg-color);
     cursor: pointer;
+}
+
+/* Medium and large: titles, questions and the summary's texts in the size of the player's text. Below
+   its chapter's title a question is one step bolder, so that the two are told apart. */
+.layoutArea:is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chapterCardTitle,
+.layoutArea:is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .quizDotLabel,
+.layoutArea:is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
+.layoutArea:is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .quizResultsLegend,
+.layoutArea:is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .quizResultsRestart {
+    font-size: 14px;
+}
+
+.layoutArea:is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .quizDotLabel {
+    font-weight: 600;
 }
 
 .layoutArea .contentViewContainer[data-type="QuizResults"] .quizDot[data-state="right"],
@@ -1471,7 +1652,6 @@
     flex-wrap: wrap;
     gap: 4px 10px;
     font-size: 11px;
-    opacity: 0.85;
 }
 
 .layoutArea .contentViewContainer[data-type="QuizResults"] .quizResultsLegendEntry {
@@ -1525,11 +1705,13 @@
     font-size: 22px;
 }
 
-/* Large: a chapter's questions are a list below its title, each with its text */
-.layoutArea[data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDots {
+/* Medium and large: a chapter's questions are a list below its title, each with its text, left aligned
+   with the title, and its mark at the right */
+.layoutArea:is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDots {
     flex-direction: column;
     flex-wrap: nowrap;
-    align-items: flex-start;
+    align-items: stretch;
+    align-self: stretch;
     justify-content: flex-start;
     gap: 6px;
     width: 100%;
@@ -1537,25 +1719,91 @@
     margin-top: 0;
 }
 
-.layoutArea[data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotItem {
-    align-items: flex-start;
+.layoutArea:is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotItem {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
-.layoutArea[data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotLabel {
+.layoutArea:is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotLabel {
     display: block;
-    padding-top: 3px;
+    flex: 1 1 auto;
+    min-width: 0;
+    order: 1;
 }
 
-.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterElement,
-.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterElement {
-    flex-direction: column;
+.layoutArea:is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotItem .quizDot {
+    order: 2;
+}
+
+/* … in a card of the top and bottom areas the question starts below the title and the mark is in the
+   card's bottom right corner (with several questions: each at the end of its question's share) */
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDots {
+    flex: 1 1 auto;
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotItem {
+    flex: 1 1 auto;
+    align-items: flex-end;
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotLabel {
+    align-self: flex-start;
+}
+
+/* … and a question's own card has its text at the left and the mark in the bottom right corner */
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="questions"] .chapterElement {
+    flex-direction: row;
     align-items: stretch;
-    gap: 6px;
+    gap: 8px;
 }
 
-.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterCardText,
-.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterCardText {
-    flex: 0 0 auto;
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="questions"] .chapterCardText {
+    flex: 1 1 0;
+    width: auto;
+    justify-content: flex-start;
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="questions"] .quizDots {
+    align-self: flex-end;
+    margin-top: 0;
+}
+
+/* … and in a row of the left and right areas the mark is at the right: in the middle of the row's height
+   when the chapter has one question, beside its question when it has several. A grid of two columns
+   (texts, marks); the list of questions and its items have no boxes of their own here. */
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterElement {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-auto-flow: row dense;
+    align-items: center;
+    align-content: center;
+    gap: 6px 10px;
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDots,
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotItem {
+    display: contents;
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterCardText {
+    grid-column: 1 / -1;
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotLabel {
+    grid-column: 1;
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .quizDotItem .quizDot {
+    grid-column: 2;
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterElement:has(.quizDotItem:only-child) .chapterCardText {
+    grid-column: 1;
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]):is([data-size="medium"], [data-size="large"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer[data-rows="chapters"] .chapterElement:has(.quizDotItem:only-child) .quizDot {
+    grid-row: 1 / span 2;
 }
 
 /* A large card of a horizontal area is 460px wide for an annotation's content; a row here holds
@@ -1563,8 +1811,12 @@
 .layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chapterElement,
 .layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chapterElement {
     width: auto;
-    min-width: 160px;
+    min-width: 150px;
     flex: 1 1 0;
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"])[data-size="medium"] .contentViewContainer[data-type="QuizResults"] .chapterElement {
+    min-width: 150px;
 }
 
 /* Horizontal areas: the rows take what the summary at their end leaves. The rows' box keeps
@@ -1577,11 +1829,36 @@
     flex: 1 1 0;
 }
 
+/* The strip is as high as its rows and the summary need, whatever the area's height: the area
+   takes its height from it (ContentView.fitExtent). The cards and the summary are as high as
+   the highest of them. */
+
+.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .contentViewContents,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .contentViewContents,
+.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer {
+    height: auto;
+}
+
+.layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .chapterElement,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .chapterElement {
+    top: 0;
+    height: auto;
+    margin-top: 4px;
+    margin-bottom: 4px;
+}
+
+.layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chapterElement,
+.layoutArea[data-area="areaBottom"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chapterElement {
+    margin-top: 10px;
+    margin-bottom: 10px;
+}
+
 /* The summary stays in view at the strip's end while the rows scroll under it */
 .layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
 .layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
     flex: 0 0 auto;
-    max-width: 260px;
+    max-width: 340px;
     margin: 4px 4px 4px 0;
     position: sticky;
     right: 4px;
@@ -1597,6 +1874,14 @@
 .layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
     flex-direction: row;
     align-items: center;
+}
+
+/* A narrow player: the summary without its legend, so that it leaves the strip to the rows (it would
+   cover almost half of it; what a mark means is its tooltip) */
+@container ft-root (max-width: 768px) {
+    :is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="QuizResults"] .quizResultsLegend {
+        display: none;
+    }
 }
 
 /* A card's dots are below its text; in the one line of a small strip, beside it */
@@ -1660,25 +1945,25 @@
     margin-top: 4px;
 }
 
-/* Large: the summary is the foot of the area, whatever the number of rows. The contents are at
-   least as high as the area (the Chapters rules above), so in a column the summary's auto margin
-   takes it to the bottom; with more rows than fit, it sticks there and they scroll above it. */
-.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .contentViewContents,
-.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .contentViewContents {
+/* The summary is the foot of the area at every size, whatever the number of rows. The contents are at
+   least as high as the area (the Chapters rules above), so in a column the summary's auto margin takes
+   it to the bottom; with more rows than fit, it sticks there and they scroll above it. */
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="QuizResults"] .contentViewContents {
     display: flex;
     flex-direction: column;
 }
 
-.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer,
-.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer {
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer {
     flex: 0 0 auto;
 }
 
-.layoutArea[data-area="areaLeft"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
-.layoutArea[data-area="areaRight"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
     margin-top: auto;
-    padding: 12px 14px;
     border-top: 1px solid var(--semi-transparent-fg-color);
+}
+
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"])[data-size="large"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
+    padding: 12px 14px;
 }
 
 /* A narrow strip: the dots alone, the row's text is its tooltip (as a chapter's time is) */
@@ -1948,6 +2233,13 @@
 :is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.vertical {
     flex-direction: column;
     padding: 3px 0;
+}
+
+/* In the player the column of steps is as wide as its widest step and stands in the middle of its
+   area: in the Layout Editor it is half the area's width, centred (the dots alone at small already are) */
+.layoutEditor .contentViewPreview .schematicSteps.vertical:not([data-size="small"]) {
+    left: 25%;
+    width: 50%;
 }
 
 :is(.layoutEditor .contentViewPreview, .contentViewOptionThumb) .schematicSteps.horizontal {
@@ -2300,10 +2592,27 @@
 
 /* Transcript Search */
 
+/* A quiet field: the view's own colours, a thin line around it (the generic input is a filled box in
+   the text colour, which is the loudest thing in a view of text) */
 .layoutArea .contentViewContainer .contentViewContents .transcriptSearchInput {
     width: calc(100% - 16px);
     box-sizing: border-box;
     margin: 6px 8px 0 8px;
+    padding: 3px 8px;
+    font-size: 12px;
+    background: transparent;
+    color: var(--primary-fg-color);
+    border: 1px solid var(--semi-transparent-fg-color);
+}
+
+.layoutArea .contentViewContainer .contentViewContents .transcriptSearchInput::placeholder {
+    color: var(--primary-fg-color);
+    opacity: 0.5;
+}
+
+.layoutArea .contentViewContainer .contentViewContents .transcriptSearchInput:focus {
+    border-color: var(--primary-fg-color);
+    background: color-mix(in srgb, var(--primary-bg-color) 60%, transparent);
 }
 
 .layoutArea .contentViewContainer .contentViewContents .transcriptContainer.searching span {

@@ -39,6 +39,9 @@ FrameTrail.defineType(
             return ViewLayout.generateSchematic(type, size, axis, thumbnail, maxCards, variant);
         }
 
+        // The rows a Timelines view shows per size in the top and bottom areas before it scrolls (see fitExtent)
+        var FIT_TIMELINE_ROWS = { small: 2, medium: 4, large: 8 };
+
         return {
             constructor: function (contentViewData, whichArea) {
 
@@ -56,15 +59,11 @@ FrameTrail.defineType(
                     contentViewData.collectionFilter.users = contentViewData.collectionFilter.users || [];
                 contentViewData.transcriptSource       = contentViewData.transcriptSource || "";
                 contentViewData.showTranscriptSearch   = contentViewData.showTranscriptSearch || false;
-                // A phone has no room for the narrow strip that "small" is: its views are medium at the least.
-                // The ring around the video (circular) holds thumbnails only: small or medium.
+                // A view has the sizes its type has where it is (see offersSize); one that is not offered there is
+                // shown, and saved, as medium.
+                this.whichArea = whichArea;
                 contentViewData.contentSize            = contentViewData.contentSize || ((whichArea == 'companion' || whichArea == 'circular') ? "medium" : "small");
-                if (whichArea == 'companion' && contentViewData.contentSize == 'small') {
-                    contentViewData.contentSize = 'medium';
-                }
-                if (whichArea == 'circular' && contentViewData.contentSize == 'large') {
-                    contentViewData.contentSize = 'medium';
-                }
+                this.normalizeSize(contentViewData);
                 contentViewData.onClickContentItem     = contentViewData.onClickContentItem || "";
                 contentViewData.initClosed             = contentViewData.initClosed || false;
                 contentViewData.filterAspect           = contentViewData.filterAspect || "creatorId";
@@ -103,6 +102,53 @@ FrameTrail.defineType(
                  */
                 isVerticalArea: function() {
                     return (this.whichArea == 'left' || this.whichArea == 'right' || this.whichArea == 'companion') && !this.isSlideshow();
+                },
+
+
+                /**
+                 * Whether a view has a size where I am. A phone has no room for the narrow strip that "small" is,
+                 * the ring around the video holds thumbnails only (small or medium), and in the left and right
+                 * areas a transcript, timelines and chapter cards cannot be read in the narrow column that small
+                 * is there (chapters as steps and quiz results can: their dots alone). The type and, for
+                 * Chapters, the style can be asked about instead of mine.
+                 *
+                 * @method offersSize
+                 * @param {String} size
+                 * @param {String} [type]
+                 * @param {String} [chapterStyle]
+                 * @return {Boolean}
+                 */
+                offersSize: function(size, type, chapterStyle) {
+
+                    var own = this.contentViewData || {};
+
+                    type = type || own.type;
+                    if (chapterStyle === undefined) { chapterStyle = own.chapterStyle; }
+
+                    if (this.whichArea == 'companion') { return size != 'small'; }
+                    if (this.whichArea == 'circular')  { return size != 'large'; }
+
+                    if (size == 'small' && (this.whichArea == 'left' || this.whichArea == 'right')) {
+                        return !(type == 'Transcript' || type == 'Timelines' || (type == 'Chapters' && chapterStyle !== 'steps'));
+                    }
+
+                    return true;
+
+                },
+
+
+                /**
+                 * I give a view's data a size it has where I am: one that is not offered (see offersSize) becomes medium.
+                 *
+                 * @method normalizeSize
+                 * @param {Object} contentViewData
+                 * @return {Object} contentViewData
+                 */
+                normalizeSize: function(contentViewData) {
+                    if (!this.offersSize(contentViewData.contentSize, contentViewData.type, contentViewData.chapterStyle || 'cards')) {
+                        contentViewData.contentSize = 'medium';
+                    }
+                    return contentViewData;
                 },
 
 
@@ -685,9 +731,17 @@ FrameTrail.defineType(
                     FrameTrail.module('ViewLayout').updateManagedContent();
                     FrameTrail.module('ViewLayout').updateHiddenTabs();
 
-                    window.setTimeout(function() {
-                        self.resizeLayoutArea(false, suppressViewSizeChange);
-                    }, 50);
+                    // The area is what its active view is, at once (a size, type or style changed in the settings);
+                    // what follows from the room the video has left comes a moment later, when all views are made.
+                    if (self.syncLayoutArea()) {
+                        self.fitLayoutArea();
+                    }
+
+                    if (!suppressViewSizeChange) {
+                        window.setTimeout(function() {
+                            FrameTrail.changeState('viewSize', FrameTrail.getState('viewSize'));
+                        }, 50);
+                    }
 
                 },
 
@@ -1008,6 +1062,12 @@ FrameTrail.defineType(
                         this.scrollbarObserver = null;
                     }
 
+                    if (this._fitObserver) {
+                        this._fitObserver.disconnect();
+                        this._fitObserver = null;
+                        this._fitObserved = null;
+                    }
+
                     if (this.collectionStripObserver) {
                         this.collectionStripObserver.disconnect();
                         this.collectionStripObserver = null;
@@ -1040,6 +1100,11 @@ FrameTrail.defineType(
                         if (!self.contentViewContainer.classList.contains('active')) { return; }
                         var firstActiveElement = container.querySelector(activeSelector);
                         if (!firstActiveElement) { return; }
+                        // A transcript in a strip is columns that scroll sideways
+                        if (self.contentViewData.type == 'Transcript' && self.isHorizontalArea()) {
+                            self._showTranscriptColumn(firstActiveElement);
+                            return;
+                        }
                         var containerRect = container.getBoundingClientRect();
                         var elementRect = firstActiveElement.getBoundingClientRect();
                         var elementCenter = (elementRect.top + elementRect.bottom) / 2 - containerRect.top + container.scrollTop - 10;
@@ -2076,14 +2141,258 @@ FrameTrail.defineType(
                         areaContainer = self.getLayoutAreaContainer();
 
                     if (isEmpty) {
-                        areaContainer.removeAttribute('data-size');
-                    } else {
-                        areaContainer.setAttribute('data-size', self.contentViewData.contentSize);
+                        self._describeLayoutArea(areaContainer, null);
+                        areaContainer.style.removeProperty('--view-fit');
+                    } else if (self.syncLayoutArea()) {
+                        self.fitLayoutArea();
                     }
 
                     if (!preventViewSizeChange) {
                         FrameTrail.changeState('viewSize', FrameTrail.getState('viewSize'));
                     }
+
+                },
+
+
+                /**
+                 * What my content needs along my area's axis, where my type is as large as its content: in the top
+                 * and bottom areas chapters as steps, quiz results, timelines (up to the rows my size shows) and a
+                 * transcript (up to the lines my size shows, which the stylesheet limits). I answer the element whose
+                 * size says so and the pixels it takes; its size never depends on the area's (ContentView/style.css
+                 * sees to that), so an area that changes its size does not change what I answer. Null for a type or
+                 * an area that has a size of its own; an extent of 0 while nothing is laid out (hidden, not in the
+                 * page yet), and of 1 for a view that is laid out and has nothing to show.
+                 *
+                 * @method fitExtent
+                 * @return {Object|null} { element, extent }
+                 */
+                fitExtent: function() {
+
+                    var data      = this.contentViewData,
+                        container = this.contentViewContainer;
+
+                    if (!container || (this.whichArea != 'top' && this.whichArea != 'bottom')) { return null; }
+
+                    var contents = container.querySelector('.contentViewContents'),
+                        element  = null,
+                        extent   = 0;
+
+                    switch (data.type) {
+
+                        case 'Chapters':
+                            if (data.chapterStyle === 'steps') {
+                                element = container.querySelector('.chaptersContainer.chapterSteps');
+                            } else if (data.contentSize == 'large' && this._chapterThumbs) {
+                                // Large cards with thumbnails end below their last line (the thumbnail's
+                                // height is fixed, so the row's height does not wait for the pictures)
+                                element = container.querySelector('.chaptersContainer:not(.noThumbs)');
+                            } else {
+                                return null;
+                            }
+                            extent = element ? element.offsetHeight : 0;
+                            break;
+
+                        case 'QuizResults':
+                        case 'Transcript':
+                            element = contents;
+                            extent  = (contents && contents.firstElementChild) ? contents.offsetHeight : 0;
+                            break;
+
+                        case 'Timelines':
+                            element = container.querySelector('.timelineZoomScroller');
+                            if (element) {
+                                // As many rows as my size shows (FIT_TIMELINE_ROWS); more are scrolled to
+                                var rows     = element.querySelectorAll(':scope > .userTimelineWrapper'),
+                                    limit    = FIT_TIMELINE_ROWS[data.contentSize] || FIT_TIMELINE_ROWS.medium,
+                                    controls = container.querySelector('.zoomControlsWrapper');
+                                extent = (rows.length > limit) ? rows[limit].offsetTop : (rows.length ? element.offsetHeight : 0);
+                                if (extent && controls) { extent += controls.offsetHeight; }
+                            }
+                            break;
+
+                        default:
+                            return null;
+
+                    }
+
+                    // Laid out, and nothing to show (no questions, no rows, no text): the least the size allows,
+                    // not the room that content would take
+                    if (!extent && container.getClientRects().length) { extent = 1; }
+
+                    return { element: element, extent: extent };
+
+                },
+
+
+                /**
+                 * I make my layout area as large as my content, if I am its active view and of a type that is (see
+                 * fitExtent): the area gets my content's extent as --view-fit, which the stylesheet's sizes by type
+                 * of view take (ViewVideo/style.css); a type with a size of its own takes it away. Nothing is written
+                 * while the extent is what it was, or while nothing is laid out (what was measured last stands: a
+                 * closed top or bottom area is laid out, so it opens at the size it will have).
+                 *
+                 * The area moves to its new size as to any other (its transition; the video follows by itself, see
+                 * ViewVideo.followVideoContainer). With instant, and while the views of a hypervideo are being made
+                 * (ViewLayout.withoutAreaTransitions), it takes the size at once: nobody has seen another one.
+                 *
+                 * I am called when I was rendered, when I become the active tab, and by an observer of the measured
+                 * element for what comes later (a webfont, the window's width, a result, an edited subtitle). Never
+                 * while the layout is adjusted: that happens in every frame of an area's transition.
+                 *
+                 * @method fitLayoutArea
+                 * @param {Boolean} instant
+                 * @return {Boolean} whether the area's size changed
+                 */
+                fitLayoutArea: function(instant) {
+
+                    var self = this;
+
+                    if (!self.isActiveView() || FrameTrail.getState('companion')) { return false; }
+
+                    var areaContainer = self.getLayoutAreaContainer(),
+                        fit           = self.fitExtent(),
+                        current       = areaContainer.style.getPropertyValue('--view-fit'),
+                        next          = current;
+
+                    self._observeFit(fit ? fit.element : null);
+
+                    if (!fit) {
+                        next = '';
+                    } else if (fit.extent > 0 && (!current || Math.abs(parseFloat(current) - fit.extent) >= 1)) {
+                        next = Math.ceil(fit.extent) + 'px';
+                    }
+
+                    if (next === current) { return false; }
+
+                    var ViewLayout = FrameTrail.module('ViewLayout');
+
+                    function write() {
+                        if (next) {
+                            areaContainer.style.setProperty('--view-fit', next);
+                        } else {
+                            areaContainer.style.removeProperty('--view-fit');
+                        }
+                    }
+
+                    if (instant && ViewLayout && ViewLayout.withoutAreaTransitions) {
+                        ViewLayout.withoutAreaTransitions(write);
+                    } else {
+                        write();
+                    }
+
+                    if (!instant && !(ViewLayout && ViewLayout.areasFrozen && ViewLayout.areasFrozen())) {
+                        // As after a tab change: what needs the final sizes is done when the area has arrived
+                        if (window.contentViewFitTimeout) { window.clearTimeout(window.contentViewFitTimeout); }
+                        window.contentViewFitTimeout = window.setTimeout(function() {
+                            FrameTrail.changeState('viewSizeChanged');
+                        }, 600);
+                    }
+
+                    return true;
+
+                },
+
+
+                /**
+                 * I watch the element my layout area's size is measured from (see fitExtent), and fit the area again
+                 * when its size changes. One element at a time: a rendering makes a new one.
+                 *
+                 * @method _observeFit
+                 * @private
+                 * @param {HTMLElement} element null to stop watching
+                 */
+                _observeFit: function(element) {
+
+                    var self = this;
+
+                    if (self._fitObserved === (element || null)) { return; }
+
+                    if (!self._fitObserver && element && window.ResizeObserver) {
+                        self._fitObserver = new ResizeObserver(function() {
+                            // Not while a row of a Timelines view is dragged to another place (its placeholder has another height)
+                            if (self.contentViewContainer && self.contentViewContainer.querySelector('.sortable-chosen, .sortable-ghost')) { return; }
+                            self.fitLayoutArea();
+                        });
+                    }
+
+                    if (!self._fitObserver) { return; }
+
+                    if (self._fitObserved) { self._fitObserver.unobserve(self._fitObserved); }
+                    self._fitObserved = element || null;
+                    if (element) { self._fitObserver.observe(element); }
+
+                },
+
+
+                /**
+                 * Whether I am the view my layout area shows: its active tab. Only that view decides the area's size.
+                 *
+                 * @method isActiveView
+                 * @return {Boolean}
+                 */
+                isActiveView: function() {
+                    return !!this.contentViewContainer && this.contentViewContainer.classList.contains('active');
+                },
+
+
+                /**
+                 * I tell my layout area what it shows, if I am its active view: my size (data-size), my type
+                 * (data-view-type) and, where a type has more than one design, which (data-view-style). The area's
+                 * size and much of what is laid out in it go by these (ViewVideo/style.css, ContentView/style.css).
+                 * A view in another tab changes nothing.
+                 *
+                 * @method syncLayoutArea
+                 * @return {Boolean} whether I am the active view
+                 */
+                syncLayoutArea: function() {
+
+                    if (!this.isActiveView()) { return false; }
+
+                    this._describeLayoutArea(this.getLayoutAreaContainer(), this);
+
+                    return true;
+
+                },
+
+
+                /**
+                 * The design of my type that I show, where the type has more than one: a Chapters view's steps, or
+                 * its cards without thumbnails ('text').
+                 *
+                 * @method viewStyle
+                 * @return {String} '' for none
+                 */
+                viewStyle: function() {
+                    var data = this.contentViewData;
+                    if (data.type != 'Chapters') { return ''; }
+                    if (data.chapterStyle === 'steps') { return 'steps'; }
+                    // Cards without thumbnails (see renderChapterCards): their text alone
+                    return (data.contentSize != 'small' && this._chapterThumbs === false) ? 'text' : '';
+                },
+
+
+                /**
+                 * I write what a view is (its size, type and style) onto the container of a layout area, or of its
+                 * preview in the Layout Editor; nothing of it for an area without a view.
+                 *
+                 * @method _describeLayoutArea
+                 * @private
+                 * @param {HTMLElement} areaContainer
+                 * @param {ContentView} contentView null for an empty area
+                 */
+                _describeLayoutArea: function(areaContainer, contentView) {
+
+                    function set(name, value) {
+                        if (!value) {
+                            if (areaContainer.hasAttribute(name)) { areaContainer.removeAttribute(name); }
+                        } else if (areaContainer.getAttribute(name) !== value) {
+                            areaContainer.setAttribute(name, value);
+                        }
+                    }
+
+                    set('data-size',       contentView ? contentView.contentViewData.contentSize : null);
+                    set('data-view-type',  contentView ? contentView.contentViewData.type : null);
+                    set('data-view-style', contentView ? contentView.viewStyle() : null);
 
                 },
 
@@ -2098,10 +2407,11 @@ FrameTrail.defineType(
                     var self = this,
                         areaContainer = self.getLayoutAreaPreviewContainer();
 
+                    // Only the tab that is shown says what the preview area is; a view not drawn there yet says nothing
                     if (isEmpty) {
-                        areaContainer.removeAttribute('data-size');
-                    } else {
-                        areaContainer.setAttribute('data-size', self.contentViewData.contentSize);
+                        self._describeLayoutArea(areaContainer, null);
+                    } else if (!self.contentViewPreviewElement || self.contentViewPreviewElement.classList.contains('active')) {
+                        self._describeLayoutArea(areaContainer, self);
                     }
 
                 },
@@ -2142,7 +2452,9 @@ FrameTrail.defineType(
 
                             if (referenceWidth === 0) { return; }
 
-                            if (referenceWidth >= scaleBase) {
+                            // A card (the summary of a Wikipedia article, a page that cannot be embedded) lays
+                            // itself out for the width it has; only an embedded page needs its 400px
+                            if (referenceWidth >= scaleBase || elementToScale.querySelector('.resourceCard')) {
                                 elementToScale.style.top = '0';
                                 elementToScale.style.left = '0';
                                 elementToScale.style.height = '';
@@ -2205,8 +2517,15 @@ FrameTrail.defineType(
                     var steps    = self.contentViewData.chapterStyle === 'steps',
                         showTime = self.contentViewData.showChapterTime !== false;
 
+                    // Cards have thumbnails at medium and large where the video has a scrub sprite, or may still
+                    // get one (it is probed for); where it cannot have one, they are their text alone (.noThumbs),
+                    // and their area is as large as that (viewStyle).
+                    self._chapterThumbs = !steps && (size == 'medium' || size == 'large')
+                                          && !!(Controller && Controller.expectsScrubSprite && Controller.expectsScrubSprite());
+
                     var container = document.createElement('div');
-                    container.className = 'chaptersContainer' + (steps ? ' chapterSteps' : '');
+                    container.className = 'chaptersContainer' + (steps ? ' chapterSteps' : '')
+                                        + ((!steps && size != 'small' && !self._chapterThumbs) ? ' noThumbs' : '');
                     contents.appendChild(container);
 
                     // The model array is only kept sorted while the chapter editor is
@@ -2288,10 +2607,13 @@ FrameTrail.defineType(
                                              + '% - var(--chapter-gap))';
                         }
 
-                        if (sprite) {
+                        // The thumbnail's box is there as soon as a sprite is expected (its picture comes with
+                        // the sprite): a card has its final height from the start, which a large card of the
+                        // top and bottom areas gives its area (fitExtent).
+                        if (sprite || self._chapterThumbs) {
                             var thumb = document.createElement('div');
                             thumb.className = 'chapterCardThumb';
-                            self._applyScrubSpriteTile(thumb, sprite, start);
+                            if (sprite) { self._applyScrubSpriteTile(thumb, sprite, start); }
                             card.appendChild(thumb);
                         }
 
@@ -2582,6 +2904,8 @@ FrameTrail.defineType(
                     if (typeof now === 'number' && isFinite(now)) {
                         self.updateTimedStateOfContentViews(now);
                     }
+
+                    self.fitLayoutArea();
 
                 },
 
@@ -3177,6 +3501,58 @@ FrameTrail.defineType(
 
 
                 /**
+                 * I bring a cue of a transcript in a top or bottom area into view. The text is laid out in
+                 * columns there, and what does not fit goes on in columns to the right: when the cue is not
+                 * wholly in view, the strip scrolls so that the cue's column is the first one shown, which
+                 * turns the pages as the playback goes on (and not at every cue).
+                 *
+                 * @method _showTranscriptColumn
+                 * @private
+                 * @param {HTMLElement} cueElement
+                 */
+                _showTranscriptColumn: function(cueElement) {
+
+                    var self            = this,
+                        scrollContainer = self.contentViewContainer.querySelector('.contentViewScroll'),
+                        rects           = cueElement.getClientRects();
+
+                    if (!scrollContainer || !rects.length) { return; }
+
+                    var view  = scrollContainer.getBoundingClientRect(),
+                        first = rects[0],
+                        last  = rects[rects.length - 1];
+
+                    if (first.left >= view.left && last.right <= view.right) { return; }
+
+                    // Where the cue's column starts: the columns are equally wide, a gap apart, from the text's left edge
+                    var textContainer = cueElement.parentElement,
+                        style         = window.getComputedStyle(textContainer),
+                        gap           = parseFloat(style.columnGap) || 0,
+                        padding       = parseFloat(style.paddingLeft) || 0,
+                        textLeft      = textContainer.getBoundingClientRect().left + padding,
+                        textWidth     = textContainer.clientWidth - padding - (parseFloat(style.paddingRight) || 0),
+                        count         = Math.max(1, Math.floor((textWidth + gap) / ((parseFloat(style.columnWidth) || textWidth) + gap))),
+                        step          = (textWidth - (count - 1) * gap) / count + gap,
+                        columnLeft    = textLeft + Math.floor((first.left - textLeft + 1) / step) * step;
+
+                    self._isProgrammaticScroll = true;
+
+                    scrollContainer.scrollTo({ left: Math.max(0, columnLeft - view.left + scrollContainer.scrollLeft - padding - 4), behavior: 'smooth' });
+
+                    if (self._scrollEndHandler) {
+                        scrollContainer.removeEventListener('scrollend', self._scrollEndHandler);
+                    }
+                    self._scrollEndHandler = function() {
+                        self._isProgrammaticScroll = false;
+                        scrollContainer.removeEventListener('scrollend', self._scrollEndHandler);
+                        self._scrollEndHandler = null;
+                    };
+                    scrollContainer.addEventListener('scrollend', self._scrollEndHandler);
+
+                },
+
+
+                /**
                  * I update the details slider using the old positioned approach
                  * (details container is not converted to native scroll).
                  *
@@ -3628,10 +4004,19 @@ FrameTrail.defineType(
 
                     function refreshSizeThumbs(type) {
                         // A Chapters view's sizes are drawn as it is displayed: cards or steps
-                        var variant = editingUI.querySelector('.contentViewData[data-property="chapterStyle"]').value;
-                        editingUI.querySelector('.contentViewData[data-property="contentSize"]').querySelectorAll(':scope > div[data-value]').forEach(function(optionEl) {
+                        var variant   = editingUI.querySelector('.contentViewData[data-property="chapterStyle"]').value,
+                            sizeCards = editingUI.querySelector('.contentViewData[data-property="contentSize"]');
+                        sizeCards.querySelectorAll(':scope > div[data-value]').forEach(function(optionEl) {
                             var thatSize = optionEl.getAttribute('data-value'),
-                                axis = circular ? 'ring' : (self.isHorizontalArea(thatSize, type) ? 'x' : 'y');
+                                axis = circular ? 'ring' : (self.isHorizontalArea(thatSize, type) ? 'x' : 'y'),
+                                offered = self.offersSize(thatSize, type, variant);
+                            // A size the type does not have here is not offered; was it chosen, medium is
+                            optionEl.style.display = offered ? '' : 'none';
+                            if (!offered && optionEl.classList.contains('active')) {
+                                optionEl.classList.remove('active');
+                                sizeCards.querySelector(':scope > div[data-value="medium"]').classList.add('active');
+                                sizeCards.setAttribute('data-value', 'medium');
+                            }
                             var existingThumb = optionEl.querySelector('.contentViewOptionThumb');
                             if (existingThumb) {
                                 existingThumb.innerHTML = '';
@@ -4030,6 +4415,9 @@ FrameTrail.defineType(
                             delete newDataObject.openGap;
                         }
                     }
+
+                    // A size the type does not have in my area (see offersSize)
+                    this.normalizeSize(newDataObject);
 
                     return newDataObject;
 

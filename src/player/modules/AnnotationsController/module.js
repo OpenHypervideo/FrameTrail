@@ -976,8 +976,9 @@
 
             //console.log(currentAspectID);
 
+            // An annotation without a value for the aspect has no row; the others keep theirs
             if (!currentAspectID) {
-                return;
+                continue;
             }
             
             if (!collectedAnnotationsPerAspect[currentAspectID]) {

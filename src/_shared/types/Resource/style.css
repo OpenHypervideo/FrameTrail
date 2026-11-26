@@ -667,18 +667,24 @@ body > .resourceThumb .resourceTitle {
         grid-row: 1;
     }
 
+    /* The image stands at the top of its column, beside the first line of the text, with nothing
+       around it (it used to float in the middle of a grey column as high as the card) */
     .resourceDetail .resourceContent .resourceCard:has(.resourceCardThumb) .resourceCardThumb {
         grid-column: 1;
         grid-row: 2;
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         justify-content: center;
+        padding: 0;
+        background: transparent;
+        min-height: 0;
     }
 
     .resourceDetail .resourceContent .resourceCard:has(.resourceCardThumb) .resourceCardThumb img {
         width: 100%;
         height: 100%;
         object-fit: contain;
+        object-position: top center;
     }
 
     .resourceDetail .resourceContent .resourceCard:has(.resourceCardThumb) .resourceCardContent {
@@ -710,6 +716,61 @@ body > .resourceThumb .resourceTitle {
         overflow-y: visible;
         min-height: unset;
     }
+}
+
+/* A card shown in full in the left or right layout area, or on a paired phone, stands in a column that
+   is higher than it is wide: the image as wide as the card, the text below it, and the card scrolls as
+   one. Whatever the column's width: two columns leave the image small beside a short text there. (The
+   two columns above stay where a card is wide and low: a large view of the top or bottom area and its
+   details, an overlay, a preview.) Not in a narrow player, where these areas are rows as wide as the
+   player and the rules above go by the width again. */
+
+@container ft-root (min-width: 769px) {
+    :is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .resourceDetail .resourceContent .resourceCard:has(.resourceCardThumb) {
+        display: flex;
+    }
+
+    :is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .resourceDetail .resourceContent .resourceCard:has(.resourceCardThumb) .resourceCardThumb {
+        display: block;
+    }
+
+    :is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .resourceDetail .resourceContent .resourceCard .resourceCardThumb img {
+        width: 100%;
+        height: auto;
+        max-height: 420px;
+        margin: 0;
+        object-fit: contain;
+    }
+
+    :is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .resourceDetail .resourceContent .resourceCard .resourceCardContent {
+        flex: 0 0 auto;
+        padding: 8px 0 4px 0;
+        overflow-y: visible;
+        min-height: unset;
+    }
+}
+
+.companionMode .layoutArea .resourceDetail .resourceContent .resourceCard:has(.resourceCardThumb) {
+    display: flex;
+}
+
+.companionMode .layoutArea .resourceDetail .resourceContent .resourceCard:has(.resourceCardThumb) .resourceCardThumb {
+    display: block;
+}
+
+.companionMode .layoutArea .resourceDetail .resourceContent .resourceCard .resourceCardThumb img {
+    width: 100%;
+    height: auto;
+    max-height: 420px;
+    margin: 0;
+    object-fit: contain;
+}
+
+.companionMode .layoutArea .resourceDetail .resourceContent .resourceCard .resourceCardContent {
+    flex: 0 0 auto;
+    padding: 8px 0 4px 0;
+    overflow-y: visible;
+    min-height: unset;
 }
 
 /* ===================================================== */

@@ -910,7 +910,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
 
     var scrubPreviewElement = null,
-        scrubSprite         = null;
+        scrubSprite         = null,
+        scrubSpriteFailed   = false;
 
     /**
      * I resolve the URL of this hypervideo's scrub sprite, or return null when
@@ -986,6 +987,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         }
 
         scrubSprite = null;
+        scrubSpriteFailed = false;
 
         // The grid is the sprite's contract; the tiles' pixel size deliberately is
         // not, so that a sheet generated at any resolution renders correctly (see
@@ -1066,8 +1068,27 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             refreshChaptersContentViews();
 
         };
+        // No sprite beside the video after all: the Chapters ContentViews kept room for thumbnails (see expectsScrubSprite)
+        probeImage.onerror = function() {
+            scrubSpriteFailed = true;
+            refreshChaptersContentViews();
+        };
         probeImage.src = spriteUrl;
 
+    };
+
+
+    /**
+     * Whether this hypervideo has, or may still get, a scrub sprite: one is loaded, or its video could have one and
+     * the probe has not failed. A Chapters ContentView keeps room for its thumbnails while this is true, so that it
+     * does not change its size when they arrive; a video that cannot have a sprite (YouTube, Vimeo, an external or
+     * streamed file) answers false from the start.
+     *
+     * @method expectsScrubSprite
+     * @return {Boolean}
+     */
+    function expectsScrubSprite() {
+        return !!scrubSprite || (!scrubSpriteFailed && !!resolveScrubSpriteUrl());
     };
 
 
@@ -2189,6 +2210,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         updateChapterDisplay: updateChapterDisplay,
         getChapterIndexAtTime: getChapterIndexAtTime,
         getScrubSprite:     function() { return scrubSprite; },
+        expectsScrubSprite: expectsScrubSprite,
         formatTime:         formatTime,
         clearIntervals:     clearIntervals,
 

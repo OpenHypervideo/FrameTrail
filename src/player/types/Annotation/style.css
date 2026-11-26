@@ -114,7 +114,10 @@
     font-size: 11px;
     min-width: 40px;
     text-align: center;
+    /* An inactive level: the text colour of its surroundings, dimmed (a fixed grey could not be read on
+       the light themes' panels; on the dark ones this is the grey it was) */
     color: #acacb3;
+    color: color-mix(in srgb, var(--primary-fg-color) 68%, transparent);
 }
 
 .timelineList .zoomControlsWrapper .timelineZoomPreset.active {

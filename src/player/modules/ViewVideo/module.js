@@ -1382,6 +1382,9 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         if (viewMode === 'video') {
             domElement.classList.add('active');
             FrameTrail.module('Titlebar').title = FrameTrail.module('HypervideoModel').hypervideoName;
+            // The areas that are as large as their content: measured now that they are shown, before the layout goes by their sizes
+            var ViewLayout = FrameTrail.module('ViewLayout');
+            if (ViewLayout && ViewLayout.fitAreas) { ViewLayout.fitAreas(true); }
             adjustLayout();
             adjustHypervideo();
         } else if (viewMode != 'resources') {
