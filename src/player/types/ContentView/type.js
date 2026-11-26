@@ -782,8 +782,11 @@ FrameTrail.defineType(
                     if ( self.isVerticalArea() || self.isCircularArea() ) {
                         collectionElement.addEventListener('click', function() {
                             if ( self.contentViewData.contentSize == 'small' || self.contentViewData.contentSize == 'medium' ) {
-                                var _btn = this.querySelector('.resourcePreviewButton');
-                                if (_btn) _btn.click();
+                                // A preview opened from here is shown on the video (where there is room: ViewVideo.previewBox()). Types without a preview have no button.
+                                var _thumb = this.querySelector('.resourceThumb');
+                                if (_thumb && _thumb.querySelector('.resourcePreviewButton')) {
+                                    contentItem.resourceItem.openPreview(_thumb, { onVideo: true });
+                                }
 
                                 var annoData = contentItem.data;
                                 FrameTrail.triggerEvent('userAction', {

@@ -15,6 +15,7 @@
  *       ],
  *       close:    function() { ... },        // 'this' = content element
  *       open:     function() { ... },        // 'this' = content element
+ *       beforeClose: function(done) { ... }, // close() waits until done() is called (an animation); 'this' = content element
  *       classes:  'custom-class',            // extra CSS class(es) on <dialog>
  *       titlebar: false,                     // show the title bar (default true)
  *       resizable: false,                    // ignored (native <dialog> not resizable by default)
@@ -53,6 +54,8 @@ window.Dialog = function(opts) {
     var buttons        = opts.buttons || [];
     var closeCallback  = opts.close   || null;
     var openCallback   = opts.open    || null;
+    var beforeClose    = opts.beforeClose || null;
+    var closing        = false;
     var modal          = (opts.modal !== false);
     var width          = opts.width;
     var height         = opts.height;
@@ -193,7 +196,12 @@ window.Dialog = function(opts) {
     // Escape key → close (native <dialog> fires 'cancel')
     dlg.addEventListener('cancel', function(e) {
         e.preventDefault();
-        if (closeOnEscape) { ctrl.close(); }
+        if (!closeOnEscape) { return; }
+        // A cancel that cannot be prevented (browsers allow one prevented Escape
+        // per user interaction) closes the dialog right after this event: there
+        // is no time for beforeClose, so it is closed here and now.
+        if (beforeClose && !e.cancelable) { finishClose(); return; }
+        ctrl.close();
     });
 
     // Backdrop click on modal → close
@@ -201,6 +209,15 @@ window.Dialog = function(opts) {
         dlg.addEventListener('click', function(e) {
             if (e.target === dlg) { ctrl.close(); }
         });
+    }
+
+    // Close the dialog and tell its owner, once (a beforeClose that finishes
+    // after the dialog was closed another way does nothing).
+    function finishClose() {
+        closing = false;
+        if (!dlg.open) return;
+        dlg.close();
+        if (closeCallback) closeCallback.call(contentEl);
     }
 
     // ── Position helper ────────────────────────────────────────────────────
@@ -241,9 +258,15 @@ window.Dialog = function(opts) {
         },
 
         close: function() {
-            if (!dlg.open) return ctrl;
-            dlg.close();
-            if (closeCallback) closeCallback.call(contentEl);
+            if (!dlg.open || closing) return ctrl;
+            if (beforeClose) {
+                // The dialog stays open until its owner is done (the X, Escape
+                // and the backdrop all come through here); further calls wait.
+                closing = true;
+                beforeClose.call(contentEl, finishClose);
+                return ctrl;
+            }
+            finishClose();
             return ctrl;
         },
 

@@ -260,6 +260,11 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         _glideAnimation  = null,
         _reducedMotion   = (window.matchMedia) ? window.matchMedia('(prefers-reduced-motion: reduce)') : null;
 
+    // A resource preview on the video (previewBox): the share of the video as seen that it may take at most, and the size below which it is not shown on the video.
+    var PREVIEW_SHARE      = 0.92,
+        PREVIEW_MIN_WIDTH  = 480,
+        PREVIEW_MIN_HEIGHT = 270;
+
     // When true, changeSlidePosition will NOT add the is-sliding class.
     // Used by leaveEditMode to prevent slide animations during the restore sequence,
     // which internally triggers FrameTrail.changeState('slidePosition', 'middle')
@@ -712,6 +717,44 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
         updatePairingButton();
 
         followVideoContainer();
+
+    }
+
+
+    /**
+     * I say where a resource preview opened from a collection view of the player is shown: centred on the video, at its own size (maxWidth × maxHeight, the size of the preview dialog everywhere else) where the video is larger, and made smaller to stay inside the video, with a little of it showing around, where the video is smaller. Never larger than its own size: a large video does not make a large preview. The one rule for it: Resource.openPreview() asks me at opening and while the preview is open.
+     *
+     * Nothing (null) outside the video view, in the editing modes other than Preview, on a phone, and where the video is too small for a preview on it (a narrow player, a small block inside the ring): the preview is then the dialog in the middle of the window.
+     *
+     * @method previewBox
+     * @param {Number} maxWidth
+     * @param {Number} maxHeight
+     * @return {Object|null} { left, top, width, height } in pixels of the viewport
+     */
+    function previewBox(maxWidth, maxHeight) {
+
+        var editMode = FrameTrail.getState('editMode');
+
+        if (FrameTrail.getState('companion') || FrameTrail.getState('viewMode') != 'video' || (editMode && editMode != 'preview')) { return null; }
+
+        // The video as seen: what the container shows of it (videoFit: cover reaches beyond it), inside the window.
+        var video  = Hypervideo.getBoundingClientRect(),
+            room   = VideoContainer.getBoundingClientRect(),
+            left   = Math.max(video.left, room.left, 0),
+            top    = Math.max(video.top, room.top, 0),
+            right  = Math.min(video.right, room.right, document.documentElement.clientWidth),
+            bottom = Math.min(video.bottom, room.bottom, document.documentElement.clientHeight),
+            width  = Math.min(maxWidth, (right - left) * PREVIEW_SHARE),
+            height = Math.min(maxHeight, (bottom - top) * PREVIEW_SHARE);
+
+        if (width < PREVIEW_MIN_WIDTH || height < PREVIEW_MIN_HEIGHT) { return null; }
+
+        return {
+            left:   Math.round((left + right - width) / 2),
+            top:    Math.round((top + bottom - height) / 2),
+            width:  Math.round(width),
+            height: Math.round(height)
+        };
 
     }
 
@@ -2374,6 +2417,11 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
          * @type HTMLElement
          */
         get Hypervideo()        { return Hypervideo     },
+        /**
+         * Where a resource preview is shown on the video, or null.
+         * @method previewBox
+         */
+        previewBox: previewBox,
         /**
          * I contain the CaptionContainer element.
          * @attribute CaptionContainer

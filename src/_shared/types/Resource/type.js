@@ -411,141 +411,278 @@ FrameTrail.defineType(
                 },
 
                 /**
-                 * I create a preview dialog, call the .renderContent method of a given resource
-                 * (e.g. {{#crossLink "ResourceImage/renderContent:method"}}ResourceImage/renderContent{{/crossLink}})
-                 * and append the returned element to the dialog.
+                 * I open the preview of a resource: a dialog with what .renderContent returns
+                 * (e.g. {{#crossLink "ResourceImage/renderContent:method"}}ResourceImage/renderContent{{/crossLink}}).
+                 *
+                 * The dialog itself grows out of the thumbnail and goes back into it. It is opened at once, at its final place and size, with its content rendered, and is shown through a window of the thumbnail's shape that opens to the whole dialog (a transform and a clip-path, so nothing is laid out while it grows). A copy of the thumbnail (the poster) lies in that window and fades out while the content fades in. So the first frame is the thumbnail and the last the dialog as it stays, whatever the type shows.
+                 *
+                 * The dialog is 880 × 480 (less in a small window) in the middle of the window. With options.onVideo (a collection view of the player) it is centred on the video instead, where ViewVideo.previewBox() has room for it: the same size, smaller where the video is smaller, never larger. The video pauses while such a preview is open.
                  *
                  * @method openPreview
-                 * @param {HTMLElement} elementOrigin
+                 * @param {HTMLElement} elementOrigin The thumbnail
+                 * @param {Object} [options] onVideo: show the preview on the video
                  */
-                openPreview: function(elementOrigin) {
+                openPreview: function(elementOrigin, options) {
 
                     // Accept both DOM element and jQuery object
                     if (elementOrigin && elementOrigin.jquery) {
                         elementOrigin = elementOrigin[0];
                     }
+                    options = options || {};
 
-                    var rect = elementOrigin.getBoundingClientRect();
-                    var originTop = rect.top;
-                    var originLeft = rect.left;
-                    var originWidth = elementOrigin.offsetWidth;
-                    var originHeight = elementOrigin.offsetHeight;
-                    var finalTop = (window.innerHeight / 2) - 240;
-                    var finalLeft = (window.innerWidth / 2) - 440;
-                    var self = this;
+                    var self = this,
+                        WIDTH = 880,
+                        HEIGHT = 480,
+                        DURATION = 300,
+                        FADE_DURATION = 150,
+                        reducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-                    // If the thumbnail is inside a modal <dialog>, append the animation div
-                    // there so it renders in the top layer (above the modal backdrop).
-                    // Use position:fixed so viewport-relative coords work in both cases.
-                    var dialogAncestor = elementOrigin.closest('dialog');
+                    // On the video: only where the player says there is room. Asked again whenever the video changes its size.
+                    var ViewVideo = options.onVideo ? FrameTrail.module('ViewVideo') : null,
+                        onVideo = !!(ViewVideo && ViewVideo.previewBox && ViewVideo.previewBox(WIDTH, HEIGHT)),
+                        HypervideoController = onVideo ? FrameTrail.module('HypervideoController') : null,
+                        hypervideoID = onVideo ? FrameTrail.module('RouteNavigation').hypervideoID : null,
+                        resumePlayback = false;
 
-                    // Detect list-view contexts where the thumb uses a ::before
-                    // pseudo-element for the thumbnail (ancestor-dependent CSS).
-                    // A clone would lose that context when appended to body,
-                    // so we build a clean element instead.
-                    var isListView = elementOrigin.closest('.view-list') ||
+                    // List views show the thumbnail in a ::before pseudo-element (ancestor-dependent CSS). A clone would lose that context, so the poster is a clean element with the picture.
+                    var isListView = !!(elementOrigin.closest('.view-list') ||
                         (elementOrigin.closest('.collectionElement') &&
                          elementOrigin.closest('[data-size="medium"]') &&
-                         (elementOrigin.closest('[data-area="areaLeft"]') || elementOrigin.closest('[data-area="areaRight"]')));
+                         (elementOrigin.closest('[data-area="areaLeft"]') || elementOrigin.closest('[data-area="areaRight"]'))));
 
-                    var animationDiv;
-
-                    if (isListView) {
-                        // Build a minimal element with just the thumbnail image.
-                        // No clone = no inherited inline styles or children to fight.
-                        animationDiv = document.createElement('div');
-                        animationDiv.className = 'resourceThumb resourceAnimationDiv';
-                        var thumbBg = elementOrigin.style.getPropertyValue('--thumb-bg');
-                        if (thumbBg) {
-                            animationDiv.style.backgroundImage = thumbBg;
+                    /**
+                     * Where the thumbnail is shown now, or null when it is gone. Asked again for closing: collections follow the playback, the ring is laid out again.
+                     */
+                    function originRect() {
+                        if (!elementOrigin.isConnected) { return null; }
+                        var rect = elementOrigin.getBoundingClientRect(),
+                            width = rect.width,
+                            height = rect.height;
+                        if (isListView) {
+                            // Only the visible ::before thumbnail area
+                            var beforeCs = window.getComputedStyle(elementOrigin, '::before'),
+                                beforeW = parseFloat(beforeCs.width),
+                                beforeH = parseFloat(beforeCs.height);
+                            if (beforeW && beforeW < width) { width = beforeW; }
+                            if (beforeH && beforeH < height) { height = beforeH; }
                         }
-                        animationDiv.style.backgroundSize = 'cover';
-                        animationDiv.style.backgroundPosition = 'center top';
-                        animationDiv.style.backgroundRepeat = 'no-repeat';
-                        animationDiv.style.borderRadius = '3px';
-
-                        // Shrink origin rect to the visible ::before thumbnail area
-                        var beforeCs = window.getComputedStyle(elementOrigin, '::before');
-                        var beforeW = parseFloat(beforeCs.width);
-                        var beforeH = parseFloat(beforeCs.height);
-                        if (beforeW && beforeW < originWidth) originWidth = beforeW;
-                        if (beforeH && beforeH < originHeight) originHeight = beforeH;
-                    } else {
-                        animationDiv = elementOrigin.cloneNode(true);
-                        animationDiv.classList.add('resourceAnimationDiv');
+                        if (!(width > 0) || !(height > 0)) { return null; }
+                        return { left: rect.left, top: rect.top, width: width, height: height };
                     }
 
-                    // Copy theme CSS variables from the origin so the
-                    // animation div matches the theme of its source context.
-                    var _themeVars = [
-                        '--primary-bg-color', '--secondary-bg-color',
-                        '--primary-fg-color', '--secondary-fg-color',
-                        '--semi-transparent-bg-color', '--semi-transparent-fg-color',
-                        '--semi-transparent-fg-highlight-color'
-                    ];
-                    var _cs = window.getComputedStyle(elementOrigin);
-                    _themeVars.forEach(function(v) {
-                        var val = _cs.getPropertyValue(v).trim();
-                        if (val) animationDiv.style.setProperty(v, val);
+                    /**
+                     * The copy of the thumbnail that lies in the dialog's window while it grows.
+                     */
+                    function makePoster() {
+                        var poster;
+                        if (isListView) {
+                            poster = document.createElement('div');
+                            poster.className = 'resourceThumb';
+                            var thumbBg = elementOrigin.style.getPropertyValue('--thumb-bg');
+                            if (thumbBg) {
+                                poster.style.backgroundImage = thumbBg;
+                            }
+                            poster.style.backgroundSize = 'cover';
+                            poster.style.backgroundPosition = 'center top';
+                            poster.style.backgroundRepeat = 'no-repeat';
+                        } else {
+                            poster = elementOrigin.cloneNode(true);
+                            // A title hidden where the thumbnail is (the ring's small cells), or shown there as a hover label (small views), is not part of the picture.
+                            var title = elementOrigin.querySelector('.resourceTitle'),
+                                posterTitle = poster.querySelector('.resourceTitle');
+                            if (title && posterTitle) {
+                                posterTitle.style.display = elementOrigin.closest('.layoutArea[data-size="small"]')
+                                    ? 'none' : window.getComputedStyle(title).display;
+                            }
+                        }
+                        poster.classList.add('resourcePreviewPoster');
+                        // The thumbnail's theme (the dialog has the default one for these)
+                        var cs = window.getComputedStyle(elementOrigin);
+                        [
+                            '--primary-bg-color', '--secondary-bg-color',
+                            '--primary-fg-color', '--secondary-fg-color',
+                            '--semi-transparent-bg-color', '--semi-transparent-fg-color',
+                            '--semi-transparent-fg-highlight-color',
+                            '--thumb-title-bg', '--thumb-title-color', '--thumb-title-shadow',
+                            '--thumb-icon-color', '--thumb-icon-shadow'
+                        ].forEach(function(v) {
+                            var val = cs.getPropertyValue(v).trim();
+                            if (val) { poster.style.setProperty(v, val); }
+                        });
+                        return poster;
+                    }
+
+                    var previewContent = document.createElement('div');
+                    previewContent.className = 'resourcePreviewDialog';
+                    var contentEl = self.renderContent();
+                    if (contentEl && contentEl.jquery) { contentEl = contentEl[0]; }
+                    previewContent.appendChild(contentEl);
+
+                    var phase = 'opening',   // 'opening' | 'open' | 'closing'
+                        animations = [],
+                        poster = null,
+                        placed = null,
+                        playFromHere = false;
+
+                    // The video pauses beneath a preview that covers it, and plays on when the preview closes.
+                    if (HypervideoController && HypervideoController.isPlaying) {
+                        resumePlayback = true;
+                        HypervideoController.pause();
+                    }
+
+                    var previewDialogCtrl = Dialog({
+                        title:     (self.resourceData.type == 'text' || self.resourceData.type == 'html') ? '' : self.resourceData.name,
+                        content:   previewContent,
+                        inheritTheme: elementOrigin,
+                        classes:   'resourcePreviewFrame',
+                        resizable: false,
+                        width:     WIDTH,
+                        height:    HEIGHT,
+                        modal:     true,
+                        beforeClose: function(done) {
+                            phase = 'closing';
+                            dlg.classList.add('closing');
+                            if (animations.length) {
+                                // Still opening: back from where it is.
+                                animations.forEach(function(animation) { animation.reverse(); });
+                            } else {
+                                animate(true);
+                            }
+                            whenFinished(done);
+                        },
+                        close: function() {
+                            previewDialogCtrl.destroy();
+                            // Play on, unless another hypervideo was opened meanwhile.
+                            if ((resumePlayback || playFromHere) && HypervideoController
+                                && FrameTrail.module('RouteNavigation').hypervideoID === hypervideoID
+                                && FrameTrail.module('HypervideoController') === HypervideoController) {
+                                HypervideoController.play();
+                            }
+                        }
                     });
 
-                    animationDiv.style.position = 'fixed';
-                    animationDiv.style.top = originTop + 'px';
-                    animationDiv.style.left = originLeft + 'px';
-                    animationDiv.style.width = originWidth + 'px';
-                    animationDiv.style.height = originHeight + 'px';
-                    animationDiv.style.zIndex = 101;
-                    (dialogAncestor || document.body).appendChild(animationDiv);
+                    var dlg = previewDialogCtrl.widget(),
+                        fadedParts = [dlg.querySelector('.ft-dialog-titlebar'), dlg.querySelector('.ft-dialog-content')].filter(Boolean);
 
-                    var anim = animationDiv.animate([
-                        { top: originTop + 'px', left: originLeft + 'px', width: originWidth + 'px', height: originHeight + 'px' },
-                        { top: finalTop + 'px', left: finalLeft + 'px', width: '880px', height: '480px' }
-                    ], { duration: 300, easing: 'ease', fill: 'forwards' });
+                    /**
+                     * I give the dialog its place and size: on the video where there is room, else in the middle of the window.
+                     */
+                    function place() {
+                        var box = onVideo ? ViewVideo.previewBox(WIDTH, HEIGHT) : null,
+                            key = box ? [box.left, box.top, box.width, box.height].join(' ') : '';
+                        if (key === placed) { return; }
+                        placed = key;
+                        dlg.classList.toggle('onVideo', !!box);
+                        dlg.style.left   = box ? box.left + 'px' : '';
+                        dlg.style.top    = box ? box.top + 'px' : '';
+                        dlg.style.width  = (box ? box.width : WIDTH) + 'px';
+                        dlg.style.height = (box ? box.height : HEIGHT) + 'px';
+                        var mapEl = previewContent.querySelector('.resourceDetail');
+                        if (mapEl && mapEl._leafletMap) {
+                            mapEl._leafletMap.invalidateSize();
+                        }
+                    }
 
-                    anim.finished.then(function() {
-                        animationDiv.style.top = finalTop + 'px';
-                        animationDiv.style.left = finalLeft + 'px';
-                        animationDiv.style.width = '880px';
-                        animationDiv.style.height = '480px';
-                        anim.cancel();
+                    /**
+                     * I start the animations between the thumbnail and the dialog (backwards for closing). Without a thumbnail to grow from, and for viewers who asked for less motion, the dialog fades.
+                     */
+                    function animate(backwards) {
 
-                        var previewContent = document.createElement('div');
-                        previewContent.className = 'resourcePreviewDialog';
-                        var contentEl = self.renderContent();
-                        if (contentEl && contentEl.jquery) { contentEl = contentEl[0]; }
-                        previewContent.appendChild(contentEl);
+                        var origin = reducedMotion ? null : originRect(),
+                            timing = { duration: origin ? DURATION : FADE_DURATION, easing: 'ease', fill: 'both' };
 
-                        var previewDialogCtrl = Dialog({
-                            title:     (self.resourceData.type == 'text' || self.resourceData.type == 'html') ? '' : self.resourceData.name,
-                            content:   previewContent,
-                            inheritTheme: elementOrigin,
-                            resizable: false,
-                            width:     880,
-                            height:    480,
-                            modal:     true,
-                            close: function() {
+                        // Closing is the same way back with its own easing (it slows down into the thumbnail), so the keyframes are turned around, not the direction.
+                        function keyframes(list) {
+                            if (!backwards) { return list; }
+                            return list.slice().reverse().map(function(keyframe) {
+                                if (keyframe.offset === undefined) { return keyframe; }
+                                var turned = Object.assign({}, keyframe);
+                                turned.offset = 1 - keyframe.offset;
+                                return turned;
+                            });
+                        }
 
-                                previewDialogCtrl.destroy();
-                                animationDiv.style.top = finalTop + 'px';
-                                animationDiv.style.left = finalLeft + 'px';
-                                animationDiv.style.width = '880px';
-                                animationDiv.style.height = '480px';
-                                var reverseAnim = animationDiv.animate([
-                                    { top: originTop + 'px', left: originLeft + 'px', width: originWidth + 'px', height: originHeight + 'px' }
-                                ], { duration: 300, easing: 'ease', fill: 'forwards' });
-                                reverseAnim.finished.then(function() {
-                                    reverseAnim.cancel();
-                                    document.querySelectorAll('.resourceAnimationDiv').forEach(function(e) { e.remove(); });
-                                });
-                            },
-                            open: function() {
-                                var mapEl = previewContent.querySelector('.resourceDetail');
-                                if (mapEl && mapEl._leafletMap) {
-                                    mapEl._leafletMap.invalidateSize();
+                        if (!origin) {
+                            animations = [dlg.animate(keyframes([{ opacity: 0 }, { opacity: 1 }]), timing)];
+                            return;
+                        }
+
+                        // The dialog is laid out at its final place. Scaled so that it covers the thumbnail, a window of the thumbnail's shape (in the dialog's own pixels) lies in its middle.
+                        var target = dlg.getBoundingClientRect(),
+                            scale = Math.max(origin.width / target.width, origin.height / target.height),
+                            insetX = Math.max(0, (target.width - origin.width / scale) / 2),
+                            insetY = Math.max(0, (target.height - origin.height / scale) / 2),
+                            moveX = origin.left - target.left - insetX * scale,
+                            moveY = origin.top - target.top - insetY * scale;
+
+                        if (!poster) { poster = makePoster(); }
+                        poster.style.left = insetX + 'px';
+                        poster.style.top = insetY + 'px';
+                        poster.style.width = origin.width + 'px';
+                        poster.style.height = origin.height + 'px';
+                        poster.style.transform = 'scale(' + (1 / scale) + ')';
+                        dlg.appendChild(poster);
+                        dlg.style.transformOrigin = '0 0';
+
+                        animations = [
+                            dlg.animate(keyframes([
+                                {
+                                    transform: 'translate(' + moveX + 'px, ' + moveY + 'px) scale(' + scale + ')',
+                                    clipPath: 'inset(' + insetY + 'px ' + insetX + 'px ' + insetY + 'px ' + insetX + 'px round ' + (3 / scale) + 'px)'
+                                },
+                                {
+                                    transform: 'translate(0px, 0px) scale(1)',
+                                    // beyond the dialog: its shadow comes with it
+                                    clipPath: 'inset(-40px -40px -40px -40px round 0px)'
                                 }
+                            ]), timing),
+                            poster.animate(keyframes([{ opacity: 1 }, { opacity: 1, offset: 0.3 }, { opacity: 0 }]), timing)
+                        ];
+                        fadedParts.forEach(function(part) {
+                            animations.push(part.animate(keyframes([{ opacity: 0 }, { opacity: 1, offset: 0.6 }, { opacity: 1 }]), timing));
+                        });
+                        // The thumbnail's title and icon grow with its picture: they go first.
+                        poster.querySelectorAll('.resourceTitle, .resourceIcon').forEach(function(label) {
+                            animations.push(label.animate(keyframes([{ opacity: 1 }, { opacity: 0, offset: 0.3 }, { opacity: 0 }]), timing));
+                        });
+
+                    }
+
+                    function whenFinished(callback) {
+                        Promise.all(animations.map(function(animation) { return animation.finished; })).then(callback, function() {});
+                    }
+
+                    place();
+                    animate(false);
+
+                    whenFinished(function() {
+                        // Closed while it opened: the animations ran back, the dialog goes with their last frame.
+                        if (phase != 'opening') { return; }
+                        phase = 'open';
+                        animations.forEach(function(animation) { animation.cancel(); });
+                        animations = [];
+                        if (poster) { poster.remove(); }
+                        dlg.style.transformOrigin = '';
+                    });
+
+                    if (onVideo) {
+
+                        // The dialog stays on the video while it is open: the video changes its place and size with the window, over several frames and not always with an event (the areas ease to their new sizes).
+                        (function follow() {
+                            if (!dlg.isConnected) { return; }
+                            if (phase == 'open') { place(); }
+                            window.requestAnimationFrame(follow);
+                        })();
+
+                        // "Play from here" behind a preview that covers the video: go there, close and play.
+                        previewContent.addEventListener('click', function(evt) {
+                            if (evt.target.closest && evt.target.closest('.resourcePlayFromHereButton')) {
+                                playFromHere = true;
+                                previewDialogCtrl.close();
                             }
                         });
-                    });
+
+                    }
 
                 },
 
