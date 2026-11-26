@@ -10,11 +10,13 @@
  * phones are paired.
  *
  * An item pauses when playback crosses its start, or starts at it (an item at 0:00, "Play
- * from here"); seeking into the middle of its time span does not pause. I keep the time of
- * the last tick while playing: a start after it and up to now has been crossed. A seek puts
- * it a little before the new time, so a start right there counts. After a pause it stays
- * where playback stopped, so playing on does not pause again, and a jump back before the
- * start does.
+ * from here"); seeking into the middle of its time span does not pause. I keep the furthest
+ * time playback has reached since the last seek: a start after it and up to now has been
+ * crossed. A seek puts it a little before the new time, so a start right there counts. After
+ * a pause it stays where playback stopped, so playing on does not pause again, and a jump
+ * back before the start does. A step back of up to a second that is no seek is the player
+ * correcting the time it reported (a YouTube player runs its time on from its last report):
+ * the starts behind it were crossed already and are not crossed again.
  *
  * A quiz annotation is not paused at here: it goes to the QuizController, which asks it (and
  * pauses when it has frametrail:pause), also when it does not pause.
@@ -34,8 +36,12 @@ FrameTrail.defineModule('PauseController', function(FrameTrail){
     // A start this far before the time a seek lands on counts as reached (a tick is 0.15 s).
     var AT_START     = 0.25,
     // A step between two ticks longer than this was a jump, not playback (a hidden tab ticks about once a second).
-        LONGEST_STEP = 3;
+        LONGEST_STEP = 3,
+    // A step back up to this long, with no seek, is the player correcting its time: a YouTube player runs its
+    // time on from its last report (up to a second) and steps back when the next report says less.
+        LONGEST_BACKSTEP = 1;
 
+    // The furthest time playback has reached since the last seek: the starts up to it have been crossed.
     var lastTime = null;
 
 
@@ -83,12 +89,13 @@ FrameTrail.defineModule('PauseController', function(FrameTrail){
 
         if (!HypervideoController || !HypervideoController.isPlaying) { return; }
 
-        if (lastTime === null || currentTime < lastTime || currentTime - lastTime > LONGEST_STEP) {
+        if (lastTime === null || currentTime - lastTime > LONGEST_STEP || lastTime - currentTime > LONGEST_BACKSTEP) {
             lastTime = currentTime - AT_START;
         }
 
+        // After a small step back nothing is crossed again: what lies behind was crossed already.
         var from = lastTime;
-        lastTime = currentTime;
+        lastTime = Math.max(lastTime, currentTime);
 
         if (!isActive()) { return; }
 
