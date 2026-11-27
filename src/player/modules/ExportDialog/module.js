@@ -7,9 +7,10 @@
  * I am the ExportDialog: Export, the place where work leaves this tab.
  *
  * On top, what is exported, as option cards: the hypervideo the dialog was
- * opened in (offered only from within one), previewed by its thumbnail and
- * name, or the whole project, by its title, the number of its hypervideos and
- * their thumbnails. Beside them, the switches that apply: whether the project
+ * opened in (offered only from within one), previewed by its thumbnail as the
+ * overview shows it, or the whole project, as a folder with its title on the
+ * tab and a tile for each of its hypervideos (eight and "+N" when there are
+ * more than nine). Beside them, the switches that apply: whether the project
  * takes its resource library, and, when annotations were made with accounts,
  * whether they are rewritten to their authors' names, so they can be edited
  * without a server. Below, where it goes: into a local folder (a _data folder
@@ -44,45 +45,45 @@ FrameTrail.defineModule('ExportDialog', function(FrameTrail){
              + '</div>';
     }
 
-    // A hypervideo on a scope card: its thumbnail, as the overview shows it,
-    // or its icon when it has none.
-    function previewTile(id) {
-        var thumb = (FrameTrail.module('Database').hypervideos[id] || {}).thumb,
-            tile  = document.createElement('div');
-        tile.className = 'exportPreviewTile';
-        if (thumb) {
-            tile.style.backgroundImage = 'url("' + FrameTrail.module('RouteNavigation').getResourceURL(thumb).replace(/"/g, '%22') + '")';
-        } else {
-            tile.innerHTML = '<span class="icon-hypervideo"></span>';
-        }
-        return tile;
+    // The hypervideo as the overview shows it. Without its link, a click only
+    // chooses the card.
+    function hypervideoPreview(id) {
+        var thumb = FrameTrail.newObject('Hypervideo', FrameTrail.module('Database').hypervideos[id]).renderThumb();
+        thumb.querySelector('.hypervideoIcon').removeAttribute('href');
+        return thumb;
     }
 
-    // An option card for a scope: the tiles of its hypervideos (one fills the
-    // preview, more make a mosaic whose last tile fills its row), a title and
-    // a detail line beneath them.
-    function scopeCard(scope, label, ids, title, detail) {
+    // The project as a folder, its title on the tab, a tile in it for each of
+    // its hypervideos with the overview's play icon: nine at most, the ninth
+    // "+N" when there are more.
+    function projectPreview(count, title) {
+        var cells   = Math.min(count, 9),
+            columns = Math.max(1, Math.ceil(Math.sqrt(cells))),
+            rows    = Math.max(1, Math.ceil(cells / columns)),
+            tiles   = '';
+        for (var i = 0; i < cells; i++) {
+            tiles += (i === 8 && count > 9)
+                   ? '<span class="exportFolderTile more">+' + (count - 8) + '</span>'
+                   : '<span class="exportFolderTile"><span class="icon-play-circled"></span></span>';
+        }
+        var folder = document.createElement('div');
+        folder.className = 'exportFolder';
+        folder.innerHTML = '<div class="exportFolderTab"' + (title ? ' title="' + escapeHTML(title) + '"' : '') + '>' + escapeHTML(title) + '</div>'
+                         + '<div class="exportFolderBody">'
+                         + '<div class="exportFolderTiles" style="--cols: ' + columns + '; --rows: ' + rows + ';">' + tiles + '</div>'
+                         + '</div>';
+        return folder;
+    }
+
+    // An option card for a scope: its preview above its label.
+    function scopeCard(scope, label, preview) {
         var card = document.createElement('div');
         card.setAttribute('data-value', scope);
         card.setAttribute('role', 'radio');
         card.tabIndex = 0;
-        card.innerHTML = '<div class="optionCardThumb exportPreview">'
-                       + '<div class="exportPreviewTiles' + (ids.length > 1 ? ' mosaic' : '') + '"></div>'
-                       + '<div class="exportPreviewTitle">'
-                       + (title ? '<strong>' + escapeHTML(title) + '</strong>' : '')
-                       + (detail ? '<small>' + escapeHTML(detail) + '</small>' : '')
-                       + '</div>'
-                       + '</div>'
+        card.innerHTML = '<div class="optionCardThumb exportPreview"></div>'
                        + '<span>' + label + '</span>';
-        var tiles   = card.querySelector('.exportPreviewTiles'),
-            columns = Math.ceil(Math.sqrt(ids.length)),
-            rows    = Math.ceil(ids.length / columns);
-        tiles.style.gridTemplateColumns = 'repeat(' + columns + ', 1fr)';
-        tiles.style.gridTemplateRows    = 'repeat(' + rows + ', 1fr)';
-        ids.forEach(function(id) { tiles.appendChild(previewTile(id)); });
-        if (tiles.lastElementChild) {
-            tiles.lastElementChild.style.gridColumn = 'span ' + (columns * rows - ids.length + 1);
-        }
+        card.firstElementChild.appendChild(preview);
         return card;
     }
 
@@ -200,14 +201,13 @@ FrameTrail.defineModule('ExportDialog', function(FrameTrail){
             mediaInput     = content.querySelector('[name="downloadMedia"]'),
             formatButtons  = content.querySelectorAll('.downloadFormats > button');
 
-        // The project by its title, when one is set, and its size.
-        var projectTitle = ((Database.config || {}).overviewTitle || '').trim(),
-            projectSize  = (allIDs.length === 1) ? labels['ExportHypervideoCountOne'] : labels['ExportHypervideoCountMany'].replace('%s', allIDs.length);
+        // The project by its title, when one is set.
+        var projectTitle = ((Database.config || {}).overviewTitle || '').trim();
 
         if (currentID) {
-            scopeCards.appendChild(scopeCard('hypervideo', labels['ExportThisHypervideo'], [currentID], Database.hypervideos[currentID].name || currentID, ''));
+            scopeCards.appendChild(scopeCard('hypervideo', labels['ExportThisHypervideo'], hypervideoPreview(currentID)));
         }
-        scopeCards.appendChild(scopeCard('project', labels['ExportWholeProject'], allIDs.slice(0, 6), projectTitle, projectSize));
+        scopeCards.appendChild(scopeCard('project', labels['ExportWholeProject'], projectPreview(allIDs.length, projectTitle)));
 
         scopeCards.querySelectorAll('[data-value]').forEach(function(card) {
             card.addEventListener('click', function() {

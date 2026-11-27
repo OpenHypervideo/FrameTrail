@@ -18,66 +18,140 @@
     pointer-events: none;
 }
 
-/* The preview grows with the card, so both cards are as tall as the taller title. */
+/* The preview is a 16:9 picture inset by 15px, so both cards, which are equally wide, are equally tall. Both pictures are framed by the same line, an opaque mix, so where the folder's tab and body meet nothing is drawn twice as dark; it lights up with the card under the pointer and stays lit on the chosen card. */
 .exportDialog .exportPreview {
-    flex: 1 0 auto;
-    display: flex;
-    flex-direction: column;
+    --folder-line: color-mix(in srgb, var(--primary-fg-color) 55%, var(--primary-bg-color));
     height: auto;
+    padding: 15px;
+    box-sizing: border-box;
+    container-type: inline-size;
 }
 
-.exportDialog .exportPreviewTiles {
-    display: grid;
+/* The hypervideo: the overview's thumb (Hypervideo/style.css), sized to the card. Its name stays on one line and its play icon (40px there) shrinks in a narrow card, so the two never meet. */
+.exportDialog .exportPreview > .hypervideoThumb {
+    --play-size: min(40px, 19cqw);
+    float: none;
+    width: 100%;
+    height: auto;
+    margin: 0;
     aspect-ratio: 16 / 9;
+    box-sizing: border-box;
+    border-color: var(--folder-line);
+    border-radius: 4px;
+    overflow: hidden;
 }
 
-.exportDialog .exportPreviewTiles.mosaic {
-    gap: 3px;
-    padding: 5px 5px 0 5px;
+.exportDialog .exportScopeCards > div[data-value]:hover .exportPreview,
+.exportDialog .exportScopeCards > div[data-value].active .exportPreview {
+    --folder-line: var(--primary-fg-color);
 }
 
-.exportDialog .exportPreviewTile {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 0;
-    background: rgba(127, 127, 127, 0.18) center / cover no-repeat;
-    color: var(--primary-fg-color);
-}
-
-.exportDialog .exportPreviewTile > span {
-    font-size: 28px;
-    opacity: .5;
-}
-
-.exportDialog .exportPreviewTiles.mosaic .exportPreviewTile > span {
-    font-size: 14px;
-}
-
-/* Like the title of a hypervideo in the overview. */
-.exportDialog .exportPreviewTitle {
-    flex: 1 0 auto;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    padding: 5px 6px;
-    text-align: center;
-    font-size: 12px;
-    line-height: 1.35;
-    color: var(--primary-fg-color);
-}
-
-.exportDialog .exportPreviewTitle > strong,
-.exportDialog .exportPreviewTitle > small {
-    display: block;
+.exportDialog .exportPreview > .hypervideoThumb .hypervideoTitle {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 
-.exportDialog .exportPreviewTitle > small {
+/* The name strip's hover look (opaque), like the line, with the card under the pointer and on the chosen card. */
+.exportDialog .exportScopeCards > div[data-value]:hover .hypervideoThumb .hypervideoTitle,
+.exportDialog .exportScopeCards > div[data-value].active .hypervideoThumb .hypervideoTitle {
+    opacity: 1;
+}
+
+.exportDialog .exportPreview > .hypervideoThumb .hypervideoIcon [class^="icon-"]::before,
+.exportDialog .exportPreview > .hypervideoThumb .hypervideoIcon [class*=" icon-"]::before {
+    font-size: var(--play-size);
+    margin-left: calc(var(--play-size) / -2);
+    margin-top: calc(var(--play-size) * -0.6);
+}
+
+/* The project: a folder, its title on the tab, a 16:9 tile in it for each hypervideo. */
+.exportDialog .exportFolder {
+    display: flex;
+    flex-direction: column;
+    aspect-ratio: 16 / 9;
+    box-sizing: border-box;
+}
+
+/* The tab covers the body's top line below it, so it opens into the folder. */
+.exportDialog .exportFolderTab {
+    position: relative;
+    z-index: 1;
+    align-self: flex-start;
+    flex: none;
+    min-width: 36px;
+    max-width: 70%;
+    height: 20px;
+    margin-bottom: -2px;
+    padding: 0 8px;
+    box-sizing: border-box;
+    border: 2px solid var(--folder-line);
+    border-bottom: none;
+    border-radius: 4px 4px 0 0;
+    background: var(--primary-bg-color);
+    color: var(--primary-fg-color);
     font-size: 11px;
-    opacity: .75;
+    line-height: 18px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.exportDialog .exportFolderBody {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    place-content: start;
+    padding: 8px;
+    box-sizing: border-box;
+    border: 2px solid var(--folder-line);
+    border-radius: 0 4px 4px 4px;
+    container-type: size;
+}
+
+/* As large as the body allows in both directions, the tiles keeping 16:9. */
+.exportDialog .exportFolderTiles {
+    --gap: 4px;
+    --tile: min((100cqw - (var(--cols) - 1) * var(--gap)) / var(--cols), (100cqh - (var(--rows) - 1) * var(--gap)) / var(--rows) * 16 / 9);
+    display: grid;
+    grid-template-columns: repeat(var(--cols), var(--tile));
+    grid-auto-rows: calc(var(--tile) * 9 / 16);
+    gap: var(--gap);
+}
+
+.exportDialog .exportFolderTile {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1px;
+    background: color-mix(in srgb, var(--primary-fg-color) 50%, var(--primary-bg-color));
+}
+
+/* The overview thumb's play icon in small: the glyph on a disc of the ground, about as large against the tile as the thumb's is against the thumb. */
+.exportDialog .exportFolderTile > span {
+    display: block;
+    font-size: max(6px, var(--tile) * 0.22);
+    line-height: 1;
+}
+
+.exportDialog .exportFolderTile > span::before {
+    display: block;
+    margin: 0;
+    color: var(--primary-fg-color);
+    background: var(--primary-bg-color);
+    border-radius: 50%;
+}
+
+.exportDialog .exportFolderTile.more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    border: 1px solid var(--folder-line);
+    background: none;
+    color: var(--primary-fg-color);
+    font-size: clamp(8px, var(--tile) * 0.4, 11px);
+    line-height: 1;
 }
 
 .exportDialog .exportSwitches {
