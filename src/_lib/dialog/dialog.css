@@ -17,7 +17,7 @@
     background: #fff;
     color: var(--primary-bg-color);
     background: var(--primary-fg-color);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
+    box-shadow: 0 0px 2px var(--primary-fg-color);
     min-width: 280px;
     max-width: 90vw;
     max-height: 90vh;
