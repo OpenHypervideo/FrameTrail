@@ -105,6 +105,11 @@
                             "maximum": 600,
                             "default": 3
                         },
+                        "showTags": {
+                            "description": "The labels of an item's tags (tagdefinitions.json) are shown above its title: in the thumbnails of a medium view, and above a text shown as a card. A tag without a definition is left out. Not at small (there are no titles) or large (the items are shown in full).",
+                            "type": "boolean",
+                            "default": false
+                        },
                         "quizRows": { "description": "Not used by this view." },
                         "showQuizScore": { "description": "Not used by this view." },
                         "showQuizLegend": { "description": "Not used by this view." },
@@ -199,6 +204,7 @@
                         "zoomControls": { "description": "Not used by this view." },
                         "ringGap": { "description": "Not used by this view." },
                         "openWhenActive": { "description": "Not used by this view." },
+                        "showTags": { "description": "Not used by this view." },
                         "openGap": { "description": "Not used by this view." },
                         "quizRows": { "description": "Not used by this view." },
                         "showQuizScore": { "description": "Not used by this view." },
@@ -302,6 +308,7 @@
                         "zoomControls": { "description": "Not used by this view." },
                         "ringGap": { "description": "Not used by this view." },
                         "openWhenActive": { "description": "Not used by this view." },
+                        "showTags": { "description": "Not used by this view." },
                         "openGap": { "description": "Not used by this view." },
                         "quizRows": { "description": "Not used by this view." },
                         "showQuizScore": { "description": "Not used by this view." },
@@ -393,6 +400,7 @@
                         },
                         "ringGap": { "description": "Not used by this view." },
                         "openWhenActive": { "description": "Not used by this view." },
+                        "showTags": { "description": "Not used by this view." },
                         "openGap": { "description": "Not used by this view." },
                         "transcriptSource": { "description": "Not used by this view." },
                         "showTranscriptSearch": { "description": "Not used by this view." },
@@ -484,6 +492,7 @@
                         "zoomControls": { "description": "Not used by this view." },
                         "ringGap": { "description": "Not used by this view." },
                         "openWhenActive": { "description": "Not used by this view." },
+                        "showTags": { "description": "Not used by this view." },
                         "openGap": { "description": "Not used by this view." },
                         "quizRows": { "description": "Not used by this view." },
                         "showQuizScore": { "description": "Not used by this view." },
@@ -576,6 +585,7 @@
                         "zoomControls": { "description": "Not used by this view." },
                         "ringGap": { "description": "Not used by this view." },
                         "openWhenActive": { "description": "Not used by this view." },
+                        "showTags": { "description": "Not used by this view." },
                         "openGap": { "description": "Not used by this view." }
                     }
                 }

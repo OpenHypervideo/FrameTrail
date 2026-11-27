@@ -268,6 +268,27 @@
             }
         },
         {
+            "name": "hypervideo with a collection that shows the labels of its items' tags above their titles",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Lecture"
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaRight": [
+                            {
+                                "type": "TimedContent",
+                                "contentSize": "medium",
+                                "showTags": true
+                            }
+                        ]
+                    }
+                },
+                "clips": []
+            }
+        },
+        {
             "name": "hypervideo with areas that are open only while an annotation is active: one with a gap of its own, the ring with the default",
             "schema": "hypervideo.schema.json",
             "data": {

@@ -9,6 +9,12 @@
     padding: 10px;
 }
 
+/* An embedded post can be higher than the place it is shown in (the preview, a large view, an overlay): it
+   scrolls there. It used to be cut off at the bottom. (A card scrolls its own text, Resource/style.css.) */
+.resourceDetail[data-type="urlpreview"] .resourceContent:not(:has(> .resourceCard)) {
+    overflow-y: auto;
+}
+
 .overlayElement .resourceDetail[data-type="urlpreview"] .resourceButtons {
     display: flex;
 }

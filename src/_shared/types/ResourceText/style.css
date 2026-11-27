@@ -80,6 +80,106 @@
     display: none;
 }
 
+.resourceThumb[data-type="text"] .resourceTextPreviewTitle {
+    display: none;
+}
+
+/* A text in a medium view of the left and right areas (and of a phone, which is laid out as the right area) is a
+   card: its title and the whole text, as high as they are, in the content's colours. It used to be a box as high
+   as every row with the beginning of the text, dimmed and faded out, and a click opened a dialog with the same
+   text. Only a text higher than --text-card-max is cut (.cut, set by ContentView._watchTextCard): that one fades
+   out at the bottom and opens the preview. What the author gave the text in sizes, colours and line heights is
+   taken back as in every text thumbnail (the rules above), so a list of cards reads as one. */
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement:has(> .resourceThumb[data-type="text"]) {
+    height: auto;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] {
+    display: block;
+    position: relative;
+    box-sizing: border-box;
+    height: auto;
+    max-height: var(--text-card-max, 260px);
+    padding: 0;
+    overflow: hidden;
+    background-color: transparent;
+    font-size: 14px;
+    cursor: default;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"]::before,
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] .resourceOverlay {
+    display: none;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] .resourceTextPreviewTitle {
+    display: block;
+    padding: 9px 12px 3px;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.3;
+    color: var(--accent-color);
+    overflow-wrap: break-word;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] .resourceTextPreview {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: 9px 12px 11px;
+    opacity: 1;
+    overflow: visible;
+    line-height: 1.45 !important;
+    overflow-wrap: break-word;
+}
+
+/* (the card's padding is the padding of its parts, not of the thumbnail: custom CSS written for the text preview keeps applying) */
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] .resourceTextPreviewTitle + .resourceTextPreview {
+    padding-top: 0;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] .resourceTextPreview * {
+    line-height: 1.45 !important;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] .resourceTextPreview::after {
+    content: none;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] .resourceTextPreview :is(p, ul, ol, h1, h2, h3, h4, blockquote) {
+    margin: 0;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] .resourceTextPreview :is(p, ul, ol, h1, h2, h3, h4, blockquote) + :is(p, ul, ol, h1, h2, h3, h4, blockquote) {
+    margin-top: 6px;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] .resourceTextPreview :is(ul, ol) {
+    padding-left: 18px;
+}
+
+/* (a link in a card is a link: the click goes to it, not to the card) */
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] .resourceTextPreview a {
+    color: var(--accent-color) !important;
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"].cut {
+    cursor: pointer;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"].cut::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 44px;
+    background-image: linear-gradient(to top, var(--primary-bg-color), transparent);
+    pointer-events: none;
+}
+
 /* Edit Text Overlay Properties */
 
 .editPropertiesContainer .propertiesTypeIcon[data-type="text"] [class^="icon-"]::before, .editPropertiesContainer .propertiesTypeIcon[data-type="text"] [class*=" icon-"]::before {

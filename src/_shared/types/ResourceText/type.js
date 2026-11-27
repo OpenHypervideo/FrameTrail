@@ -612,6 +612,15 @@ FrameTrail.defineType(
                     });
                     thumbElement.appendChild(previewButton);
 
+                    // The title (plain text) is shown where the thumbnail is a card with the whole text: a medium
+                    // view of the left and right areas (see style.css). A sibling of the preview, whose content is replaced while the text is edited.
+                    if (self.resourceData.attributes.title) {
+                        var previewTitle = document.createElement('div');
+                        previewTitle.className = 'resourceTextPreviewTitle';
+                        previewTitle.textContent = self.resourceData.attributes.title;
+                        thumbElement.appendChild(previewTitle);
+                    }
+
                     var _dh = document.createElement('div');
                     _dh.innerHTML = self.resourceData.attributes.text;
                     var decoded_string = _dh.textContent;

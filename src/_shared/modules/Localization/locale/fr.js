@@ -792,6 +792,7 @@ window.FrameTrail_L10n['fr'] = {
     "SettingsShapeOutlineWidth": "Épaisseur (px)",
     "SettingsShapeSpeechBubble": "Bulle",
     "SettingsShapeTextColor": "Couleur du texte",
+    "SettingsShowTags": "Afficher les tags au-dessus des titres",
     "SettingsStartCollapsed": "Démarrer replié",
     "SettingsSynchronization": "Synchroniser avec l'Hypervideo",
     "SettingsTestCode": "Tester le code",

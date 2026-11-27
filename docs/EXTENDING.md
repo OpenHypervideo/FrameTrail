@@ -744,6 +744,31 @@ The size itself is the custom property `--view-size`: the view's height in the t
 
 `--view-fit` is the height the content needs (set by FrameTrail on the area for the types that are as high as their content, missing for the others). Rules written for earlier versions, which set `flex-basis` and `min-height` (or `flex` and `min-width`) of `.areaBottomContainer[data-size="…"]` and the like, keep working: they outweigh `--view-size`.
 
+### Lists of Annotations
+
+A medium collection view in the left or right area is a list: a row per annotation with its picture and its title beside it, and a text as a card with its title and its whole text. Three custom properties size it, set on the area, on a view (through the view's CSS class) or on single rows:
+
+```css
+/* Lower rows with a smaller picture, and text cards that are cut after 180px */
+.layoutArea .contentViewContainer.myList {
+    --row-height: 78px;
+    --row-picture: 112px;
+    --text-card-max: 180px;
+}
+```
+
+A text higher than `--text-card-max` (260px) fades out and opens in the preview on a click; a shorter one has nothing to open.
+
+An annotation without a picture shows its type's icon in the middle of a plain pane; its thumbnail has the class `noPicture`.
+
+With "Show tags above the titles" in a collection view's settings, every item has a line with the labels of its tags above its title (`.resourceTags`). Each label is a `.resourceTag` that also has the tag's id as a class, which is how a tag gets a colour of its own:
+
+```css
+.layoutArea .collectionElement .resourceTags .resourceTag.source { color: #e0a53a; }
+```
+
+A tag's id is shown in Manage Tags and stays the same when its label is changed.
+
 ## Extending the Backend
 
 ### Server Extensions

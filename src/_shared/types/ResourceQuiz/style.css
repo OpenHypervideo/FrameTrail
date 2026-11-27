@@ -1,9 +1,3 @@
-/* A quiz has no picture: its thumbnail gets a ground the icon and the title can be read on in every
-   theme (the theme's own background is white in the light ones, as the icon is) */
-.resourceThumb[data-type="quiz"] {
-    --thumb-color: #bdbdbd;
-}
-
 .resourceDetail[data-type="quiz"] {
     background-color: transparent;
     color: var(--primary-fg-color);
@@ -148,10 +142,6 @@
 
 .resourceDetail[data-type="quiz"] .resourceQuizAnswersContainer button.wrong::after {
     content: "\e811";
-}
-
-.resourceThumb[data-type="quiz"] .resourceOverlay {
-    background: transparent;
 }
 
 .contentViewContainer[data-size="small"] .resourceThumb[data-type="quiz"] .resourceTextPreview {

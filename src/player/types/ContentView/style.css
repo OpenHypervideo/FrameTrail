@@ -179,8 +179,10 @@
     height: 34px;
 }
 
+/* A medium view of the left and right areas is a list of rows: the picture, and the title beside it. Custom CSS
+   sets a row's height and its picture's width with --row-height and --row-picture (on the area, a view or a row). */
 .layoutArea[data-area="areaLeft"][data-size="medium"] .collectionElement, .layoutArea[data-area="areaRight"][data-size="medium"] .collectionElement {
-    height: 110px;
+    height: var(--row-height, 110px);
 }
 
 .layoutArea[data-area="areaLeft"][data-size="medium"] .collectionElement .resourceThumb,
@@ -189,7 +191,7 @@
     align-items: center;
     box-sizing: border-box;
     background-image: none !important;
-    padding-left: 160px;
+    padding-left: var(--row-picture, 160px);
     background-color: var(--thumb-title-bg);
 }
 
@@ -199,7 +201,7 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 160px;
+    width: var(--row-picture, 160px);
     height: 100%;
     /* (the type's placeholder where there is no picture: Wikipedia's crossed out box) */
     background-image: var(--thumb-bg, var(--thumb-placeholder, none));
@@ -228,7 +230,7 @@
     position: absolute;
     left: 0;
     top: 0;
-    width: 160px;
+    width: var(--row-picture, 160px);
     height: 100%;
 }
 
@@ -248,6 +250,128 @@
 
 .layoutArea[data-area="areaLeft"][data-size="large"] .collectionElement, .layoutArea[data-area="areaRight"][data-size="large"] .collectionElement {
     height: calc(100% - 8px);
+}
+
+/* A thumbnail without a picture (.noPicture, set by _markThumb in type.js; not the types that show their text):
+   the type's icon in the middle of a quiet pane, at the size it has in the corner of a picture. It used to stand
+   in the corner of an empty pane, under a vignette (a Wikipedia article and a webpage had a crossed out box). The
+   pane is the content's text colour at a few percent over its ground and the icon that colour dimmed, so both
+   read in a light and in a dark theme. The same for the copy of the thumbnail a preview grows out of. */
+:is(.layoutArea .contentViewContainer .collectionElement .resourceThumb, .companionMode .collectionStripItem .resourceThumb, .resourceThumb.resourcePreviewPoster).noPicture {
+    --thumb-icon-color: color-mix(in srgb, var(--primary-fg-color) 60%, transparent);
+    --thumb-icon-shadow: none;
+}
+
+:is(.layoutArea .contentViewContainer .collectionElement .resourceThumb, .companionMode .collectionStripItem .resourceThumb, .resourceThumb.resourcePreviewPoster).noPicture:not([data-type="location"]) {
+    --thumb-placeholder: none;
+    --thumb-color: color-mix(in srgb, var(--primary-fg-color) 9%, var(--primary-bg-color));
+    background-image: none;
+}
+
+/* (a location has its drawn map, whose colours are fixed: the pin on it is too) */
+:is(.layoutArea .contentViewContainer .collectionElement .resourceThumb, .companionMode .collectionStripItem .resourceThumb, .resourceThumb.resourcePreviewPoster).noPicture[data-type="location"] {
+    --thumb-icon-color: rgba(60, 64, 72, .92);
+}
+
+:is(.layoutArea .contentViewContainer .collectionElement .resourceThumb, .companionMode .collectionStripItem .resourceThumb, .resourceThumb.resourcePreviewPoster).noPicture .resourceOverlay {
+    background: none;
+}
+
+:is(.layoutArea .contentViewContainer .collectionElement .resourceThumb, .companionMode .collectionStripItem .resourceThumb, .resourceThumb.resourcePreviewPoster).noPicture .resourceOverlay .resourceIcon {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    height: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+:is(.layoutArea .contentViewContainer .collectionElement .resourceThumb, .companionMode .collectionStripItem .resourceThumb, .resourceThumb.resourcePreviewPoster).noPicture .resourceOverlay .resourceIcon :is([class^="icon-"], [class*=" icon-"])::before {
+    display: block;
+    width: auto;
+    margin: 0;
+    line-height: 1;
+}
+
+/* The labels of an item's tags, where a collection shows them (its "show tags"; _syncTagLabel in type.js): one small
+   line above the title. Each label is a .resourceTag that also has the tag's id as a class, which is how custom CSS
+   gives a tag its colour (.resourceTag.my-tag { color: … }). Where the title lies over the picture (the top and
+   bottom areas, the ring) the line stands in the title's strip; beside the picture (a medium view of the left and
+   right areas) and on a text card it is a line of the text. Not where there is no title (small views, a ring of
+   small cells). */
+.layoutArea .collectionElement .resourceThumb > .resourceTags {
+    position: absolute;
+    z-index: 3;
+    top: 6px;
+    left: 5px;
+    right: 5px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    font-size: 10.5px;
+    line-height: 1.3;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: color-mix(in srgb, var(--thumb-title-color) 80%, transparent);
+    pointer-events: none;
+}
+
+.layoutArea .collectionElement .resourceThumb > .resourceTags .resourceTag + .resourceTag::before {
+    content: "\00b7";
+    margin: 0 .45em;
+}
+
+.layoutArea .collectionElement .resourceThumb:has(> .resourceTags) > .resourceTitle {
+    padding-top: 21px;
+    max-height: 66px;
+}
+
+/* (a thumbnail that shows its text has no title strip: the line stands above the text, in its colour) */
+.layoutArea .collectionElement .resourceThumb:has(> .resourceTextPreview) > .resourceTags {
+    top: 8px;
+    left: 8px;
+    right: 8px;
+    color: color-mix(in srgb, var(--primary-fg-color) 62%, transparent);
+}
+
+.layoutArea .collectionElement .resourceThumb:has(> .resourceTags) > .resourceTextPreview {
+    padding-top: 24px;
+}
+
+.layoutArea[data-size="small"] .collectionElement .resourceThumb > .resourceTags,
+.layoutArea[data-area="areaCircular"].compact .collectionElement .resourceThumb > .resourceTags,
+.resourceThumb.resourcePreviewPoster > .resourceTags {
+    display: none;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb:not([data-type="text"]):has(> .resourceTags) {
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb > .resourceTags {
+    position: static;
+    flex: 0 0 auto;
+    padding: 0 10px 1px;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb:has(> .resourceTags) > .resourceTitle {
+    flex: 0 1 auto;
+    padding-top: 0;
+    padding-bottom: 0;
+    max-height: none;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] > .resourceTags {
+    padding: 9px 12px 3px;
+}
+
+.layoutArea:is([data-area="areaLeft"], [data-area="areaRight"])[data-size="medium"] .collectionElement .resourceThumb[data-type="text"] > .resourceTags ~ :is(.resourceTextPreviewTitle, .resourceTextPreview) {
+    padding-top: 0;
 }
 
 /* Content View Container */

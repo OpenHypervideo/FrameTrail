@@ -485,6 +485,13 @@ FrameTrail.defineType(
                             poster.style.backgroundSize = 'cover';
                             poster.style.backgroundPosition = 'center top';
                             poster.style.backgroundRepeat = 'no-repeat';
+                            // Without a picture the thumbnail is its type's icon on a quiet pane
+                            if (elementOrigin.classList.contains('noPicture')) {
+                                poster.classList.add('noPicture');
+                                poster.setAttribute('data-type', elementOrigin.getAttribute('data-type') || '');
+                                var originOverlay = elementOrigin.querySelector('.resourceOverlay');
+                                if (originOverlay) { poster.appendChild(originOverlay.cloneNode(true)); }
+                            }
                         } else {
                             poster = elementOrigin.cloneNode(true);
                             // A title hidden where the thumbnail is (the ring's small cells), or shown there as a hover label (small views), is not part of the picture.

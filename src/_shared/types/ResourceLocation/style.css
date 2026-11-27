@@ -2,8 +2,15 @@
     background-color: #B5D0D0;
 }
 
+/* The drawn map of a location without a picture of its own. As a custom property too, for the places that draw
+   the picture themselves (a medium view of the left and right areas, ContentView/style.css). */
 .resourceThumb[data-type="location"] {
-    background: #e3dfd6 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e3dfd6'/%3E%3Cpath d='M-20 135C40 115 80 150 130 135s90 15 110 10' fill='none' stroke='%238fc3ea' stroke-width='12' opacity='.65'/%3E%3Cpath d='M25 45C60 30 95 50 125 45s50 20 35 40-75 15-100 0Z' fill='%23b7dcb0' opacity='.9'/%3E%3Cpath d='M135 115c25-15 55 5 45 35s-55 0-50-25Z' fill='%23b7dcb0' opacity='.85'/%3E%3Cpath d='M-20 55L220 135' stroke='%23f0b77a' stroke-width='3.6' opacity='.85'/%3E%3Cpath d='M15-20L185 220' stroke='%23f0b77a' stroke-width='3.3' opacity='.8'/%3E%3Cpath d='M-20 95L220 85' stroke='%23fff' stroke-width='1.4' opacity='.75'/%3E%3Cpath d='M55-20L105 220' stroke='%23fff' stroke-width='1.2' opacity='.7'/%3E%3Cpath d='M120-20L165 220' stroke='%23fff' stroke-width='1' opacity='.65'/%3E%3Cg stroke='%23fff' stroke-width='.55' opacity='.45'%3E%3Cpath d='M0 25L200 85'/%3E%3Cpath d='M0 85L200 145'/%3E%3Cpath d='M25 0L85 200'/%3E%3Cpath d='M85 0L145 200'/%3E%3Cpath d='M145 0L200 170'/%3E%3C/g%3E%3C/svg%3E") repeat;
+    --thumb-placeholder: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 200'%3E%3Crect width='200' height='200' fill='%23e3dfd6'/%3E%3Cpath d='M-20 135C40 115 80 150 130 135s90 15 110 10' fill='none' stroke='%238fc3ea' stroke-width='12' opacity='.65'/%3E%3Cpath d='M25 45C60 30 95 50 125 45s50 20 35 40-75 15-100 0Z' fill='%23b7dcb0' opacity='.9'/%3E%3Cpath d='M135 115c25-15 55 5 45 35s-55 0-50-25Z' fill='%23b7dcb0' opacity='.85'/%3E%3Cpath d='M-20 55L220 135' stroke='%23f0b77a' stroke-width='3.6' opacity='.85'/%3E%3Cpath d='M15-20L185 220' stroke='%23f0b77a' stroke-width='3.3' opacity='.8'/%3E%3Cpath d='M-20 95L220 85' stroke='%23fff' stroke-width='1.4' opacity='.75'/%3E%3Cpath d='M55-20L105 220' stroke='%23fff' stroke-width='1.2' opacity='.7'/%3E%3Cpath d='M120-20L165 220' stroke='%23fff' stroke-width='1' opacity='.65'/%3E%3Cg stroke='%23fff' stroke-width='.55' opacity='.45'%3E%3Cpath d='M0 25L200 85'/%3E%3Cpath d='M0 85L200 145'/%3E%3Cpath d='M25 0L85 200'/%3E%3Cpath d='M85 0L145 200'/%3E%3Cpath d='M145 0L200 170'/%3E%3C/g%3E%3C/svg%3E");
+    --thumb-color: #e3dfd6;
+    background-image: var(--thumb-placeholder);
+    background-repeat: repeat;
+    background-position: 0 0;
+    background-size: auto;
 }
 
 /* Annotation Tile */

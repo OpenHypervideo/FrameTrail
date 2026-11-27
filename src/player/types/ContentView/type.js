@@ -552,6 +552,8 @@ FrameTrail.defineType(
 
                             self._refreshGroupActiveStates();
 
+                            self._syncTagLabels();
+
                             break;
 
                         case 'CustomHTML':
@@ -746,6 +748,158 @@ FrameTrail.defineType(
                 },
 
 
+                /**
+                 * I mark a thumbnail that has no picture (.noPicture): the stylesheet then shows the type's icon in the
+                 * middle of a quiet pane, instead of in the corner of an empty one. Not the types that show their text
+                 * in the thumbnail (text, html, entity). A picture that cannot be loaded (a page's picture on another
+                 * site that is gone, or may not be shown from here) is no picture either, once the browser says so.
+                 *
+                 * @method _markThumb
+                 * @param {HTMLElement} thumbElement what a resource's renderThumb() returned
+                 * @return {HTMLElement} thumbElement
+                 */
+                _markThumb: function(thumbElement) {
+
+                    if (!thumbElement || !thumbElement.classList || thumbElement.querySelector('.resourceTextPreview')) {
+                        return thumbElement;
+                    }
+
+                    var picture = thumbElement.style.getPropertyValue('--thumb-bg'),
+                        url     = /url\(\s*(['"]?)(.*?)\1\s*\)/.exec(picture || '');
+
+                    if (!picture) {
+                        thumbElement.classList.add('noPicture');
+                    } else if (url && url[2]) {
+                        var probe = new Image();
+                        probe.onerror = function() { thumbElement.classList.add('noPicture'); };
+                        probe.src = url[2];
+                    }
+
+                    return thumbElement;
+
+                },
+
+
+                /**
+                 * I show the labels of an item's tags above its title, when my view says so (contentViewData.showTags):
+                 * one line (.resourceTags) with a .resourceTag per tag that is defined, which also has the tag's id as
+                 * a class, so that custom CSS can give a tag its colour. Without the setting, or without a defined
+                 * tag, there is no line. Safe to call again: the line is made anew.
+                 *
+                 * @method _syncTagLabel
+                 * @param {HTMLElement} thumbElement
+                 * @param {Object} contentItem
+                 */
+                _syncTagLabel: function(thumbElement, contentItem) {
+
+                    if (!thumbElement) { return; }
+
+                    Array.from(thumbElement.children).forEach(function(child) {
+                        if (child.classList.contains('resourceTags')) { child.remove(); }
+                    });
+
+                    var TagModel = FrameTrail.module('TagModel'),
+                        ids      = (contentItem && contentItem.data && contentItem.data.tags) || [];
+
+                    if (this.contentViewData.showTags !== true || !TagModel || !ids.length) { return; }
+
+                    var line = document.createElement('div');
+                    line.className = 'resourceTags';
+
+                    ids.forEach(function(id) {
+                        var tag = TagModel.getTag(id);
+                        if (!tag.known) { return; }
+                        var label = document.createElement('span');
+                        label.className = 'resourceTag';
+                        try { label.classList.add(tag.id); } catch (e) { /* an id that is no class name */ }
+                        label.setAttribute('data-tag', tag.id);
+                        label.textContent = tag.label;
+                        line.appendChild(label);
+                    });
+
+                    if (!line.firstChild) { return; }
+
+                    var title = null;
+                    Array.from(thumbElement.children).forEach(function(child) {
+                        if (!title && child.classList.contains('resourceTitle')) { title = child; }
+                    });
+                    thumbElement.insertBefore(line, title || thumbElement.firstChild);
+
+                },
+
+
+                /**
+                 * The same for every element of my collection: after a rendering (the setting may have changed) and
+                 * when the tag definitions change.
+                 *
+                 * @method _syncTagLabels
+                 */
+                _syncTagLabels: function() {
+
+                    var self = this;
+
+                    if (!self._tagsSubscribed && self.contentViewData.showTags === true && FrameTrail.module('TagModel')) {
+                        self._tagsSubscribed = FrameTrail.module('TagModel').subscribe(function() {
+                            if (self.contentViewData.type == 'TimedContent') { self._syncTagLabels(); }
+                        });
+                    }
+
+                    (self.contentGroups || []).forEach(function(group) {
+                        var element = self.getContentViewElementFromContentItem(group.representative);
+                        if (!element) { return; }
+                        Array.from(element.children).forEach(function(child) {
+                            if (child.classList.contains('resourceThumb')) { self._syncTagLabel(child, group.representative); }
+                        });
+                    });
+
+                },
+
+
+                /**
+                 * Whether a thumbnail of mine is a text card: a text in a medium view of the left and right areas
+                 * (and of a phone), which the stylesheet shows with its whole text (ResourceText/style.css).
+                 *
+                 * @method _isTextCard
+                 * @param {HTMLElement} thumbElement
+                 * @return {Boolean}
+                 */
+                _isTextCard: function(thumbElement) {
+                    return this.contentViewData.contentSize == 'medium'
+                        && this.isVerticalArea()
+                        && thumbElement.getAttribute('data-type') == 'text';
+                },
+
+
+                /**
+                 * I keep the class .cut on a text's thumbnail: its content is higher than the thumbnail, which is the
+                 * case only for a text card longer than its limit. A cut card fades out and opens the preview on a
+                 * click, a whole one has nothing to open. Measured whenever the thumbnail changes its size (the
+                 * first layout, the area's width, the view's size, the text); the class changes no size.
+                 *
+                 * @method _watchTextCard
+                 * @param {HTMLElement} thumbElement
+                 */
+                _watchTextCard: function(thumbElement) {
+
+                    if (!window.ResizeObserver || !thumbElement || thumbElement.getAttribute('data-type') != 'text'
+                        || !this.isVerticalArea()) {
+                        return;
+                    }
+
+                    if (!this._textCardObserver) {
+                        this._textCardObserver = new ResizeObserver(function(entries) {
+                            entries.forEach(function(entry) {
+                                var thumb = entry.target;
+                                thumb.classList.toggle('cut', thumb.scrollHeight > thumb.clientHeight + 1);
+                            });
+                        });
+                    }
+
+                    this._textCardObserver.observe(thumbElement);
+
+                },
+
+
                 appendContentCollectionElements: function(contentItem, appendAtIndex) {
                     
                     var collectionElement = document.createElement('div');
@@ -768,6 +922,7 @@ FrameTrail.defineType(
                         collectionElement.appendChild(contentItem.resourceItem.renderContent());
                     } else {
                         var thumbElement = contentItem.resourceItem.renderThumb();
+                        self._markThumb(thumbElement);
 
                         // In the small horizontal top/bottom strips the inline .resourceTitle is
                         // hidden and would be clipped by .contentViewScroll's overflow if revealed
@@ -785,6 +940,8 @@ FrameTrail.defineType(
                         }
 
                         collectionElement.appendChild(thumbElement);
+                        self._watchTextCard(thumbElement);
+                        self._syncTagLabel(thumbElement, contentItem);
                     }
 
                     self.appendElementAtIndex(self.contentViewContainer.querySelector('.contentViewContents'), collectionElement, appendAtIndex);
@@ -834,10 +991,15 @@ FrameTrail.defineType(
                     }
 
                     if ( self.isVerticalArea() || self.isCircularArea() ) {
-                        collectionElement.addEventListener('click', function() {
+                        collectionElement.addEventListener('click', function(evt) {
                             if ( self.contentViewData.contentSize == 'small' || self.contentViewData.contentSize == 'medium' ) {
                                 // A preview opened from here is shown on the video (where there is room: ViewVideo.previewBox()). Types without a preview have no button.
                                 var _thumb = this.querySelector('.resourceThumb');
+                                // A text card (see _watchTextCard) shows its whole text: there is nothing to open, unless it is cut. A click on a link in it is the link's.
+                                if (_thumb && self._isTextCard(_thumb)
+                                    && (!_thumb.classList.contains('cut') || (evt.target.closest && evt.target.closest('a')))) {
+                                    return;
+                                }
                                 if (_thumb && _thumb.querySelector('.resourcePreviewButton')) {
                                     contentItem.resourceItem.openPreview(_thumb, { onVideo: true });
                                 }
@@ -880,6 +1042,9 @@ FrameTrail.defineType(
                                 contentItem.contentViewElements.indexOf(contentViewElement),
                                 1
                             );
+
+                            var watchedThumb = contentViewElement.querySelector('.resourceThumb');
+                            if (this._textCardObserver && watchedThumb) { this._textCardObserver.unobserve(watchedThumb); }
 
                             contentViewElement.remove();
 
@@ -1066,6 +1231,16 @@ FrameTrail.defineType(
                         this._fitObserver.disconnect();
                         this._fitObserver = null;
                         this._fitObserved = null;
+                    }
+
+                    if (this._textCardObserver) {
+                        this._textCardObserver.disconnect();
+                        this._textCardObserver = null;
+                    }
+
+                    if (this._tagsSubscribed) {
+                        this._tagsSubscribed();
+                        this._tagsSubscribed = null;
                     }
 
                     if (this.collectionStripObserver) {
@@ -1912,7 +2087,7 @@ FrameTrail.defineType(
                     self.contentGroups.forEach(function(group) {
                         var item = document.createElement('div');
                         item.className = 'collectionStripItem';
-                        item.appendChild(group.representative.resourceItem.renderThumb());
+                        item.appendChild(self._markThumb(group.representative.resourceItem.renderThumb()));
                         item.addEventListener('click', function() {
                             self.slideTo(self.getContentViewElementFromContentItem(group.representative));
                         });
@@ -3835,6 +4010,16 @@ FrameTrail.defineType(
                                     +'        </div>'
                                     +'        <div class="message active">'+ self.labels['SettingsItemsInCollection'] +': <span class="collectionCounter"></span></div>'
                                     +'        <hr>'
+                                    // The labels of the items' tags above their titles: missing in the stored view while it is off (see getDataFromEditingUI)
+                                    +'        <div class="layoutRow">'
+                                    +'            <div class="column-12">'
+                                    +'                <div class="checkboxRow">'
+                                    +'                    <label class="switch" style="display: inline-block;"><input type="checkbox" id="'+ idPrefix +'-showTags" class="contentViewData" data-property="showTags" autocomplete="off" '+ (contentViewData.showTags === true ? 'checked' : '') +'><span class="slider round"></span></label>'
+                                    +'                    <label for="'+ idPrefix +'-showTags">'+ self.labels['SettingsShowTags'] +'</label>'
+                                    +'                </div>'
+                                    +'            </div>'
+                                    +'        </div>'
+                                    +'        <hr>'
                                     // Open only while an annotation is active: missing in the stored view while it is off, as its gap is while it has its default (see getDataFromEditingUI). Not for a phone, which has no area to open.
                                     + ((self.whichArea == 'companion') ? '' :
                                      '        <div class="layoutRow">'
@@ -4379,10 +4564,11 @@ FrameTrail.defineType(
                     // The Quiz Results panel always has its fields; only a Quiz Results view takes them, and of
                     // those only what differs from the default (a stored view names a setting once it was changed;
                     // one that was written before stays written). Other views keep what they had, untouched.
-                    // The same goes for the Chapters panel's fields and a Chapters view.
+                    // The same goes for the Chapters panel's fields and a Chapters view, and for a collection's "show tags".
                     var typeDefaults = {
-                            QuizResults: { quizRows: 'chapters', showQuizScore: true, showQuizLegend: true, showQuizRestart: false, rememberQuizResults: false },
-                            Chapters:    { chapterStyle: 'cards', showChapterTime: true }
+                            QuizResults:  { quizRows: 'chapters', showQuizScore: true, showQuizLegend: true, showQuizRestart: false, rememberQuizResults: false },
+                            Chapters:     { chapterStyle: 'cards', showChapterTime: true },
+                            TimedContent: { showTags: false }
                         },
                         oldData      = this.contentViewData;
 

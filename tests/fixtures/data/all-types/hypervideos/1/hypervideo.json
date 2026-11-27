@@ -65,6 +65,7 @@
                     "cssClass": "",
                     "contentSize": "medium",
                     "initClosed": false,
+                    "showTags": true,
                     "collectionFilter": {
                         "tags": [],
                         "types": [],

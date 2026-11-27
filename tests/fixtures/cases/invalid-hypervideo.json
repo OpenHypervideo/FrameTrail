@@ -682,6 +682,32 @@
             ]
         },
         {
+            "name": "collection whose switch for the tags' labels is no switch",
+            "schema": "hypervideo.schema.json",
+            "data": {
+                "meta": {
+                    "name": "Lecture"
+                },
+                "config": {
+                    "layoutArea": {
+                        "areaRight": [
+                            {
+                                "type": "TimedContent",
+                                "showTags": "yes"
+                            }
+                        ]
+                    }
+                },
+                "clips": []
+            },
+            "errors": [
+                {
+                    "path": "/config/layoutArea/areaRight/0/showTags",
+                    "message": "must be boolean, is string"
+                }
+            ]
+        },
+        {
             "name": "view that opens its area only while an annotation is active, with a switch that is no switch and a negative gap",
             "schema": "hypervideo.schema.json",
             "data": {
