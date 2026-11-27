@@ -429,8 +429,6 @@ window.FrameTrail_L10n['en'] = {
     "MessageLocationNoResults": "No places found.",
     "MessageLocationSearchFailed": "The place search is not available right now.",
     "MessageNewResourceName": "Enter a title for the new resource",
-    "MessageOverviewMap": "Drag the pins to place hypervideos on the background image. Changes are saved as you make them.",
-    "MessageOverviewMapCardShape": "The preview opens when a pin is clicked. It shows the hypervideo's thumbnail, title and play button.",
     "MessageOverviewMapCrop": "With “Cover” the image fills the whole area and its edges are cropped. How much is cropped depends on each viewer’s window shape.",
     "MessageOverviewMapNoBackground": "Choose a background image for the map.",
     "MessageOverviewMapPadding": "Space kept clear around the background image. A percentage is measured against the width of the map area, so the border stays the same on all sides.",

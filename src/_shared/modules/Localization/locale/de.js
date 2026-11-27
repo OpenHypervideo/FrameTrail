@@ -429,8 +429,6 @@ window.FrameTrail_L10n['de'] = {
     "MessageLocationNoResults": "Keine Orte gefunden.",
     "MessageLocationSearchFailed": "Die Ortssuche ist gerade nicht verfügbar.",
     "MessageNewResourceName": "Gib einen Namen an",
-    "MessageOverviewMap": "Ziehe die Pins, um Hypervideos auf dem Hintergrundbild zu platzieren. Änderungen werden sofort gespeichert.",
-    "MessageOverviewMapCardShape": "Die Vorschau öffnet sich beim Klick auf einen Pin. Sie zeigt Vorschaubild, Name und Abspielknopf des Hypervideos.",
     "MessageOverviewMapCrop": "Mit „Füllend“ füllt das Bild die gesamte Fläche und seine Ränder werden beschnitten. Wie viel beschnitten wird, hängt vom Fensterformat der Betrachter ab.",
     "MessageOverviewMapNoBackground": "Wähle ein Hintergrundbild für die Karte.",
     "MessageOverviewMapPadding": "Abstand, der rund um das Hintergrundbild frei bleibt. Prozentwerte beziehen sich auf die Breite der Kartenfläche, damit der Rand auf allen Seiten gleich breit ist.",

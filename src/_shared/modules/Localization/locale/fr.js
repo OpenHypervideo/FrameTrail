@@ -429,8 +429,6 @@ window.FrameTrail_L10n['fr'] = {
     "MessageLocationNoResults": "Aucun lieu trouvé.",
     "MessageLocationSearchFailed": "La recherche de lieux n'est pas disponible pour le moment.",
     "MessageNewResourceName": "Saisir un titre pour la nouvelle ressource",
-    "MessageOverviewMap": "Faites glisser les épingles pour placer les hypervidéos sur l'image de fond. Les modifications sont enregistrées au fur et à mesure.",
-    "MessageOverviewMapCardShape": "L'aperçu s'ouvre au clic sur une épingle. Il montre la vignette, le titre et le bouton de lecture de l'hypervidéo.",
     "MessageOverviewMapCrop": "Avec « Remplir », l’image occupe toute la zone et ses bords sont rognés. La partie rognée dépend de la forme de la fenêtre de chaque spectateur.",
     "MessageOverviewMapNoBackground": "Choisissez une image de fond pour la carte.",
     "MessageOverviewMapPadding": "Espace laissé libre autour de l'image de fond. Les pourcentages se rapportent à la largeur de la zone de carte, afin que la marge reste identique sur tous les côtés.",

@@ -253,7 +253,6 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
                      + '                        </span>'
                      + '                        <button type="button" class="overviewMapBackgroundClear" title="'+ labels['GenericTransparent'] +'" style="'+ CHECKERBOARD +' width:26px; height:26px; padding:0; border:1px solid var(--primary-bg-color); border-radius:3px; cursor:pointer;"></button>'
                      + '                    </div>'
-                     + '                    <div class="message active">'+ labels['MessageOverviewMap'] +'</div>'
                      + '                </div>'
                      + '            </div>'
                      + '        </div>'
@@ -283,7 +282,6 @@ FrameTrail.defineModule('OverviewMapSettingsDialog', function(FrameTrail){
                      // A label after a group of option cards keeps clear of the outline of the card chosen above it.
                      + '                    <label style="display:block; margin-top:12px;">'+ labels['SettingsOverviewMapCardShape'] +'</label>'
                      + '                    <div class="overviewMapCardShapeSelect optionCards" data-property="cardShape" data-value="'+ selectedCardShape +'"></div>'
-                     + '                    <div class="message active">'+ labels['MessageOverviewMapCardShape'] +'</div>'
                      + '                </div>'
                      + '            </div>'
                      + '        </div>'
