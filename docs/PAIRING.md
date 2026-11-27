@@ -99,6 +99,8 @@ The broker hands out short-lived credentials made from that secret (`username = 
 
 The broker passes opaque blobs between the player (host) and phones (guests) of a room. It never reads them.
 
+Contract v1 does not change from release to release: a broker made for it serves newer players and phones as it is, whatever protocol version they speak inside the blobs (see Protocol v2). A change a v1 broker could not serve would be a new contract version.
+
 ```
 GET    /ice                                     → 200 { iceServers: [...] }   ([] for the local network only)
 PUT    /rooms/{room}                [host key]  → 204   create, or keep alive

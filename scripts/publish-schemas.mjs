@@ -1,5 +1,5 @@
 /*
- * Publishes the schemas in schemas/ where their $ids point, https://frametrail.org/schemas/1/. Run it on main after a release, into the FrameTrail-Website repository, and deploy the website:
+ * Publishes the schemas in schemas/ where their $ids point, https://frametrail.org/schemas/1/, into the FrameTrail-Website repository. That repository's daily workflow runs it at each release's tag and opens a pull request; by hand, on main after a release:
  *
  *     node scripts/publish-schemas.mjs ../FrameTrail-Website/schemas/1
  *
