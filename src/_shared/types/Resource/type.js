@@ -416,11 +416,11 @@ FrameTrail.defineType(
                  *
                  * The dialog itself grows out of the thumbnail and goes back into it. It is opened at once, at its final place and size, with its content rendered, and is shown through a window of the thumbnail's shape that opens to the whole dialog (a transform and a clip-path, so nothing is laid out while it grows). A copy of the thumbnail (the poster) lies in that window and fades out while the content fades in. So the first frame is the thumbnail and the last the dialog as it stays, whatever the type shows.
                  *
-                 * The dialog is 880 × 480 (less in a small window) in the middle of the window. With options.onVideo (a collection view of the player) it is centred on the video instead, where ViewVideo.previewBox() has room for it: the same size, smaller where the video is smaller, never larger. The video pauses while such a preview is open.
+                 * The dialog is 880 × 480 (less in a small window) in the middle of the window. With options.onVideo (opened from the player: a collection view, an overlay's code) it belongs to the video (ViewVideo.previewFromPlayer()): it is centred on the video where ViewVideo.previewBox() has room for it (the same size, smaller where the video is smaller, never larger), and the video pauses while it is open and plays on when it closes, if it was playing.
                  *
                  * @method openPreview
                  * @param {HTMLElement} elementOrigin The thumbnail
-                 * @param {Object} [options] onVideo: show the preview on the video
+                 * @param {Object} [options] onVideo: opened from the player, show the preview on the video and pause it
                  */
                 openPreview: function(elementOrigin, options) {
 
@@ -437,11 +437,11 @@ FrameTrail.defineType(
                         FADE_DURATION = 150,
                         reducedMotion = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 
-                    // On the video: only where the player says there is room. Asked again whenever the video changes its size.
+                    // Opened from the player: the preview belongs to the video, which pauses beneath it. It is shown on the video only where the player says there is room, asked again whenever the video changes its size.
                     var ViewVideo = options.onVideo ? FrameTrail.module('ViewVideo') : null,
-                        onVideo = !!(ViewVideo && ViewVideo.previewBox && ViewVideo.previewBox(WIDTH, HEIGHT)),
-                        HypervideoController = onVideo ? FrameTrail.module('HypervideoController') : null,
-                        hypervideoID = onVideo ? FrameTrail.module('RouteNavigation').hypervideoID : null,
+                        fromPlayer = !!(ViewVideo && ViewVideo.previewFromPlayer && ViewVideo.previewFromPlayer()),
+                        HypervideoController = fromPlayer ? FrameTrail.module('HypervideoController') : null,
+                        hypervideoID = fromPlayer ? FrameTrail.module('RouteNavigation').hypervideoID : null,
                         resumePlayback = false;
 
                     // List views show the thumbnail in a ::before pseudo-element (ancestor-dependent CSS). A clone would lose that context, so the poster is a clean element with the picture.
@@ -531,7 +531,7 @@ FrameTrail.defineType(
                         placed = null,
                         playFromHere = false;
 
-                    // The video pauses beneath a preview that covers it, and plays on when the preview closes.
+                    // The video pauses beneath a preview opened from the player (on the video or, where it has no room there, in the middle of the window), and plays on when the preview closes.
                     if (HypervideoController && HypervideoController.isPlaying) {
                         resumePlayback = true;
                         HypervideoController.pause();
@@ -579,7 +579,7 @@ FrameTrail.defineType(
                      * I give the dialog its place and size: on the video where there is room, else in the middle of the window.
                      */
                     function place() {
-                        var box = onVideo ? ViewVideo.previewBox(WIDTH, HEIGHT) : null,
+                        var box = fromPlayer ? ViewVideo.previewBox(WIDTH, HEIGHT) : null,
                             key = box ? [box.left, box.top, box.width, box.height].join(' ') : '';
                         if (key === placed) { return; }
                         placed = key;
@@ -676,16 +676,16 @@ FrameTrail.defineType(
                         dlg.style.transformOrigin = '';
                     });
 
-                    if (onVideo) {
+                    if (fromPlayer) {
 
-                        // The dialog stays on the video while it is open: the video changes its place and size with the window, over several frames and not always with an event (the areas ease to their new sizes).
+                        // The dialog stays on the video while it is open (and goes there, or leaves it, when the video gets or loses the room): the video changes its place and size with the window, over several frames and not always with an event (the areas ease to their new sizes).
                         (function follow() {
                             if (!dlg.isConnected) { return; }
                             if (phase == 'open') { place(); }
                             window.requestAnimationFrame(follow);
                         })();
 
-                        // "Play from here" behind a preview that covers the video: go there, close and play.
+                        // "Play from here" in a preview that paused the video: go there, close and play.
                         previewContent.addEventListener('click', function(evt) {
                             if (evt.target.closest && evt.target.closest('.resourcePlayFromHereButton')) {
                                 playFromHere = true;

@@ -722,9 +722,24 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
 
 
     /**
-     * I say where a resource preview opened from a collection view of the player is shown: centred on the video, at its own size (maxWidth × maxHeight, the size of the preview dialog everywhere else) where the video is larger, and made smaller to stay inside the video, with a little of it showing around, where the video is smaller. Never larger than its own size: a large video does not make a large preview. The one rule for it: Resource.openPreview() asks me at opening and while the preview is open.
+     * I say whether a resource preview opened from the player (a collection view, an overlay's code: openPreview(…, { onVideo: true })) belongs to the video: in the video view, not in the editing modes other than Preview, not on a phone. Such a preview pauses the video while it is open, wherever it is shown (on the video where previewBox() has room, else in the middle of the window).
      *
-     * Nothing (null) outside the video view, in the editing modes other than Preview, on a phone, and where the video is too small for a preview on it (a narrow player, a small block inside the ring): the preview is then the dialog in the middle of the window.
+     * @method previewFromPlayer
+     * @return {Boolean}
+     */
+    function previewFromPlayer() {
+
+        var editMode = FrameTrail.getState('editMode');
+
+        return !FrameTrail.getState('companion') && FrameTrail.getState('viewMode') == 'video' && !(editMode && editMode != 'preview');
+
+    }
+
+
+    /**
+     * I say where a resource preview opened from the player is shown: centred on the video, at its own size (maxWidth × maxHeight, the size of the preview dialog everywhere else) where the video is larger, and made smaller to stay inside the video, with a little of it showing around, where the video is smaller. Never larger than its own size: a large video does not make a large preview. The one rule for it: Resource.openPreview() asks me at opening and while the preview is open.
+     *
+     * Nothing (null) where the preview does not belong to the video (previewFromPlayer()), and where the video is too small for a preview on it (a narrow player, a small block inside the ring): the preview is then the dialog in the middle of the window.
      *
      * @method previewBox
      * @param {Number} maxWidth
@@ -733,9 +748,7 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
      */
     function previewBox(maxWidth, maxHeight) {
 
-        var editMode = FrameTrail.getState('editMode');
-
-        if (FrameTrail.getState('companion') || FrameTrail.getState('viewMode') != 'video' || (editMode && editMode != 'preview')) { return null; }
+        if (!previewFromPlayer()) { return null; }
 
         // The video as seen: what the container shows of it (videoFit: cover reaches beyond it), inside the window.
         var video  = Hypervideo.getBoundingClientRect(),
@@ -2420,6 +2433,11 @@ FrameTrail.defineModule('ViewVideo', function(FrameTrail){
          * @type HTMLElement
          */
         get Hypervideo()        { return Hypervideo     },
+        /**
+         * Whether a resource preview opened from the player belongs to the video (and pauses it).
+         * @method previewFromPlayer
+         */
+        previewFromPlayer: previewFromPlayer,
         /**
          * Where a resource preview is shown on the video, or null.
          * @method previewBox

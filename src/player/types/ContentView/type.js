@@ -993,7 +993,7 @@ FrameTrail.defineType(
                     if ( self.isVerticalArea() || self.isCircularArea() ) {
                         collectionElement.addEventListener('click', function(evt) {
                             if ( self.contentViewData.contentSize == 'small' || self.contentViewData.contentSize == 'medium' ) {
-                                // A preview opened from here is shown on the video (where there is room: ViewVideo.previewBox()). Types without a preview have no button.
+                                // A preview opened from here belongs to the video: it pauses it and is shown on it (where there is room: ViewVideo.previewBox()). Types without a preview have no button.
                                 var _thumb = this.querySelector('.resourceThumb');
                                 // A text card (see _watchTextCard) shows its whole text: there is nothing to open, unless it is cut. A click on a link in it is the link's.
                                 if (_thumb && self._isTextCard(_thumb)
