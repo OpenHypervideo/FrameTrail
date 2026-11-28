@@ -135,6 +135,10 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         get quizzes() { return (payload && Array.isArray(payload.quizzes)) ? payload.quizzes : []; },
         get results() { return (lastResults && payload && lastResults.hypervideo === String(payload.bundle.id)) ? lastResults.states : {}; },
 
+        // The quiz overlays of the hypervideo shown, as this phone asks them while the phones vote on one
+        // ({ creatorId, created, start, end, question, questionType, answers: [{ text, correct }], ratingScale }).
+        get overlayQuizzes() { return (payload && Array.isArray(payload.overlayQuizzes)) ? payload.overlayQuizzes : []; },
+
         // fn({ type: 'state', moved }), fn({ type: 'control' }), fn({ type: 'quiz' }) or fn({ type: 'results' }); returns the unsubscribe function.
         subscribe: function(fn) {
             subscribers.push(fn);
@@ -611,6 +615,7 @@ FrameTrail.defineModule('CompanionLauncher', function(FrameTrail){
         data.bundle = Pairing.companionBundle(data.bundle);
         if (data.bundle.id == null || data.bundle.id === '') { data.bundle.id = '0'; }
         data.quizzes = Pairing.readQuizzes(data.quizzes);
+        data.overlayQuizzes = Pairing.readOverlayQuizzes(data.overlayQuizzes);
 
         startPlayer(data, done.id);
 

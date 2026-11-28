@@ -309,6 +309,28 @@ FrameTrail.defineType(
                             button.classList.toggle('selected', yours === parseInt(button.dataset.value, 10));
                         });
 
+                        // While phones vote on a quiz overlay, its answers show the votes so far: a fill as large as
+                        // the answer's share of the voters, and the count (QuizController.stateOf().tally).
+                        var tally = state.tally || null;
+                        detail.classList.toggle('quizTallied', !!tally);
+                        detail.querySelectorAll('.quizAnswer, .quizSelectableAnswer, .quizRatingButton').forEach(function(button) {
+                            var mark  = button.querySelector('.quizTally'),
+                                index = button.classList.contains('quizRatingButton') ? parseInt(button.dataset.value, 10) - 1 : parseInt(button.dataset.index, 10);
+                            if (!tally) {
+                                if (mark) { mark.remove(); }
+                                return;
+                            }
+                            if (!mark) {
+                                mark = document.createElement('span');
+                                mark.className = 'quizTally';
+                                mark.innerHTML = '<span class="quizTallyFill"></span><span class="quizTallyCount"></span>';
+                                button.appendChild(mark);
+                            }
+                            var count = tally.counts[index] || 0;
+                            mark.style.setProperty('--quiz-tally-share', String(tally.voters ? count / tally.voters : 0));
+                            mark.querySelector('.quizTallyCount').textContent = String(count);
+                        });
+
                         var textInput = detail.querySelector('.quizFreeTextInput');
                         if (textInput && typeof yours === 'string' && document.activeElement !== textInput) {
                             textInput.value = yours;
@@ -785,15 +807,14 @@ FrameTrail.defineType(
                             renderAfterAnswering(container);
                         }
 
-                        // The time to answer, where many may answer: in a view, on the phones.
-                        if (!isOverlay) {
-                            container.appendChild(numberRow(labels['SettingsQuizCountdown'], parseFloat(edited.countdown) || 0, 0, null, function(input) {
-                                var seconds = Math.max(0, parseInt(input.value, 10) || 0);
-                                if (seconds) { attributes.countdown = seconds; } else { delete attributes.countdown; }
-                                input.value = seconds;
-                                changed(false);
-                            }));
-                        }
+                        // The time to answer, where many may answer: on the phones (a quiz overlay too, while
+                        // phones are paired), and in a view.
+                        container.appendChild(numberRow(labels['SettingsQuizCountdown'], parseFloat(edited.countdown) || 0, 0, null, function(input) {
+                            var seconds = Math.max(0, parseInt(input.value, 10) || 0);
+                            if (seconds) { attributes.countdown = seconds; } else { delete attributes.countdown; }
+                            input.value = seconds;
+                            changed(false);
+                        }));
 
                     };
 

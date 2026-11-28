@@ -20,14 +20,19 @@
  * wait for the person at the player (Continue, or play). A decision the player's own click made
  * alone acts at once, and opens a link at once (a browser opens a new tab only for a click).
  *
- * While phones vote, a panel over the video shows the question, the answers counted so far and
- * the countdown (.quizSessionPanel). The phones hear of all of it through the PairingHost
- * (quiz messages, docs/PAIRING.md) and answer through it.
+ * While phones vote on a quiz annotation, a panel over the video shows the question, the answers
+ * counted so far and the countdown (.quizSessionPanel). The phones hear of all of it through the
+ * PairingHost (quiz messages, docs/PAIRING.md) and answer through it.
  *
- * A quiz overlay is answered on the video by the person at the player and decided at once.
+ * A quiz overlay is the room's question while phones are paired: the PauseController hands it to
+ * ask() as it does a quiz annotation, the phones vote on it (they know it from the bundle
+ * payload's overlayQuizzes, overlayQuestions()), the person at the player votes too, and the
+ * overlay itself shows the answers counted so far (stateOf().tally) instead of the panel. Without
+ * phones it is answered on the video by the person at the player and decided at once.
  *
  * On a paired phone (the companion state) I am the phone's side: I show the question the player
- * asks in a sheet of its own and send its answers.
+ * asks in a sheet of its own and send its answers. A quiz overlay is asked there from a stand-in
+ * made of what the player sent (phoneOverlays()): the phone's copy has no overlays.
  *
  * @class QuizController
  * @static
@@ -54,8 +59,8 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
 
     var session         = null,     // the quiz being asked: see ask()
         queue           = [],       // quizzes that started while another was asked
-        overlayAnswered = {},       // quiz overlays answered, by key, until the playhead leaves them
-        decidedShown    = {},       // quiz annotations decided and gone on from, by key, until the playhead leaves them: { annotation, yours, decision, status } (on a phone too, from the closed quiz message)
+        overlayAnswered = {},       // quiz overlays answered alone at the player, by key, until the playhead leaves them
+        decidedShown    = {},       // quizzes asked, decided and gone on from, by key, until the playhead leaves them: { item, yours, decision, status, tally } (on a phone too, from the closed quiz message)
         lastSent        = 0,
         timers          = {},
         panel           = null,
@@ -68,7 +73,9 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         mine            = {},       // this phone's answers, by key
         sheet           = null,
         sheetKey        = null,
-        quizAt          = 0;        // when the last question message came
+        quizAt          = 0,        // when the last question message came
+        standIns        = [],       // the quiz overlays the player sent, as items to ask (phoneOverlays)
+        standInsFrom    = null;     // the list they were made from
 
 
     /* ------------------------------------------------------------------ */
@@ -90,12 +97,39 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         return null;
     }
 
-    function annotationByKey(key) {
-        var annotations = FrameTrail.module('HypervideoModel').annotations || [];
-        for (var i = 0; i < annotations.length; i++) {
-            if (annotations[i].data.type === 'quiz' && Quiz.itemKey(annotations[i].data) === key) { return annotations[i]; }
+    // The quiz known by this key: an annotation, or a quiz overlay (on a phone, its stand-in).
+    function itemByKey(key) {
+        var Model = FrameTrail.module('HypervideoModel'),
+            items = ((Model && Model.annotations) || []).concat(companion ? phoneOverlays() : ((Model && Model.overlays) || []));
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].data.type === 'quiz' && Quiz.itemKey(items[i].data) === key) { return items[i]; }
         }
         return null;
+    }
+
+    // On a phone: the quiz overlays the player sent (link.overlayQuizzes, FrameTrailQuiz.phoneCopy()), each as an
+    // item with the data and the ResourceQuiz an overlay has, so the sheet asks them as it asks an annotation.
+    function phoneOverlays() {
+        var list = (companion && Array.isArray(companion.overlayQuizzes)) ? companion.overlayQuizzes : [];
+        if (list !== standInsFrom) {
+            standInsFrom = list;
+            standIns = list.map(function(entry) {
+                var data = {
+                    type:       'quiz',
+                    creatorId:  entry.creatorId,
+                    created:    entry.created,
+                    start:      entry.start,
+                    end:        entry.end,
+                    attributes: { question: entry.question, questionType: entry.questionType, answers: entry.answers, ratingScale: entry.ratingScale }
+                };
+                return { data: data, resourceItem: FrameTrail.newObject('ResourceQuiz', data) };
+            });
+        }
+        return standIns;
+    }
+
+    function isOverlay(item) {
+        return !!item && overlayOf(item.data) === item;
     }
 
     function phones(statuses) {
@@ -141,33 +175,38 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
     /* ------------------------------------------------------------------ */
 
     /**
-     * I ask a quiz annotation whose start playback has reached where it is shown (PauseController).
-     * While another one is asked, it waits its turn.
+     * I ask a quiz whose start playback has reached (PauseController): a quiz annotation where it is
+     * shown, or a quiz overlay while phones are paired (it is on the video, which every phone
+     * follows, and the person at the player sees it). While another one is asked, it waits its turn.
      *
      * @method ask
-     * @param {Annotation} annotation
+     * @param {Annotation|Overlay} item
      * @param {Object} options { pause: pause the video while it is asked (frametrail:pause) }
      */
-    function ask(annotation, options) {
+    function ask(item, options) {
 
         if (companion) { return; }
 
         if (session) {
-            if (session.annotation !== annotation && queue.indexOf(annotation) < 0) { queue.push(annotation); }
+            if (session.item !== item && queue.indexOf(item) < 0) { queue.push(item); }
             return;
         }
 
-        delete decidedShown[Quiz.itemKey(annotation.data)];
+        var key       = Quiz.itemKey(item.data),
+            overlay   = isOverlay(item),
+            shown     = overlay ? null : FrameTrail.module('ViewLayout').viewsShowing(item),
+            countdown = parseFloat(attributesOf(item.data).countdown);
 
-        var shown     = FrameTrail.module('ViewLayout').viewsShowing(annotation),
-            countdown = parseFloat(attributesOf(annotation.data).countdown);
+        delete decidedShown[key];
+        delete overlayAnswered[key];
 
         session = {
-            key:           Quiz.itemKey(annotation.data),
-            annotation:    annotation,
+            key:           key,
+            item:          item,
+            isOverlay:     overlay,
             pause:         !!(options && options.pause),
-            onPlayer:      shown.player.length > 0,
-            onPhones:      shown.companion.length > 0,
+            onPlayer:      overlay || shown.player.length > 0,
+            onPhones:      overlay || shown.companion.length > 0,
             votes:         new Map(),     // voter (a phone's id, or 'player') → normalized choice
             unknown:       {},            // phones that do not have the quiz
             state:         'open',
@@ -239,7 +278,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
 
         if (!session || session.state !== 'open') { return; }
 
-        var attrs    = attributesOf(session.annotation.data),
+        var attrs    = attributesOf(session.item.data),
             votes    = Array.from(session.votes.values()),
             decision = Quiz.decide(attrs, votes),
             act      = Quiz.actionOf(attrs, decision, controller().currentTime),
@@ -307,16 +346,19 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
 
         if (!session) { return; }
 
-        var ended = session,
-            act   = ended.act || { action: '' },
-            HC    = controller();
+        var ended  = session,
+            act    = ended.act || { action: '' },
+            HC     = controller(),
+            // A quiz overlay is what the jump starts from (a transition between hypervideos is told so)
+            source = ended.isOverlay ? (ended.item.overlayElement || null) : null;
 
         // What was decided stays shown while the playhead is in the quiz, as for a quiz overlay (see update)
         decidedShown[ended.key] = {
-            annotation: ended.annotation,
-            yours:      ended.votes.get('player'),
-            decision:   ended.decision,
-            status:     statusText()
+            item:     ended.item,
+            yours:    ended.votes.get('player'),
+            decision: ended.decision,
+            status:   statusText(),
+            tally:    tallyOf(ended)
         };
 
         session = null;
@@ -332,11 +374,11 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
                 if (!byPlay) { HC.play(); }
                 break;
             case 'jumpToHypervideo':
-                ended.annotation.resourceItem.executeOverlayAction({ action: 'jumpToHypervideo', actionTarget: act.target, actionTargetTime: act.targetTime });
+                ended.item.resourceItem.executeOverlayAction({ action: 'jumpToHypervideo', actionTarget: act.target, actionTargetTime: act.targetTime }, source);
                 break;
             case 'openUrl':
                 if (!isLink(act)) {
-                    ended.annotation.resourceItem.executeOverlayAction({ action: 'openUrl', actionTarget: act.target });
+                    ended.item.resourceItem.executeOverlayAction({ action: 'openUrl', actionTarget: act.target }, source);
                     break;
                 }
                 if (!byPlay && ended.pause) { HC.play(); }
@@ -374,7 +416,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
             Host.sendQuiz(message);
         }
         show();
-        refresh(ended.annotation);
+        refresh(ended.item);
     }
 
     // The next quiz that started while another was asked, if playback is still in it.
@@ -417,10 +459,10 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
     function update(currentTime) {
 
         Object.keys(decidedShown).forEach(function(key) {
-            var annotation = decidedShown[key].annotation;
-            if (currentTime < annotation.data.start - EARLY || currentTime > annotation.data.end + SLACK) {
+            var item = decidedShown[key].item;
+            if (currentTime < item.data.start - EARLY || currentTime > item.data.end + SLACK) {
                 delete decidedShown[key];
-                refresh(annotation);
+                refresh(item);
             }
         });
 
@@ -437,8 +479,8 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         if (!session) { return; }
 
         var HC    = controller(),
-            start = parseFloat(session.annotation.data.start),
-            end   = parseFloat(session.annotation.data.end);
+            start = parseFloat(session.item.data.start),
+            end   = parseFloat(session.item.data.end);
 
         if (session.state === 'open') {
             if (!session.pause && HC.isPlaying && currentTime >= end && currentTime - end < 1) {
@@ -500,7 +542,8 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
 
     /**
      * I take an answer given on this device (ResourceQuiz): on the player to the quiz being asked
-     * or a quiz overlay, on a phone to the player.
+     * (a quiz overlay too, while the phones vote on it) or to a quiz overlay answered alone, on a
+     * phone to the player.
      *
      * @method answer
      * @param {Resource} resourceItem the quiz's ResourceQuiz
@@ -520,17 +563,20 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
             if (!question || question.item !== key || question.status !== 'open') { return; }
             mine[key] = normalized;
             companion.answer(key, normalized);
-            refresh(annotationByKey(key));
+            refresh(itemByKey(key));
             return;
         }
 
-        var overlay = overlayOf(data);
-        if (overlay) {
-            answerOverlay(overlay, normalized);
+        // The quiz being asked: the player's answer is one vote
+        if (session && session.item.data === data) {
+            if (session.state !== 'open' || !session.onPlayer) { return; }
+        } else {
+            var overlay = overlayOf(data);
+            if (overlay && !decidedShown[key] && queue.indexOf(overlay) < 0) {
+                answerOverlay(overlay, normalized);
+            }
             return;
         }
-
-        if (!session || session.state !== 'open' || session.annotation.data !== data || !session.onPlayer) { return; }
 
         session.votes.set('player', normalized);
         emitAnswered(attrs, normalized, 'player');
@@ -554,7 +600,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         if (message.unknown === true) {
             session.unknown[phoneID] = true;
         } else {
-            var attrs      = attributesOf(session.annotation.data),
+            var attrs      = attributesOf(session.item.data),
                 normalized = Quiz.normalizeChoice(attrs, message.choice);
             if (normalized === null) { return; }
             session.votes.set(phoneID, normalized);
@@ -646,8 +692,9 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
 
     /**
      * I say what a quiz element shows and allows (ResourceQuiz.refreshQuizState()):
-     * { canAnswer, yours, decided, status, result }. result is the element below the answers
-     * (the decision's text and buttons), or null.
+     * { canAnswer, yours, decided, status, result, tally }. result is the element below the answers
+     * (the decision's text and buttons), or null. tally is what a quiz overlay shows of the phones'
+     * vote, { counts, voters } (counts per answer or rating step), or null.
      *
      * @method stateOf
      * @param {Resource} resourceItem
@@ -665,7 +712,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         if (companion) {
             var question = companion.quiz;
             if (!question || question.item !== key || question.status === 'closed' || question.status === 'cancelled') {
-                if (shown && shown.annotation.data === data) {
+                if (shown && shown.item.data === data) {
                     return { canAnswer: false, yours: shown.yours, decided: shown.decision, status: shown.status, result: null };
                 }
                 return { canAnswer: false, status: labels['QuizNotYet'] };
@@ -680,8 +727,26 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
             };
         }
 
+        // The quiz being asked (an annotation, or a quiz overlay the phones vote on)
+        if (session && session.item.data === data) {
+            return {
+                canAnswer: session.state === 'open' && session.onPlayer,
+                yours:     session.votes.get('player'),
+                decided:   (session.state === 'decided') ? session.decision : null,
+                status:    statusText(),
+                result:    (session.state === 'decided') ? resultOfSession() : null,
+                tally:     tallyOf(session)
+            };
+        }
+
+        if (shown && shown.item.data === data) {
+            return { canAnswer: false, yours: shown.yours, decided: shown.decision, status: shown.status, result: null, tally: shown.tally };
+        }
+
         var overlay = overlayOf(data);
         if (overlay) {
+            // Waiting for the quiz before it (two that start together): asked next
+            if (queue.indexOf(overlay) >= 0) { return { canAnswer: false, status: labels['QuizNotYet'] }; }
             var entry = overlayAnswered[key];
             if (!entry) { return { canAnswer: true }; }
             return {
@@ -693,27 +758,28 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
             };
         }
 
-        if (!session || session.annotation.data !== data) {
-            if (shown && shown.annotation.data === data) {
-                return { canAnswer: false, yours: shown.yours, decided: shown.decision, status: shown.status, result: null };
-            }
-            return { canAnswer: false, status: labels['QuizNotYet'] };
-        }
+        return { canAnswer: false, status: labels['QuizNotYet'] };
 
-        return {
-            canAnswer: session.state === 'open' && session.onPlayer,
-            yours:     session.votes.get('player'),
-            decided:   (session.state === 'decided') ? session.decision : null,
-            status:    statusText(),
-            result:    (session.state === 'decided') ? resultOfSession() : null
-        };
+    }
 
+    // What a quiz overlay shows of the phones' vote: the answers counted so far ({ counts, voters }), or null where
+    // there is none to show (a quiz annotation, which the panel shows, or no phone among the voters).
+    function tallyOf(asked) {
+        if (!asked || !asked.isOverlay) { return null; }
+        var phonesAmong = false, votes = [];
+        asked.votes.forEach(function(choice, id) {
+            votes.push(choice);
+            if (id !== 'player') { phonesAmong = true; }
+        });
+        if (!phonesAmong && !(asked === session && phonesVote())) { return null; }
+        var counted = Quiz.tally(attributesOf(asked.item.data), votes);
+        return { counts: counted.counts, voters: counted.voters };
     }
 
     // n of m answered, and the time left.
     function statusText() {
         if (session.state === 'decided') {
-            return phonesVote() ? decidedText(attributesOf(session.annotation.data), session.decision.index) : '';
+            return phonesVote() ? decidedText(attributesOf(session.item.data), session.decision.index) : '';
         }
         var parts = [];
         if (phonesVote()) {
@@ -792,7 +858,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
     /* ------------------------------------------------------------------ */
 
     function show() {
-        if (session) { refresh(session.annotation); }
+        if (session) { refresh(session.item); }
         renderPanel();
     }
 
@@ -801,7 +867,8 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         var ViewVideo = FrameTrail.module('ViewVideo'),
             host      = ViewVideo && ViewVideo.Hypervideo;
 
-        if (!session || !session.onPhones || !phonesVote() || !host) {
+        // A quiz overlay shows the vote itself (stateOf().tally), where the author put it on the video
+        if (!session || session.isOverlay || !session.onPhones || !phonesVote() || !host) {
             if (panel) { panel.remove(); panel = null; }
             return;
         }
@@ -813,7 +880,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
             host.appendChild(panel);
         }
 
-        var attrs   = attributesOf(session.annotation.data),
+        var attrs   = attributesOf(session.item.data),
             type    = Quiz.questionType(attrs),
             votes   = [],
             answers = Array.isArray(attrs.answers) ? attrs.answers : [];
@@ -975,6 +1042,25 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
 
         return list.sort(function(a, b) { return a.start - b.start; });
 
+    }
+
+    /**
+     * I list the quiz overlays of the open hypervideo as a paired phone needs them to ask them
+     * itself (FrameTrailQuiz.phoneCopy(): the question and the answers' texts, nothing that runs or
+     * leads somewhere): its copy of the hypervideo has no overlays. The PairingHost sends them with
+     * the bundle (overlayQuizzes).
+     *
+     * @method overlayQuestions
+     * @return {Array}
+     */
+    function overlayQuestions() {
+        var Model = FrameTrail.module('HypervideoModel');
+        if (companion || !Model) { return []; }
+        return (Model.overlays || []).filter(function(overlay) {
+            return overlay.data.type === 'quiz';
+        }).map(function(overlay) {
+            return Quiz.phoneCopy(overlay.data);
+        });
     }
 
     /**
@@ -1158,13 +1244,13 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
 
         // Over after a decision: the phone shows what was decided while its playhead is in the quiz, as the player does (see update)
         if (question && question.status === 'closed' && question.decided !== undefined) {
-            var decided = annotationByKey(question.item);
+            var decided = itemByKey(question.item);
             if (decided) {
                 decidedShown[question.item] = {
-                    annotation: decided,
-                    yours:      mine[question.item],
-                    decision:   { index: question.decided },
-                    status:     decidedText(attributesOf(decided.data), question.decided)
+                    item:     decided,
+                    yours:    mine[question.item],
+                    decision: { index: question.decided },
+                    status:   decidedText(attributesOf(decided.data), question.decided)
                 };
                 refresh(decided);
             }
@@ -1177,14 +1263,15 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
 
         // Asked (again): nothing decided to show
         if (decidedShown[question.item]) {
-            var asked = decidedShown[question.item].annotation;
+            var asked = decidedShown[question.item].item;
             delete decidedShown[question.item];
             refresh(asked);
         }
 
-        var annotation = annotationByKey(question.item);
+        // A quiz annotation of this phone's copy, or the stand-in of a quiz overlay the player sent
+        var item = itemByKey(question.item);
 
-        if (!annotation) {
+        if (!item) {
             // Another version of the hypervideo is shown here: the player need not wait for this phone.
             companion.answer(question.item, { unknown: true });
             closeSheet();
@@ -1195,18 +1282,18 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
             closeSheet();
             // Asked again (a jump back): this phone has not answered yet.
             if (question.status === 'open') { delete mine[question.item]; }
-            openSheet(annotation, question.item);
+            openSheet(item, question.item);
         }
 
-        refresh(annotation);
+        refresh(item);
 
     }
 
-    function openSheet(annotation, key) {
+    function openSheet(item, key) {
 
         var content = document.createElement('div');
         content.className = 'quizSheet';
-        content.appendChild(annotation.resourceItem.renderContent());
+        content.appendChild(item.resourceItem.renderContent());
 
         sheetKey = key;
         sheet = Dialog({
@@ -1222,7 +1309,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         window.clearInterval(timers.sheet);
         timers.sheet = window.setInterval(function() {
             var question = companion.quiz;
-            if (question && question.status === 'open' && question.endsIn !== undefined) { refresh(annotation); }
+            if (question && question.status === 'open' && question.endsIn !== undefined) { refresh(item); }
         }, 500);
 
     }
@@ -1231,7 +1318,7 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         window.clearInterval(timers.sheet);
         timers.sheet = null;
         if (sheetKey) {
-            refresh(annotationByKey(sheetKey));
+            refresh(itemByKey(sheetKey));
         }
         if (sheet) {
             var old = sheet;
@@ -1293,12 +1380,13 @@ FrameTrail.defineModule('QuizController', function(FrameTrail){
         stateOf:       stateOf,
         reset:         reset,
 
-        questions:      questions,
-        results:        results,
-        resultsMessage: resultsMessage,
-        loadResults:    loadResults,
-        storeResults:   storeResults,
-        restart:        restart
+        questions:        questions,
+        overlayQuestions: overlayQuestions,
+        results:          results,
+        resultsMessage:   resultsMessage,
+        loadResults:      loadResults,
+        storeResults:     storeResults,
+        restart:          restart
 
     };
 

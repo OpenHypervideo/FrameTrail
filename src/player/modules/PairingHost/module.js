@@ -14,7 +14,8 @@
  * broker sees neither the hypervideo nor the playback.
  *
  * Over the channel I send the open hypervideo as a bundle (without code: no
- * overlays, code snippets or event handlers), again after a save, when edit
+ * overlays, code snippets or event handlers; its questions, and its quiz
+ * overlays as the phones ask them, come beside it), again after a save, when edit
  * mode ends and when another hypervideo is opened, and the playback state:
  * on every change and as a heartbeat. The phone plays nothing itself; it
  * extrapolates my playhead and shows its content views (the companion area)
@@ -759,7 +760,9 @@ FrameTrail.defineModule('PairingHost', function(FrameTrail){
                 offsetIn: Model.offsetIn || 0,
                 duration: Model.duration || 0,
                 // The hypervideo's questions: the phone's copy has no overlays, and a Quiz Results view lists them
-                quizzes:  Quizzes ? Quizzes.questions() : []
+                quizzes:  Quizzes ? Quizzes.questions() : [],
+                // Its quiz overlays as a phone asks them while the phones vote on one (no actions, no look)
+                overlayQuizzes: Quizzes ? Quizzes.overlayQuestions() : []
             };
             return Pairing.bundleMessages(bundleID, JSON.stringify(payload)).map(Pairing.encode);
         });

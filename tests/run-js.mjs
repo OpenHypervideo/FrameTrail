@@ -2232,6 +2232,27 @@ describe('FrameTrailQuiz', () => {
         );
     });
 
+    test('phoneCopy: what a phone needs to ask a quiz overlay itself', () => {
+        const overlay = {
+            creatorId: 1, created: 1700000000123, start: 12.5, end: 13, type: 'quiz',
+            attributes: mc({ countdown: 20, textColor: '#fff', answers: [
+                { text: 'Up', correct: false, action: 'jumpToHypervideo', actionTarget: '2', feedback: 'Up we go', default: true },
+                { text: 'Down', correct: true, action: 'openUrl', actionTarget: 'https://example.org/' }
+            ] })
+        };
+        const copy = Quiz.phoneCopy(overlay);
+        assert.deepStrictEqual(copy, {
+            creatorId: '1', created: '1700000000123', start: 12.5, end: 13, question: 'Which way?', questionType: 'multipleChoice',
+            answers: [{ text: 'Up', correct: false }, { text: 'Down', correct: true }], ratingScale: 5
+        }, 'the question and the answers\' texts: no action, target, feedback, default or look');
+        assert.equal(Quiz.itemKey(copy), Quiz.itemKey(overlay), 'the copy is known by the overlay\'s key');
+        assert.deepStrictEqual(
+            Quiz.phoneCopy({ creatorId: 'u', created: 'x', attributes: { questionType: 'rating', ratingScale: 7, answers: [null, { text: 3 }] } }),
+            { creatorId: 'u', created: 'x', start: 0, end: 0, question: '', questionType: 'rating', answers: [{ text: '', correct: false }], ratingScale: 7 },
+            'what is missing has a default'
+        );
+    });
+
     test('recordResult and resultState: the first try counts, a later right one is a retry', () => {
         assert.equal(Quiz.resultState(null), 'open');
         assert.equal(Quiz.resultState({}), 'open');
@@ -2713,20 +2734,20 @@ describe('FrameTrailPairing', () => {
             hypervideo: {
                 meta: { name: 'Talk' }, clips: [],
                 config: { layoutArea: { areaRight: [{ type: 'TimedContent', onClickContentItem: 'alert(1)' }], areaCompanion: [{ type: 'CustomHTML', html: '<b>x</b>', onClickContentItem: 'alert(2)' }] } },
-                contents: [{ type: 'Annotation' }],
+                contents: [{ type: 'Annotation' }, { type: 'Annotation', 'frametrail:type': 'Overlay', body: { 'frametrail:type': 'quiz', 'frametrail:attributes': { question: 'Q' } } }],
                 globalEvents: { onReady: 'alert(3)' },
                 customCSS: '.x { color: red }'
             },
             annotations: { files: { 1: [] } }
         };
         const phone = Pairing.companionBundle(bundle);
-        assert.deepStrictEqual(phone.hypervideo.contents, []);
+        assert.deepStrictEqual(phone.hypervideo.contents, [], 'no overlay travels in the bundle, a quiz overlay neither (its question comes as overlayQuizzes)');
         assert.deepStrictEqual(phone.hypervideo.globalEvents, {});
         assert.equal(phone.hypervideo.config.layoutArea.areaRight[0].onClickContentItem, undefined);
         assert.equal(phone.hypervideo.config.layoutArea.areaCompanion[0].onClickContentItem, undefined);
         assert.equal(phone.hypervideo.config.layoutArea.areaCompanion[0].html, '<b>x</b>', 'authored HTML stays (the page\'s CSP keeps it from running anything)');
         assert.equal(phone.hypervideo.customCSS, '.x { color: red }');
-        assert.equal(bundle.hypervideo.contents.length, 1, 'the bundle given is not changed');
+        assert.equal(bundle.hypervideo.contents.length, 2, 'the bundle given is not changed');
     });
 
     test('readQuizzes: the questions that come with a bundle, as a phone reads them', () => {
@@ -2742,6 +2763,24 @@ describe('FrameTrailPairing', () => {
         );
         assert.equal(Pairing.readQuizzes(new Array(700).fill(digest)).length, 500);
         assert.deepStrictEqual(Pairing.RESULT_STATES, Quiz.RESULT_STATES.filter((state) => state !== 'open'), 'a results message knows every state but open');
+    });
+
+    test('readOverlayQuizzes: the quiz overlays that come with a bundle, as a phone reads them', () => {
+        const copy = Quiz.phoneCopy({ creatorId: '1', created: 1700000000123, start: 12.5, end: 13, attributes: { question: 'Which way?', answers: [{ text: 'a', correct: true, action: 'pause' }, { text: 'b' }] } });
+        assert.deepStrictEqual(Pairing.readOverlayQuizzes([copy]), [copy], 'what FrameTrailQuiz.phoneCopy() makes is read as it is');
+        assert.deepStrictEqual(Pairing.readOverlayQuizzes(undefined), [], 'an older player sends none');
+        assert.deepStrictEqual(Pairing.readOverlayQuizzes({ 0: copy }), []);
+        assert.deepStrictEqual(
+            Pairing.readOverlayQuizzes([null, 'x', { creatorId: 1, created: '5', start: 1 }, { creatorId: '1', created: 5, start: 1 }, { creatorId: '1', created: '5', start: 'soon' },
+                { creatorId: 'k'.repeat(150), created: 'k'.repeat(60), start: 1 },
+                { creatorId: '2', created: '9', start: 3, question: 'q'.repeat(3000), questionType: 5, ratingScale: 'many', onAnswered: { action: 'openUrl' },
+                  answers: [{ text: 'a', correct: 'yes', action: 'jumpToHypervideo', actionTarget: '3', feedback: 'f' }, 'b', { text: 'c'.repeat(2500), correct: true }] }]),
+            [{ creatorId: '2', created: '9', start: 3, end: 3, question: 'q'.repeat(2000), questionType: '', ratingScale: 5,
+               answers: [{ text: 'a', correct: false }, { text: '', correct: false }, { text: 'c'.repeat(2000), correct: true }] }],
+            'what is no entry is left out, and an entry carries nothing but text and numbers: no action, target or feedback'
+        );
+        assert.equal(Pairing.readOverlayQuizzes(new Array(700).fill(copy)).length, 500);
+        assert.equal(Pairing.readOverlayQuizzes([Object.assign({}, copy, { answers: new Array(150).fill({ text: 'a' }) })])[0].answers.length, 100);
     });
 
 });

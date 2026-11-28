@@ -556,6 +556,33 @@
     }
 
     /**
+     * I return what a paired phone needs to ask a quiz overlay itself, which its copy of the
+     * hypervideo does not have: { creatorId, created, start, end, question, questionType,
+     * answers: [{ text, correct }], ratingScale }. creatorId and created are strings that give the
+     * overlay's itemKey(). Nothing that runs or leads somewhere (the answers' actions, targets and
+     * feedback: the player acts on the decision) and nothing of the overlay's look.
+     * @method phoneCopy
+     * @param {Object} data a quiz overlay's data
+     * @return {Object}
+     */
+    function phoneCopy(data) {
+        var attrs = (isObject(data) && isObject(data.attributes)) ? data.attributes : {},
+            item  = digest(data);
+        return {
+            creatorId:    String(isObject(data) ? data.creatorId : ''),
+            created:      String(isObject(data) ? data.created : ''),
+            start:        item.start,
+            end:          item.end,
+            question:     item.question,
+            questionType: item.questionType,
+            answers:      answersOf(attrs).map(function(answer) {
+                return { text: (typeof answer.text === 'string') ? answer.text : '', correct: answer.correct === true };
+            }),
+            ratingScale:  ratingScale(attrs)
+        };
+    }
+
+    /**
      * I read a question's record as it was kept ({ first, solved, tries }), or null when it is none:
      * records come back from the browser's storage, where anything may have been written.
      * @method readRecord
@@ -680,6 +707,7 @@
 
         gradable:        gradable,
         digest:          digest,
+        phoneCopy:       phoneCopy,
         readRecord:      readRecord,
         recordResult:    recordResult,
         resultState:     resultState,

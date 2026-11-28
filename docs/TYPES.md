@@ -92,7 +92,7 @@ Overlay, annotation. Its src, if it has one, goes into `body.source`. Schema: [`
 
 ### `quiz`
 
-Quiz overlay or annotation: a question with answers to choose, or asking for a free text or a rating, at a point in the video. In an annotation it is answered where it is shown, by the viewer and on paired phones, and the answers decide what happens next: a multipleChoice quiz does what the answer with the most votes says (its action: continue, stay paused, jump to a time, open a hypervideo or show a link), the other types do what onAnswered says. A quiz pauses the video when it starts if the item has frametrail:pause (quizzes made in the editor do); without it the vote runs while the video plays and is decided when the quiz ends. Quizzes saved before per-answer actions have the outcomes onCorrectAnswer, onWrongAnswer and onAnswered with showText and resumePlayback instead, which are read as actions until the quiz is next changed in the editor.
+Quiz overlay or annotation: a question with answers to choose, or asking for a free text or a rating, at a point in the video. In an annotation it is answered where it is shown, by the viewer and on paired phones; an overlay is answered on the video, and while phones are paired on them too. The answers decide what happens next: a multipleChoice quiz does what the answer with the most votes says (its action: continue, stay paused, jump to a time, open a hypervideo or show a link), the other types do what onAnswered says. A quiz pauses the video when it starts if the item has frametrail:pause (quizzes made in the editor do); without it the vote runs while the video plays and is decided when the quiz ends. Quizzes saved before per-answer actions have the outcomes onCorrectAnswer, onWrongAnswer and onAnswered with showText and resumePlayback instead, which are read as actions until the quiz is next changed in the editor.
 
 Overlay, annotation. Its src, if it has one, goes into `body.value`. Schema: [`attributes/quiz.schema.json`](../schemas/attributes/quiz.schema.json).
 
@@ -124,7 +124,7 @@ Overlay, annotation. Its src, if it has one, goes into `body.value`. Schema: [`a
 | `onAnswered.actionTargetTime` | number or string |  |  | jumpToHypervideo only: the time in seconds to start the target hypervideo at. Empty or 0 means its start. |
 | `onAnswered.feedback` | string |  |  | Text shown with the result after the quiz is decided. |
 | `ratingScale` | integer | 2–10 | `5` | rating: number of steps. |
-| `countdown` | number | ≥ 0 | `0` | Annotations: seconds the viewers have to answer. When they are up the quiz is decided with the answers given (none: the default answer). 0 means no time limit: the quiz is decided when everyone answering has answered. |
+| `countdown` | number | ≥ 0 | `0` | Seconds the viewers have to answer, where several answer: on paired phones (an overlay too, while phones are paired) and in an annotation shown at the player. When they are up the quiz is decided with the answers given (none: the default answer). 0 means no time limit: the quiz is decided when everyone answering has answered. |
 
 ### `hotspot`
 

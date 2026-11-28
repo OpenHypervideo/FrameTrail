@@ -19,7 +19,9 @@
  * the starts behind it were crossed already and are not crossed again.
  *
  * A quiz annotation is not paused at here: it goes to the QuizController, which asks it (and
- * pauses when it has frametrail:pause), also when it does not pause.
+ * pauses when it has frametrail:pause), also when it does not pause. So does a quiz overlay while
+ * phones are paired: the room votes on it. Without phones it pauses here like any overlay and is
+ * answered on the video.
  *
  * Not on a paired phone (the player decides for it), and not in the editing modes but the
  * Preview.
@@ -66,9 +68,14 @@ FrameTrail.defineModule('PauseController', function(FrameTrail){
      * @return {Boolean}
      */
     function isShown(annotation) {
-        var shown   = FrameTrail.module('ViewLayout').viewsShowing(annotation),
-            pairing = FrameTrail.getState('pairing');
-        return shown.player.length > 0 || (shown.companion.length > 0 && !!pairing && pairing.connected > 0);
+        var shown = FrameTrail.module('ViewLayout').viewsShowing(annotation);
+        return shown.player.length > 0 || (shown.companion.length > 0 && phonesPaired());
+    }
+
+    // Is a phone connected to the player?
+    function phonesPaired() {
+        var pairing = FrameTrail.getState('pairing');
+        return !!pairing && pairing.connected > 0;
     }
 
 
@@ -103,7 +110,11 @@ FrameTrail.defineModule('PauseController', function(FrameTrail){
             pause           = false;
 
         HypervideoModel.overlays.forEach(function(overlay) {
-            if (reached(overlay, from, currentTime) && Serializer.pausesAtStart(overlay.data)) {
+            if (!reached(overlay, from, currentTime)) { return; }
+            // A quiz overlay is the room's question while phones are paired (it is on the video, which they follow)
+            if (overlay.data.type === 'quiz' && QuizController && phonesPaired()) {
+                QuizController.ask(overlay, { pause: Serializer.pausesAtStart(overlay.data) });
+            } else if (Serializer.pausesAtStart(overlay.data)) {
                 pause = true;
             }
         });

@@ -144,6 +144,59 @@
     content: "\e811";
 }
 
+/* While phones vote on a quiz overlay, its answers show the votes so far (QuizController.stateOf().tally):
+   behind an answer's text a fill as wide as its share of the voters (a rating step's as high), and the
+   count at its end. The fill lies between the button's ground and its text (isolation), so neither the
+   text nor the mark of a right or wrong answer moves. */
+.resourceDetail[data-type="quiz"].quizTallied .resourceQuizAnswersContainer button {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+}
+
+.resourceDetail[data-type="quiz"].quizTallied .quizAnswer,
+.resourceDetail[data-type="quiz"].quizTallied .quizSelectableAnswer {
+    padding-right: 2.6em;
+}
+
+.resourceDetail[data-type="quiz"] .quizTally .quizTallyFill {
+    position: absolute;
+    z-index: -1;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: calc(var(--quiz-tally-share, 0) * 100%);
+    background: color-mix(in srgb, var(--accent-color) 40%, transparent);
+    transition: width .3s ease-out, height .3s ease-out;
+}
+
+.resourceDetail[data-type="quiz"] .quizRatingButton .quizTally .quizTallyFill {
+    top: auto;
+    right: 0;
+    width: auto;
+    height: calc(var(--quiz-tally-share, 0) * 100%);
+}
+
+.resourceDetail[data-type="quiz"] .quizTally .quizTallyCount {
+    position: absolute;
+    right: .6em;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: .75em;
+    font-weight: normal;
+    font-variant-numeric: tabular-nums;
+}
+
+.resourceDetail[data-type="quiz"] .quizRatingButton .quizTally .quizTallyCount {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: .15em;
+    transform: none;
+    text-align: center;
+    font-size: .5em;
+}
+
 .contentViewContainer[data-size="small"] .resourceThumb[data-type="quiz"] .resourceTextPreview {
     display: none;
 }

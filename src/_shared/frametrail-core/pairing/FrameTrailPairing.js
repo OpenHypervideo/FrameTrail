@@ -628,6 +628,42 @@
         });
     }
 
+    /**
+     * The quiz overlays a player sends with a bundle (its "overlayQuizzes", FrameTrailQuiz.phoneCopy()), as a
+     * phone reads them: a list of { creatorId, created, start, end, question, questionType, answers: [{ text,
+     * correct }], ratingScale }. A phone asks a quiz overlay from these while the phones vote on it: its copy of
+     * the hypervideo has no overlays. Only text and numbers are kept, nothing that could run or lead somewhere;
+     * anything that is no such entry is left out.
+     *
+     * @method readOverlayQuizzes
+     * @param {*} list
+     * @return {Array}
+     */
+    function readOverlayQuizzes(list) {
+        if (!Array.isArray(list)) { return []; }
+        return list.slice(0, MAX_RESULT_ITEMS).filter(function(entry) {
+            return isObject(entry) && typeof entry.creatorId === 'string' && typeof entry.created === 'string'
+                && entry.creatorId.length + entry.created.length < MAX_ITEM_KEY
+                && typeof entry.start === 'number' && isFinite(entry.start);
+        }).map(function(entry) {
+            return {
+                creatorId:    entry.creatorId,
+                created:      entry.created,
+                start:        entry.start,
+                end:          (typeof entry.end === 'number' && isFinite(entry.end)) ? entry.end : entry.start,
+                question:     (typeof entry.question === 'string') ? entry.question.slice(0, MAX_QUESTION) : '',
+                questionType: (typeof entry.questionType === 'string') ? entry.questionType.slice(0, 40) : '',
+                answers:      (Array.isArray(entry.answers) ? entry.answers.slice(0, MAX_CHOICE_ITEMS) : []).map(function(answer) {
+                    return {
+                        text:    (isObject(answer) && typeof answer.text === 'string') ? answer.text.slice(0, MAX_QUESTION) : '',
+                        correct: isObject(answer) && answer.correct === true
+                    };
+                }),
+                ratingScale:  (typeof entry.ratingScale === 'number' && isFinite(entry.ratingScale)) ? entry.ratingScale : 5
+            };
+        });
+    }
+
     function choiceProblem(choice) {
         if (typeof choice === 'number') { return isFinite(choice) ? null : 'choice must be a finite number'; }
         if (typeof choice === 'string') { return (choice.length <= MAX_CHOICE_TEXT) ? null : 'choice is too long'; }
@@ -1021,6 +1057,7 @@
 
         companionBundle:  companionBundle,
         readQuizzes:      readQuizzes,
+        readOverlayQuizzes: readOverlayQuizzes,
         RESULT_STATES:    RESULT_STATES
 
     };
