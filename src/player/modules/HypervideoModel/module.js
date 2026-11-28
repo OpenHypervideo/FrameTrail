@@ -2094,7 +2094,22 @@
             FrameTrail.module('UserManagement').rearmTimers();
         }
 
-        document.querySelector(FrameTrail.getState('target')).querySelectorAll('.viewVideo').forEach(function(el) { el.remove(); });
+        // The media of the hypervideo that is left let go of their files: a removed video element goes on loading
+        // until it is collected, and each one holds a connection to its server. Over HTTP/1.1 a browser opens six
+        // to a server, so after a few changes between hypervideos of one file there the next one never loaded.
+        // A video element the page adopted (the videoElement option) is the page's and is left as it is.
+        var adopted = FrameTrail.getState('videoElement');
+        if (typeof adopted === 'string') { adopted = document.querySelector(adopted); }
+        document.querySelector(FrameTrail.getState('target')).querySelectorAll('.viewVideo').forEach(function(el) {
+            el.querySelectorAll('video, audio').forEach(function(media) {
+                if (media === adopted) { return; }
+                try { media.pause(); } catch (e) { /* not playing */ }
+                media.removeAttribute('src');
+                media.querySelectorAll('source').forEach(function(source) { source.remove(); });
+                try { media.load(); } catch (e) { /* nothing to load */ }
+            });
+            el.remove();
+        });
         FrameTrail.changeState('viewMode', 'video');
 
         FrameTrail.module('RouteNavigation').hypervideoID = newHypervideoID;

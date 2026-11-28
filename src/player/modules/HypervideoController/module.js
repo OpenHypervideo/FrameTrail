@@ -57,6 +57,9 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         vimeoStarted           = false,
         vimeoSeekPending       = null,
 
+        // The end was reached and reported (reachedEnd): not again until the playhead is moved before it.
+        endReported            = false,
+
         highPriorityInterval   = 25,
         lowPriorityInterval    = 150,
         nullVideoInterval      = 25,
@@ -93,6 +96,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             hypervideoID    = RouteNavigation.hypervideoID;
 
         HypervideoModel     = FrameTrail.module('HypervideoModel');
+
+        endReported = false;
 
         if (!window.player_youtube) {
             window.player_youtube = {};
@@ -180,8 +185,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
             videoElement.addEventListener('ended', function() {
 
-                showEnd();
-                reportEnded();
+                reachedEnd();
 
             });
 
@@ -367,7 +371,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                         case 0:
                             // ended
                             _pause();
-                            showEnd();
+                            reachedEnd();
                             break;
                         case 1:
                             // playing
@@ -565,8 +569,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
                     vimeoPlayRequested = false;
                     _pause();
-                    showEnd();
-                    reportEnded();
+                    reachedEnd();
 
                 });
 
@@ -1034,7 +1037,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 var rect = progressEl.getBoundingClientRect();
                 if (!rect.width) { return; }
                 var ratio = Math.max(0, Math.min(1, (evt.clientX - rect.left) / rect.width));
-                var tileIndex = Math.min(TILE_COUNT - 1, Math.floor(ratio * TILE_COUNT));
+                // The sprite shows the whole media: a clip's time is placed in it (its in point, the media's duration)
+                var full        = HypervideoModel.durationFull || 0,
+                    spriteRatio = (full > 0) ? Math.max(0, Math.min(1, (HypervideoModel.offsetIn + ratio * HypervideoModel.duration) / full)) : ratio;
+                var tileIndex = Math.min(TILE_COUNT - 1, Math.floor(spriteRatio * TILE_COUNT));
                 scrubPreviewElement.style.backgroundPosition =
                     ((tileIndex % TILE_COLUMNS) * 100 / (TILE_COLUMNS - 1)) + '% ' +
                     (Math.floor(tileIndex / TILE_COLUMNS) * 100 / (TILE_ROWS - 1)) + '%';
@@ -1267,6 +1273,36 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
         updateProgressBar(sliderMax);
     };
 
+    /**
+     * I say whether a time is at the hypervideo's end: its clip's out point, or the end of its media
+     * when the clip has none (offsetOut is then the media's duration, once it is known).
+     *
+     * @method atOutPoint
+     * @param {Number} time
+     * @return {Boolean}
+     * @private
+     */
+    function atOutPoint(time) {
+        return !!HypervideoModel.offsetOut && time >= HypervideoModel.offsetOut;
+    }
+
+    /**
+     * Playback has reached the hypervideo's end: the clip's out point, or the media's own end. Every
+     * kind of video comes here (the updaters at the out point, the media's ended event, the end of a
+     * hypervideo without a video), and the end is reported once per arrival: the progress bar shows
+     * it, and the "ended" event and the onEnded code follow (reportEnded). It is reported again only
+     * after the playhead was moved before the end (seekTo), or in another hypervideo.
+     *
+     * @method reachedEnd
+     * @private
+     */
+    function reachedEnd() {
+        showEnd();
+        if (endReported) { return; }
+        endReported = true;
+        reportEnded();
+    };
+
 
     /**
      * I update the title of the hypervideo in the titlebar.
@@ -1316,6 +1352,13 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 currentTime = ytReportedTime;
             }
 
+            // The clip's out point is the end, as for a video file (the embed itself would play on to the media's end)
+            if (ytSeekPending === null && atOutPoint(currentTime)) {
+                currentTime = HypervideoModel.offsetOut;
+                pause();
+                reachedEnd();
+            }
+
             updateProgressBar(currentTime - HypervideoModel.offsetIn);
 
             FrameTrail.triggerEvent('timeupdate', {});
@@ -1340,16 +1383,24 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 window.player_vimeo[lastVimeoPlayerID].getCurrentTime().then(function(vimeo_currentTime) {
                     if (vimeoSeekPending !== null) { return; }
                     currentTime = vimeo_currentTime;
+                    // The clip's out point is the end, as for a video file (the embed itself would play on to the media's end)
+                    if (isPlaying && atOutPoint(currentTime)) {
+                        currentTime = HypervideoModel.offsetOut;
+                        pause();
+                        reachedEnd();
+                    }
                     vimeoTimeUpdate();
                 });
             }
         } else {
             currentTime = videoElement.currentTime;
 
-            if (HypervideoModel.offsetOut && currentTime >= HypervideoModel.offsetOut) {
+            // The clip's out point (the media's end when it has none) is the end, also before the media says so
+            if (atOutPoint(currentTime)) {
                 currentTime = HypervideoModel.offsetOut;
                 videoElement.currentTime = currentTime;
                 pause();
+                reachedEnd();
             }
 
             updateProgressBar(currentTime - HypervideoModel.offsetIn);
@@ -1485,7 +1536,7 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
     /**
      * I report that the hypervideo has ended: the public "ended" event, then the hypervideo's own onEnded code.
-     * The three kinds of video that have an end come here (native, Vimeo, and a hypervideo without a video, from pause()).
+     * Every kind of video comes here through reachedEnd(), once per arrival at the end.
      *
      * @method reportEnded
      * @private
@@ -1627,8 +1678,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
             if (!isPlaying){
 
-                if (currentTime === HypervideoModel.duration) {
-                    currentTime = 0;
+                // At the end it plays again from the start (the time is absolute), and that end is reported again
+                if (currentTime >= HypervideoModel.offsetIn + HypervideoModel.duration) {
+                    currentTime = HypervideoModel.offsetIn;
+                    endReported = false;
                 }
 
                 nullVideoStartDate = Date.now() - (currentTime * 1000)
@@ -1695,7 +1748,8 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
 
         }
 
-        if (currentTime !== HypervideoModel.duration) {
+        // Pausing at the end is the end, which is reported as such and not as a pause (the time is absolute)
+        if (currentTime < HypervideoModel.offsetIn + HypervideoModel.duration) {
 
             FrameTrail.triggerEvent('pause', {});
 
@@ -1709,10 +1763,10 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
                 }
             }
 
-        } else if (HypervideoModel.videoType == 'canvas' && currentTime == HypervideoModel.offsetIn+HypervideoModel.duration) {
+        } else if (HypervideoModel.videoType == 'canvas') {
 
             // A hypervideo without a video has no "ended" of its own: pausing at its end is its end.
-            reportEnded();
+            reachedEnd();
 
         }
 
@@ -1944,6 +1998,11 @@ FrameTrail.defineModule('HypervideoController', function(FrameTrail){
             aNumberAsFloat = minTime;
         } else if (aNumberAsFloat > maxTime) {
             aNumberAsFloat = maxTime;
+        }
+
+        // Before the end again: the next arrival there is reported (reachedEnd)
+        if (aNumberAsFloat < maxTime) {
+            endReported = false;
         }
 
         if (HypervideoModel.videoType == 'native') {
