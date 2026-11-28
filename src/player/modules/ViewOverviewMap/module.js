@@ -1081,6 +1081,11 @@ FrameTrail.defineModule('ViewOverviewMap', function(FrameTrail){
         card.classList.add('mapCard');
         card.removeAttribute('data-hypervideoid');
 
+        // The open hypervideo's card looks as its thumb does in the grid.
+        if (hypervideoID == FrameTrail.module('RouteNavigation').hypervideoID) {
+            card.classList.add('activeHypervideo');
+        }
+
         var admin    = FrameTrail.module('UserManagement').userRole === 'admin',
             owner    = hypervideo.creatorId === FrameTrail.module('UserManagement').userID,
             editMode = FrameTrail.getState('editMode');

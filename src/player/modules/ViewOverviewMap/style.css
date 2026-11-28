@@ -154,6 +154,33 @@
 }
 
 /*
+ * The open hypervideo. The overview keeps it loaded, and the grid frames its
+ * thumb so that the way back into it is seen at a glance; on the map its pins
+ * wear a ring. A ring rather than another colour, for the reason hover lifts
+ * rather than recolours: it reads against any artwork, and the dark shadow on
+ * both sides of the line carries it over ground of the line's own colour.
+ *
+ * On the body's ::after (icon pins keep their glyph on a child, which leaves
+ * it free), so it follows the body's animations, a round ring around an icon
+ * pin's square box too, and leaves the pin's own ::before and ::after to the
+ * ripple and the glow. The inset is from inside the body's border: 3px of air
+ * outside a thumbnail pin's.
+ */
+.overviewMapMarker.activeHypervideo {
+    z-index: 2;
+}
+
+.overviewMapMarker.activeHypervideo .overviewMapMarkerBody::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
+    border: 2px solid var(--primary-fg-color);
+    border-radius: 50%;
+    box-shadow: 0 0 3px rgba(0, 0, 0, 0.5), inset 0 0 3px rgba(0, 0, 0, 0.5);
+    pointer-events: none;
+}
+
+/*
  * Titles are always on, not revealed by hover: on a map the whole point of a
  * pin is WHICH hypervideo it is, and a map of anonymous dots makes the reader
  * hunt for that one pin at a time. Hover still raises the pin's z-index, which
