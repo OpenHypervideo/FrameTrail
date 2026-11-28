@@ -650,19 +650,48 @@ body > .contentViewTemplate .contentViewTemplateLabel {
     --view-size: 150px;
 }
 
-/* Sortable preview tabs */
+/* Dragging views: by their tabs and their blocks, to another place or another area (ViewLayout, targetAt). The
+   editor does not scroll, so a touch on them is always a drag; the palette scrolls sideways, so a tile is pulled out
+   downwards. */
 
 .layoutEditor .layoutArea .layoutAreaTabs .contentViewTab {
     cursor: move;
+    touch-action: none;
 }
 
-.layoutEditor .layoutArea .layoutAreaTabs .sortable-ghost {
+.layoutEditor .layoutArea .contentViewPreview {
+    cursor: grab;
+    touch-action: none;
+}
+
+.layoutEditor .layoutArea .contentViewPreview .contentViewOptions {
+    cursor: default;
+}
+
+.layoutEditorOptions .contentViewTemplate {
+    touch-action: pan-x;
+}
+
+/* The view that is dragged, and the place among the tabs where it would go: its tab, framed as the areas are (also
+   a view without a name, whose tab is empty) */
+.layoutEditor .layoutArea .layoutEditorDragSource {
     opacity: 0.3;
 }
 
-.layoutEditor .layoutArea .layoutAreaTabs .sortable-drag {
+.layoutEditor .layoutArea .layoutAreaTabs .layoutEditorDragGhost {
+    min-width: 32px;
+    opacity: 0.8;
+    background: transparent;
+    outline: 2px dashed var(--primary-fg-color);
+    outline-offset: -2px;
+}
+
+.layoutEditor .layoutArea .layoutAreaTabs .layoutEditorDragHidden {
+    display: none;
+}
+
+.layoutEditorDragClone {
     cursor: grabbing;
-    opacity: 1;
 }
 
 

@@ -45,45 +45,7 @@ FrameTrail.defineType(
         return {
             constructor: function (contentViewData, whichArea) {
 
-                this.labels = FrameTrail.module('Localization').labels;
-
-                contentViewData.type                   =  contentViewData.type || "TimedContent";
-                contentViewData.name                   =  contentViewData.name || "";
-                contentViewData.icon                   =  contentViewData.icon || "";
-                contentViewData.cssClass               = contentViewData.cssClass || "";
-                contentViewData.html                   = contentViewData.html || "";
-                    contentViewData.collectionFilter   = contentViewData.collectionFilter || {};
-                    contentViewData.collectionFilter.tags  = contentViewData.collectionFilter.tags  || [];
-                    contentViewData.collectionFilter.types = contentViewData.collectionFilter.types || [];
-                    contentViewData.collectionFilter.text  = contentViewData.collectionFilter.text  || "";
-                    contentViewData.collectionFilter.users = contentViewData.collectionFilter.users || [];
-                contentViewData.transcriptSource       = contentViewData.transcriptSource || "";
-                contentViewData.showTranscriptSearch   = contentViewData.showTranscriptSearch || false;
-                // A view has the sizes its type has where it is (see offersSize); one that is not offered there is
-                // shown, and saved, as medium.
-                this.whichArea = whichArea;
-                contentViewData.contentSize            = contentViewData.contentSize || ((whichArea == 'companion' || whichArea == 'circular') ? "medium" : "small");
-                this.normalizeSize(contentViewData);
-                contentViewData.onClickContentItem     = contentViewData.onClickContentItem || "";
-                contentViewData.initClosed             = contentViewData.initClosed || false;
-                contentViewData.filterAspect           = contentViewData.filterAspect || "creatorId";
-                contentViewData.zoomControls           = contentViewData.zoomControls || false;
-
-                this.contentViewData = contentViewData;
-
-                this.previousContentSize = this.contentViewData.contentSize;
-
-                this.isMouseOver = false;
-
-                this.whichArea = whichArea;
-
-                this.contentCollection = [];
-
-                this.contentGroups = [];
-
-                this.appendDOMElement();
-
-                this.updateContent();
+                this._build(contentViewData, whichArea);
 
             },
             prototype: {
@@ -92,6 +54,114 @@ FrameTrail.defineType(
                 contentCollection: null,
                 contentGroups: null,
                 _AREA_KEYS: { top: 'Top', bottom: 'Bottom', left: 'Left', right: 'Right', companion: 'Companion', circular: 'Circular' },
+
+
+                /**
+                 * I make myself for a layout area: my data's defaults, my elements in the area, my content. The
+                 * constructor and moveToArea call me; afterAppend runs between the elements and the content.
+                 *
+                 * @method _build
+                 * @private
+                 * @param {Object} contentViewData
+                 * @param {String} whichArea
+                 * @param {Function} [afterAppend]
+                 */
+                _build: function(contentViewData, whichArea, afterAppend) {
+
+                    this.labels = FrameTrail.module('Localization').labels;
+
+                    contentViewData.type                   =  contentViewData.type || "TimedContent";
+                    contentViewData.name                   =  contentViewData.name || "";
+                    contentViewData.icon                   =  contentViewData.icon || "";
+                    contentViewData.cssClass               = contentViewData.cssClass || "";
+                    contentViewData.html                   = contentViewData.html || "";
+                        contentViewData.collectionFilter   = contentViewData.collectionFilter || {};
+                        contentViewData.collectionFilter.tags  = contentViewData.collectionFilter.tags  || [];
+                        contentViewData.collectionFilter.types = contentViewData.collectionFilter.types || [];
+                        contentViewData.collectionFilter.text  = contentViewData.collectionFilter.text  || "";
+                        contentViewData.collectionFilter.users = contentViewData.collectionFilter.users || [];
+                    contentViewData.transcriptSource       = contentViewData.transcriptSource || "";
+                    contentViewData.showTranscriptSearch   = contentViewData.showTranscriptSearch || false;
+                    // A view has the sizes its type has where it is (see offersSize); one that is not offered there is
+                    // shown, and saved, as medium.
+                    this.whichArea = whichArea;
+                    contentViewData.contentSize            = contentViewData.contentSize || ((whichArea == 'companion' || whichArea == 'circular') ? "medium" : "small");
+                    this.normalizeSize(contentViewData);
+                    contentViewData.onClickContentItem     = contentViewData.onClickContentItem || "";
+                    contentViewData.initClosed             = contentViewData.initClosed || false;
+                    contentViewData.filterAspect           = contentViewData.filterAspect || "creatorId";
+                    contentViewData.zoomControls           = contentViewData.zoomControls || false;
+
+                    this.contentViewData = contentViewData;
+
+                    this.previousContentSize = this.contentViewData.contentSize;
+
+                    this.isMouseOver = false;
+
+                    this.whichArea = whichArea;
+
+                    this.contentCollection = [];
+
+                    this.contentGroups = [];
+
+                    this.appendDOMElement();
+
+                    if (afterAppend) { afterAppend.call(this); }
+
+                    this.updateContent();
+
+                },
+
+
+                /**
+                 * I move to another layout area (ViewLayout.moveContentView): I stay the same view (what holds me,
+                 * such as an undo step of my settings, keeps working) and am made again there, as a new view of that
+                 * area would be. What my old area knew of me goes with my old elements. A size my new area does not
+                 * offer becomes medium (normalizeSize); my other settings stay as they are, also those that do
+                 * nothing there. The Custom HTML I show moves with me as it is, with what onReady code built in it.
+                 * Without the Layout Editor's preview: the caller renders it.
+                 *
+                 * @method moveToArea
+                 * @param {String} whichArea
+                 */
+                moveToArea: function(whichArea) {
+
+                    var self   = this,
+                        data   = self.contentViewData,
+                        keep   = { labels: true, contentViewData: true, _settingsPending: true },
+                        keptHTML = (data.type === 'CustomHTML' && self.contentViewContainer)
+                            ? self.contentViewContainer.querySelector('.contentViewContents > .customhtmlContainer')
+                            : null;
+
+                    // What my old area knew of me
+                    if (self.isCircularArea()) { self.clearRingGeometry(); }
+                    if (self._ringFrame) { window.cancelAnimationFrame(self._ringFrame); }
+                    clearTimeout(self._stripCentreTimeout);
+                    (self.contentCollection || []).forEach(function(contentItem) {
+                        self.removeContentCollectionElements(contentItem);
+                    });
+                    if (keptHTML) {
+                        keptHTML.remove();
+                        keep._lastCustomHTML = true;
+                    }
+                    self.removeDOMElement();
+
+                    // Everything else is made again, as for a new view
+                    Object.keys(self).forEach(function(key) {
+                        if (!keep[key]) { delete self[key]; }
+                    });
+
+                    // The legacy axis a view is given where it is made
+                    if (data.axis !== undefined) {
+                        data.axis = (whichArea == 'top' || whichArea == 'bottom') ? 'x' : 'y';
+                    }
+
+                    self._build(data, whichArea, keptHTML ? function() {
+                        var contents = this.contentViewContainer.querySelector('.contentViewContents');
+                        if (contents) { contents.appendChild(keptHTML); }
+                    } : null);
+
+                },
 
 
                 /**
@@ -1700,8 +1770,15 @@ FrameTrail.defineType(
 
                     self.activateContentViewPreview();
 
+                    // Until the settings are open (and while they are), nothing is dragged in the Layout Editor
+                    // (see _settingsPending); a view taken away meanwhile (an undo) opens nothing.
                     if (startEditing) {
+                        self._settingsPending = true;
                         window.setTimeout(function() {
+                            if (!self.contentViewPreviewElement || !self.contentViewPreviewElement.isConnected) {
+                                self._settingsPending = false;
+                                return;
+                            }
                             self.editContentView(startEditing);
                         }, 200);
                     }
@@ -3811,6 +3888,10 @@ FrameTrail.defineType(
                         finalLeft = (window.innerWidth/2) - 430,
                         self = this;
 
+                    // From here until the dialog closes, the Layout Editor starts no drag (ViewLayout): the dialog
+                    // grows out of my preview, and is modal once it is there.
+                    self._settingsPending = true;
+
                     animationDiv.classList.add('contentViewAnimationDiv');
                     animationDiv.style.position = 'fixed';
                     animationDiv.style.top = originTop + 'px';
@@ -3848,6 +3929,7 @@ FrameTrail.defineType(
                             modal:     true,
                             close: function() {
                                 editDialogCtrl.destroy();
+                                self._settingsPending = false;
                                 var closeAnim = animationDiv.animate([
                                     { top: finalTop + 'px', left: finalLeft + 'px', width: '860px', height: '600px' },
                                     { top: originTop + 'px', left: originLeft + 'px', width: originWidth + 'px', height: originHeight + 'px' }

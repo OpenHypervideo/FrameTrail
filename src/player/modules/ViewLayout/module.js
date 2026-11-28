@@ -309,6 +309,25 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         return null;
     }
 
+    /**
+     * I say whether a layout area takes a view of a type that the Layout Editor drags into it (a tile of the palette,
+     * or a view of another area). Only the ring refuses types: it shows one collection (TimedContent), and takes
+     * nothing while it has a view. The settings dialog's type cards (ContentView.renderContentViewPreviewEditingUI)
+     * and the Edit API's setLayout apply the same rule. Sizes are not asked here: a size the area does not offer
+     * becomes medium (ContentView.offersSize / normalizeSize).
+     *
+     * @method areaTakes
+     * @param {String} whichArea
+     * @param {String} type
+     * @return {Boolean}
+     */
+    function areaTakes(whichArea, type) {
+        if (whichArea === 'circular') {
+            return type === 'TimedContent' && !contentViews.circular.length;
+        }
+        return true;
+    }
+
     // The phone is there when pairing is set up, and wherever there are views for it already.
     function showsCompanionArea() {
         var config = FrameTrail.module('Database').config;
@@ -478,6 +497,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
     function createContentView(whichArea, templateContentViewData, renderPreview, skipUndo) {
 
+        cancelLayoutDrag();
+
         var area = areaByName(whichArea),
             arrayOfContentViews = contentViews[area.name];
 
@@ -505,7 +526,42 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     }
 
 
+    /**
+     * I take a view out of the tabs of its area, in the player and in the Layout Editor's preview, while it is still
+     * in its area: where it is the tab shown, the tab beside it (before it, else after it) is to be shown instead, and
+     * an area left without views says so at once. I return what is to be done once the view is out (for a view that is
+     * removed or moved, by the delete button, an undo or a drag alike).
+     *
+     * @method leaveTabs
+     * @private
+     * @param {ContentView} contentView
+     * @return {Function}
+     */
+    function leaveTabs(contentView) {
+
+        var list           = contentViews[contentView.whichArea],
+            index          = list.indexOf(contentView),
+            neighbour      = list[index - 1] || list[index + 1] || null,
+            shown          = contentView.isActiveView(),
+            shownInPreview = !!(contentView.contentViewPreviewElement && contentView.contentViewPreviewElement.classList.contains('active'));
+
+        if (!neighbour) {
+            contentView.resizeLayoutArea(true, true);
+            if (contentView.contentViewPreviewElement) { contentView.resizeLayoutAreaPreview(true); }
+        }
+
+        return function() {
+            if (!neighbour) { return; }
+            if (shown)          { neighbour.activateContentView(); }
+            if (shownInPreview) { neighbour.activateContentViewPreview(); }
+        };
+
+    }
+
+
     function removeContentView(contentViewToRemove, skipUndo) {
+
+        cancelLayoutDrag();
 
         // Capture data before removal for undo
         var contentViewData = JSON.parse(JSON.stringify(contentViewToRemove.contentViewData)),
@@ -520,6 +576,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             configLayoutArea[area.key].splice(configIndex, 1);
         }
 
+        var afterLeaving = leaveTabs(contentViewToRemove);
+
         contentViewToRemove.contentCollection.forEach(function(contentItem) {
             contentViewToRemove.removeContentCollectionElements(contentItem);
         });
@@ -529,6 +587,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             layoutAreaToRemovefrom.indexOf(contentViewToRemove),
             1
         );
+
+        afterLeaving();
 
         updateManagedContent();
 
@@ -573,6 +633,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
      */
     function setContentViews(whichArea, contentViewsData) {
 
+        cancelLayoutDrag();
+
         var arrayOfContentViews = contentViews[areaByName(whichArea).name];
 
         var previous = arrayOfContentViews.map(function(contentView) {
@@ -610,52 +672,205 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
     }
 
 
-    function reorderContentView(whichArea, oldIndex, newIndex, updatePreviewDOM) {
+    /**
+     * I put the elements of a layout area's views in the order of its views (contentViews): in the player's area
+     * (tabs, containers, details) and, while the Layout Editor shows the area, in its preview (tabs, blocks).
+     * appendChild moves what is there.
+     *
+     * @method orderAreaDOM
+     * @param {String} whichArea
+     */
+    function orderAreaDOM(whichArea) {
 
-        if (oldIndex === newIndex) { return; }
+        var area             = areaByName(whichArea),
+            ViewVideo        = FrameTrail.module('ViewVideo'),
+            areaContainer    = ViewVideo['Area' + area.cap + 'Container'],
+            detailsContainer = ViewVideo['Area' + area.cap + 'Details'],
+            tabs             = areaContainer && areaContainer.querySelector('.layoutAreaTabs'),
+            contents         = areaContainer && areaContainer.querySelector('.layoutAreaContent'),
+            previewArea      = HypervideoLayoutContainer.querySelector('.layoutEditor .layoutArea[data-area="' + area.key + '"]'),
+            previewTabs      = previewArea && previewArea.querySelector('.layoutAreaTabs'),
+            previewContents  = previewArea && previewArea.querySelector('.layoutAreaContent');
 
-        var area    = areaByName(whichArea),
-            areaKey = area.key,
-            areaCap = area.cap;
-
-        var contentViewsArray = contentViews[area.name];
-
-        // Update JS arrays
-        var movedCV = contentViewsArray.splice(oldIndex, 1)[0];
-        contentViewsArray.splice(newIndex, 0, movedCV);
-        var movedData = configLayoutArea[areaKey].splice(oldIndex, 1)[0];
-        configLayoutArea[areaKey].splice(newIndex, 0, movedData);
-
-        // Reorder real ViewVideo DOM elements (appendChild moves existing nodes)
-        var ViewVideo       = FrameTrail.module('ViewVideo');
-        var areaContainer   = ViewVideo['Area' + areaCap + 'Container'];
-        var realTabsCont    = areaContainer.querySelector('.layoutAreaTabs');
-        var realContentCont = areaContainer.querySelector('.layoutAreaContent');
-        var realDetailsCont = ViewVideo['Area' + areaCap + 'Details'];
-
-        contentViewsArray.forEach(function(cv) {
-            realTabsCont.appendChild(cv.contentViewTab);
-            realContentCont.appendChild(cv.contentViewContainer);
-            if (cv.contentViewDetailsContainer && realDetailsCont) {
-                realDetailsCont.appendChild(cv.contentViewDetailsContainer);
-            }
+        contentViews[area.name].forEach(function(cv) {
+            if (tabs && cv.contentViewTab)                                { tabs.appendChild(cv.contentViewTab); }
+            if (contents && cv.contentViewContainer)                      { contents.appendChild(cv.contentViewContainer); }
+            if (detailsContainer && cv.contentViewDetailsContainer)       { detailsContainer.appendChild(cv.contentViewDetailsContainer); }
+            if (previewTabs && cv.contentViewPreviewTab)                  { previewTabs.appendChild(cv.contentViewPreviewTab); }
+            if (previewContents && cv.contentViewPreviewElement)          { previewContents.appendChild(cv.contentViewPreviewElement); }
         });
 
-        // Reorder LayoutEditor preview DOM (Sortable handles it on drag; needed for undo/redo)
-        if (updatePreviewDOM) {
-            var previewArea = ViewVideo.HypervideoLayoutContainer
-                .querySelector('.layoutArea[data-area="' + areaKey + '"]');
-            if (previewArea) {
-                var pTabsCont    = previewArea.querySelector('.layoutAreaTabs');
-                var pContentCont = previewArea.querySelector('.layoutAreaContent');
-                contentViewsArray.forEach(function(cv) {
-                    if (cv.contentViewPreviewTab)     { pTabsCont.appendChild(cv.contentViewPreviewTab); }
-                    if (cv.contentViewPreviewElement) { pContentCont.appendChild(cv.contentViewPreviewElement); }
-                });
+    }
+
+
+    // The stored layout follows the views of an area, in their order. An optional area that was never stored and has
+    // no views stays so (see getLayoutAreaData).
+    function syncConfig(whichArea) {
+        var area = areaByName(whichArea);
+        if (!configLayoutArea || (!Array.isArray(configLayoutArea[area.key]) && !contentViews[area.name].length)) { return; }
+        configLayoutArea[area.key] = contentViews[area.name].map(function(contentView) { return contentView.contentViewData; });
+    }
+
+
+    /**
+     * I move a view to another place in its layout area.
+     *
+     * @method reorderContentView
+     * @param {String} whichArea
+     * @param {Number} oldIndex
+     * @param {Number} newIndex
+     */
+    function reorderContentView(whichArea, oldIndex, newIndex) {
+
+        cancelLayoutDrag();
+
+        var contentViewsArray = contentViews[areaByName(whichArea).name];
+
+        newIndex = Math.max(0, Math.min(contentViewsArray.length - 1, newIndex));
+
+        if (oldIndex === newIndex || !contentViewsArray[oldIndex]) { return; }
+
+        contentViewsArray.splice(newIndex, 0, contentViewsArray.splice(oldIndex, 1)[0]);
+
+        syncConfig(whichArea);
+        orderAreaDOM(whichArea);
+
+        FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+
+    }
+
+
+    /**
+     * I move a view to a place (toIndex) in a layout area: within its own area, I reorder it; into another one, it is
+     * the same view (ContentView.moveToArea), made again there, the active tab of its new area. Its old area shows the
+     * tab beside it where it showed this one. With data, the view takes that data first (an undo gives back what it
+     * was before). Nothing happens, and I answer false, for a view that is no longer in its area and for an area that
+     * does not take it (areaTakes). Everything is done at once, in this call.
+     *
+     * @method moveContentView
+     * @param {ContentView} contentView
+     * @param {String} toArea
+     * @param {Number} toIndex
+     * @param {Object} [data]
+     * @return {Boolean} whether anything changed
+     */
+    function moveContentView(contentView, toArea, toIndex, data) {
+
+        cancelLayoutDrag();
+
+        var fromArea  = contentView && contentView.whichArea,
+            from      = fromArea ? contentViews[areaByName(fromArea).name] : null,
+            fromIndex = from ? from.indexOf(contentView) : -1,
+            to        = contentViews[areaByName(toArea).name],
+            HypervideoModel = FrameTrail.module('HypervideoModel');
+
+        if (fromIndex < 0) { return false; }
+
+        if (fromArea === toArea) {
+            toIndex = Math.max(0, Math.min(to.length - 1, toIndex));
+            if (data) {
+                contentView.contentViewData = contentView.normalizeSize(data);
+                if (contentView.contentViewPreviewElement) { contentView.updateContentViewPreview(); }
+                contentView.updateContent();
+                syncConfig(fromArea);
+                HypervideoModel.newUnsavedChange('layout');
+            }
+            if (toIndex !== fromIndex) {
+                reorderContentView(fromArea, fromIndex, toIndex);
+            }
+            return toIndex !== fromIndex || !!data;
+        }
+
+        if (!areaTakes(toArea, (data || contentView.contentViewData).type)) { return false; }
+
+        var ViewVideo     = FrameTrail.module('ViewVideo'),
+            fromContainer = ViewVideo['Area' + areaByName(fromArea).cap + 'Container'],
+            startsClosed  = function(view) { return !!view.contentViewData.initClosed && !view.opensWhenActive(); },
+            closedByIt    = startsClosed(contentView),
+            afterLeaving  = leaveTabs(contentView);
+
+        from.splice(fromIndex, 1);
+
+        if (data) { contentView.contentViewData = data; }
+        contentView.moveToArea(toArea);
+
+        to.splice(Math.max(0, Math.min(to.length, toIndex)), 0, contentView);
+
+        // The Layout Editor shows the view in its new area, as its active tab; a phone it does not show yet (no
+        // pairing set up, no views when it was opened) appears with the editor made again
+        var rebuildEditor = false;
+        if (FrameTrail.getState('editMode') === 'layout' && HypervideoLayoutContainer.querySelector('.layoutEditor')) {
+            if (contentView.getLayoutAreaPreviewContainer()) {
+                contentView.renderContentViewPreview();
+            } else {
+                rebuildEditor = true;
             }
         }
 
-        FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+        orderAreaDOM(toArea);
+
+        afterLeaving();
+
+        // The area it left starts as its other views say, as after a reload ("Start collapsed")
+        if (closedByIt && fromContainer && !from.some(startsClosed)) {
+            fromContainer.classList.remove('closed');
+        }
+
+        syncConfig(fromArea);
+        syncConfig(toArea);
+
+        updateManagedContent();
+        updateLayoutAreaVisibility();
+        updateHiddenTabs();
+
+        if (rebuildEditor) { initLayoutEditor(); }
+
+        updateTimedStateOfContentViews(FrameTrail.module('HypervideoController').currentTime);
+
+        HypervideoModel.newUnsavedChange('layout');
+
+        return true;
+
+    }
+
+
+    /**
+     * I register the undo step of a move (moveContentView) that has been done: the view, where it was and where it
+     * is, and its data before and after (a size its new area does not offer has become medium). A view that is not
+     * the same object any more (the Edit API replaces an area's views) is found by its data, as the undo steps of
+     * adding and deleting a view find theirs.
+     *
+     * @method registerMoveUndo
+     * @private
+     */
+    function registerMoveUndo(contentView, fromArea, fromIndex, toArea, toIndex, dataBefore) {
+
+        var before = JSON.parse(JSON.stringify(dataBefore)),
+            after  = JSON.parse(JSON.stringify(contentView.contentViewData)),
+            labels = FrameTrail.module('Localization').labels;
+
+        function find(whichArea, data) {
+            var list = contentViews[whichArea];
+            if (list.indexOf(contentView) >= 0) { return contentView; }
+            var json = JSON.stringify(data);
+            for (var i = 0; i < list.length; i++) {
+                if (JSON.stringify(list[i].contentViewData) === json) { return list[i]; }
+            }
+            return null;
+        }
+
+        FrameTrail.module('UndoManager').register({
+            category: 'layout',
+            description: labels['SidebarLayoutEditor'] + ' ' + labels['GenericMove'],
+            undo: function() {
+                var view = find(toArea, after);
+                if (view) { contentView = view; moveContentView(view, fromArea, fromIndex, JSON.parse(JSON.stringify(before))); }
+            },
+            redo: function() {
+                var view = find(fromArea, before);
+                if (view) { contentView = view; moveContentView(view, toArea, toIndex, JSON.parse(JSON.stringify(after))); }
+            }
+        });
 
     }
 
@@ -1099,7 +1314,428 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
 
     }
 
+    /* Dragging in the Layout Editor
+
+       One drag at a time: a tile of the palette (a new view), or a view, by its tab or by its block (the preview of
+       the view). interact.js follows the pointer; where the drag would go is worked out at every move from the
+       editor as it is laid out then (targetAt), never from sizes measured before (the areas may still be moving
+       after the last drop). Nothing changes while the drag runs: when it ends, it is cleaned up first and then
+       done, through createContentView, moveContentView or reorderContentView, and the editor follows from
+       contentViews. Any other change of the layout meanwhile (an undo, the Edit API, another edit mode) ends the
+       drag without a change (cancelLayoutDrag), and so does a settings dialog that opens or is open. */
+
+    var layoutDrag          = null,
+        layoutInteractables = [],
+        // A press moves this far before it is a drag: a click on a tab that moved a little still picks the tab
+        DRAG_THRESHOLD      = 5,
+        // How far beside a bar of tabs the pointer still drops between them
+        TAB_BAND            = 8;
+
+    function areaByKey(key) {
+        for (var i = 0; i < AREAS.length; i++) {
+            if (AREAS[i].key === key) { return AREAS[i]; }
+        }
+        return null;
+    }
+
+    // Whether a drag may start: one at a time, none while the edit API works or a settings dialog opens or is open
+    function mayStartLayoutDrag() {
+        return !layoutDrag && !FrameTrail.getState('editBusy') && FrameTrail.getState('editMode') === 'layout'
+            && !allContentViews().some(function(contentView) { return contentView._settingsPending; });
+    }
+
+    // Whether the running drag can be dropped into an area. A view's own area takes it where it has other views to
+    // move between (see targetAt).
+    function layoutDragTakenBy(whichArea) {
+        var drag = layoutDrag;
+        if (drag.view && drag.view.whichArea === whichArea) {
+            return contentViews[whichArea].length > 1;
+        }
+        return areaTakes(whichArea, drag.type);
+    }
+
+    // The tabs of a preview area between which a view can be dropped: those shown, without the dragged one and its ghost
+    function previewTabsOf(areaElement) {
+        if (areaElement.classList.contains('hiddenTabs')) { return []; }
+        var bar = areaElement.querySelector(':scope > .layoutAreaTabs');
+        if (!bar) { return []; }
+        return Array.from(bar.children).filter(function(el) {
+            return el.classList.contains('contentViewTab')
+                && el !== (layoutDrag.view && layoutDrag.view.contentViewPreviewTab)
+                && !el.classList.contains('layoutEditorDragGhost');
+        });
+    }
+
+    /**
+     * I work out where the running drag would be dropped at a point of the window: the area there, if it takes the
+     * drag, and the place among its views. A tile goes after the area's views. A view goes between the tabs where the
+     * pointer is beside them (the bars of the left and right areas are turned, their tabs run upwards), else after
+     * the views of another area; in its own area only between the tabs. Null for nowhere, and for a place that
+     * changes nothing.
+     *
+     * @method targetAt
+     * @private
+     * @param {Number} x
+     * @param {Number} y
+     * @return {Object|null} { area, element, index, tabs }
+     */
+    function targetAt(x, y) {
+
+        var drag   = layoutDrag,
+            hit    = document.elementFromPoint(x, y),
+            areaEl = hit && hit.closest('.layoutEditor .layoutArea[data-area]'),
+            area   = areaEl && HypervideoLayoutContainer.contains(areaEl) && areaByKey(areaEl.getAttribute('data-area'));
+
+        if (!area || !layoutDragTakenBy(area.name)) { return null; }
+
+        var target = { area: area.name, element: areaEl, index: contentViews[area.name].length, tabs: false };
+
+        if (drag.kind === 'template') { return target; }
+
+        var own      = drag.view.whichArea === area.name,
+            tabs     = previewTabsOf(areaEl),
+            vertical = (area.name === 'left' || area.name === 'right');
+
+        if (tabs.length) {
+            var rects = tabs.map(function(tab) { return tab.getBoundingClientRect(); }),
+                low   = Math.min.apply(null, rects.map(function(r) { return vertical ? r.left : r.top; })) - TAB_BAND,
+                high  = Math.max.apply(null, rects.map(function(r) { return vertical ? r.right : r.bottom; })) + TAB_BAND,
+                cross = vertical ? x : y;
+            if (cross >= low && cross <= high) {
+                var along = vertical ? -y : x;
+                target.index = rects.filter(function(r) {
+                    return (vertical ? -(r.top + r.height / 2) : (r.left + r.width / 2)) < along;
+                }).length;
+                target.tabs = true;
+            }
+        }
+
+        if (own) {
+            if (!target.tabs || target.index === contentViews[area.name].indexOf(drag.view)) {
+                // Its own place: shown there (the ghost) while over the tabs, else nowhere
+                return target.tabs ? target : null;
+            }
+        }
+
+        return target;
+
+    }
+
+    // I show where the running drag would go: the area that takes it, and for a view the place among the tabs (a
+    // ghost of its tab, the tab itself hidden while its ghost is in its own bar).
+    function showLayoutDragTarget(target) {
+
+        var drag = layoutDrag;
+
+        HypervideoLayoutContainer.querySelectorAll('.layoutAreaContent.droppableHover').forEach(function(el) {
+            el.classList.remove('droppableHover');
+        });
+        if (target) {
+            target.element.querySelector(':scope > .layoutAreaContent').classList.add('droppableHover');
+        }
+
+        if (drag.kind !== 'view') { return; }
+
+        var sourceTab = drag.view.contentViewPreviewTab;
+
+        if (target && target.tabs) {
+            var tabs = previewTabsOf(target.element),
+                bar  = target.element.querySelector(':scope > .layoutAreaTabs');
+            if (!drag.ghost) {
+                drag.ghost = sourceTab.cloneNode(true);
+                drag.ghost.classList.remove('active');
+                drag.ghost.classList.add('layoutEditorDragGhost');
+            }
+            var before = tabs[target.index] || null;
+            if (drag.ghost.parentElement !== bar || drag.ghost.nextElementSibling !== before) {
+                bar.insertBefore(drag.ghost, before);
+            }
+            sourceTab.classList.toggle('layoutEditorDragHidden', bar === sourceTab.parentElement);
+        } else {
+            if (drag.ghost) { drag.ghost.remove(); }
+            sourceTab.classList.remove('layoutEditorDragHidden');
+        }
+
+    }
+
+    // A copy of a palette tile that follows the pointer: the tile itself, or for a view the tile of its type, named as the view is
+    function makeLayoutDragClone(tile, name) {
+
+        var clone = tile.cloneNode(true),
+            rect  = tile.getBoundingClientRect();
+
+        clone.classList.add('layoutEditorDragClone');
+        clone.style.cssText = 'position:fixed;z-index:1000;pointer-events:none;margin:0;width:' + rect.width + 'px;';
+        if (name) {
+            var label = clone.querySelector('.contentViewTemplateLabel > span');
+            if (label) { label.textContent = name; }
+        }
+
+        // The theme's colours, from the editor, which the page's body does not have
+        var editor = HypervideoLayoutContainer.querySelector('.layoutEditor');
+        if (editor) {
+            var cs = getComputedStyle(editor);
+            ['--primary-bg-color', '--primary-fg-color', '--secondary-bg-color', '--secondary-fg-color',
+             '--video-background-color', '--semi-transparent-fg-color', '--semi-transparent-fg-highlight-color'].forEach(function(v) {
+                var val = cs.getPropertyValue(v).trim();
+                if (val) { clone.style.setProperty(v, val); }
+            });
+        }
+
+        document.body.appendChild(clone);
+        return clone;
+
+    }
+
+    // I begin a drag once the press has moved far enough (see DRAG_THRESHOLD): the copy under the pointer, the dragged
+    // view dimmed, the areas that take it marked.
+    function beginLayoutDrag(drag, x, y) {
+
+        var tile = drag.kind === 'template'
+                ? drag.element
+                : HypervideoLayoutContainer.querySelector('.contentViewTemplate[data-type="' + drag.type + '"]');
+
+        drag.started = true;
+
+        if (tile) {
+            drag.clone = makeLayoutDragClone(tile, drag.view ? drag.view.contentViewData.name : '');
+            // A tile is held where it was taken; a view's copy goes beside the pointer, which leaves the place
+            // among the tabs where it would go (its ghost) in sight
+            var rect = tile.getBoundingClientRect();
+            drag.offsetX = (drag.kind === 'template') ? drag.startX - rect.left : -16;
+            drag.offsetY = (drag.kind === 'template') ? drag.startY - rect.top  : -16;
+        }
+
+        if (drag.view) {
+            [drag.view.contentViewPreviewTab, drag.view.contentViewPreviewElement].forEach(function(el) {
+                if (el) { el.classList.add('layoutEditorDragSource'); }
+            });
+        }
+
+        AREAS.forEach(function(area) {
+            var areaEl = HypervideoLayoutContainer.querySelector('.layoutEditor .layoutArea[data-area="' + area.key + '"]');
+            if (areaEl && layoutDragTakenBy(area.name)) {
+                areaEl.querySelector(':scope > .layoutAreaContent').classList.add('droppableActive');
+            }
+        });
+
+    }
+
+    // I clean up after a drag: no copy, no ghost, no marks; the drag is over.
+    function endLayoutDrag() {
+
+        var drag = layoutDrag;
+        layoutDrag = null;
+        if (!drag) { return; }
+
+        if (drag.clone) { drag.clone.remove(); }
+        if (drag.ghost) { drag.ghost.remove(); }
+
+        HypervideoLayoutContainer.querySelectorAll('.droppableActive, .droppableHover').forEach(function(el) {
+            el.classList.remove('droppableActive', 'droppableHover');
+        });
+        HypervideoLayoutContainer.querySelectorAll('.layoutEditorDragSource, .layoutEditorDragHidden').forEach(function(el) {
+            el.classList.remove('layoutEditorDragSource', 'layoutEditorDragHidden');
+        });
+
+    }
+
+    /**
+     * I end a running drag without a change: the layout is changed otherwise (an undo, the Edit API, the editor is
+     * made again or left), so what the drag was aimed at may be gone. The pointer that is let go later does nothing.
+     *
+     * @method cancelLayoutDrag
+     * @private
+     */
+    function cancelLayoutDrag() {
+        if (!layoutDrag) { return; }
+        var interaction = layoutDrag.interaction;
+        endLayoutDrag();
+        try { if (interaction && interaction.interacting()) { interaction.stop(); } } catch (e) {}
+    }
+
+    function onLayoutDragStart(event) {
+
+        if (!mayStartLayoutDrag()) {
+            event.interaction.stop();
+            return;
+        }
+
+        var element = event.target,
+            drag    = {
+                interaction: event.interaction,
+                element:     element,
+                startX:      event.clientX0 !== undefined ? event.clientX0 : event.client.x,
+                startY:      event.clientY0 !== undefined ? event.clientY0 : event.client.y,
+                started:     false
+            };
+
+        if (element.classList.contains('contentViewTemplate')) {
+            drag.kind = 'template';
+            drag.type = element.dataset.type;
+        } else {
+            drag.kind = 'view';
+            drag.view = allContentViews().filter(function(contentView) {
+                return contentView.contentViewPreviewTab === element || contentView.contentViewPreviewElement === element;
+            })[0];
+            if (!drag.view) {
+                event.interaction.stop();
+                return;
+            }
+            drag.type = drag.view.contentViewData.type;
+        }
+
+        layoutDrag = drag;
+
+    }
+
+    function onLayoutDragMove(event) {
+
+        var drag = layoutDrag;
+        if (!drag || drag.interaction !== event.interaction) { return; }
+
+        var x = event.client.x,
+            y = event.client.y;
+
+        if (!drag.started) {
+            if (Math.hypot(x - drag.startX, y - drag.startY) < DRAG_THRESHOLD) { return; }
+            beginLayoutDrag(drag, x, y);
+        }
+
+        if (drag.clone) {
+            drag.clone.style.left = (x - drag.offsetX) + 'px';
+            drag.clone.style.top  = (y - drag.offsetY) + 'px';
+        }
+
+        drag.target = targetAt(x, y);
+        showLayoutDragTarget(drag.target);
+
+    }
+
+    function onLayoutDragEnd(event) {
+
+        var drag = layoutDrag;
+        if (!drag || drag.interaction !== event.interaction) { return; }
+
+        // Where it ends, from the editor as it is now; then the drag is over, and only then is anything changed
+        var target = drag.started ? targetAt(event.client.x, event.client.y) : null;
+
+        endLayoutDrag();
+
+        if (!target) { return; }
+
+        if (drag.kind === 'template') {
+            dropLayoutTemplate(drag.type, drag.element.dataset.size, target.area);
+            return;
+        }
+
+        var view      = drag.view,
+            fromArea  = view.whichArea,
+            fromIndex = contentViews[fromArea].indexOf(view),
+            before    = JSON.parse(JSON.stringify(view.contentViewData));
+
+        if (fromIndex < 0) { return; }
+
+        if (fromArea === target.area) {
+            if (target.index === fromIndex) { return; }
+            reorderContentView(fromArea, fromIndex, target.index);
+            (function(area, fromIdx, toIdx) {
+                FrameTrail.module('UndoManager').register({
+                    category: 'layout',
+                    description: labels['SidebarLayoutEditor'] + ' ' + labels['GenericReorder'],
+                    undo: function() { reorderContentView(area, toIdx, fromIdx); },
+                    redo: function() { reorderContentView(area, fromIdx, toIdx); }
+                });
+            })(fromArea, fromIndex, contentViews[fromArea].indexOf(view));
+            return;
+        }
+
+        if (moveContentView(view, target.area, target.index)) {
+            registerMoveUndo(view, fromArea, fromIndex, target.area, contentViews[target.area].indexOf(view), before);
+        }
+
+    }
+
+    /**
+     * I add a view of a type from the palette to a layout area, after its views, and open its settings (a drop of a
+     * palette tile).
+     *
+     * @method dropLayoutTemplate
+     * @private
+     * @param {String} type
+     * @param {String} size the palette's size of the type
+     * @param {String} whichArea
+     */
+    function dropLayoutTemplate(type, size, whichArea) {
+
+        var contentAxis = (whichArea == 'top' || whichArea == 'bottom') ? 'x' : 'y',
+            templateContentViewData = {
+                'type': type,
+                'name': '',
+                'description': '',
+                'cssClass': '',
+                'html': '',
+                'collectionFilter': {
+                    'tags': [],
+                    'types': [],
+                    'text': '',
+                    'users': []
+                },
+                // A new Transcript view shows the first transcript (none yet: the first one made).
+                'transcriptSource': (type === 'Transcript') ? FrameTrail.module('HypervideoModel').transcriptLanguage('') : '',
+                'mode': 'slide',
+                'axis': contentAxis,
+                'contentSize': size || '',
+                'autoSync': false,
+                'onClickContentItem': ''
+            };
+
+        createContentView(whichArea, templateContentViewData, true);
+
+        FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+
+        // Register undo command for adding content view
+        (function(areaName, viewData) {
+            var findContentView = function() {
+                var contentViewsArray = contentViews[areaName];
+                for (var i = 0; i < contentViewsArray.length; i++) {
+                    if (JSON.stringify(contentViewsArray[i].contentViewData) === JSON.stringify(viewData)) {
+                        return contentViewsArray[i];
+                    }
+                }
+                return null;
+            };
+            FrameTrail.module('UndoManager').register({
+                category: 'layout',
+                description: labels['SidebarLayoutEditor'] + ' ' + labels['GenericAdd'],
+                undo: function() {
+                    var contentView = findContentView();
+                    if (contentView) {
+                        removeContentView(contentView, true);
+                    }
+                },
+                redo: function() {
+                    createContentView(areaName, viewData, true, true);
+                    FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
+                }
+            });
+        })(whichArea, JSON.parse(JSON.stringify(templateContentViewData)));
+
+    }
+
+    // The editor's draggables are made again with it, and gone when it is left
+    function unsetLayoutInteractables() {
+        layoutInteractables.forEach(function(interactable) {
+            try { interactable.unset(); } catch (e) {}
+        });
+        layoutInteractables = [];
+    }
+
+
     function initLayoutEditor() {
+
+        cancelLayoutDrag();
+        unsetLayoutInteractables();
 
         HypervideoLayoutContainer.innerHTML = '';
 
@@ -1202,129 +1838,16 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             }
         });
 
-        // Layout template drag-and-drop via interact.js (clone helper pattern)
-        (function() {
-            var dragClone = null;
-
-            var draggableListeners = {
-            listeners: {
-                start: function(e) {
-                    var el = e.target;
-                    var rect = el.getBoundingClientRect();
-                    dragClone = el.cloneNode(true);
-                    dragClone.style.cssText = 'position:fixed;z-index:1000;pointer-events:none;width:' + rect.width + 'px;left:' + rect.left + 'px;top:' + rect.top + 'px;';
-                    // Copy theme CSS variables from the themed layoutEditor so the clone renders correctly
-                    var lm = domElement.querySelector('.layoutEditor');
-                    if (lm) {
-                        var cs = getComputedStyle(lm);
-                        ['--primary-bg-color','--primary-fg-color','--secondary-bg-color','--secondary-fg-color',
-                         '--video-background-color','--semi-transparent-fg-color','--semi-transparent-fg-highlight-color'].forEach(function(v) {
-                            var val = cs.getPropertyValue(v).trim();
-                            if (val) { dragClone.style.setProperty(v, val); }
-                        });
-                    }
-                    document.body.appendChild(dragClone);
-                },
-                move: function(e) {
-                    // Only move the floating clone — original stays in place as visual placeholder
-                    if (dragClone) {
-                        dragClone.style.left = (parseFloat(dragClone.style.left) + e.dx) + 'px';
-                        dragClone.style.top  = (parseFloat(dragClone.style.top)  + e.dy) + 'px';
-                    }
-                },
-                end: function() {
-                    if (dragClone) { dragClone.remove(); dragClone = null; }
-                }
-            }
-        };
-        LayoutEditorOptions.querySelectorAll('.contentViewTemplate').forEach(function(el) { interact(el).draggable(draggableListeners); });
-
-        var dropzoneOpts = {
-                accept: '.contentViewTemplate, .contentViewPreview',
-                overlap: 'pointer',
-                ondropactivate:   function(e) { e.target.classList.add('droppableActive'); },
-                ondropdeactivate: function(e) { e.target.classList.remove('droppableActive', 'droppableHover'); },
-                ondragenter:      function(e) { e.target.classList.add('droppableHover'); },
-                ondragleave:      function(e) { e.target.classList.remove('droppableHover'); },
-                ondrop: function(e) {
-                    var orig = e.relatedTarget;
-                    var layoutArea = e.target.parentElement.dataset.area,
-                        contentAxis = (layoutArea == 'areaTop' || layoutArea == 'areaBottom') ? 'x' : 'y',
-                        templateContentViewData = {
-                            'type': orig.dataset.type,
-                            'name': '',
-                            'description': '',
-                            'cssClass': '',
-                            'html': '',
-                            'collectionFilter': {
-                                'tags': [],
-                                'types': [],
-                                'text': '',
-                                'users': []
-                            },
-                            // A new Transcript view shows the first transcript (none yet: the first one made).
-                            'transcriptSource': (orig.dataset.type === 'Transcript') ? FrameTrail.module('HypervideoModel').transcriptLanguage('') : '',
-                            'mode': 'slide',
-                            'axis': contentAxis,
-                            'contentSize': orig.dataset.size || '',
-                            'autoSync': false,
-                            'onClickContentItem': ''
-                        };
-
-                    var whichArea = layoutArea.split('area')[1].toLowerCase(),
-                        renderPreview = true;
-
-                    var newContentView = createContentView(whichArea, templateContentViewData, renderPreview);
-
-                    FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
-
-                    // Register undo command for adding content view
-                    (function(areaName, viewData) {
-                        var findContentView = function() {
-                            var contentViewsArray = contentViews[areaName];
-                            for (var i = 0; i < contentViewsArray.length; i++) {
-                                if (JSON.stringify(contentViewsArray[i].contentViewData) === JSON.stringify(viewData)) {
-                                    return contentViewsArray[i];
-                                }
-                            }
-                            return null;
-                        };
-                        FrameTrail.module('UndoManager').register({
-                            category: 'layout',
-                            description: labels['SidebarLayoutEditor'] + ' ' + labels['GenericAdd'],
-                            undo: function() {
-                                var contentView = findContentView();
-                                if (contentView) {
-                                    removeContentView(contentView, true);
-                                }
-                            },
-                            redo: function() {
-                                createContentView(areaName, viewData, true, true);
-                                FrameTrail.module('HypervideoModel').newUnsavedChange('layout');
-                            }
-                        });
-                    })(whichArea, JSON.parse(JSON.stringify(templateContentViewData)));
-                }
-        };
-        domElement.querySelectorAll('.layoutEditor .layoutArea:not(.circularLayoutArea) > .layoutAreaContent').forEach(function(el) { interact(el).dropzone(dropzoneOpts); });
-
-        // The ring takes one collection (TimedContent), and nothing while it has one.
-        var circularContent = domElement.querySelector('.circularLayoutArea > .layoutAreaContent');
-        if (circularContent) {
-            interact(circularContent).dropzone(Object.assign({}, dropzoneOpts, {
-                accept: '.contentViewTemplate[data-type="TimedContent"]',
-                checker: function(dragEvent, event, dropped) {
-                    return dropped && !contentViews.circular.length;
-                },
-                ondropactivate: function(e) {
-                    if (!contentViews.circular.length) { e.target.classList.add('droppableActive'); }
-                },
-                ondragenter: function(e) {
-                    if (!contentViews.circular.length) { e.target.classList.add('droppableHover'); }
-                }
-            }));
-        }
-        }());
+        // Dragging: the palette's tiles, and the views by their tabs and their blocks (see targetAt). The views'
+        // draggable is delegated, so the tabs and blocks made after a drop are draggable at once.
+        var layoutDragListeners = { start: onLayoutDragStart, move: onLayoutDragMove, end: onLayoutDragEnd };
+        LayoutEditorOptions.querySelectorAll('.contentViewTemplate').forEach(function(el) {
+            layoutInteractables.push(interact(el).draggable({ listeners: layoutDragListeners }));
+        });
+        layoutInteractables.push(interact('.contentViewTab, .contentViewPreview', { context: domElement }).draggable({
+            ignoreFrom: '.contentViewOptions',
+            listeners:  layoutDragListeners
+        }));
 
         AREAS.forEach(function(area) {
             initLayoutAreaPreview(contentViews[area.name]);
@@ -1336,35 +1859,6 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         }
 
         updateHiddenTabs();
-
-        // Make preview tabs sortable within each layout area (the ring has one view, and no tabs)
-        AREAS.forEach(function(area) {
-            if (area.name === 'circular') { return; }
-            var cfg = { area: area.name, key: area.key };
-            var previewArea   = domElement.querySelector('.layoutEditor [data-area="' + cfg.key + '"]');
-            var tabsContainer = previewArea ? previewArea.querySelector('.layoutAreaTabs') : null;
-            if (!tabsContainer) { return; }
-
-            Sortable.create(tabsContainer, {
-                draggable:  '.contentViewTab',
-                animation:  150,
-                delay:      150,
-                ghostClass: 'sortable-ghost',
-                dragClass:  'sortable-drag',
-                onEnd: function(evt) {
-                    if (evt.oldIndex === evt.newIndex) { return; }
-                    reorderContentView(cfg.area, evt.oldIndex, evt.newIndex, false);
-                    (function(area, fromIdx, toIdx) {
-                        FrameTrail.module('UndoManager').register({
-                            category: 'layout',
-                            description: labels['SidebarLayoutEditor'] + ' ' + labels['GenericReorder'],
-                            undo: function() { reorderContentView(area, toIdx, fromIdx, true); },
-                            redo: function() { reorderContentView(area, fromIdx, toIdx, true); }
-                        });
-                    })(cfg.area, evt.oldIndex, evt.newIndex);
-                }
-            });
-        });
 
     }
 
@@ -1766,12 +2260,24 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
             viewSizeChanged: onViewSizeChanged,
             sidebarOpen:     toggleSidebarOpen,
             viewMode:        toggleViewMode,
-            slidePosition:   onChangeSlidePosition
+            slidePosition:   onChangeSlidePosition,
+            // A drag in the Layout Editor ends with the editor, and when the edit API starts to change the hypervideo
+            editMode:        function(editMode) {
+                if (editMode !== 'layout') {
+                    cancelLayoutDrag();
+                    unsetLayoutInteractables();
+                }
+            },
+            editBusy:        function(busy) {
+                if (busy) { cancelLayoutDrag(); }
+            }
         },
 
         onUnload: function() {
             window.clearInterval(areaOpeningTimer);
             areaOpeningTimer = null;
+            cancelLayoutDrag();
+            unsetLayoutInteractables();
         },
 
         create: create,
@@ -1806,6 +2312,8 @@ FrameTrail.defineModule('ViewLayout', function(FrameTrail){
         renderAnnotationDisplay: renderAnnotationDisplay,
 
         reorderContentView:  reorderContentView,
+        moveContentView:     moveContentView,
+        areaTakes:           areaTakes,
 
         updateHiddenTabs: updateHiddenTabs,
 
