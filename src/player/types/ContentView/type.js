@@ -446,6 +446,12 @@ FrameTrail.defineType(
                     self.contentViewContainer.setAttribute('data-type', self.contentViewData.type);
                     self.contentViewContainer.setAttribute('data-size', self.contentViewData.contentSize);
 
+                    // The summary of a Quiz Results view lies beside its contents (renderQuizResults): it goes with the type
+                    if (self.contentViewData.type !== 'QuizResults') {
+                        var quizSummary = self.contentViewContainer.querySelector(':scope > .quizResultsSummary');
+                        if (quizSummary) { quizSummary.remove(); }
+                    }
+
                     // Sync cssClass on container
                     if (self._prevCssClass && self._prevCssClass !== self.contentViewData.cssClass) {
                         self.contentViewContainer.classList.remove(self._prevCssClass);
@@ -2876,6 +2882,10 @@ FrameTrail.defineType(
 
                     contents.innerHTML = '';
 
+                    // The summary of the last rendering (it is the view's, beside its contents)
+                    var lastSummary = self.contentViewContainer.querySelector(':scope > .quizResultsSummary');
+                    if (lastSummary) { lastSummary.remove(); }
+
                     var container = document.createElement('div');
                     container.className = 'chaptersContainer quizResultsContainer';
                     container.setAttribute('data-rows', byChapters ? 'chapters' : 'questions');
@@ -3021,8 +3031,9 @@ FrameTrail.defineType(
 
                     });
 
-                    // The summary: a sibling of the rows, so that in a horizontal strip the rows' shares are
-                    // shares of what the summary leaves, and in a list it can stay in view below them.
+                    // The summary: beside the rows (or below them) in the view, outside the part that scrolls,
+                    // so that in a horizontal strip the rows' shares are shares of what the summary leaves, it
+                    // stays in view, and rows never pass under it (the view is a grid, ContentView/style.css).
                     var summary = document.createElement('div');
                     summary.className = 'quizResultsSummary';
 
@@ -3068,7 +3079,7 @@ FrameTrail.defineType(
                     }
 
                     if (summary.firstChild) {
-                        contents.appendChild(summary);
+                        self.contentViewContainer.appendChild(summary);
                     }
 
                     self.updateQuizResultStates();

@@ -1130,13 +1130,19 @@
    redistributes around, and when the floors stop fitting the strip scrolls.
    Large keeps equal-width cards — see the comment in renderChapterCards. */
 
-/* The strip's own left padding would offset and compress the mapping, so a
-   time-mapped strip starts flush at the edge like the timeline does. */
-.layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents,
-.layoutArea[data-area="areaBottom"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents,
-.layoutArea[data-area="areaTop"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents,
-.layoutArea[data-area="areaBottom"][data-size="medium"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .contentViewContents {
-    padding-left: 0;
+/* The strip keeps its padding (4px), so the cards have the same air at both ends as
+   between them and above and below: the last card's margin is the air at the end.
+   The shares are shares of what the padding leaves, so a card's edge is at most 4px
+   from its mark on the timeline. */
+
+/* Cards that do not fit overflow their row's box, and what scrolls ends at the last card's
+   edge, not after its margin: an empty item where the margin ends keeps the air there at the
+   end of the scroll (1px wide, taken back by its own margin, so it takes no room) */
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="Chapters"] .chaptersContainer:not(.chapterSteps)::after {
+    content: '';
+    flex: 0 0 1px;
+    min-width: 0;
+    margin-left: -1px;
 }
 
 .layoutArea[data-area="areaTop"][data-size="small"] .contentViewContainer:is([data-type="Chapters"], [data-type="QuizResults"]) .chapterElement,
@@ -1944,22 +1950,59 @@
     min-width: 150px;
 }
 
-/* Horizontal areas: the rows take what the summary at their end leaves. The rows' box keeps
-   its content's minimum width (a flex item's default), so once the cards' minimum widths no
-   longer fit, rows and summary scroll together. */
+/* The summary stands outside the part that scrolls: beside the rows in the top and bottom areas,
+   below them in the left and right ones (and so on a phone). The view is a grid of the rows'
+   scroller and the summary (ContentView.renderQuizResults puts the summary into the view, not into
+   its contents); the scrollbar, absolutely positioned, belongs to the rows' cell. The scroller's
+   last pixels on the summary's side are clipped: there is the last row's margin while nothing is
+   scrolled, and rows scrolled to that side stop there, with the same air before the summary as
+   everywhere else. Nothing passes under the summary or beside it. */
 
+.layoutArea .contentViewContainer[data-type="QuizResults"].active {
+    display: grid;
+}
+
+.layoutArea .contentViewContainer[data-type="QuizResults"] > :is(.contentViewScroll, .contentViewScrollbar) {
+    grid-column: 1;
+    grid-row: 1;
+}
+
+/* Top and bottom: one row as high as the higher of rows and summary, never the area's height (the
+   area takes its height from it, ContentView.fitExtent: the contents are as high as the row). The
+   cards and the summary are as high as the highest of them. */
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="QuizResults"] {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto;
+    align-content: start;
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="QuizResults"] > .quizResultsSummary {
+    grid-column: 2;
+    grid-row: 1;
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"]) .contentViewContainer[data-type="QuizResults"] > .contentViewScroll {
+    clip-path: inset(0 4px 0 0);
+}
+
+:is(.layoutArea[data-area="areaTop"], .layoutArea[data-area="areaBottom"])[data-size="large"] .contentViewContainer[data-type="QuizResults"] > .contentViewScroll {
+    clip-path: inset(0 10px 0 0);
+}
+
+/* The rows' box keeps its content's minimum width (a flex item's default), so once the cards'
+   minimum widths no longer fit, the rows scroll */
 .layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer,
 .layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer {
     width: auto;
     flex: 1 1 0;
 }
 
-/* The strip is as high as its rows and the summary need, whatever the area's height: the area
-   takes its height from it (ContentView.fitExtent). The cards and the summary are as high as
-   the highest of them. */
-
 .layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .contentViewContents,
-.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .contentViewContents,
+.layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .contentViewContents {
+    height: auto;
+    min-height: 100%;
+}
+
 .layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer,
 .layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer {
     height: auto;
@@ -1979,15 +2022,11 @@
     margin-bottom: 10px;
 }
 
-/* The summary stays in view at the strip's end while the rows scroll under it */
+/* The summary at the strip's end: the last row's margin is the air before it */
 .layoutArea[data-area="areaTop"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
 .layoutArea[data-area="areaBottom"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
-    flex: 0 0 auto;
     max-width: 340px;
     margin: 4px 4px 4px 0;
-    position: sticky;
-    right: 4px;
-    z-index: 2;
 }
 
 .layoutArea[data-area="areaTop"][data-size="large"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
@@ -2041,7 +2080,7 @@
 }
 
 /* Vertical areas: rows as high as their text (a chapter's row is as high as its thumbnail),
-   the dots at their end, and the summary below them, kept in view while the rows scroll. */
+   the dots at their end, and the summary below them. */
 
 .layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer,
 .layoutArea[data-area="areaRight"] .contentViewContainer[data-type="QuizResults"] .chaptersContainer {
@@ -2062,29 +2101,22 @@
     max-width: 50%;
 }
 
-.layoutArea[data-area="areaLeft"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
-.layoutArea[data-area="areaRight"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
-    position: sticky;
-    bottom: 0;
-    z-index: 2;
-    margin-top: 4px;
+/* The summary is the foot of the area at every size, whatever the number of rows: the rows take the
+   rest of the height and scroll there. It is a card as the rows are, with the same air around it (the
+   last row's margin above it, see the grid above). */
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="QuizResults"] {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
 }
 
-/* The summary is the foot of the area at every size, whatever the number of rows. The contents are at
-   least as high as the area (the Chapters rules above), so in a column the summary's auto margin takes
-   it to the bottom; with more rows than fit, it sticks there and they scroll above it. */
-:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="QuizResults"] .contentViewContents {
-    display: flex;
-    flex-direction: column;
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="QuizResults"] > .quizResultsSummary {
+    grid-column: 1;
+    grid-row: 2;
+    margin: 0 4px 4px;
 }
 
-:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="QuizResults"] .chaptersContainer {
-    flex: 0 0 auto;
-}
-
-:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
-    margin-top: auto;
-    border-top: 1px solid var(--semi-transparent-fg-color);
+:is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"]) .contentViewContainer[data-type="QuizResults"] > .contentViewScroll {
+    clip-path: inset(0 0 4px 0);
 }
 
 :is(.layoutArea[data-area="areaLeft"], .layoutArea[data-area="areaRight"])[data-size="large"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
@@ -2113,7 +2145,7 @@
 .layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary,
 .layoutArea[data-area="areaRight"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsSummary {
     align-items: center;
-    padding: 6px 2px;
+    padding: 6px 0;
 }
 
 .layoutArea[data-area="areaLeft"][data-size="small"] .contentViewContainer[data-type="QuizResults"] .quizResultsRestart,
