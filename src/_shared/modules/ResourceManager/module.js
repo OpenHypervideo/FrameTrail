@@ -2158,8 +2158,9 @@ FrameTrail.defineModule('ResourceManager', function(FrameTrail){
      */
     function getFilteredList(targetElement, key, condition, values) {
 
-        var storageMode = FrameTrail.getState('storageMode');
-        if (storageMode === 'local' || storageMode === 'file' || storageMode === 'download') {
+        // Only a server answers fileGetByFilter: in every other mode (a folder, a project file, a static page, in
+        // memory) the list is filtered here. A static page has no server URL, so asking one posted to "null".
+        if (FrameTrail.getState('storageMode') !== 'server' || !FrameTrail.module('RouteNavigation').hasServer()) {
             // Client-side filtering using the already-loaded Database resources
             var allResources = FrameTrail.module('Database').resources;
             var result = {};
